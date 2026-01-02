@@ -6,15 +6,21 @@
 
 package io.mosip.certify.credential;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.kernel.signature.dto.CWTSignRequestDto;
+import io.mosip.kernel.signature.dto.CoseSignResponseDto;
 import io.mosip.kernel.signature.dto.JWSSignatureRequestDto;
 import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
+import io.mosip.kernel.signature.service.CoseSignatureService;
 import io.mosip.kernel.signature.service.SignatureService;
+import io.mosip.kernel.signature.service.impl.CoseSignatureServiceImpl;
 import org.json.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 public abstract class Credential{
@@ -22,6 +28,9 @@ public abstract class Credential{
     protected VCFormatter vcFormatter;
 
     protected SignatureService signatureService;
+
+    @Autowired
+    private CoseSignatureService coseSignatureService;
 
     /**
      * Constructor for credentials
@@ -101,6 +110,23 @@ public abstract class Credential{
         vc.setFormat("vc");
         vc.setCredential(jwsSignedData.getJwtSignedData());
         return vc;
+    }
+
+    public String addCWTProof(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
+        CWTSignRequestDto cwtSignRequestDto = new CWTSignRequestDto();
+        cwtSignRequestDto.setPayload(payload);
+        cwtSignRequestDto.setApplicationId(appID);
+        cwtSignRequestDto.setReferenceId(refID);
+        cwtSignRequestDto.setAlgorithm(qrSignAlgorithm);
+        cwtSignRequestDto.setIssuer(didUrl);
+
+        Map<String, Object> protectedHeaders = new HashMap<>();
+        protectedHeaders.put("x5c", true);
+
+        cwtSignRequestDto.setProtectedHeader(protectedHeaders);
+        CoseSignResponseDto coseSignResponseDto = coseSignatureService.cwtSign(cwtSignRequestDto);
+
+        return coseSignResponseDto.getSignedData();
     }
 
 }

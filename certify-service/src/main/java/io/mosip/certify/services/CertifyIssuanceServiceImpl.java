@@ -38,6 +38,7 @@ import io.mosip.certify.utils.LedgerUtils;
 import io.mosip.certify.utils.VCIssuanceUtil;
 import io.mosip.certify.validators.CredentialRequestValidator;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.kernel.signature.dto.CoseSignResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
@@ -48,6 +49,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -126,6 +128,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
     @Value("${mosip.certify.data-provider-plugin.vc-expiry-duration:P730D}")
     String defaultExpiryDuration;
+
+    @Value("#{${mosip.certify.signature-algo.key-alias-mapper}}")
+    private Map<String, List<List<String>>> keyAliasMapper;
 
     @Override
     public CredentialResponse getCredential(CredentialRequest credentialRequest) {
@@ -260,10 +265,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             JSONArray qrDataJson = cred.createQRData(updatedTemplateParams, templateName);
 
             if (qrDataJson != null) {
-                List<Object> claim169Values = new ArrayList<>();
-                for (int i = 0; i < qrDataJson.length(); i++) {
-                    claim169Values.add(qrDataJson.get(i));
-                }
+                List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
                 updatedTemplateParams.put("claim_169_values", claim169Values);
             } else {
                 log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
@@ -293,5 +295,60 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             log.error(e.getMessage(), e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
         }
+    }
+
+    // Add this private helper method into CertifyIssuanceServiceImpl class
+    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) {
+        List<String> signedQrCodes = new ArrayList<>();
+        if (qrDataJson == null || qrDataJson.isEmpty()) {
+            return signedQrCodes;
+        }
+        for (int i = 0; i < qrDataJson.length(); i++) {
+            Object qrObj = qrDataJson.get(i);
+            String serialized;
+            if (qrObj instanceof JSONObject || qrObj instanceof JSONArray) {
+                serialized = qrObj.toString();
+            } else {
+                serialized = JSONObject.valueToString(qrObj);
+            }
+
+            // Base64 encode the serialized QR JSON (UTF-8)
+            String qrBase64 = java.util.Base64.getEncoder()
+                    .encodeToString(serialized.getBytes(StandardCharsets.UTF_8));
+
+            // Default QR Signer Configuration
+            String qrSignatureAlgo = vcFormatter.getProofAlgorithm(templateName);
+            String qrSignAppId = vcFormatter.getAppID(templateName);
+            String qrSignRefId = vcFormatter.getRefID(templateName);
+
+            // Override with QR specific signers if available
+            if(qrSignatureAlgo != null && qrSignatureAlgo.isEmpty()) {
+                log.info("Using QR specific signature algorithm: {} for template: {}", qrSignatureAlgo, templateName);
+                qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
+                List<String> qrSignerKeys = keyAliasMapper.get(qrSignatureAlgo).getFirst();
+                qrSignAppId = qrSignerKeys.getFirst();
+                qrSignRefId = qrSignerKeys.getLast();
+            }
+            try {
+                // call addCWTProof to sign this QR payload; adapt params if Signature/API differs
+                String qrSignedResult = cred.addCWTProof(
+                        qrBase64,
+                        qrSignatureAlgo,
+                        qrSignAppId,
+                        qrSignRefId,
+                        vcFormatter.getDidUrl(templateName)
+                );
+                if (qrSignedResult != null && qrSignedResult.isEmpty()) {
+                    signedQrCodes.add(qrSignedResult);
+                    continue;
+                }
+                throw new CertifyException("INVALID_QR_SIGNED_RESULT", "QR signed result failed at index: " + i);
+            } catch (Exception e) {
+                log.error("Failed to sign QR entry index {}: {}", i, e.getMessage());
+                // on failure preserve original payload to avoid losing QR data
+                throw new CertifyException("ERROR_SIGNING_QR_ENTRY", e.getMessage());
+            }
+        }
+        return signedQrCodes;
     }
 }
