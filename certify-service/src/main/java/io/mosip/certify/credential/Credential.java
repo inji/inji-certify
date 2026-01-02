@@ -112,7 +112,7 @@ public abstract class Credential{
         return vc;
     }
 
-    public String addCWTProof(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
+    public String signQRData(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
         CWTSignRequestDto cwtSignRequestDto = new CWTSignRequestDto();
         cwtSignRequestDto.setPayload(payload);
         cwtSignRequestDto.setApplicationId(appID);

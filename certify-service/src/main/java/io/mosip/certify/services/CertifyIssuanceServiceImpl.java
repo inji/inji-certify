@@ -317,28 +317,30 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     .encodeToString(serialized.getBytes(StandardCharsets.UTF_8));
 
             // Default QR Signer Configuration
-            String qrSignatureAlgo = vcFormatter.getProofAlgorithm(templateName);
+            String qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
             String qrSignAppId = vcFormatter.getAppID(templateName);
             String qrSignRefId = vcFormatter.getRefID(templateName);
 
             // Override with QR specific signers if available
-            if(qrSignatureAlgo != null && qrSignatureAlgo.isEmpty()) {
+            if(qrSignatureAlgo == null || qrSignatureAlgo.isEmpty()) {
+                log.warn("No QR specific signature algorithm configured for template: {}. Falling back to default signature algorithm.", templateName);
+                qrSignatureAlgo = vcFormatter.getProofAlgorithm(templateName);
+            } else {
                 log.info("Using QR specific signature algorithm: {} for template: {}", qrSignatureAlgo, templateName);
-                qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
                 List<String> qrSignerKeys = keyAliasMapper.get(qrSignatureAlgo).getFirst();
                 qrSignAppId = qrSignerKeys.getFirst();
                 qrSignRefId = qrSignerKeys.getLast();
             }
             try {
                 // call addCWTProof to sign this QR payload; adapt params if Signature/API differs
-                String qrSignedResult = cred.addCWTProof(
+                String qrSignedResult = cred.signQRData(
                         qrBase64,
                         qrSignatureAlgo,
                         qrSignAppId,
                         qrSignRefId,
                         vcFormatter.getDidUrl(templateName)
                 );
-                if (qrSignedResult != null && qrSignedResult.isEmpty()) {
+                if (qrSignedResult != null && !qrSignedResult.isEmpty()) {
                     signedQrCodes.add(qrSignedResult);
                     continue;
                 }
