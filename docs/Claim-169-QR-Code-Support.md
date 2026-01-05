@@ -131,6 +131,34 @@ To enable QR code support in your credential configurations, you need to include
 - The QR code signer method can be overridden in `W3CJsonLD`, `SDJWT` and `MDocCredential` classes if any specific implementation is required for QR code signing for a particular credential format in future.
 - Add custom headers or claims to the QR code payload by updating the protective headers map.
 
+**Sequence Diagram**
+```mermaid
+sequenceDiagram
+    participant CredentialAPI as 🔗 Credential API
+    participant VelocityTemplatingEngine as ⚙️ Velocity Templating Engine
+    participant CredentialFactory as 🏭 Credential Factory
+    participant PixelPass as 🟦 PixelPass
+    participant KeyManager as 🟧 KeyManager
+
+    CredentialAPI->>VelocityTemplatingEngine: Prepare template params
+    VelocityTemplatingEngine-->>CredentialAPI: Return evaluated params
+
+    CredentialAPI->>CredentialFactory: createQRData(params, templateName)
+    CredentialFactory-->>CredentialAPI: Return QR data array
+
+    alt QR data present
+        loop For each QR data object
+            CredentialAPI->>PixelPass: Generate unsigned QR payload
+            PixelPass-->>CredentialAPI: Return unsigned QR payload
+            CredentialAPI->>CredentialFactory: signQRData(payload, qrSignAlgorithm, appID, refID, didUrl)
+            CredentialFactory-->>CredentialAPI: Return signed QR code
+            CredentialAPI->>CredentialAPI: Add signed QR to claim_169_values
+        end
+    else No QR data
+        CredentialAPI->>CredentialAPI: Skip QR signing
+    end
+```
+
 **Note:** To be completed post Pixel Pass and keymanager integration for QR code signing
  - After the QR code data is generated based on the `qrSettings`, it will be integrated with `Pixel Pass` and keymanager to convert each QR object into a signed QR code i.e `CWT`.
  - After the QR code is signed, it will then be integrated into the VC as shown in the velocity template above.
