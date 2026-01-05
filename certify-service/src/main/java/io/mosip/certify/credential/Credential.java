@@ -112,6 +112,14 @@ public abstract class Credential{
         return vc;
     }
 
+    /*
+    * Signs the QR data payload using CWT signature
+    * @param payload The QR data payload to be signed
+    * @param qrSignAlgorithm The QR signing algorithm
+    * @param appID Application ID for key retrieval
+    * @param refID Reference ID for key retrieval
+    * @param didUrl DID URL of the issuer
+    */
     public String signQRData(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
         CWTSignRequestDto cwtSignRequestDto = new CWTSignRequestDto();
         cwtSignRequestDto.setPayload(payload);

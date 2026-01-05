@@ -92,6 +92,44 @@ To enable QR code support in your credential configurations, you need to include
     }
 ```
 8. In the above example, `identityQRCode` and `faceQRCode` are the fields in the credential subject where the generated QR code data will be embedded. The `$claim_169_values` is a list that contains the generated QR code data corresponding to each object defined in the `qrSettings`.
+9. The `qrSettings` block after getting evaluated with the velocity context map will produce a list of QR code data objects. Each object in the list corresponds to a QR code generated based on the respective object defined in the `qrSettings`.
+```json
+    [
+      {
+        "Full Name": "ABCD",
+        "Phone Number": "1234567890",
+        "Date Of Birth": "1990-01-01"
+      },
+      {
+        "Face": {
+          "Data": "<base64-encoded-image-data>",
+          "Data format": "Image",
+          "Data sub format": "JPEG"
+        },
+        "Full Name": "ABCD",
+        "Date Of Birth": "1990-01-01"
+      }
+    ]
+```
+10. This list of QR code data objects will then be integrated with pixel-pass to generate claim-169 unsigned QR payload.
+```json
+    [
+      "<Base64-encoded-QR-code-data-1>",
+      "<Base64-encoded-QR-code-data-2>"
+    ]
+```
+11. Each QR code data object in the list will be signed using the specified signature algorithm to produce a signed QR code (CWT). These signed qr-codes are added to the `claim_169_values` list in the same order as defined in the `qrSettings`.
+```json
+    [
+        "<Base64-encoded-signed-QR-code-data-1>",
+        "<Base64-encoded-signed-QR-code-data-2>"
+    ]
+```
+
+**Extensibility**
+- Currently, QR code signing method is implemented as the default implementation `` in the base class: `com.mosip.certify.credential.Credential`.
+- The QR code signer method can be overridden in `W3CJsonLD`, `SDJWT` and `MDocCredential` classes if any specific implementation is required for QR code signing for a particular credential format in future.
+- Add custom headers or claims to the QR code payload by updating the protective headers map.
 
 **Note:** To be completed post Pixel Pass and keymanager integration for QR code signing
  - After the QR code data is generated based on the `qrSettings`, it will be integrated with `Pixel Pass` and keymanager to convert each QR object into a signed QR code i.e `CWT`.
