@@ -160,9 +160,14 @@ public class IarPresentationService {
                 log.debug("vp_token serialized to JSON, length: {}", vpTokenJson.length());
             }
             
-            String presentationSubmissionJson = objectMapper.writeValueAsString(presentationSubmissionObj);
-            log.debug("presentation_submission serialized to JSON, length: {}", presentationSubmissionJson.length());
-            
+            String presentationSubmissionJson;
+            if (presentationSubmissionObj instanceof String) {
+                presentationSubmissionJson = (String) presentationSubmissionObj;
+            } else {
+                presentationSubmissionJson  = objectMapper.writeValueAsString(presentationSubmissionObj);
+                log.debug("presentation_submission serialized to JSON, length: {}", presentationSubmissionJson.length());
+            }
+
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("vp_token", vpTokenJson);
             formData.add("presentation_submission", presentationSubmissionJson);
