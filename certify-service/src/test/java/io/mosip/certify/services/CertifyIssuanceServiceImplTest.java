@@ -642,8 +642,6 @@ public class CertifyIssuanceServiceImplTest {
         }
     }
 
-// Java
-
     @Test
     public void getCredential_QRDataPresent_Claim169ValuesAdded() throws Exception {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);

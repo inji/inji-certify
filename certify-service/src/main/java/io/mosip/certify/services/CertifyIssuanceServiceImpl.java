@@ -324,7 +324,12 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 qrSignatureAlgo = vcFormatter.getProofAlgorithm(templateName);
             } else {
                 log.info("Using QR specific signature algorithm: {} for template: {}", qrSignatureAlgo, templateName);
-                List<String> qrSignerKeys = keyAliasMapper.get(qrSignatureAlgo).getFirst();
+                List<List<String>> qrSignerKeysList = keyAliasMapper.get(qrSignatureAlgo);
+                if (qrSignerKeysList == null || qrSignerKeysList.isEmpty()) {
+                    throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND,
+                            "No key configuration found for QR signature algorithm: " + qrSignatureAlgo);
+                }
+                List<String> qrSignerKeys = qrSignerKeysList.getFirst();
                 qrSignAppId = qrSignerKeys.getFirst();
                 qrSignRefId = qrSignerKeys.getLast();
             }
@@ -341,11 +346,11 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     signedQrCodes.add(qrSignedResult);
                     continue;
                 }
-                throw new CertifyException("INVALID_QR_SIGNED_RESULT", "QR signed result failed at index: " + i);
+                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNED_RESULT, "QR signed result failed at index: " + i);
             } catch (Exception e) {
                 log.error("Failed to sign QR entry index {}: {}", i, e.getMessage());
                 // signing failure is non-recoverable; propagate as domain exception
-                throw new CertifyException("ERROR_SIGNING_QR_ENTRY", e.getMessage());
+                throw new CertifyException(ErrorConstants.ERROR_SIGNING_QR_ENTRY, e.getMessage());
             }
         }
         return signedQrCodes;
