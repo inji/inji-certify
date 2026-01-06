@@ -347,7 +347,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 throw new CertifyException("INVALID_QR_SIGNED_RESULT", "QR signed result failed at index: " + i);
             } catch (Exception e) {
                 log.error("Failed to sign QR entry index {}: {}", i, e.getMessage());
-                // on failure preserve original payload to avoid losing QR data
+                // signing failure is non-recoverable; propagate as domain exception
                 throw new CertifyException("ERROR_SIGNING_QR_ENTRY", e.getMessage());
             }
         }
