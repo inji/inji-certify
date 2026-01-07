@@ -125,7 +125,7 @@ class WellKnownControllerTest {
                 .andExpect(jsonPath("$.response_types_supported[0]").value("code"))
                 .andExpect(jsonPath("$.code_challenge_methods_supported[0]").value("S256"))
                 .andExpect(jsonPath("$.interactive_authorization_endpoint").value("http://localhost:8090/v1/certify/oauth/iar"))
-                .andExpect(jsonPath("$.jwks_uri").doesNotExist())
+                .andExpect(jsonPath("$.jwks_uri").value("http://localhost:8090/v1/certify/oauth/.well-known/jwks.json"))
                 .andExpect(jsonPath("$.token_endpoint_auth_methods_supported").doesNotExist());
 
         verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();

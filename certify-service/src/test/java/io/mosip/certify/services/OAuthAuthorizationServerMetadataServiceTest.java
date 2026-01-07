@@ -32,6 +32,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         // Set up the properties using ReflectionTestUtils
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "issuer", TEST_ISSUER);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "tokenEndpoint", TEST_TOKEN_ENDPOINT);
+        ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "jwksUri", TEST_JWKS_URI);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "responseTypesSupported", TEST_RESPONSE_TYPES);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "grantTypesSupported", TEST_GRANT_TYPES);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "codeChallengeMethodsSupported", TEST_CODE_CHALLENGE_METHODS);
@@ -48,7 +49,6 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         assertEquals("Issuer should match", TEST_ISSUER, result.getIssuer());
         assertEquals("Token endpoint should match", TEST_TOKEN_ENDPOINT, result.getTokenEndpoint());
         assertEquals("Jwks Uri should match", TEST_JWKS_URI, result.getJwksUri());
-        // JWK set URI is not implemented, so it should not be present in the DTO
         assertEquals("Interactive authorization endpoint should match", TEST_INTERACTIVE_AUTHORIZATION_ENDPOINT, result.getInteractiveAuthorizationEndpoint());
     }
 
