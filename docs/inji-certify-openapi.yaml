@@ -2820,11 +2820,17 @@ components:
           description: Applicable for subsequent request - OpenID4VP presentation submission response contains vp_token and presentation_submission
     AuthorizationSuccess:
       type: object
+      required:
+        - status
       properties:
         status:
           type: string
           enum: ["require_interaction", "ok", "error"]
-          description: Status require_interaction for initial request, ok while issuing authorization code and error if authorization failed
+          description: |
+            Status of the authorization request:
+            - "require_interaction": Initial request, requires user interaction (type and auth_session will be present)
+            - "ok": Authorization successful, code is issued (code will be present)
+            - "error": Authorization failed
         type:
           type: string
           enum: ["openid4vp_presentation", "redirect_to_web"]
@@ -2841,13 +2847,17 @@ components:
           example: "SplxlOBeZQQYbYS6WxSbIA"
     OAuthTokenRequest:
       type: object
+      required:
+        - grant_type
       properties:
         grant_type:
           type: string
+          description: OAuth 2.0 grant type (authorization_code, refresh_token, etc.)
           example: "authorization_code"
         code:
           type: string
           description: Authorization code from iar endpoint
+          example: "SplxlOBeZQQYbYS6WxSbIA"
         code_verifier:
           type: string
           description: PKCE code verifier
@@ -2856,12 +2866,17 @@ components:
           description: For refresh_token grant
     TokenResponse:
       type: object
+      required:
+        - access_token
+        - token_type
       properties:
         access_token:
           type: string
+          description: The access token issued by the authorization server
           example: "eyJhbGciOiJSUzI1NiIsInR5cCI6Ikp..."
         token_type:
           type: string
+          description: The type of token issued (case-insensitive)
           example: "Bearer"
         expires_in:
           type: integer
@@ -2943,4 +2958,4 @@ components:
                 description: SHA-256 thumbprint of an X.509 certificate
               exp:
                 type: integer
-                description: Key expiry in milliseconds
+                description: Key expiry in seconds
