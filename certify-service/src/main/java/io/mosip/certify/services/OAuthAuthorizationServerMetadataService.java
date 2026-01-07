@@ -26,6 +26,9 @@ public class OAuthAuthorizationServerMetadataService {
     @Value("${mosip.certify.oauth.token-endpoint}")
     private String tokenEndpoint;
 
+    @Value("${mosip.certify.oauth.jwks-uri}")
+    private String jwksUri;
+
     @Value("${mosip.certify.oauth.grant-types-supported}")
     private String grantTypesSupported;
 
@@ -49,6 +52,7 @@ public class OAuthAuthorizationServerMetadataService {
         
         metadata.setIssuer(issuer);
         metadata.setTokenEndpoint(tokenEndpoint);
+        metadata.setJwksUri(jwksUri);
         metadata.setGrantTypesSupported(parseCommaSeparatedValues(grantTypesSupported));
         metadata.setResponseTypesSupported(parseCommaSeparatedValues(responseTypesSupported));
         metadata.setCodeChallengeMethodsSupported(parseCommaSeparatedValues(codeChallengeMethodsSupported));

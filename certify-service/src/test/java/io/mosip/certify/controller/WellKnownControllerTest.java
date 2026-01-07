@@ -107,6 +107,7 @@ class WellKnownControllerTest {
         OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
         mockMetadata.setIssuer("http://localhost:8090");
         mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
+        mockMetadata.setJwksUri("http://localhost:8090/v1/certify/oauth/.well-known/jwks.json");
         mockMetadata.setGrantTypesSupported(Arrays.asList("authorization_code"));
         mockMetadata.setResponseTypesSupported(Arrays.asList("code"));
         mockMetadata.setCodeChallengeMethodsSupported(Arrays.asList("S256"));

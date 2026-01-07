@@ -2399,6 +2399,7 @@ components:
       required:
         - issuer
         - token_endpoint
+        - jwks_uri
         - grant_types_supported
         - response_types_supported
         - code_challenge_methods_supported
@@ -2411,6 +2412,11 @@ components:
         token_endpoint:
           type: string
           format: uri
+        jwks_uri:
+          type: string
+          format: uri
+          description: URL of the authorization server's JWK Set document
+          example: "http://localhost:8090/v1/certify/oauth/.well-known/jwks.json"
         grant_types_supported:
           type: array
           items:

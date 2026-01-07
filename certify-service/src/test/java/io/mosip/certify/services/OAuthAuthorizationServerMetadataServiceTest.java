@@ -21,6 +21,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
 
     private static final String TEST_ISSUER = "http://localhost:8090";
     private static final String TEST_TOKEN_ENDPOINT = "http://localhost:8090/v1/certify/oauth/token";
+    private static final String TEST_JWKS_URI = "http://localhost:8090/v1/certify/oauth/.well-known/jwks.json";
     private static final String TEST_RESPONSE_TYPES = "code";
     private static final String TEST_GRANT_TYPES = "authorization_code";
     private static final String TEST_CODE_CHALLENGE_METHODS = "S256";
@@ -46,6 +47,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         assertNotNull("OAuth Authorization Server metadata should not be null", result);
         assertEquals("Issuer should match", TEST_ISSUER, result.getIssuer());
         assertEquals("Token endpoint should match", TEST_TOKEN_ENDPOINT, result.getTokenEndpoint());
+        assertEquals("Jwks Uri should match", TEST_JWKS_URI, result.getJwksUri());
         // JWK set URI is not implemented, so it should not be present in the DTO
         assertEquals("Interactive authorization endpoint should match", TEST_INTERACTIVE_AUTHORIZATION_ENDPOINT, result.getInteractiveAuthorizationEndpoint());
     }
