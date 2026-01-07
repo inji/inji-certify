@@ -2820,8 +2820,6 @@ components:
           description: Applicable for subsequent request - OpenID4VP presentation submission response contains vp_token and presentation_submission
     AuthorizationSuccess:
       type: object
-      required:
-        - authorization_code
       properties:
         status:
           type: string
