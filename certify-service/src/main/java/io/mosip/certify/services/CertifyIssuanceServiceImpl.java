@@ -310,7 +310,8 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             }
 
             // Base64 encode the serialized QR JSON (UTF-8)
-            String qrBase64 = java.util.Base64.getEncoder()
+            String qrBase64 = java.util.Base64.getUrlEncoder()
+                    .withoutPadding()
                     .encodeToString(serialized.getBytes(StandardCharsets.UTF_8));
 
             // Default QR Signer Configuration

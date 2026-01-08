@@ -92,7 +92,7 @@ To enable QR code support in your credential configurations, you need to include
     }
 ```
 8. In the above example, `identityQRCode` and `faceQRCode` are the fields in the credential subject where the generated QR code data will be embedded. The `$claim_169_values` is a list that contains the generated QR code data corresponding to each object defined in the `qrSettings`.
-9. The `qrSettings` block after getting evaluated with the velocity context map will produce a list of QR code data objects. Each object in the list corresponds to a QR code generated based on the respective object defined in the `qrSettings`.
+9. After the qrSettings block is processed with the velocity context map, it creates a list of QR code data objects. Each object in this list is generated from one entry in the qrSettings array. For example, if your qrSettings looks like this:
 ```json
     [
       {
@@ -111,6 +111,35 @@ To enable QR code support in your credential configurations, you need to include
       }
     ]
 ```
+ - The velocity context map provides these values:
+```json
+    {
+        "fullName": "John Doe",
+        "mobileNumber": "9876543210",
+        "face": "<base64-image-data>"
+    }
+```
+
+ - The resulting list of QR code data objects will be:
+```json
+    [
+      {
+        "Full Name": "John Doe",
+        "Phone Number": "9876543210",
+        "Date Of Birth": "1990-01-01"
+      },
+      {
+        "Face": {
+          "Data": "<base64-image-data>",
+          "Data format": "Image",
+          "Data sub format": "JPEG"
+        },
+        "Full Name": "John Doe",
+        "Date Of Birth": "1990-01-01"
+      }
+    ]
+```
+
 10. This list of QR code data objects will then be integrated with pixel-pass to generate claim-169 unsigned QR payload.
 ```json
     [
@@ -136,22 +165,24 @@ To enable QR code support in your credential configurations, you need to include
 sequenceDiagram
     participant CredentialAPI as 🔗 Credential API
     participant VelocityTemplatingEngine as ⚙️ Velocity Templating Engine
-    participant CredentialFactory as 🏭 Credential Factory
+    participant Credential as 🏭 Credential
     participant PixelPass as 🟦 PixelPass
     participant KeyManager as 🟧 KeyManager
 
     CredentialAPI->>VelocityTemplatingEngine: Prepare template params
     VelocityTemplatingEngine-->>CredentialAPI: Return evaluated params
 
-    CredentialAPI->>CredentialFactory: createQRData(params, templateName)
-    CredentialFactory-->>CredentialAPI: Return QR data array
+    CredentialAPI->>Credential: createQRData(params, templateName)
+    Credential-->>CredentialAPI: Return QR data array
 
     alt QR data present
         loop For each QR data object
             CredentialAPI->>PixelPass: Generate unsigned QR payload
             PixelPass-->>CredentialAPI: Return unsigned QR payload
-            CredentialAPI->>CredentialFactory: signQRData(payload, qrSignAlgorithm, appID, refID, didUrl)
-            CredentialFactory-->>CredentialAPI: Return signed QR code
+            CredentialAPI->>Credential: signQRData(payload, qrSignAlgorithm, appID, refID, didUrl)
+            Credential->>KeyManager: cwtSign(cwtSignRequest)
+            KeyManager-->>Credential: Return signed QR code
+            Credential-->>CredentialAPI: Return signed QR code
             CredentialAPI->>CredentialAPI: Add signed QR to claim_169_values
         end
     else No QR data
