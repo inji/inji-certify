@@ -181,9 +181,9 @@ sequenceDiagram
             PixelPass-->>CredentialAPI: Return unsigned QR payload
             CredentialAPI->>Credential: signQRData(payload, qrSignAlgorithm, appID, refID, didUrl)
             Credential->>KeyManager: cwtSign(cwtSignRequest)
-            KeyManager-->>Credential: Return signed QR code
-            Credential-->>CredentialAPI: Return signed QR code
-            CredentialAPI->>CredentialAPI: Add signed QR to claim_169_values
+            KeyManager-->>Credential: Return signed QR data
+            Credential-->>CredentialAPI: Return signed QR data
+            CredentialAPI->>CredentialAPI: Add signed QR data to claim_169_values
         end
     else No QR data
         CredentialAPI->>CredentialAPI: Skip QR signing
