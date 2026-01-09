@@ -64,7 +64,7 @@
                 <configuration>
                     <artifactItems>
                         <artifactItem>
-                            <groupId>io.mosip.certify</groupId>
+                            <groupId>io.inji.certify</groupId>
                             <artifactId>mock-certify-plugin</artifactId>
                             <version>${mock-certify-plugin.version}</version>
                             <outputDirectory>${certify-plugins.location}</outputDirectory>
@@ -72,7 +72,7 @@
                             <type>jar</type>
                         </artifactItem>
                         <artifactItem>
-                            <groupId>io.mosip.certify</groupId>
+                            <groupId>io.inji.certify</groupId>
                             <artifactId>mosip-identity-certify-plugin</artifactId>
                             <version>${mosip-identity-certify-plugin.version}</version>
                             <outputDirectory>${certify-plugins.location}</outputDirectory>
@@ -80,7 +80,7 @@
                             <type>jar</type>
                         </artifactItem>
                         <artifactItem>
-                            <groupId>io.mosip.certify</groupId>
+                            <groupId>io.inji.certify</groupId>
                             <artifactId>postgres-dataprovider-plugin</artifactId>
                             <version>${postgres-dataprovider-plugin.version}</version>
                             <outputDirectory>${certify-plugins.location}</outputDirectory>
@@ -88,7 +88,7 @@
                             <type>jar</type>
                         </artifactItem>
                         <artifactItem>
-                            <groupId>io.mosip.certify.sunbirdrc</groupId>
+                            <groupId>io.inji.certify.sunbirdrc</groupId>
                             <artifactId>sunbird-rc-certify-integration-impl</artifactId>
                             <version>${sunbird-rc-certify-integration-plugin.version}</version>
                             <outputDirectory>${certify-plugins.location}</outputDirectory>
