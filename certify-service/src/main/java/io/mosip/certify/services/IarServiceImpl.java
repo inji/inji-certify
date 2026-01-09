@@ -36,7 +36,7 @@ import io.mosip.certify.utils.AccessTokenJwtUtil;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(value = "mosip.certify.authorization-module", havingValue = "certify")
+@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarServiceImpl implements IarService {
 
     @Autowired
