@@ -16,6 +16,7 @@ import io.mosip.certify.core.spi.IarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -35,6 +36,7 @@ import io.mosip.certify.utils.AccessTokenJwtUtil;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(value = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarServiceImpl implements IarService {
 
     @Autowired
