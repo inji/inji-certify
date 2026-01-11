@@ -38,7 +38,7 @@ public class OAuthAuthorizationServerMetadataService {
     @Value("${mosip.certify.oauth.code-challenge-methods-supported}")
     private String codeChallengeMethodsSupported;
 
-    @Value("${mosip.certify.oauth.interactive-authorization-endpoint}")
+    @Value("${mosip.certify.oauth.interactive-authorization-endpoint:http://localhost:8090/v1/certify/oauth/iar}")
     private String interactiveAuthorizationEndpoint;
 
     /**

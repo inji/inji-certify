@@ -49,7 +49,7 @@ public class IarVpRequestService {
     @Value("${mosip.certify.iar.response-mode.iar-post:iar-post}")
     private String iarPostResponseMode;
 
-    @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
+    @Value("${mosip.certify.oauth.interactive-authorization-endpoint:http://localhost:8090/v1/certify/oauth/iar}")
     private String certifyIarEndpoint;
 
     /**
