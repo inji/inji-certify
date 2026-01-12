@@ -1337,4 +1337,45 @@
 			<class name="io.mosip.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
 		</classes>
 	</test>
+
+	<!-- Pre-Authorized Code Flow Tests -->
+	<test name="GeneratePreAuthCode">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode.yml" />
+		<parameter name="idKeyName" value="offerId,preAuthCode" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="GetCredentialOfferPreAuth">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GetCredentialOffer/GetCredentialOffer.yml" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.GetWithParam" />
+		</classes>
+	</test>
+	<test name="TokenExchangePreAuth">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange.yml" />
+		<parameter name="idKeyName" value="access_token,c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GetCredentialPreAuthFlow">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GetCredentialPreAuth/GetCredentialPreAuth.yml" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePost" />
+		</classes>
+	</test>
+	<test name="PreAuthCodeFlowNegative">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegative.yml" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePost" />
+		</classes>
+	</test>
 </suite>

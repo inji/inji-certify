@@ -1,0 +1,67 @@
+GeneratePreAuthCode:
+   InjiCertify_GeneratePreAuthCode_Valid_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_01
+      description: Generate pre-authorized code with valid claims
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Test User",
+              "dob": "1990-01-15",
+              "policyNumber": "POL123456789"
+          },
+          "expires_in": 600,
+          "tx_code": "1234"
+      }'
+      output: '{
+          "credential_offer_uri": "openid-credential-offer://"
+      }'
+
+   InjiCertify_GeneratePreAuthCode_WithoutExpiry_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_02
+      description: Generate pre-authorized code without explicit expiry (uses default)
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Default Expiry User",
+              "dob": "1985-06-20",
+              "policyNumber": "POL987654321"
+          }
+      }'
+      output: '{
+          "credential_offer_uri": "openid-credential-offer://"
+      }'
+
+   InjiCertify_GeneratePreAuthCode_WithTxCode_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_03
+      description: Generate pre-authorized code with transaction code
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "TxCode User",
+              "dob": "1992-03-10",
+              "policyNumber": "POL111222333"
+          },
+          "expires_in": 300,
+          "tx_code": "abc12345"
+      }'
+      output: '{
+          "credential_offer_uri": "openid-credential-offer://"
+      }'

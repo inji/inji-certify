@@ -1,0 +1,12 @@
+{
+    "TC_preauth_GetOffer_01": ["TC_preauth_GenerateCode_01"],
+    "TC_preauth_GetOffer_02": ["TC_preauth_GenerateCode_03"],
+    "TC_preauth_TokenExchange_01": ["TC_preauth_GenerateCode_01"],
+    "TC_preauth_TokenExchange_02": ["TC_preauth_GenerateCode_03"],
+    "TC_preauth_GetCredential_01": [
+        "TC_preauth_GenerateCode_01",
+        "TC_preauth_TokenExchange_01"
+    ],
+    "TC_preauth_TokenExchange_Neg_03": ["TC_preauth_GenerateCode_03"],
+    "TC_preauth_TokenExchange_Neg_04": ["TC_preauth_GenerateCode_03"]
+}

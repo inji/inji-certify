@@ -1,0 +1,189 @@
+PreAuthNegative:
+   # Invalid credential_configuration_id
+   InjiCertify_GeneratePreAuthCode_InvalidConfigId_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_Neg_01
+      description: Generate pre-auth code with invalid credential configuration ID
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegative
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "credential_configuration_id": "InvalidCredentialConfig123",
+          "claims": {
+              "fullName": "Test User",
+              "dob": "1990-01-15",
+              "policyNumber": "POL123456789"
+          }
+      }'
+      output: '{
+          "error": "invalid_credential_configuration_id"
+      }'
+
+   # Missing mandatory claims
+   InjiCertify_GeneratePreAuthCode_MissingClaims_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_Neg_02
+      description: Generate pre-auth code with missing mandatory claims
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegative
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {}
+      }'
+      output: '{
+          "error": "missing_mandatory_claim"
+      }'
+
+   # Invalid offer ID format (non-UUID)
+   InjiCertify_GetCredentialOffer_InvalidOfferId_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/credential-offer-data/not-a-valid-uuid
+      uniqueIdentifier: TC_preauth_GetOffer_Neg_01
+      description: Get credential offer with invalid offer ID format
+      role: resident
+      restMethod: get
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GetCredentialOffer/GetCredentialOffer
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{}'
+      output: '{
+          "error": "invalid_offer_id_format"
+      }'
+
+   # Non-existent offer ID (valid UUID but not found)
+   InjiCertify_GetCredentialOffer_NotFound_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/credential-offer-data/550e8400-e29b-41d4-a716-446655440000
+      uniqueIdentifier: TC_preauth_GetOffer_Neg_02
+      description: Get credential offer with non-existent offer ID
+      role: resident
+      restMethod: get
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GetCredentialOffer/GetCredentialOffer
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{}'
+      output: '{
+          "error": "credential_offer_not_found"
+      }'
+
+   # Unsupported grant type
+   InjiCertify_TokenExchange_UnsupportedGrantType_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_01
+      description: Token exchange with unsupported grant type
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "authorization_code",
+          "pre-authorized_code": "some_code"
+      }'
+      output: '{
+          "error": "unsupported_grant_type"
+      }'
+
+   # Invalid pre-authorized code
+   InjiCertify_TokenExchange_InvalidCode_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_02
+      description: Token exchange with invalid pre-authorized code
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "invalid_pre_auth_code_12345"
+      }'
+      output: '{
+          "error": "invalid_grant"
+      }'
+
+   # Missing tx_code when required
+   InjiCertify_TokenExchange_MissingTxCode_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_03
+      description: Token exchange without tx_code when it is required
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "$ID:InjiCertify_GeneratePreAuthCode_WithTxCode_Smoke_sid_preAuthCode$"
+      }'
+      output: '{
+          "error": "tx_code_required"
+      }'
+
+   # Wrong tx_code value
+   InjiCertify_TokenExchange_WrongTxCode_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_04
+      description: Token exchange with incorrect tx_code value
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "$ID:InjiCertify_GeneratePreAuthCode_WithTxCode_Smoke_sid_preAuthCode$",
+          "tx_code": "wrongcode"
+      }'
+      output: '{
+          "error": "tx_code_mismatch"
+      }'
+
+   # Invalid expiry range (too low)
+   InjiCertify_GeneratePreAuthCode_ExpiryTooLow_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_Neg_03
+      description: Generate pre-auth code with expiry below minimum
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegative
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Test User",
+              "dob": "1990-01-15",
+              "policyNumber": "POL123456789"
+          },
+          "expires_in": 10
+      }'
+      output: '{
+          "error": "invalid_expiry_range"
+      }'
+
+   # Invalid expiry range (too high)
+   InjiCertify_GeneratePreAuthCode_ExpiryTooHigh_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_Neg_04
+      description: Generate pre-auth code with expiry above maximum
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegative
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Test User",
+              "dob": "1990-01-15",
+              "policyNumber": "POL123456789"
+          },
+          "expires_in": 999999
+      }'
+      output: '{
+          "error": "invalid_expiry_range"
+      }'
