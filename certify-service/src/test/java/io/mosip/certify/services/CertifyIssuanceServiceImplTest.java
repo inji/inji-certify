@@ -1,5 +1,6 @@
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -112,7 +113,7 @@ public class CertifyIssuanceServiceImplTest {
 
 
     @Before
-    public void setUp() {
+    public void setUp() throws JsonProcessingException {
         testIssuerMetadataMap = new LinkedHashMap<>();
         LinkedHashMap<String, Object> latestMetadataConfig = new LinkedHashMap<>();
         LinkedHashMap<String, Object> credentialConfigurationsSupportedMapForTestMeta = new LinkedHashMap<>();
@@ -204,6 +205,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest"))
                 .thenReturn(mockGlobalCredentialIssuerMetadataDTO); // Default mock
+        when(objectMapper.writeValueAsString(any())).thenReturn("claim169-mapped-data");
     }
 
     private CredentialRequest createValidCredentialRequest(String format) {
@@ -690,6 +692,8 @@ public class CertifyIssuanceServiceImplTest {
         when(mockW3CJsonLD.signQRData(eq("mappedData2"), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn("signedQR2");
 
+        when(pixelPass.generateQRData(eq("signedQR1"), eq(""))).thenReturn("qrCodeData1");
+        when(pixelPass.generateQRData(eq("signedQR2"), eq(""))).thenReturn("qrCodeData2");
         // Usual formatter mocks
         when(vcFormatter.getProofAlgorithm(anyString())).thenReturn("EdDSA");
         when(vcFormatter.getAppID(anyString())).thenReturn("testAppIdLdp");
@@ -715,8 +719,8 @@ public class CertifyIssuanceServiceImplTest {
         assertTrue(usedParams.containsKey("claim_169_values"));
         List<String> claim169Values = (List<String>) usedParams.get("claim_169_values");
         assertEquals(2, claim169Values.size());
-        assertTrue(claim169Values.contains("signedQR1"));
-        assertTrue(claim169Values.contains("signedQR2"));
+        assertTrue(claim169Values.contains("qrCodeData1"));
+        assertTrue(claim169Values.contains("qrCodeData2"));
     }
 
     @Test

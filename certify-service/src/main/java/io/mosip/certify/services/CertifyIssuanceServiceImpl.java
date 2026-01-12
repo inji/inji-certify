@@ -274,7 +274,11 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
             if (qrDataJson != null) {
                 List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
-                updatedTemplateParams.put("claim_169_values", claim169Values);
+                List<String> claim169QrCodeData = new ArrayList<>();
+                claim169Values.forEach(claim169Value -> {
+                    claim169QrCodeData.add(pixelPass.generateQRData(claim169Value, ""));
+                });
+                updatedTemplateParams.put("claim_169_values", claim169QrCodeData);
             } else {
                 log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
             }
@@ -305,7 +309,6 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
     }
 
-    // Add this private helper method into CertifyIssuanceServiceImpl class
     private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
         List<String> signedQrCodes = new ArrayList<>();
         if (qrDataJson == null || qrDataJson.isEmpty()) {
@@ -313,25 +316,24 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
         Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
         Map<String, Map<Object, Integer>> claim169ValueMapper = ConstantsKt.getCLAIM_169_VALUE_MAPPER();
-        String claim169MapperQrCodeData;
+        String claim169MappedData;
         for (int i = 0; i < qrDataJson.length(); i++) {
             Object qrObj = qrDataJson.get(i);
             if (qrObj instanceof JSONObject) {
-                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                claim169MappedData = objectMapper.writeValueAsString(pixelPass
                         .getMappedData((JSONObject) qrObj, claim169KeyMapper,
                                 claim169ValueMapper, true));
             } else if (qrObj instanceof JSONArray) {
-                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                claim169MappedData = objectMapper.writeValueAsString(pixelPass
                         .getMappedData((JSONArray) qrObj, claim169KeyMapper,
                                 claim169ValueMapper, true));
             } else {
                 JsonNode node = objectMapper.valueToTree(qrObj);
-                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                claim169MappedData = objectMapper.writeValueAsString(pixelPass
                         .getMappedData(new JSONObject(node.toString()), claim169KeyMapper,
                                 claim169ValueMapper, true));
             }
 
-            // Base64 encode the serialized QR JSON (UTF-8)
             // Default QR Signer Configuration
             String qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
             String qrSignAppId = vcFormatter.getAppID(templateName);
@@ -355,7 +357,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             try {
                 // call addCWTProof to sign this QR payload; adapt params if Signature/API differs
                 String qrSignedResult = cred.signQRData(
-                        claim169MapperQrCodeData,
+                        claim169MappedData,
                         qrSignatureAlgo,
                         qrSignAppId,
                         qrSignRefId,
