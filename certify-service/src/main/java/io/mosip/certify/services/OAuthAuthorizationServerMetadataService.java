@@ -8,6 +8,7 @@ package io.mosip.certify.services;
 import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -18,6 +19,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class OAuthAuthorizationServerMetadataService {
 
     @Value("${mosip.certify.oauth.issuer}")
