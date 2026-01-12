@@ -5,6 +5,9 @@
  */
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCRequestDto;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
@@ -36,6 +39,8 @@ import io.mosip.certify.utils.LedgerUtils;
 import io.mosip.certify.utils.VCIssuanceUtil;
 import io.mosip.certify.validators.CredentialRequestValidator;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.pixelpass.PixelPass;
+import io.mosip.pixelpass.shared.ConstantsKt;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
@@ -93,6 +98,12 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
     @Autowired
     private AuditPlugin auditWrapper;
+
+    @Autowired
+    private PixelPass pixelPass;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private Map<String, Object> didDocument;
 
@@ -288,32 +299,39 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
         } catch (DataProviderExchangeException e) {
             throw new CertifyException(e.getErrorCode());
-        } catch (JSONException e) {
+        } catch (JSONException | JsonProcessingException e) {
             log.error(e.getMessage(), e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
         }
     }
 
     // Add this private helper method into CertifyIssuanceServiceImpl class
-    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) {
+    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
         List<String> signedQrCodes = new ArrayList<>();
         if (qrDataJson == null || qrDataJson.isEmpty()) {
             return signedQrCodes;
         }
+        Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
+        Map<String, Map<Object, Integer>> claim169ValueMapper = ConstantsKt.getCLAIM_169_VALUE_MAPPER();
+        String claim169MapperQrCodeData;
         for (int i = 0; i < qrDataJson.length(); i++) {
             Object qrObj = qrDataJson.get(i);
-            String serialized;
-            if (qrObj instanceof JSONObject || qrObj instanceof JSONArray) {
-                serialized = qrObj.toString();
+            if (qrObj instanceof JSONObject) {
+                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                        .getMappedData((JSONObject) qrObj, claim169KeyMapper,
+                                claim169ValueMapper, true));
+            } else if (qrObj instanceof JSONArray) {
+                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                        .getMappedData((JSONArray) qrObj, claim169KeyMapper,
+                                claim169ValueMapper, true));
             } else {
-                serialized = JSONObject.valueToString(qrObj);
+                JsonNode node = objectMapper.valueToTree(qrObj);
+                claim169MapperQrCodeData = objectMapper.writeValueAsString(pixelPass
+                        .getMappedData(new JSONObject(node.toString()), claim169KeyMapper,
+                                claim169ValueMapper, true));
             }
 
             // Base64 encode the serialized QR JSON (UTF-8)
-            String qrBase64 = java.util.Base64.getUrlEncoder()
-                    .withoutPadding()
-                    .encodeToString(serialized.getBytes(StandardCharsets.UTF_8));
-
             // Default QR Signer Configuration
             String qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
             String qrSignAppId = vcFormatter.getAppID(templateName);
@@ -337,7 +355,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             try {
                 // call addCWTProof to sign this QR payload; adapt params if Signature/API differs
                 String qrSignedResult = cred.signQRData(
-                        qrBase64,
+                        claim169MapperQrCodeData,
                         qrSignatureAlgo,
                         qrSignAppId,
                         qrSignRefId,

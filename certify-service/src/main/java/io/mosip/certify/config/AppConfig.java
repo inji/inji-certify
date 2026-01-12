@@ -27,11 +27,11 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.services.KeyManagerConstants;
 import io.mosip.kernel.keymanagerservice.dto.KeyPairGenerateRequestDto;
 import io.mosip.kernel.keymanagerservice.dto.SymmetricKeyGenerateRequestDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import lombok.extern.slf4j.Slf4j;
+import io.mosip.pixelpass.PixelPass;
 
 @Configuration
 @EnableJpaRepositories(basePackages = {"io.mosip.kernel.keymanagerservice.repository", "io.mosip.certify.repository"})
@@ -77,6 +77,11 @@ public class AppConfig implements ApplicationRunner {
         requestFactory.setHttpClient(httpClientBuilder.build());
         
         return new RestTemplate(requestFactory);
+    }
+
+    @Bean
+    public PixelPass pixelPass() {
+        return new PixelPass();
     }
 
     @Override

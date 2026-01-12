@@ -220,6 +220,12 @@
             <version>10.0.2</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>io.inji</groupId>
+            <artifactId>pixelpass-jar</artifactId>
+            <version>0.8.0-RC1</version>
+            <scope>compile</scope>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/io.mosip.certify/mock-certify-plugin -->
     </dependencies>
 

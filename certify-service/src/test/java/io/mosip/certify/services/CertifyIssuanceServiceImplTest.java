@@ -1,5 +1,6 @@
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -33,6 +34,7 @@ import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.LedgerUtils;
 import io.mosip.certify.validators.CredentialRequestValidator;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.pixelpass.PixelPass;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -87,6 +89,12 @@ public class CertifyIssuanceServiceImplTest {
     @Mock
     private CredentialLedgerService credentialLedgerService;
 
+    @Mock
+    private PixelPass pixelPass;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
     @InjectMocks
     private CertifyIssuanceServiceImpl issuanceService;
 
@@ -128,6 +136,8 @@ public class CertifyIssuanceServiceImplTest {
         ReflectionTestUtils.setField(issuanceService, "statusListCredentialService", statusListCredentialService);
         ReflectionTestUtils.setField(issuanceService, "credentialLedgerService", credentialLedgerService);
         ReflectionTestUtils.setField(issuanceService, "defaultExpiryDuration", "P730D");
+        ReflectionTestUtils.setField(issuanceService, "pixelPass", pixelPass);
+        ReflectionTestUtils.setField(issuanceService, "objectMapper", objectMapper);
 
         when(parsedAccessToken.getAccessTokenHash()).thenReturn(TEST_ACCESS_TOKEN_HASH);
 
@@ -661,13 +671,23 @@ public class CertifyIssuanceServiceImplTest {
 
         // Prepare a non-empty QR data array
         JSONArray qrData = new JSONArray();
-        qrData.put(new JSONObject().put("qr", "data1"));
-        qrData.put(new JSONObject().put("qr", "data2"));
+        JSONObject qrData1 = new JSONObject().put("qr", "data1");
+        qrData.put(qrData1);
+        JSONObject qrData2 = new JSONObject().put("qr", "data2");
+        qrData.put(qrData2);
         when(mockW3CJsonLD.createQRData(anyMap(), anyString())).thenReturn(qrData);
 
+        Object mappedData1 = "mappedData1";
+        Object mappedData2 = "mappedData2";
+        when(objectMapper.writeValueAsString(eq(mappedData1))).thenReturn("mappedData1");
+        when(objectMapper.writeValueAsString(eq(mappedData2))).thenReturn("mappedData2");
+        when(pixelPass.getMappedData(eq(qrData1), anyMap(), anyMap(), eq(true))).thenReturn(mappedData1);
+        when(pixelPass.getMappedData(eq(qrData2), anyMap(), anyMap(), eq(true))).thenReturn(mappedData2);
+
         // Mock signQRData to return signed QR strings
-        when(mockW3CJsonLD.signQRData(anyString(), anyString(), anyString(), anyString(), anyString()))
-                .thenReturn("signedQR1")
+        when(mockW3CJsonLD.signQRData(eq("mappedData1"), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("signedQR1");
+        when(mockW3CJsonLD.signQRData(eq("mappedData2"), anyString(), anyString(), anyString(), anyString()))
                 .thenReturn("signedQR2");
 
         // Usual formatter mocks
