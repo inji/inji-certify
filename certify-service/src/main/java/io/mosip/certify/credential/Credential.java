@@ -122,7 +122,7 @@ public abstract class Credential{
     */
     public String signQRData(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
         CWTSignRequestDto cwtSignRequestDto = new CWTSignRequestDto();
-        cwtSignRequestDto.setPayload(payload);
+        cwtSignRequestDto.setClaim169Payload(payload);
         cwtSignRequestDto.setApplicationId(appID);
         cwtSignRequestDto.setReferenceId(refID);
         cwtSignRequestDto.setAlgorithm(qrSignAlgorithm);
@@ -130,6 +130,7 @@ public abstract class Credential{
 
         Map<String, Object> protectedHeaders = new HashMap<>();
         protectedHeaders.put("x5c", true);
+        protectedHeaders.put("kid", true);
 
         cwtSignRequestDto.setProtectedHeader(protectedHeaders);
         CoseSignResponseDto coseSignResponseDto = coseSignatureService.cwtSign(cwtSignRequestDto);

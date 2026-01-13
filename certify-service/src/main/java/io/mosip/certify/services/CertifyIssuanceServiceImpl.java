@@ -274,11 +274,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
             if (qrDataJson != null) {
                 List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
-                List<String> claim169QrCodeData = new ArrayList<>();
-                claim169Values.forEach(claim169Value -> {
-                    claim169QrCodeData.add(pixelPass.generateQRData(claim169Value, ""));
-                });
-                updatedTemplateParams.put("claim_169_values", claim169QrCodeData);
+                updatedTemplateParams.put("claim_169_values", claim169Values);
             } else {
                 log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
             }
@@ -316,9 +312,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
         Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
         Map<String, Map<Object, Integer>> claim169ValueMapper = ConstantsKt.getCLAIM_169_VALUE_MAPPER();
-        String claim169MappedData;
         for (int i = 0; i < qrDataJson.length(); i++) {
             Object qrObj = qrDataJson.get(i);
+            String claim169MappedData;
             if (qrObj instanceof JSONObject) {
                 claim169MappedData = objectMapper.writeValueAsString(pixelPass
                         .getMappedData((JSONObject) qrObj, claim169KeyMapper,
@@ -327,11 +323,30 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 claim169MappedData = objectMapper.writeValueAsString(pixelPass
                         .getMappedData((JSONArray) qrObj, claim169KeyMapper,
                                 claim169ValueMapper, true));
-            } else {
-                JsonNode node = objectMapper.valueToTree(qrObj);
+            } else if (qrObj instanceof JsonNode) {
                 claim169MappedData = objectMapper.writeValueAsString(pixelPass
-                        .getMappedData(new JSONObject(node.toString()), claim169KeyMapper,
+                        .getMappedData(new JSONObject(qrObj.toString()), claim169KeyMapper,
                                 claim169ValueMapper, true));
+
+            }  else if (qrObj instanceof String) {
+                claim169MappedData = objectMapper.writeValueAsString(pixelPass
+                        .getMappedData(new JSONObject((String) qrObj), claim169KeyMapper,
+                                claim169ValueMapper, true));
+            } else {
+                // Log a warning for unknown types and use objectMapper -> JSONObject as a last resort
+                log.warn("Unexpected QR object type: {}. Attempting fallback conversion.", qrObj.getClass().getName());
+                JsonNode node = objectMapper.valueToTree(qrObj);
+                if (node.isObject()) {
+                    claim169MappedData = objectMapper.writeValueAsString(pixelPass
+                            .getMappedData(new JSONObject(node.toString()), claim169KeyMapper,
+                                    claim169ValueMapper, true));
+                } else if (node.isArray()) {
+                    claim169MappedData = objectMapper.writeValueAsString(pixelPass
+                            .getMappedData(new JSONArray(node.toString()), claim169KeyMapper,
+                                    claim169ValueMapper, true));
+                } else {
+                    throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Unsupported QR entry type: " + qrObj.getClass().getName());
+                }
             }
 
             // Default QR Signer Configuration
@@ -361,10 +376,15 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                         qrSignatureAlgo,
                         qrSignAppId,
                         qrSignRefId,
-                        vcFormatter.getDidUrl(templateName)
+                        domainUrl
                 );
                 if (qrSignedResult != null && !qrSignedResult.isEmpty()) {
-                    signedQrCodes.add(qrSignedResult);
+                    try {
+                        signedQrCodes.add(pixelPass.generateQRData(qrSignedResult, ""));
+                    } catch (Exception e) {
+                        log.error("Failed to generate QR code for signed QR entry index {}: {}", i, e.getMessage());
+                        throw new CertifyException(ErrorConstants.QR_CBOR_ENCODING_ERROR, e.getMessage());
+                    }
                     continue;
                 }
                 throw new CertifyException(ErrorConstants.INVALID_QR_SIGNED_RESULT, "QR signed result failed at index: " + i);
