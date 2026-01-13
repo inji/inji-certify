@@ -19,6 +19,9 @@ public class IarConstants {
     // PKCE Code Challenge Methods
     public static final String CODE_CHALLENGE_METHOD_S256 = "S256";
 
+    // Authorization Detail Type
+    public static final String AUTHORIZATION_DETAILS_TYPE = "openid_credential";
+
     // Content Types
     public static final String UNSUPPORTED_RESPONSE_TYPE = "unsupported_response_type";
     public static final String MISSING_INTERACTION_TYPE = "missing_interaction_type";
