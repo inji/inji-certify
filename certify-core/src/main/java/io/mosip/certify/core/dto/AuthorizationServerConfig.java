@@ -19,7 +19,6 @@ public class AuthorizationServerConfig implements Serializable {
 
     private String serverId;
     private String serverUrl;
-    private boolean internal;
     private String wellKnownUrl;
     private long metadataCachedAt;
     private AuthorizationServerMetadata metadata;

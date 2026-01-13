@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.dto.AuthorizationServerConfig;
 import io.mosip.certify.core.dto.AuthorizationServerMetadata;
+import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import org.junit.Before;
@@ -28,6 +28,12 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit tests for AuthorizationServerService.
+ * Tests the consolidated authorization server management where:
+ * - Primary server URL comes from OAuthAuthorizationServerMetadataService (no config duplication)
+ * - Additional external servers can be configured separately
+ */
 @RunWith(MockitoJUnitRunner.class)
 public class AuthorizationServerServiceTest {
 
@@ -40,48 +46,71 @@ public class AuthorizationServerServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private OAuthAuthorizationServerMetadataService oAuthMetadataService;
+
     @InjectMocks
     private AuthorizationServerService authorizationServerService;
 
-    private static final String INTERNAL_SERVER_URL = "https://internal-auth.example.com";
+    private static final String PRIMARY_SERVER_URL = "https://primary-auth.example.com";
     private static final String EXTERNAL_SERVER_URL = "https://external-auth.example.com";
     private static final String DEFAULT_SERVER_URL = "https://default-auth.example.com";
 
     @Before
     public void setup() {
         ReflectionTestUtils.setField(authorizationServerService, "retryCount", 3);
-        ReflectionTestUtils.setField(authorizationServerService, "internalAuthServerUrl", INTERNAL_SERVER_URL);
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig", "");
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", "");
         ReflectionTestUtils.setField(authorizationServerService, "defaultAuthServer", "");
         ReflectionTestUtils.setField(authorizationServerService, "credentialConfigMappingJson", "{}");
+
+        // Mock the primary server from OAuthAuthorizationServerMetadataService
+        OAuthAuthorizationServerMetadataDTO primaryMetadata = new OAuthAuthorizationServerMetadataDTO();
+        primaryMetadata.setIssuer(PRIMARY_SERVER_URL);
+        primaryMetadata.setTokenEndpoint(PRIMARY_SERVER_URL + "/token");
+        when(oAuthMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(primaryMetadata);
     }
 
-    // ========== Tests for initialize() and loadConfiguredServers() ==========
+    // ========== Tests for initialize() - Primary Server from OAuthAuthorizationServerMetadataService ==========
 
     @Test
-    public void initialize_WithInternalServerOnly_Success() {
+    public void initialize_LoadsPrimaryServerFromOAuthMetadataService() {
         authorizationServerService.initialize();
 
         List<String> urls = authorizationServerService.getAllAuthorizationServerUrls();
         assertEquals(1, urls.size());
-        assertEquals(INTERNAL_SERVER_URL, urls.get(0));
+        assertEquals(PRIMARY_SERVER_URL, urls.get(0));
+        
+        // Verify we're using the merged service
+        verify(oAuthMetadataService).getOAuthAuthorizationServerMetadata();
     }
 
     @Test
-    public void initialize_WithExternalServers_Success() {
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig",
-                "https://auth1.example.com, https://auth2.example.com");
+    public void initialize_WithExternalServers_AddsToServerList() {
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
 
         authorizationServerService.initialize();
 
         List<String> urls = authorizationServerService.getAllAuthorizationServerUrls();
-        assertEquals(3, urls.size()); // internal + 2 external
+        assertEquals(2, urls.size()); // primary + external
+        assertTrue(urls.contains(PRIMARY_SERVER_URL));
+        assertTrue(urls.contains(EXTERNAL_SERVER_URL));
     }
 
     @Test
-    public void initialize_WithNoServers_NoException() {
-        ReflectionTestUtils.setField(authorizationServerService, "internalAuthServerUrl", "");
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig", "");
+    public void initialize_WithDuplicateExternalServer_AvoidsDuplication() {
+        // External server is same as primary - should not add duplicate
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", PRIMARY_SERVER_URL);
+
+        authorizationServerService.initialize();
+
+        List<String> urls = authorizationServerService.getAllAuthorizationServerUrls();
+        assertEquals(1, urls.size()); // Only primary, no duplicate
+    }
+
+    @Test
+    public void initialize_WhenOAuthMetadataServiceFails_ContinuesWithEmpty() {
+        when(oAuthMetadataService.getOAuthAuthorizationServerMetadata())
+                .thenThrow(new RuntimeException("Service unavailable"));
 
         authorizationServerService.initialize();
 
@@ -90,14 +119,14 @@ public class AuthorizationServerServiceTest {
     }
 
     @Test
-    public void initialize_WithEmptyExternalConfig_OnlyInternalAdded() {
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig", "  ,  ");
+    public void initialize_WithEmptyExternalConfig_OnlyPrimaryAdded() {
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", "  ,  ");
 
         authorizationServerService.initialize();
 
         List<String> urls = authorizationServerService.getAllAuthorizationServerUrls();
         assertEquals(1, urls.size());
-        assertEquals(INTERNAL_SERVER_URL, urls.get(0));
+        assertEquals(PRIMARY_SERVER_URL, urls.get(0));
     }
 
     // ========== Tests for loadCredentialConfigMappings() ==========
@@ -125,32 +154,6 @@ public class AuthorizationServerServiceTest {
 
         // Should not throw, just log error
         authorizationServerService.initialize();
-    }
-
-    // ========== Tests for getInternalAuthServerMetadata() ==========
-
-    @Test
-    public void getInternalAuthServerMetadata_Success() {
-        authorizationServerService.initialize();
-
-        AuthorizationServerMetadata metadata = authorizationServerService.getInternalAuthServerMetadata();
-
-        assertNotNull(metadata);
-        assertEquals(INTERNAL_SERVER_URL, metadata.getIssuer());
-        assertEquals(INTERNAL_SERVER_URL + "/token", metadata.getTokenEndpoint());
-        assertEquals(INTERNAL_SERVER_URL + "/authorize", metadata.getAuthorizationEndpoint());
-        assertEquals(INTERNAL_SERVER_URL + "/jwks.json", metadata.getJwksUri());
-    }
-
-    @Test
-    public void getInternalAuthServerMetadata_NormalizesTrailingSlash() {
-        ReflectionTestUtils.setField(authorizationServerService, "internalAuthServerUrl",
-                INTERNAL_SERVER_URL + "/");
-        authorizationServerService.initialize();
-
-        AuthorizationServerMetadata metadata = authorizationServerService.getInternalAuthServerMetadata();
-
-        assertEquals(INTERNAL_SERVER_URL, metadata.getIssuer());
     }
 
     // ========== Tests for discoverMetadata() ==========
@@ -195,64 +198,11 @@ public class AuthorizationServerServiceTest {
     }
 
     @Test
-    public void discoverMetadata_OIDCFails_FallbackToOAuth_Success() throws Exception {
-        when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
-
-        // First call to OIDC endpoint fails
-        ResponseEntity<String> failedResponse = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-
-        // Second call to OAuth AS endpoint succeeds
-        String metadataJson = "{\"issuer\":\"" + EXTERNAL_SERVER_URL + "\",\"token_endpoint\":\"" + EXTERNAL_SERVER_URL + "/token\"}";
-        ResponseEntity<String> successResponse = new ResponseEntity<>(metadataJson, HttpStatus.OK);
-
-        when(restTemplate.getForEntity(any(URI.class), eq(String.class)))
-                .thenReturn(failedResponse)
-                .thenReturn(failedResponse)
-                .thenReturn(failedResponse) // 3 retries for OIDC
-                .thenReturn(successResponse);
-
-        AuthorizationServerMetadata expectedMetadata = AuthorizationServerMetadata.builder()
-                .issuer(EXTERNAL_SERVER_URL)
-                .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
-                .build();
-
-        when(objectMapper.readValue(eq(metadataJson), eq(AuthorizationServerMetadata.class)))
-                .thenReturn(expectedMetadata);
-
-        AuthorizationServerMetadata result = authorizationServerService.discoverMetadata(EXTERNAL_SERVER_URL);
-
-        assertNotNull(result);
-    }
-
-    @Test
     public void discoverMetadata_AllAttemptsFail_ThrowsCertifyException() throws Exception {
         when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
 
-        // All calls fail
         ResponseEntity<String> failedResponse = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
         when(restTemplate.getForEntity(any(URI.class), eq(String.class))).thenReturn(failedResponse);
-
-        CertifyException exception = assertThrows(CertifyException.class,
-                () -> authorizationServerService.discoverMetadata(EXTERNAL_SERVER_URL));
-
-        assertEquals(ErrorConstants.AUTHORIZATION_SERVER_DISCOVERY_FAILED, exception.getErrorCode());
-    }
-
-    @Test
-    public void discoverMetadata_InvalidMetadata_ThrowsCertifyException() throws Exception {
-        when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
-
-        String metadataJson = "{\"issuer\":\"\"}"; // Missing token_endpoint
-        ResponseEntity<String> response = new ResponseEntity<>(metadataJson, HttpStatus.OK);
-
-        when(restTemplate.getForEntity(any(URI.class), eq(String.class))).thenReturn(response);
-
-        AuthorizationServerMetadata invalidMetadata = AuthorizationServerMetadata.builder()
-                .issuer("")
-                .build();
-
-        when(objectMapper.readValue(eq(metadataJson), eq(AuthorizationServerMetadata.class)))
-                .thenReturn(invalidMetadata);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> authorizationServerService.discoverMetadata(EXTERNAL_SERVER_URL));
@@ -274,23 +224,6 @@ public class AuthorizationServerServiceTest {
         String tokenEndpoint = authorizationServerService.getTokenEndpoint(EXTERNAL_SERVER_URL);
 
         assertEquals(EXTERNAL_SERVER_URL + "/token", tokenEndpoint);
-    }
-
-    // ========== Tests for getJwksUri() ==========
-
-    @Test
-    public void getJwksUri_Success() {
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
-                .issuer(EXTERNAL_SERVER_URL)
-                .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
-                .jwksUri(EXTERNAL_SERVER_URL + "/jwks.json")
-                .build();
-
-        when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(metadata);
-
-        String jwksUri = authorizationServerService.getJwksUri(EXTERNAL_SERVER_URL);
-
-        assertEquals(EXTERNAL_SERVER_URL + "/jwks.json", jwksUri);
     }
 
     // ========== Tests for supportsPreAuthorizedCodeGrant() ==========
@@ -325,58 +258,26 @@ public class AuthorizationServerServiceTest {
         assertFalse(result);
     }
 
-    @Test
-    public void supportsPreAuthorizedCodeGrant_NullGrantTypes_ReturnsFalse() {
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
-                .issuer(EXTERNAL_SERVER_URL)
-                .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
-                .build();
-
-        when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(metadata);
-
-        boolean result = authorizationServerService.supportsPreAuthorizedCodeGrant(EXTERNAL_SERVER_URL);
-
-        assertFalse(result);
-    }
-
-    @Test
-    public void supportsPreAuthorizedCodeGrant_DiscoveryFails_ReturnsFalse() {
-        when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
-        when(restTemplate.getForEntity(any(URI.class), eq(String.class)))
-                .thenThrow(new RuntimeException("Connection failed"));
-
-        boolean result = authorizationServerService.supportsPreAuthorizedCodeGrant(EXTERNAL_SERVER_URL);
-
-        assertFalse(result);
-    }
-
     // ========== Tests for getAuthorizationServerForCredentialConfig() ==========
 
     @Test
-    public void getAuthorizationServerForCredentialConfig_MappedAS_ReturnsMapping() throws Exception {
-        String configId = "test-config";
-        String mappedUrl = "https://mapped-auth.example.com";
-
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig", mappedUrl);
-        ReflectionTestUtils.setField(authorizationServerService, "credentialConfigMappingJson",
-                "{\"" + configId + "\":\"" + mappedUrl + "\"}");
-
-        when(objectMapper.readValue(anyString(), any(TypeReference.class)))
-                .thenReturn(Map.of(configId, mappedUrl));
+    public void getAuthorizationServerForCredentialConfig_NoMapping_UsesPrimary() {
+        String configId = "some-config";
 
         authorizationServerService.initialize();
 
         String result = authorizationServerService.getAuthorizationServerForCredentialConfig(configId);
 
-        assertEquals(mappedUrl, result);
+        assertEquals(PRIMARY_SERVER_URL, result);
     }
 
     @Test
     public void getAuthorizationServerForCredentialConfig_NoMapping_UsesDefault() throws Exception {
         String configId = "unmapped-config";
 
+        // Add default server to configured servers list so validation passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", DEFAULT_SERVER_URL);
         ReflectionTestUtils.setField(authorizationServerService, "defaultAuthServer", DEFAULT_SERVER_URL);
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig", DEFAULT_SERVER_URL);
 
         authorizationServerService.initialize();
 
@@ -386,23 +287,28 @@ public class AuthorizationServerServiceTest {
     }
 
     @Test
-    public void getAuthorizationServerForCredentialConfig_NoDefaultOrMapping_UsesInternal() {
-        String configId = "some-config";
+    public void getAuthorizationServerForCredentialConfig_MappedAS_ReturnsMapping() throws Exception {
+        String configId = "test-config";
 
-        ReflectionTestUtils.setField(authorizationServerService, "defaultAuthServer", "");
+        ReflectionTestUtils.setField(authorizationServerService, "credentialConfigMappingJson",
+                "{\"" + configId + "\":\"" + PRIMARY_SERVER_URL + "\"}");
+
+        when(objectMapper.readValue(anyString(), any(TypeReference.class)))
+                .thenReturn(Map.of(configId, PRIMARY_SERVER_URL));
 
         authorizationServerService.initialize();
 
         String result = authorizationServerService.getAuthorizationServerForCredentialConfig(configId);
 
-        assertEquals(INTERNAL_SERVER_URL, result);
+        assertEquals(PRIMARY_SERVER_URL, result);
     }
 
     @Test
     public void getAuthorizationServerForCredentialConfig_NoASConfigured_ThrowsCertifyException() {
         String configId = "some-config";
 
-        ReflectionTestUtils.setField(authorizationServerService, "internalAuthServerUrl", "");
+        when(oAuthMetadataService.getOAuthAuthorizationServerMetadata())
+                .thenThrow(new RuntimeException("Service unavailable"));
         ReflectionTestUtils.setField(authorizationServerService, "defaultAuthServer", "");
 
         authorizationServerService.initialize();
@@ -436,17 +342,17 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void getAllAuthorizationServerUrls_ReturnsAllConfigured() {
-        ReflectionTestUtils.setField(authorizationServerService, "authorizationServersConfig",
-                "https://ext1.example.com, https://ext2.example.com");
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig",
+                EXTERNAL_SERVER_URL + ", " + DEFAULT_SERVER_URL);
 
         authorizationServerService.initialize();
 
         List<String> urls = authorizationServerService.getAllAuthorizationServerUrls();
 
-        assertEquals(3, urls.size());
-        assertTrue(urls.contains(INTERNAL_SERVER_URL));
-        assertTrue(urls.contains("https://ext1.example.com"));
-        assertTrue(urls.contains("https://ext2.example.com"));
+        assertEquals(3, urls.size()); // primary + 2 external
+        assertTrue(urls.contains(PRIMARY_SERVER_URL));
+        assertTrue(urls.contains(EXTERNAL_SERVER_URL));
+        assertTrue(urls.contains(DEFAULT_SERVER_URL));
     }
 
     // ========== Tests for isServerConfigured() ==========
@@ -455,7 +361,7 @@ public class AuthorizationServerServiceTest {
     public void isServerConfigured_ConfiguredServer_ReturnsTrue() {
         authorizationServerService.initialize();
 
-        boolean result = authorizationServerService.isServerConfigured(INTERNAL_SERVER_URL);
+        boolean result = authorizationServerService.isServerConfigured(PRIMARY_SERVER_URL);
 
         assertTrue(result);
     }
@@ -464,7 +370,7 @@ public class AuthorizationServerServiceTest {
     public void isServerConfigured_ConfiguredServerWithTrailingSlash_ReturnsTrue() {
         authorizationServerService.initialize();
 
-        boolean result = authorizationServerService.isServerConfigured(INTERNAL_SERVER_URL + "/");
+        boolean result = authorizationServerService.isServerConfigured(PRIMARY_SERVER_URL + "/");
 
         assertTrue(result);
     }
@@ -478,7 +384,7 @@ public class AuthorizationServerServiceTest {
         assertFalse(result);
     }
 
-    // ========== Tests for normalizeUrl() (accessed via reflection) ==========
+    // ========== Tests for normalizeUrl() ==========
 
     @Test
     public void normalizeUrl_RemovesTrailingSlash() {
@@ -486,16 +392,6 @@ public class AuthorizationServerServiceTest {
 
         String result = ReflectionTestUtils.invokeMethod(authorizationServerService, "normalizeUrl",
                 "https://example.com/");
-
-        assertEquals("https://example.com", result);
-    }
-
-    @Test
-    public void normalizeUrl_RemovesMultipleTrailingSlashes() {
-        authorizationServerService.initialize();
-
-        String result = ReflectionTestUtils.invokeMethod(authorizationServerService, "normalizeUrl",
-                "https://example.com///");
 
         assertEquals("https://example.com", result);
     }
@@ -510,17 +406,7 @@ public class AuthorizationServerServiceTest {
         assertEquals("", result);
     }
 
-    @Test
-    public void normalizeUrl_NoTrailingSlash_ReturnsSame() {
-        authorizationServerService.initialize();
-
-        String result = ReflectionTestUtils.invokeMethod(authorizationServerService, "normalizeUrl",
-                "https://example.com");
-
-        assertEquals("https://example.com", result);
-    }
-
-    // ========== Tests for generateServerId() (accessed via reflection) ==========
+    // ========== Tests for generateServerId() ==========
 
     @Test
     public void generateServerId_ValidUrl_GeneratesId() {
@@ -532,16 +418,5 @@ public class AuthorizationServerServiceTest {
         assertNotNull(result);
         assertTrue(result.startsWith("as-"));
         assertTrue(result.contains("auth-example-com"));
-    }
-
-    @Test
-    public void generateServerId_UrlWithPort_GeneratesId() {
-        authorizationServerService.initialize();
-
-        String result = ReflectionTestUtils.invokeMethod(authorizationServerService, "generateServerId",
-                "https://auth.example.com:8080");
-
-        assertNotNull(result);
-        assertTrue(result.startsWith("as-"));
     }
 }

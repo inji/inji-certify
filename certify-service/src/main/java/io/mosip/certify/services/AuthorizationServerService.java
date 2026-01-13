@@ -6,6 +6,7 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.AuthorizationServerConfig;
 import io.mosip.certify.core.dto.AuthorizationServerMetadata;
+import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import jakarta.annotation.PostConstruct;
@@ -17,14 +18,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
-import io.mosip.certify.services.VCICacheService;
 
 import java.net.URI;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service for discovering and caching authorization server metadata
+ * Service for managing authorization servers.
+ * All authorization servers are treated uniformly.
+ * 
+ * Uses OAuthAuthorizationServerMetadataService to get the primary/internal server URL,
+ * avoiding config property duplication.
  */
 @Service
 @Slf4j
@@ -39,18 +43,34 @@ public class AuthorizationServerService {
     @Autowired
     private RestTemplate restTemplate;
 
+    /**
+     * Inject the merged OAuthAuthorizationServerMetadataService to get internal issuer URL.
+     * This avoids duplicating the mosip.certify.oauth.issuer property.
+     */
+    @Autowired
+    private OAuthAuthorizationServerMetadataService oAuthMetadataService;
+
     @Value("${mosip.certify.authorization.discovery.retry-count:3}")
     private int retryCount;
 
-    @Value("${mosip.certify.authorization.servers:}")
-    private String authorizationServersConfig;
+    /**
+     * Optional: Additional external authorization server URLs (comma-separated).
+     * These are in addition to the primary server from OAuthAuthorizationServerMetadataService.
+     */
+    @Value("${mosip.certify.authorization.external-servers:}")
+    private String externalServersConfig;
 
-    @Value("${mosip.certify.authorization.internal.url:}")
-    private String internalAuthServerUrl;
-
+    /**
+     * Default authorization server to use when no specific mapping exists.
+     * If not set, uses the primary server (from OAuthAuthorizationServerMetadataService).
+     */
     @Value("${mosip.certify.authorization.default-server:}")
     private String defaultAuthServer;
 
+    /**
+     * JSON mapping of credential configuration IDs to authorization server URLs.
+     * Format: {"configId1": "https://as1.example.com", "configId2": "https://as2.example.com"}
+     */
     @Value("${mosip.certify.credential-config.as-mapping:{}}")
     private String credentialConfigMappingJson;
 
@@ -59,7 +79,7 @@ public class AuthorizationServerService {
 
     @PostConstruct
     public void initialize() {
-        log.info("Initializing Authorization Server Management Service");
+        log.info("Initializing Authorization Server Service");
 
         configuredServers = new ArrayList<>();
         loadConfiguredServers();
@@ -69,37 +89,55 @@ public class AuthorizationServerService {
         log.info("Loaded {} credential configuration mappings", credentialConfigToASMapping.size());
     }
 
+    /**
+     * Load all configured authorization servers.
+     * Primary server comes from OAuthAuthorizationServerMetadataService (reusing config).
+     * Additional external servers can be configured separately.
+     */
     private void loadConfiguredServers() {
-        // Add internal auth server
-        if (StringUtils.hasText(internalAuthServerUrl)) {
-            AuthorizationServerConfig internal = AuthorizationServerConfig.builder()
-                    .serverId("internal")
-                    .serverUrl(internalAuthServerUrl)
-                    .internal(true)
-                    .build();
-            configuredServers.add(internal);
-            log.info("Added internal authorization server: {}", internalAuthServerUrl);
+        // 1. Get primary server from OAuthAuthorizationServerMetadataService (avoids config duplication)
+        try {
+            OAuthAuthorizationServerMetadataDTO internalMetadata = oAuthMetadataService.getOAuthAuthorizationServerMetadata();
+            String primaryServerUrl = internalMetadata.getIssuer();
+            
+            if (StringUtils.hasText(primaryServerUrl)) {
+                AuthorizationServerConfig primaryConfig = AuthorizationServerConfig.builder()
+                        .serverId("primary")
+                        .serverUrl(normalizeUrl(primaryServerUrl))
+                        .build();
+                configuredServers.add(primaryConfig);
+                log.info("Added primary authorization server from OAuth config: {}", primaryServerUrl);
+            }
+        } catch (Exception e) {
+            log.warn("Could not load primary authorization server from OAuthAuthorizationServerMetadataService: {}", 
+                    e.getMessage());
         }
 
-        // Parse external auth servers
-        if (StringUtils.hasText(authorizationServersConfig)) {
-            String[] servers = authorizationServersConfig.split(",");
+        // 2. Add any additional external servers
+        if (StringUtils.hasText(externalServersConfig)) {
+            String[] servers = externalServersConfig.split(",");
             for (String serverUrl : servers) {
                 serverUrl = serverUrl.trim();
                 if (StringUtils.hasText(serverUrl)) {
-                    AuthorizationServerConfig config = AuthorizationServerConfig.builder()
-                            .serverId(generateServerId(serverUrl))
-                            .serverUrl(serverUrl)
-                            .internal(false)
-                            .build();
-                    configuredServers.add(config);
-                    log.info("Added external authorization server: {}", serverUrl);
+                    // Avoid duplicates
+                    String normalizedUrl = normalizeUrl(serverUrl);
+                    boolean alreadyExists = configuredServers.stream()
+                            .anyMatch(c -> c.getServerUrl().equals(normalizedUrl));
+                    
+                    if (!alreadyExists) {
+                        AuthorizationServerConfig config = AuthorizationServerConfig.builder()
+                                .serverId(generateServerId(serverUrl))
+                                .serverUrl(normalizedUrl)
+                                .build();
+                        configuredServers.add(config);
+                        log.info("Added external authorization server: {}", serverUrl);
+                    }
                 }
             }
         }
 
         if (configuredServers.isEmpty()) {
-            log.warn("No authorization servers configured");
+            log.warn("No authorization servers configured. Ensure mosip.certify.oauth.issuer is set.");
         }
     }
 
@@ -124,7 +162,8 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Discover authorization server metadata from well-known endpoint
+     * Discover authorization server metadata from well-known endpoint.
+     * Tries OIDC configuration first, then falls back to OAuth AS metadata.
      */
     public AuthorizationServerMetadata discoverMetadata(String serverUrl) {
         log.info("Discovering authorization server metadata for: {}", serverUrl);
@@ -136,8 +175,7 @@ public class AuthorizationServerService {
             return cached;
         }
 
-        // Try OIDC config first (per RFC 8414 compatibility notes), then OAuth AS
-        // discovery
+        // Try OIDC config first (per RFC 8414 compatibility notes), then OAuth AS discovery
         AuthorizationServerMetadata metadata = tryDiscoveryEndpoint(serverUrl, Constants.WELL_KNOWN_OIDC_CONFIG);
         if (metadata == null) {
             log.info("OIDC configuration discovery failed, trying OAuth AS endpoint");
@@ -201,7 +239,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Get token endpoint for a specific authorization server
+     * Get token endpoint for a specific authorization server.
      */
     public String getTokenEndpoint(String serverUrl) {
         AuthorizationServerMetadata metadata = discoverMetadata(serverUrl);
@@ -209,7 +247,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Check if authorization server supports pre-authorized code grant
+     * Check if authorization server supports pre-authorized code grant.
      */
     public boolean supportsPreAuthorizedCodeGrant(String serverUrl) {
         try {
@@ -223,12 +261,16 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Get authorization server for a specific credential configuration
+     * Get authorization server URL for a specific credential configuration.
+     * Resolution order:
+     * 1. Specific mapping in credential-config.as-mapping
+     * 2. Default server from authorization.default-server
+     * 3. Primary server (first configured, from OAuthAuthorizationServerMetadataService)
      */
     public String getAuthorizationServerForCredentialConfig(String credentialConfigId) {
         log.debug("Getting authorization server for credential config: {}", credentialConfigId);
 
-        // Check if there's a specific mapping
+        // 1. Check if there's a specific mapping
         String mappedServerUrl = credentialConfigToASMapping.get(credentialConfigId);
         if (StringUtils.hasText(mappedServerUrl)) {
             validateServerConfigured(mappedServerUrl);
@@ -236,17 +278,18 @@ public class AuthorizationServerService {
             return mappedServerUrl;
         }
 
-        // Use default server if configured
+        // 2. Use default server if configured
         if (StringUtils.hasText(defaultAuthServer)) {
             validateServerConfigured(defaultAuthServer);
             log.debug("Using default AS for {}: {}", credentialConfigId, defaultAuthServer);
             return defaultAuthServer;
         }
 
-        // Fall back to internal server
-        if (StringUtils.hasText(internalAuthServerUrl)) {
-            log.debug("Using internal AS for {}: {}", credentialConfigId, internalAuthServerUrl);
-            return internalAuthServerUrl;
+        // 3. Fall back to primary server (first configured)
+        if (!configuredServers.isEmpty()) {
+            String primaryServer = configuredServers.get(0).getServerUrl();
+            log.debug("Using primary AS for {}: {}", credentialConfigId, primaryServer);
+            return primaryServer;
         }
 
         log.error("No authorization server found for credential config: {}", credentialConfigId);
@@ -255,7 +298,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Get all configured authorization server URLs
+     * Get all configured authorization server URLs.
      */
     public List<String> getAllAuthorizationServerUrls() {
         return configuredServers.stream()
@@ -264,7 +307,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Check if a server URL is configured
+     * Check if a server URL is configured.
      */
     public boolean isServerConfigured(String serverUrl) {
         String normalized = normalizeUrl(serverUrl);
@@ -280,7 +323,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Normalize URL by removing trailing slashes
+     * Normalize URL by removing trailing slashes.
      */
     private String normalizeUrl(String url) {
         if (url == null) {
@@ -290,7 +333,7 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Generate unique server ID from URL
+     * Generate unique server ID from URL.
      */
     private String generateServerId(String serverUrl) {
         try {
