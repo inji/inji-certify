@@ -6,8 +6,6 @@
 package io.mosip.certify.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCRequestDto;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
@@ -101,9 +99,6 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
     @Autowired
     private PixelPass pixelPass;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     private Map<String, Object> didDocument;
 

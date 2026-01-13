@@ -93,9 +93,6 @@ public class CertifyIssuanceServiceImplTest {
     @Mock
     private PixelPass pixelPass;
 
-    @Mock
-    private ObjectMapper objectMapper;
-
     @InjectMocks
     private CertifyIssuanceServiceImpl issuanceService;
 
@@ -139,7 +136,6 @@ public class CertifyIssuanceServiceImplTest {
         ReflectionTestUtils.setField(issuanceService, "credentialLedgerService", credentialLedgerService);
         ReflectionTestUtils.setField(issuanceService, "defaultExpiryDuration", "P730D");
         ReflectionTestUtils.setField(issuanceService, "pixelPass", pixelPass);
-        ReflectionTestUtils.setField(issuanceService, "objectMapper", objectMapper);
 
         when(parsedAccessToken.getAccessTokenHash()).thenReturn(TEST_ACCESS_TOKEN_HASH);
 
