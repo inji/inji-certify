@@ -319,34 +319,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 claim169MappedData = pixelPass
                         .getMappedData((JSONObject) qrObj, claim169KeyMapper,
                                 claim169ValueMapper, true).toString();
-            } else if (qrObj instanceof JSONArray) {
-                claim169MappedData = objectMapper.writeValueAsString(pixelPass
-                        .getMappedData((JSONArray) qrObj, claim169KeyMapper,
-                                claim169ValueMapper, true));
-            } else if (qrObj instanceof JsonNode) {
-                claim169MappedData = objectMapper.writeValueAsString(pixelPass
-                        .getMappedData(new JSONObject(qrObj.toString()), claim169KeyMapper,
-                                claim169ValueMapper, true));
-
-            }  else if (qrObj instanceof String) {
-                claim169MappedData = pixelPass
-                        .getMappedData(new JSONObject((String) qrObj), claim169KeyMapper,
-                                claim169ValueMapper, true).toString();
             } else {
-                // Log a warning for unknown types and use objectMapper -> JSONObject as a last resort
-                log.warn("Unexpected QR object type: {}. Attempting fallback conversion.", qrObj.getClass().getName());
-                JsonNode node = objectMapper.valueToTree(qrObj);
-                if (node.isObject()) {
-                    claim169MappedData = pixelPass
-                            .getMappedData(new JSONObject(node.toString()), claim169KeyMapper,
-                                    claim169ValueMapper, true).toString();
-                } else if (node.isArray()) {
-                    claim169MappedData = objectMapper.writeValueAsString(pixelPass
-                            .getMappedData(new JSONArray(node.toString()), claim169KeyMapper,
-                                    claim169ValueMapper, true));
-                } else {
-                    throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Unsupported QR entry type: " + qrObj.getClass().getName());
-                }
+                log.error("Invalid QR Data json found. The qrSettings needs to be fixed.");
+                throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Unsupported QR entry type: " + qrObj.getClass().getName());
             }
 
             // Default QR Signer Configuration
