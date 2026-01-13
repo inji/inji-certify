@@ -326,8 +326,6 @@ public class IarServiceImpl implements IarService {
 
         // Validate PKCE, redirect_uri, and client_secret
         validatePkceCodeVerifier(tokenRequest, session);
-        validateRedirectUri(tokenRequest, session);
-        validateClientSecret(tokenRequest, session);
 
         // ATOMIC UPDATE: Mark code as used in single database operation
         try {
@@ -401,16 +399,6 @@ public class IarServiceImpl implements IarService {
         }
     }
     
-    private void validateRedirectUri(OAuthTokenRequest tokenRequest, IarSession session) throws CertifyException {
-        // redirect_uri validation removed since we don't support redirect_to_web
-        log.debug("Redirect URI validation skipped (not supported)");
-    }
-    
-    private void validateClientSecret(OAuthTokenRequest tokenRequest, IarSession session) throws CertifyException {
-        // Client secret validation removed since we support public clients only
-        log.debug("Public client secret validation passed");
-    }
-
     /**
      * Generate a signed JWT access token using the provided session data
      * 

@@ -38,12 +38,6 @@ public class OAuthTokenResponse {
     private Integer expiresIn;
 
     /**
-     * OPTIONAL. The refresh token, which can be used to obtain new access tokens.
-     */
-    @JsonProperty("refresh_token")
-    private String refreshToken;
-
-    /**
      * OPTIONAL. The scope of the access token.
      */
     @JsonProperty("scope")
@@ -61,9 +55,4 @@ public class OAuthTokenResponse {
     @JsonProperty("c_nonce_expires_in")
     private Integer cNonceExpiresIn;
 
-    /**
-     * OPTIONAL. JSON array containing authorization details for the issued access token.
-     */
-    @JsonProperty("authorization_details")
-    private Object authorizationDetails;
 }
