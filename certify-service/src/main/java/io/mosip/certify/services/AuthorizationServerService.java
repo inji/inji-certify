@@ -124,20 +124,6 @@ public class AuthorizationServerService {
     }
 
     /**
-     * Get internal authorization server metadata
-     */
-    public AuthorizationServerMetadata getInternalAuthServerMetadata() {
-        // For internal server, we can construct metadata directly
-        AuthorizationServerMetadata metadata = new AuthorizationServerMetadata();
-        metadata.setIssuer(normalizeUrl(internalAuthServerUrl));
-        metadata.setTokenEndpoint(normalizeUrl(internalAuthServerUrl) + "/token");
-        metadata.setAuthorizationEndpoint(normalizeUrl(internalAuthServerUrl) + "/authorize");
-        metadata.setJwksUri(normalizeUrl(internalAuthServerUrl) + "/jwks.json");
-
-        return metadata;
-    }
-
-    /**
      * Discover authorization server metadata from well-known endpoint
      */
     public AuthorizationServerMetadata discoverMetadata(String serverUrl) {
@@ -220,14 +206,6 @@ public class AuthorizationServerService {
     public String getTokenEndpoint(String serverUrl) {
         AuthorizationServerMetadata metadata = discoverMetadata(serverUrl);
         return metadata.getTokenEndpoint();
-    }
-
-    /**
-     * Get JWKS URI for a specific authorization server
-     */
-    public String getJwksUri(String serverUrl) {
-        AuthorizationServerMetadata metadata = discoverMetadata(serverUrl);
-        return metadata.getJwksUri();
     }
 
     /**

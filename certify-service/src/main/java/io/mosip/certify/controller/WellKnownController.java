@@ -25,23 +25,11 @@ public class WellKnownController {
     @Autowired
     private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
 
-    @Autowired
-    private AuthorizationServerService authorizationServerService;
 
     @GetMapping(value = "/openid-credential-issuer", produces = "application/json")
     public CredentialIssuerMetadataDTO getCredentialIssuerMetadata(
             @RequestParam(name = "version", required = false, defaultValue = "latest") String version) {
         return credentialConfigurationService.fetchCredentialIssuerMetadata(version);
-    }
-
-    @GetMapping(value = "/oauth-authorization-server", produces = "application/json")
-    public AuthorizationServerMetadata getAuthorizationServerMetadata() {
-        return authorizationServerService.getInternalAuthServerMetadata();
-    }
-
-    @GetMapping(value = "/openid-configuration", produces = "application/json")
-    public AuthorizationServerMetadata getOpenIDConfiguration() {
-        return authorizationServerService.getInternalAuthServerMetadata();
     }
 
     @GetMapping(value = "/did.json")
@@ -51,6 +39,11 @@ public class WellKnownController {
 
     @GetMapping(value = "/oauth-authorization-server", produces = "application/json")
     public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
+        return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
+    }
+
+    @GetMapping(value = "/openid-configuration", produces = "application/json")
+    public OAuthAuthorizationServerMetadataDTO getOpenIDConfiguration() {
         return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
     }
 }
