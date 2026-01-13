@@ -85,7 +85,7 @@ public class CredentialTest {
         CWTSignRequestDto sent = captor.getValue();
 
         assertNotNull(sent);
-        assertEquals(payload, sent.getPayload());
+        assertEquals(payload, sent.getClaim169Payload());
         assertEquals(algorithm, sent.getAlgorithm());
         assertEquals(appId, sent.getApplicationId());
         assertEquals(refId, sent.getReferenceId());
