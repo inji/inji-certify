@@ -206,7 +206,6 @@ public class CertifyIssuanceServiceImplTest {
 
         when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest"))
                 .thenReturn(mockGlobalCredentialIssuerMetadataDTO); // Default mock
-        when(objectMapper.writeValueAsString(any())).thenReturn("claim169-mapped-data");
     }
 
     private CredentialRequest createValidCredentialRequest(String format) {
@@ -682,8 +681,6 @@ public class CertifyIssuanceServiceImplTest {
 
         Object mappedData1 = "mappedData1";
         Object mappedData2 = "mappedData2";
-        when(objectMapper.writeValueAsString(eq(mappedData1))).thenReturn("mappedData1");
-        when(objectMapper.writeValueAsString(eq(mappedData2))).thenReturn("mappedData2");
         when(pixelPass.getMappedData(eq(qrData1), anyMap(), anyMap(), eq(true))).thenReturn(mappedData1);
         when(pixelPass.getMappedData(eq(qrData2), anyMap(), anyMap(), eq(true))).thenReturn(mappedData2);
 
