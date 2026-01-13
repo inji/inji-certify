@@ -2,9 +2,12 @@ package io.mosip.certify.services;
 
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.entity.IarSession;
+import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,12 @@ public class PreAuthorizedCodeService {
 
     @Autowired
     private VCICacheService vciCacheService;
+
+    @Autowired
+    private AccessTokenJwtUtil accessTokenJwtUtil;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Autowired
     private CredentialConfigurationService credentialConfigurationService;
@@ -53,6 +62,12 @@ public class PreAuthorizedCodeService {
 
     @Value("${mosip.certify.pre-auth-code.single-use:true}")
     private boolean singleUsePreAuthCode;
+
+    @Value("${mosip.certify.oauth.issuer}")
+    private String oauthIssuer;
+
+    @Value("${mosip.certify.oauth.access-token.audience}")
+    private String oauthAudience;
 
     private static final SecureRandom secureRandom = new SecureRandom();
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -342,15 +357,29 @@ public class PreAuthorizedCodeService {
     }
 
     /**
-     * TEMPORARY WORKAROUND: Generate opaque bearer token
-     * TODO: Replace with proper JWT signing once Presentation during Issuance feature is merged
+     * Generate a signed JWT access token for pre-authorized code flow.
+     * Converts PreAuthCodeData to IarSession and uses the existing AccessTokenJwtUtil to generate the JWT.
      */
     private String generateAccessToken(PreAuthCodeData codeData) {
-        // Generate a cryptographically secure random token
-        String accessToken = "at_" + generateSecureCode(64);
+        try {
+            IarSession session = new IarSession();
 
-        log.warn("WORKAROUND: Generated opaque access token (not JWT). Replace with proper JWT signing.");
+            String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
+            session.setIdentityData(claimsJson);
+            session.setScope(codeData.getCredentialConfigurationId());
+            session.setClientId(null);
+            session.setAuthSession("pre-auth-" + UUID.randomUUID().toString().substring(0, 8));
+            session.setTransactionId("pre-auth-txn-" + System.currentTimeMillis());
 
-        return accessToken;
+            return accessTokenJwtUtil.generateSignedJwt(
+                session,
+                oauthIssuer,
+                oauthAudience,
+                accessTokenExpirySeconds
+            );
+        } catch (Exception e) {
+            log.error("Failed to generate access token for pre-authorized code flow", e);
+            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "Failed to generate access token", e);
+        }
     }
 }
