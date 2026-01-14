@@ -54,4 +54,5 @@ public class Constants {
     public static final String MANDATORY = "mandatory";
     public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
+
 }
