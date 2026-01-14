@@ -230,16 +230,23 @@ public class IarServiceImpl implements IarService {
             throw new CertifyException(IarConstants.UNSUPPORTED_RESPONSE_TYPE, 
                                      "Unsupported response_type: " + iarRequest.getResponseType());
         }
-
+        // Validate client_id
+        if (!StringUtils.hasText(iarRequest.getClientId())) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "client_id is required");
+        }
+        // Validate code_challenge
+        if (!StringUtils.hasText(iarRequest.getCodeChallenge())) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "code_challenge is required");
+        }
         // Validate code_challenge_method
         if (!IarConstants.CODE_CHALLENGE_METHOD_S256.equals(iarRequest.getCodeChallengeMethod())) {
-            throw new InvalidRequestException(ErrorConstants.INVALID_REQUEST);
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "code_challenge_method must be S256");
         }
-
         // Validate interaction_types_supported
         validateInteractionTypesSupported(iarRequest.getInteractionTypesSupported());
-
-        log.debug("IAR request validation successful for client: {}", 
+        // Validate authorization_details
+        validateAuthorizationDetails(iarRequest);
+        log.debug("IAR request validation successful for client: {}",
                   iarRequest.getClientId());
     }
 
@@ -262,6 +269,26 @@ public class IarServiceImpl implements IarService {
         log.debug("Interaction types validation successful: {}", interactionTypesSupported);
     }
 
+    private static void validateAuthorizationDetails(InteractiveAuthorizationRequest iarRequest) {
+        if (iarRequest.getAuthorizationDetails() == null || iarRequest.getAuthorizationDetails().isEmpty()) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "authorization_details are required");
+        }
+
+        iarRequest.getAuthorizationDetails().forEach(authDetail -> {
+            String type = authDetail.getType();
+            if (!StringUtils.hasText(type)) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST,
+                    "type is required in authorization_details");
+            }
+            if (!IarConstants.AUTHORIZATION_DETAILS_TYPE.equals(type)) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "authorization details type must be openid_credential");
+            }
+            if (!StringUtils.hasText(authDetail.getCredentialConfigurationId())) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST,
+                    "credential_configuration_id is required in authorization_details");
+            }
+        });
+    }
     private IarResponse generateOpenId4VpRequest(InteractiveAuthorizationRequest iarRequest, String authSession) throws CertifyException {
         log.info("Generating OpenID4VP request for auth_session: {}", authSession);
 
@@ -326,8 +353,6 @@ public class IarServiceImpl implements IarService {
 
         // Validate PKCE, redirect_uri, and client_secret
         validatePkceCodeVerifier(tokenRequest, session);
-        validateRedirectUri(tokenRequest, session);
-        validateClientSecret(tokenRequest, session);
 
         // ATOMIC UPDATE: Mark code as used in single database operation
         try {
@@ -401,16 +426,6 @@ public class IarServiceImpl implements IarService {
         }
     }
     
-    private void validateRedirectUri(OAuthTokenRequest tokenRequest, IarSession session) throws CertifyException {
-        // redirect_uri validation removed since we don't support redirect_to_web
-        log.debug("Redirect URI validation skipped (not supported)");
-    }
-    
-    private void validateClientSecret(OAuthTokenRequest tokenRequest, IarSession session) throws CertifyException {
-        // Client secret validation removed since we support public clients only
-        log.debug("Public client secret validation passed");
-    }
-
     /**
      * Generate a signed JWT access token using the provided session data
      * 

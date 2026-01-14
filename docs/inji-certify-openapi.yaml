@@ -2424,7 +2424,6 @@ components:
           example:
             - "authorization_code"
             - "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-            - "refresh_token"
         response_types_supported:
           type: array
           items:
@@ -2802,10 +2801,6 @@ components:
           type: string
           description: PKCE Code Challenge Method - typically "S256"
           example: "S256"
-        redirect_uri:
-          type: string
-          description: OAuth 2.0 Redirect URI
-          example: "walletcallback url"
         interaction_types_supported:
           type: string
           description: Comma separated list of Interaction Types supported by Wallet
@@ -2855,6 +2850,8 @@ components:
       type: object
       required:
         - grant_type
+        - code
+        - code_verifier
       properties:
         grant_type:
           type: string
@@ -2867,14 +2864,15 @@ components:
         code_verifier:
           type: string
           description: PKCE code verifier
-        refresh_token:
-          type: string
-          description: For refresh_token grant
     TokenResponse:
       type: object
       required:
         - access_token
         - token_type
+        - expires_in
+        - scope
+        - c_nonce
+        - c_nonce_expires_in
       properties:
         access_token:
           type: string
@@ -2887,8 +2885,6 @@ components:
         expires_in:
           type: integer
           example: 3600
-        refresh_token:
-          type: string
         scope:
           type: string
         c_nonce:
@@ -2897,11 +2893,6 @@ components:
         c_nonce_expires_in:
           type: integer
           example: 86400
-        authorization_details:
-          type: array
-          description: Granted authorization details
-          items:
-            type: object
     TokenError:
       type: object
       properties:

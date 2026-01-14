@@ -60,23 +60,23 @@ public class AccessTokenJwtUtil {
             // Build JWT payload as JSON
             Map<String, Object> payload = new HashMap<>();
             payload.put("iss", issuer);
-           String identityData = session.getIdentityData();
-           if (!StringUtils.hasText(identityData)) {
-               log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
-                               session.getAuthSession(), session.getTransactionId());
-               throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required but not found in session");
-           }
-           payload.put("sub", identityData);
+            String identityData = session.getIdentityData();
+            if (!StringUtils.hasText(identityData)) {
+                log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
+                        session.getAuthSession(), session.getTransactionId());
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required but not found in session");
+            }
+            payload.put("sub", identityData);
             payload.put("aud", audience);
             payload.put("iat", issuedAt);
             payload.put("exp", expiresAt);
             payload.put("client_id", session.getClientId());
-            
+
             // Add scope from session (dynamically extracted from authorization_details)
             String scope = session.getScope();
             if (!StringUtils.hasText(scope)) {
-                log.warn("Scope is null or empty for session: {}, transaction_id: {}", 
-                    session.getAuthSession(), session.getTransactionId());
+                log.warn("Scope is null or empty for session: {}, transaction_id: {}",
+                        session.getAuthSession(), session.getTransactionId());
                 throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required but not found in session");
             }
             payload.put("scope", scope);
@@ -108,14 +108,14 @@ public class AccessTokenJwtUtil {
             JWTSignatureResponseDto response = signatureService.jwsSign(signatureRequest);
             String jwtString = response.getJwtSignedData();
 
-            log.debug("Generated JWT access token for client_id: {}, transaction_id: {}", 
-                     session.getClientId(), session.getTransactionId());
-            
+            log.debug("Generated JWT access token for client_id: {}, transaction_id: {}",
+                    session.getClientId(), session.getTransactionId());
+
             return jwtString;
 
         } catch (Exception e) {
             log.error("Failed to generate signed JWT for session: {}", session.getAuthSession(), e);
-            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR,"JWT generation failed", e);
+            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "JWT generation failed", e);
         }
     }
 
