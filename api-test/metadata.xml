@@ -8,7 +8,7 @@
 	<url>http://maven.apache.org</url>
 
 	<parent>
-		<groupId>io.mosip</groupId>
+		<groupId>io.inji</groupId>
 		<artifactId>mosip-parent</artifactId>
 		<version>1.0.10</version>
 	</parent>

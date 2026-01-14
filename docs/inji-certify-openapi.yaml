@@ -1257,6 +1257,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CredentialIssuerMetadataDTO'
+  /.well-known/oauth-authorization-server:
+    get:
+      tags:
+        - Well-known
+      summary: OAuth 2.0 Authorization Server Metadata
+      description: |
+        Returns OAuth AS metadata as per RFC 8414.
+        Note: authorization_endpoint is not included as this implementation
+        uses interactive authorization endpoint via iar.
+      operationId: getOAuthAuthorizationServerMetadata
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthAuthorizationServerMetadataDTO'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
   /.well-known/did.json:
     get:
       tags:
@@ -1590,6 +1610,83 @@ paths:
                     '@context':
                       - 'https://www.w3.org/ns/credentials/v2'
                     issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
+  /oauth/iar:
+    post:
+      tags:
+        - o-auth-controller
+      summary: Interactive Authorization Request Endpoint
+      description: |
+        Interactive Authorization Request endpoint - authorization request
+        which supports different interaction types.
+        openid4vp_presentation - interaction type for presentation during issuance
+        redirect_to_web - interaction type for redirecting user to browser to get authenticated.
+      operationId: handleIarRequest
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IarRequest'
+      responses:
+        '200':
+          description: Authorization successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationSuccess'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
+  /oauth/token:
+    post:
+      tags:
+        - o-auth-controller
+      summary: OAuth 2.0 Token Endpoint
+      description: |
+        Token endpoint supporting:
+        - Authorization codes from authorize-challenge
+        - Pre-authorized codes
+        - Refresh tokens
+      operationId: processTokenRequest
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OAuthTokenRequest'
+      responses:
+        '200':
+          description: Access token response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Token error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenError'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
+  /oauth/.well-known/jwks.json:
+    get:
+      tags:
+        - o-auth-controller
+      summary: JSON Web Key Set
+      description: Inji Certify's public keys for token verification
+      operationId: getJwks
+      responses:
+        '200':
+          description: JWKS document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JWKS'
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
@@ -2297,6 +2394,51 @@ components:
           $ref: '#/components/schemas/CredentialDefinition'
         vct:
           type: string
+    OAuthAuthorizationServerMetadataDTO:
+      type: object
+      required:
+        - issuer
+        - token_endpoint
+        - jwks_uri
+        - grant_types_supported
+        - response_types_supported
+        - code_challenge_methods_supported
+        - interactive_authorization_endpoint
+      properties:
+        issuer:
+          type: string
+          format: uri
+          description: The authorization server's issuer identifier
+        token_endpoint:
+          type: string
+          format: uri
+        jwks_uri:
+          type: string
+          format: uri
+          description: URL of the authorization server's JWK Set document
+          example: "http://localhost:8090/v1/certify/oauth/.well-known/jwks.json"
+        grant_types_supported:
+          type: array
+          items:
+            type: string
+          example:
+            - "authorization_code"
+            - "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+            - "refresh_token"
+        response_types_supported:
+          type: array
+          items:
+            type: string
+          example: ["code"]
+        code_challenge_methods_supported:
+          type: array
+          items:
+            type: string
+          example: ["S256"]
+        interactive_authorization_endpoint:
+          type: string
+          format: uri
+          description: OpenID4VCI Interactive Authorization Request endpoint
     CredentialSearchCriteria:
       type: object
       description: Criteria for searching Credential Status records from the ledger. AND logic applied. Missing fields are not used for filtering. indexedAttributesEquals allows searching on data previously stored in the ledger.indexedAttributes column.
@@ -2634,3 +2776,192 @@ components:
               errorMessage:
                 type: string
                 description: A human-readable message describing the error.
+    AuthorizationDetail:
+      type: object
+      properties:
+        type:
+          type: string
+        credential_configuration_id:
+          type: string
+    IarRequest:
+      type: object
+      properties:
+        response_type:
+          type: string
+          description: OAuth 2.0 Response Type
+          example: "code"
+        client_id:
+          type: string
+          description: OAuth client identifier
+          example: "wallet"
+        code_challenge:
+          type: string
+          description: PKCE Code Challenge
+          example: "random string"
+        code_challenge_method:
+          type: string
+          description: PKCE Code Challenge Method - typically "S256"
+          example: "S256"
+        redirect_uri:
+          type: string
+          description: OAuth 2.0 Redirect URI
+          example: "walletcallback url"
+        interaction_types_supported:
+          type: string
+          description: Comma separated list of Interaction Types supported by Wallet
+          example: "openid4vp_presentation,redirect_to_web"
+        authorization_details:
+          type: array
+          items:
+            type: object
+            $ref: '#/components/schemas/AuthorizationDetail'
+          description: |
+            JSON containing RFC 9396 authorization details
+            for requested credentials
+        auth_session:
+          type: string
+          description: Applicable for subsequent request - auth session value shared as response of initial IAR
+        openid4vp_response:
+          type: string
+          description: Applicable for subsequent request - OpenID4VP presentation submission response contains vp_token and presentation_submission
+    AuthorizationSuccess:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: ["require_interaction", "ok", "error"]
+          description: |
+            Status of the authorization request:
+            - "require_interaction": Initial request, requires user interaction (type and auth_session will be present)
+            - "ok": Authorization successful, code is issued (code will be present)
+            - "error": Authorization failed
+        type:
+          type: string
+          enum: ["openid4vp_presentation", "redirect_to_web"]
+          description: openid4vp_presentation sent in response to initial request which notifies wallet to initiate presentation flow. redirect_to_web is not supported
+        auth_session:
+          type: string
+          description: random string to identify session for auth flow, sent in response to initial request
+        openid4vp_request:
+          type: object
+          description: OpenId4VP compliant VP request. sent in response to initial request
+        code:
+          type: string
+          description: Authorization code to exchange for access token, sent in subsequent request once VP is submitted and verified successfully
+          example: "SplxlOBeZQQYbYS6WxSbIA"
+    OAuthTokenRequest:
+      type: object
+      required:
+        - grant_type
+      properties:
+        grant_type:
+          type: string
+          description: OAuth 2.0 grant type (authorization_code, refresh_token, etc.)
+          example: "authorization_code"
+        code:
+          type: string
+          description: Authorization code from iar endpoint
+          example: "SplxlOBeZQQYbYS6WxSbIA"
+        code_verifier:
+          type: string
+          description: PKCE code verifier
+        refresh_token:
+          type: string
+          description: For refresh_token grant
+    TokenResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+      properties:
+        access_token:
+          type: string
+          description: The access token issued by the authorization server
+          example: "eyJhbGciOiJSUzI1NiIsInR5cCI6Ikp..."
+        token_type:
+          type: string
+          description: The type of token issued (case-insensitive)
+          example: "Bearer"
+        expires_in:
+          type: integer
+          example: 3600
+        refresh_token:
+          type: string
+        scope:
+          type: string
+        c_nonce:
+          type: string
+          description: Nonce for credential issuance key proofs
+        c_nonce_expires_in:
+          type: integer
+          example: 86400
+        authorization_details:
+          type: array
+          description: Granted authorization details
+          items:
+            type: object
+    TokenError:
+      type: object
+      properties:
+        error:
+          type: string
+          enum:
+            - "invalid_request"
+            - "invalid_client"
+            - "invalid_grant"
+            - "unauthorized_client"
+            - "unsupported_grant_type"
+            - "invalid_scope"
+            - "authorization_pending"
+        error_description:
+          type: string
+    JWKS:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+                example: "RSA"
+              use:
+                type: string
+                enum: ["sig", "enc"]
+              kid:
+                type: string
+                example: "inji-certify-2025"
+              alg:
+                type: string
+                example: "RS256"
+              n:
+                type: string
+                description: RSA modulus (Base64url encoded)
+              e:
+                type: string
+                description: RSA exponent (Base64url encoded)
+              x:
+                type: string
+                description: EC x coordinate (for EC keys)
+              y:
+                type: string
+                description: EC y coordinate (for EC keys)
+              crv:
+                type: string
+                description: EC curve name
+              x5c:
+                type: array
+                items:
+                  type: string
+                description: certificate chain corresponding to the public key
+              x5t#S256:
+                type: string
+                description: SHA-256 thumbprint of an X.509 certificate
+              exp:
+                type: integer
+                description: Key expiry in seconds

@@ -77,6 +77,9 @@ public class ErrorConstants {
     public static final String MDOC_TEMPLATE_PROCESSING_FAILED = "mdoc_template_processing_failed";
     public static final String QR_SIGNATURE_ALGO_NOT_ALLOWED = "qr_signature_algo_not_allowed";
     public static final String INVALID_QR_SIGNING_ALGORITHM = "invalid_qr_signing_algorithm";
+    public static final String INVALID_QR_SIGNED_RESULT = "invalid_qr_signed_result";
+    public static final String ERROR_SIGNING_QR_ENTRY = "error_signing_qr_entry";
+    public static final String QR_CBOR_ENCODING_ERROR = "qr_cbor_encoding_error";
     public static final String INVALID_CREDENTIAL_CONFIGURATION_ID = "invalid_credential_configuration_id";
     public static final String MISSING_MANDATORY_CLAIM = "missing_mandatory_claim";
     public static final String CREDENTIAL_OFFER_NOT_FOUND = "credential_offer_not_found";

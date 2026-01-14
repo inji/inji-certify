@@ -21,6 +21,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
 
     private static final String TEST_ISSUER = "http://localhost:8090";
     private static final String TEST_TOKEN_ENDPOINT = "http://localhost:8090/v1/certify/oauth/token";
+    private static final String TEST_JWKS_URI = "http://localhost:8090/v1/certify/oauth/.well-known/jwks.json";
     private static final String TEST_RESPONSE_TYPES = "code";
     private static final String TEST_GRANT_TYPES = "authorization_code";
     private static final String TEST_CODE_CHALLENGE_METHODS = "S256";
@@ -31,6 +32,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         // Set up the properties using ReflectionTestUtils
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "issuer", TEST_ISSUER);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "tokenEndpoint", TEST_TOKEN_ENDPOINT);
+        ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "jwksUri", TEST_JWKS_URI);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "responseTypesSupported", TEST_RESPONSE_TYPES);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "grantTypesSupported", TEST_GRANT_TYPES);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "codeChallengeMethodsSupported", TEST_CODE_CHALLENGE_METHODS);
@@ -46,7 +48,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         assertNotNull("OAuth Authorization Server metadata should not be null", result);
         assertEquals("Issuer should match", TEST_ISSUER, result.getIssuer());
         assertEquals("Token endpoint should match", TEST_TOKEN_ENDPOINT, result.getTokenEndpoint());
-        // JWK set URI is not implemented, so it should not be present in the DTO
+        assertEquals("Jwks Uri should match", TEST_JWKS_URI, result.getJwksUri());
         assertEquals("Interactive authorization endpoint should match", TEST_INTERACTIVE_AUTHORIZATION_ENDPOINT, result.getInteractiveAuthorizationEndpoint());
     }
 
