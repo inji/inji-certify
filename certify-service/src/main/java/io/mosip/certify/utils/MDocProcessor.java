@@ -22,6 +22,7 @@ import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDate;
@@ -456,11 +457,9 @@ public class MDocProcessor {
      */
     public byte[] signMSO(Map<String, Object> mso, String appID, String refID, String signAlgorithm) throws Exception {
         try {
-            byte[] msoCbor = encodeToCBOR(mso);
-
             CoseSignRequestDto signRequest = new CoseSignRequestDto();
-
-            String base64UrlPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(msoCbor);
+            byte[] msoStringBytes = objectMapper.writeValueAsString(mso).getBytes(StandardCharsets.UTF_8);
+            String base64UrlPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(msoStringBytes);
 
             signRequest.setPayload(base64UrlPayload);
             signRequest.setApplicationId(appID);

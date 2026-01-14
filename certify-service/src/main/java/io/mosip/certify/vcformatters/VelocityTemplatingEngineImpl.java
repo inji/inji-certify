@@ -237,6 +237,8 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
             }
         }
         VelocityContext context = new VelocityContext(updatedTemplateParams);
+        Map<String, Object> rootContext = new HashMap<>(updatedTemplateParams);
+        context.put("rootContext", rootContext);
         engine.evaluate(context, writer, /*logTag */ templateName, vcTemplateString); // use vcTemplateString
         JSONObject jsonObject = new JSONObject(writer.toString());
         if (updatedTemplateParams.containsKey(VCDMConstants.CREDENTIAL_ID)) {

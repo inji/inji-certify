@@ -8,6 +8,7 @@ package io.mosip.certify.credential;
 
 import java.util.*;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.utils.MDocProcessor;
@@ -72,9 +73,11 @@ public class MDocCredential extends Credential {
             Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);
             byte[] signedMSO = mDocProcessor.signMSO(mso, appID, refID, signAlgorithm);
             Map<String, Object> issuerSigned = MDocProcessor.createIssuerSignedStructure(taggedNamespaces, signedMSO);
-
+            Map<String, Object> mDocSignedCredential = new HashMap<>();
+            mDocSignedCredential.put(Constants.DOCTYPE, mso.get(Constants.DOCTYPE));
+            mDocSignedCredential.put("issuerSigned", issuerSigned);
             // Encode to CBOR, then to Base64
-            byte[] cborIssuerSigned = MDocProcessor.encodeToCBOR(issuerSigned);
+            byte[] cborIssuerSigned = MDocProcessor.encodeToCBOR(mDocSignedCredential);
             String base64UrlCredential = Base64.getUrlEncoder().withoutPadding().encodeToString(cborIssuerSigned);
 
             vcResult.setCredential(base64UrlCredential);
