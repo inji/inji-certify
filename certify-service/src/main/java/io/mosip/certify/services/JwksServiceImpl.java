@@ -1,11 +1,16 @@
 package io.mosip.certify.services;
 
 import com.nimbusds.jose.jwk.JWK;
+import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.JwksService;
+import io.mosip.certify.entity.CredentialConfig;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.kernel.keymanagerservice.dto.AllCertificatesDataResponseDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,6 +27,8 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 
+import static io.mosip.certify.core.constants.Constants.ED25519_REF_ID;
+
 @Service
 @Slf4j
 public class JwksServiceImpl implements JwksService {
@@ -29,17 +36,41 @@ public class JwksServiceImpl implements JwksService {
     @Autowired
     private KeymanagerService keymanagerService;
 
+    @Autowired
+    private CredentialConfigRepository credentialConfigRepository;
+
+    @Value("#{${mosip.certify.credential-config.credential-signing-alg-values-supported}}")
+    private LinkedHashMap<String, List<String>> credentialSigningAlgValuesSupportedMap;
+
+    @Value("#{${mosip.certify.signature-algo.key-alias-mapper:{}}}")
+    private Map<String, List<List<String>>> signatureAlgoKeyAliasMapper;
+
     /**
      * Internal method to fetch JWK set - cached for performance
      * Only successful responses are cached (method returns non-null Map)
      */
     @Cacheable(value = "jwks", key = "'oauth-jwks'")
     public Map<String, Object> getJwks() {
-        AllCertificatesDataResponseDto allCertificatesDataResponseDto = keymanagerService.getAllCertificates(
-                KeyManagerConstants.CERTIFY_SERVICE_APP_ID, Optional.empty());
-
         List<Map<String, Object>> jwkList = new ArrayList<>();
 
+        // Fetch JWKs dynamically from configuration map
+        signatureAlgoKeyAliasMapper.forEach((algo, keyAliases) -> {
+            keyAliases.forEach(keyAlias -> {
+                String appId = keyAlias.get(0);
+                String refId = keyAlias.size() > 1 ? keyAlias.get(1) : "";
+                AllCertificatesDataResponseDto response = keymanagerService.getAllCertificates(appId, Optional.of(refId));
+                jwkList.addAll(getJwks(response));
+            });
+        });
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("keys", jwkList);
+
+        return response;
+    }
+
+    private List<Map<String, Object>> getJwks(AllCertificatesDataResponseDto allCertificatesDataResponseDto) {
+        List<Map<String, Object>> jwkList = new ArrayList<>();
         if (allCertificatesDataResponseDto != null && allCertificatesDataResponseDto.getAllCertificates() != null) {
             Arrays.stream(allCertificatesDataResponseDto.getAllCertificates())
                     .filter(dto -> dto != null
@@ -60,11 +91,7 @@ public class JwksServiceImpl implements JwksService {
         } else {
             log.warn("No certificates found for CERTIFY_SERVICE_APP_ID");
         }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("keys", jwkList);
-
-        return response;
+        return jwkList;
     }
 
     /**
@@ -105,5 +132,34 @@ public class JwksServiceImpl implements JwksService {
         map.put("e", jwk.toPublicJWK().getRequiredParams().get("e"));
         map.put("n", jwk.toPublicJWK().getRequiredParams().get("n"));
         return map;
+    }
+
+    private Map<String, List<String>> getSignatureCryptoSuiteMap() {
+        // Fetch all credential configurations
+        List<CredentialConfig> allConfigs = credentialConfigRepository.findAll();
+
+        // Create a map with signatureCryptoSuite as the key and appId, refId as values
+        Map<String, List<String>> signatureCryptoSuiteMap = new HashMap<>();
+        for (CredentialConfig config : allConfigs) {
+            String appId = config.getKeyManagerAppId();
+            String refId = config.getKeyManagerRefId();
+
+            if(appId != null) {
+                String uniqueKey = appId + "-" + (refId != null ? refId : "");
+                List<String> configDetails = new ArrayList<>();
+                configDetails.add(appId);
+                configDetails.add(refId);
+                if (config.getSignatureAlgo() == null) {
+                    String signatureCryptoSuite = config.getSignatureCryptoSuite();
+                    configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
+                } else {
+                    configDetails.add(config.getSignatureAlgo());
+                }
+
+                signatureCryptoSuiteMap.put(uniqueKey, configDetails);
+            }
+        }
+
+        return signatureCryptoSuiteMap;
     }
 }
