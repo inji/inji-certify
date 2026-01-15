@@ -16,7 +16,7 @@ public class Grant {
     private PreAuthorizedCodeGrantType preAuthorizedCode;
 
     @JsonProperty("authorization_code")
-    private AuthorizedCodeGrantType authorizationCode;
+    private AuthorizationCodeGrantType authorizationCode;
 
     @Data
     @Builder
@@ -35,7 +35,7 @@ public class Grant {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
-    public static class AuthorizedCodeGrantType {
+    public static class AuthorizationCodeGrantType {
 
         @JsonProperty("issuer_state")
         private String issuerState;

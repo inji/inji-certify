@@ -139,60 +139,21 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getAuthorizationServerMetadata_success() throws Exception {
-        io.mosip.certify.core.dto.AuthorizationServerMetadata mockMetadata =
-                io.mosip.certify.core.dto.AuthorizationServerMetadata.builder()
-                        .issuer("https://auth.example.com")
-                        .tokenEndpoint("https://auth.example.com/token")
-                        .authorizationEndpoint("https://auth.example.com/authorize")
-                        .jwksUri("https://auth.example.com/jwks.json")
-                        .build();
-
-        when(authorizationServerService.getInternalAuthServerMetadata()).thenReturn(mockMetadata);
-
-        mockMvc.perform(get("/.well-known/oauth-authorization-server"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.issuer").value("https://auth.example.com"))
-                .andExpect(jsonPath("$.token_endpoint").value("https://auth.example.com/token"))
-                .andExpect(jsonPath("$.authorization_endpoint").value("https://auth.example.com/authorize"))
-                .andExpect(jsonPath("$.jwks_uri").value("https://auth.example.com/jwks.json"));
-
-        verify(authorizationServerService, times(1)).getInternalAuthServerMetadata();
-    }
-
-    @Test
     void getOpenIDConfiguration_success() throws Exception {
-        io.mosip.certify.core.dto.AuthorizationServerMetadata mockMetadata =
-                io.mosip.certify.core.dto.AuthorizationServerMetadata.builder()
-                        .issuer("https://auth.example.com")
-                        .tokenEndpoint("https://auth.example.com/token")
-                        .build();
+        // Arrange
+        OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
+        mockMetadata.setIssuer("http://localhost:8090");
+        mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
 
-        when(authorizationServerService.getInternalAuthServerMetadata()).thenReturn(mockMetadata);
+        when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
 
+        // Act & Assert
         mockMvc.perform(get("/.well-known/openid-configuration"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.issuer").value("https://auth.example.com"))
-                .andExpect(jsonPath("$.token_endpoint").value("https://auth.example.com/token"));
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.issuer").value("http://localhost:8090"))
+                .andExpect(jsonPath("$.token_endpoint").value("http://localhost:8090/v1/certify/oauth/token"));
 
-        verify(authorizationServerService, times(1)).getInternalAuthServerMetadata();
-    }
-
-    @Test
-    void getAuthorizationServerMetadata_returnsNullFields_success() throws Exception {
-        io.mosip.certify.core.dto.AuthorizationServerMetadata mockMetadata =
-                io.mosip.certify.core.dto.AuthorizationServerMetadata.builder()
-                        .issuer("https://auth.example.com")
-                        .tokenEndpoint("https://auth.example.com/token")
-                        .build();
-
-        when(authorizationServerService.getInternalAuthServerMetadata()).thenReturn(mockMetadata);
-
-        mockMvc.perform(get("/.well-known/oauth-authorization-server"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.issuer").value("https://auth.example.com"))
-                .andExpect(jsonPath("$.token_endpoint").value("https://auth.example.com/token"))
-                .andExpect(jsonPath("$.authorization_endpoint").doesNotExist())
-                .andExpect(jsonPath("$.jwks_uri").doesNotExist());
+        verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
     }
 }

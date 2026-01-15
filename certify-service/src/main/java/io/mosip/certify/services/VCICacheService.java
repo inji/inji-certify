@@ -1,6 +1,5 @@
 package io.mosip.certify.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.*;
 import jakarta.annotation.PostConstruct;
@@ -12,12 +11,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.stereotype.Service;
-import io.mosip.certify.services.CredentialConfigurationServiceImpl;
-
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -26,14 +19,10 @@ public class VCICacheService {
     @Autowired
     private CacheManager cacheManager;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Value("${spring.cache.type:simple}")
     private String cacheType;
 
     private static final String VCISSUANCE_CACHE = "vcissuance";
-    private static final String METADATA_KEY = "metadata";
 
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -109,7 +98,12 @@ public class VCICacheService {
 
     public boolean isCodeBlacklisted(String code) {
         String key = "blacklist:" + code;
-        Cache.ValueWrapper wrapper = cacheManager.getCache("preAuthCodeCache").get(key);
+        Cache cache = cacheManager.getCache("preAuthCodeCache");
+        if (cache == null) {
+            log.error("Cache preAuthCodeCache not available");
+            return false;
+        }
+        Cache.ValueWrapper wrapper = cache.get(key);
         return wrapper != null && Boolean.TRUE.equals(wrapper.get());
     }
 
@@ -118,14 +112,19 @@ public class VCICacheService {
      */
     public void blacklistPreAuthCode(String code) {
         String key = "blacklist:" + code;
+        Cache cache = cacheManager.getCache("preAuthCodeCache");
+        if (cache == null) {
+            log.error("Cache preAuthCodeCache not available for blacklisting");
+            return;
+        }
         // Store in cache with same TTL as pre-auth code
-        cacheManager.getCache("preAuthCodeCache").put(key, true);
+        cache.put(key, true);
 
         // Also remove the pre-auth code data
         String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
-        cacheManager.getCache("preAuthCodeCache").evict(codeKey);
+        cache.evict(codeKey);
 
-        log.info("Pre-authorized code blacklisted: {}", code);
+        log.info("Pre-authorized code blacklisted");
     }
 
     /**

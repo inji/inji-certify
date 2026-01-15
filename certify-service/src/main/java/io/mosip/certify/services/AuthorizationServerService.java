@@ -157,7 +157,8 @@ public class AuthorizationServerService {
                 log.info("Loaded credential config mappings: {}", mappings);
             }
         } catch (Exception e) {
-            log.error("Failed to parse credential config mappings", e);
+            log.error("Failed to parse credential config mappings. Credential-to-AS mappings will be empty. " +
+                    "Check mosip.certify.credential-config.as-mapping property format.", e);
         }
     }
 
@@ -167,6 +168,9 @@ public class AuthorizationServerService {
      */
     public AuthorizationServerMetadata discoverMetadata(String serverUrl) {
         log.info("Discovering authorization server metadata for: {}", serverUrl);
+
+        // SSRF protection: validate server URL is in configured allowlist
+        validateServerConfigured(serverUrl);
 
         // Check cache first
         AuthorizationServerMetadata cached = vciCacheService.getASMetadata(serverUrl);
