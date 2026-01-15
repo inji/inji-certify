@@ -5,14 +5,13 @@
  */
 package io.mosip.certify.services;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.config.VerifyServiceConfig;
 import io.mosip.certify.core.dto.InteractiveAuthorizationRequest;
-import io.mosip.certify.core.dto.PresentationDefinition;
 import io.mosip.certify.core.dto.VerifyVpRequest;
 import io.mosip.certify.core.dto.VerifyVpResponse;
 import io.mosip.certify.core.exception.CertifyException;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,14 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import jakarta.annotation.PostConstruct;
-
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.net.URI;
 
 /**
  * Service for creating VP requests with verify service
@@ -65,7 +60,7 @@ public class IarVpRequestService {
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint}")
     private String certifyIarEndpoint;
 
-    @Value("${spring.profiles.active}")
+    @Value("${spring.profiles.active:}")
     private String activeProfile;
 
     /**
@@ -100,11 +95,14 @@ public class IarVpRequestService {
         try {
             log.info("Fetching VP Request Config from : {}", vpRequestConfigUrl);
             String vpRequestConfig;
-            if(activeProfile.contains("local")) {
+            if (activeProfile != null && activeProfile.contains("local")) {
                 Resource resource = new ClassPathResource(vpRequestConfigUrl);
-                vpRequestConfig  = (Files.readString(resource.getFile().toPath()));
+                vpRequestConfig = new String(resource.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             } else {
-                vpRequestConfig = restTemplate.getForObject(URI.create(vpRequestConfigUrl), String.class);
+                vpRequestConfig = restTemplate.getForObject(vpRequestConfigUrl, String.class);
+            }
+            if (vpRequestConfig == null || vpRequestConfig.isBlank()) {
+                throw new CertifyException("unknown_error", "VP request configuration is empty or unavailable");
             }
             verifyServiceConfig = objectMapper.readValue(vpRequestConfig, VerifyServiceConfig.class);
         } catch (IOException e) {
