@@ -17,6 +17,7 @@ import io.mosip.certify.repository.IarSessionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -40,6 +41,7 @@ import java.util.*;
  */
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarPresentationService {
 
     @Autowired
@@ -160,9 +162,14 @@ public class IarPresentationService {
                 log.debug("vp_token serialized to JSON, length: {}", vpTokenJson.length());
             }
             
-            String presentationSubmissionJson = objectMapper.writeValueAsString(presentationSubmissionObj);
-            log.debug("presentation_submission serialized to JSON, length: {}", presentationSubmissionJson.length());
-            
+            String presentationSubmissionJson;
+            if (presentationSubmissionObj instanceof String) {
+                presentationSubmissionJson = (String) presentationSubmissionObj;
+            } else {
+                presentationSubmissionJson  = objectMapper.writeValueAsString(presentationSubmissionObj);
+                log.debug("presentation_submission serialized to JSON, length: {}", presentationSubmissionJson.length());
+            }
+
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("vp_token", vpTokenJson);
             formData.add("presentation_submission", presentationSubmissionJson);

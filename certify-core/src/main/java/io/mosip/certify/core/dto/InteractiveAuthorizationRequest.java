@@ -48,12 +48,6 @@ public class InteractiveAuthorizationRequest {
     private String codeChallengeMethod;
 
     /**
-     * OAuth 2.0 Redirect URI (optional since not supporting redirect_to_web)
-     */
-    @JsonProperty("redirect_uri")
-    private String redirectUri;
-
-    /**
      * Supported interaction types - e.g., "openid4vp_presentation"
      */
     @JsonProperty("interaction_types_supported")

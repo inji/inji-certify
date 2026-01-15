@@ -2,14 +2,12 @@ package io.mosip.certify.controller;
 
 import io.mosip.certify.core.constants.IarStatus;
 import io.mosip.certify.core.constants.InteractionType;
-import io.mosip.certify.core.dto.IarRequest;
-import io.mosip.certify.core.dto.IarResponse;
-import io.mosip.certify.core.dto.IarAuthorizationResponse;
-import io.mosip.certify.core.dto.PresentationDefinition;
+import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.IarService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.filter.AccessTokenValidationFilter;
+import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +19,7 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -47,6 +42,9 @@ class OAuthControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
+    private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
+
+    @MockBean
     private IarService iarService;
 
     @MockBean
@@ -64,6 +62,36 @@ class OAuthControllerTest {
                 .thenReturn("Interaction required");
         when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(invocation -> invocation.getArgument(2));
+    }
+
+    @Test
+    void getOAuthAuthorizationServerMetadata_success() throws Exception {
+        // Arrange
+        OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
+        mockMetadata.setIssuer("http://localhost:8090");
+        mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
+        mockMetadata.setJwksUri("http://localhost:8090/v1/certify/oauth/.well-known/jwks.json");
+        mockMetadata.setGrantTypesSupported(Arrays.asList("authorization_code"));
+        mockMetadata.setResponseTypesSupported(Arrays.asList("code"));
+        mockMetadata.setCodeChallengeMethodsSupported(Arrays.asList("S256"));
+        mockMetadata.setInteractiveAuthorizationEndpoint("http://localhost:8090/v1/certify/oauth/iar");
+
+        when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
+
+        // Act & Assert
+        mockMvc.perform(get("/.well-known/oauth-authorization-server"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.issuer").value("http://localhost:8090"))
+                .andExpect(jsonPath("$.token_endpoint").value("http://localhost:8090/v1/certify/oauth/token"))
+                .andExpect(jsonPath("$.grant_types_supported[0]").value("authorization_code"))
+                .andExpect(jsonPath("$.response_types_supported[0]").value("code"))
+                .andExpect(jsonPath("$.code_challenge_methods_supported[0]").value("S256"))
+                .andExpect(jsonPath("$.interactive_authorization_endpoint").value("http://localhost:8090/v1/certify/oauth/iar"))
+                .andExpect(jsonPath("$.jwks_uri").value("http://localhost:8090/v1/certify/oauth/.well-known/jwks.json"))
+                .andExpect(jsonPath("$.token_endpoint_auth_methods_supported").doesNotExist());
+
+        verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
     }
 
     @Test

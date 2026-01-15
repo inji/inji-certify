@@ -32,6 +32,9 @@ public class OAuthAuthorizationServerMetadataDTO {
     @JsonProperty("token_endpoint")
     private String tokenEndpoint;
 
+    @JsonProperty("jwks_uri")
+    private String jwksUri;
+
     /**
      * JSON array containing a list of the OAuth 2.0 grant type values that this authorization server supports
      */

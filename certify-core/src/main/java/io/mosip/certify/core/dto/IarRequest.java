@@ -44,15 +44,9 @@ public class IarRequest {
     private String code_challenge_method;
 
     /**
-     * OAuth 2.0 Redirect URI
-     */
-    private String redirect_uri;
-
-    /**
      * Supported interaction types - e.g., "openid4vp_presentation"
      */
     private String interaction_types_supported;
-
 
     /**
      * Authorization details as per OpenID4VCI specification
