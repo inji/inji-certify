@@ -229,8 +229,13 @@ public class PreAuthorizedCodeService {
 
     private String buildCredentialOfferUri(String offerId) {
         String offerFetchUrl = domainUrl + "v1/certify/credential-offer-data/" + offerId;
-        String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8);
-        return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
+        try {
+            String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8.name());
+            return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
+        } catch (java.io.UnsupportedEncodingException e) {
+            // UTF-8 is always supported, this should never happen
+            throw new RuntimeException("UTF-8 encoding not supported", e);
+        }
     }
 
     private String generateSecureCode(int length) {
