@@ -10,9 +10,6 @@ package io.mosip.certify.core.constants;
  */
 public class IarConstants {
 
-    // IAR Type values
-    public static final String OPENID4VP_PRESENTATION = "openid4vp_presentation";
-
     // OAuth 2.0 Response Types
     public static final String RESPONSE_TYPE_CODE = "code";
 
@@ -22,20 +19,10 @@ public class IarConstants {
     // PKCE Code Challenge Methods
     public static final String CODE_CHALLENGE_METHOD_S256 = "S256";
 
-    // OpenID4VP Response Modes
-    public static final String RESPONSE_MODE_IAR_POST = "iar-post";
-    public static final String RESPONSE_MODE_IAR_POST_JWT = "iar-post.jwt";
-
-
+    // Authorization Detail Type
+    public static final String AUTHORIZATION_DETAILS_TYPE = "openid_credential";
 
     // Content Types
-    public static final String CONTENT_TYPE_FORM_URLENCODED = "application/x-www-form-urlencoded";
-    public static final String CONTENT_TYPE_JSON = "application/json";
-
-    // Error codes
     public static final String UNSUPPORTED_RESPONSE_TYPE = "unsupported_response_type";
     public static final String MISSING_INTERACTION_TYPE = "missing_interaction_type";
-    public static final String INVALID_CLIENT = "invalid_client";
-    public static final String INTERACTION_REQUIRED = "interaction_required";
-    public static final String INVALID_AUTH_SESSION = "invalid_auth_session";
 }

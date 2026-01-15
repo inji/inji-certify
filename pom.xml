@@ -13,13 +13,13 @@
 	</parent>
 
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>io.mosip.certify</groupId>
+	<groupId>io.inji.certify</groupId>
 	<artifactId>certify-parent</artifactId>
 	<version>0.14.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>certify</name>
 	<description>Parent project for MOSIP certify</description>
-	<url>https://github.com/mosip/inji-certify</url>
+	<url>https://github.com/inji/inji-certify</url>
 
 	<licenses>
 		<license>
@@ -29,9 +29,9 @@
 	</licenses>
 
 	<scm>
-		<connection>scm:git:git://github.com/mosip/inji-certify.git</connection>
-		<developerConnection>scm:git:ssh://github.com:mosip/inji-certify.git</developerConnection>
-		<url>https://github.com/mosip/inji-certify</url>
+		<connection>scm:git:git://github.com/inji/inji-certify.git</connection>
+		<developerConnection>scm:git:ssh://github.com:inji/inji-certify.git</developerConnection>
+		<url>https://github.com/inji/inji-certify</url>
 		<tag>HEAD</tag>
 	</scm>
 
@@ -39,8 +39,8 @@
 		<developer>
 			<name>Mosip</name>
 			<email>mosip.emailnotifier@gmail.com</email>
-			<organization>io.mosip</organization>
-			<organizationUrl>https://github.com/mosip/inji-certify</organizationUrl>
+			<organization>io.inji</organization>
+			<organizationUrl>https://inji.io</organizationUrl>
 		</developer>
 	</developers>
 

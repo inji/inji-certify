@@ -35,10 +35,4 @@ public class OAuthTokenRequest {
      * REQUIRED (for PKCE). Code verifier used in the Proof Key for Code Exchange (PKCE) extension.
      */
     private String code_verifier;
-
-    /**
-     * REQUIRED (for refresh_token grant). The refresh token issued to the client.
-     */
-    private String refresh_token;
-
 }
