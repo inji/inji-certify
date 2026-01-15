@@ -152,17 +152,17 @@ public class VCICacheService {
         return (Map<String, Object>) wrapper.get();
     }
 
-    public boolean isCodeBlacklisted(String code) {
-        String key = "blacklist:" + code;
+    public boolean isPreAuthCodeUsed(String code) {
+        String key = "used:" + code;
         Cache.ValueWrapper wrapper = cacheManager.getCache("preAuthCodeCache").get(key);
         return wrapper != null && Boolean.TRUE.equals(wrapper.get());
     }
 
     /**
-     * Blacklist a used pre-authorized code
+     * Mark a pre-authorized code as used to prevent reuse
      */
-    public void blacklistPreAuthCode(String code) {
-        String key = "blacklist:" + code;
+    public void markPreAuthCodeAsUsed(String code) {
+        String key = "used:" + code;
         // Store in cache with same TTL as pre-auth code
         cacheManager.getCache("preAuthCodeCache").put(key, true);
 
@@ -170,7 +170,7 @@ public class VCICacheService {
         String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
         cacheManager.getCache("preAuthCodeCache").evict(codeKey);
 
-        log.info("Pre-authorized code blacklisted: {}", code);
+        log.info("Pre-authorized code marked as used: {}", code);
     }
 
     /**

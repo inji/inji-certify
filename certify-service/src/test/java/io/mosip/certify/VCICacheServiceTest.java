@@ -219,62 +219,62 @@ public class VCICacheServiceTest {
         assertEquals(null, result);
     }
 
-    // Tests for isCodeBlacklisted
+    // Tests for isPreAuthCodeUsed
 
     @Test
-    public void isCodeBlacklisted_WhenBlacklisted_ReturnsTrue() {
-        String code = "blacklisted-code";
-        String key = "blacklist:" + code;
+    public void isPreAuthCodeUsed_WhenUsed_ReturnsTrue() {
+        String code = "used-code";
+        String key = "used:" + code;
         Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
         when(wrapper.get()).thenReturn(Boolean.TRUE);
         when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
         when(cache.get(key)).thenReturn(wrapper);
 
-        boolean result = vciCacheService.isCodeBlacklisted(code);
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
 
         assertEquals(true, result);
         verify(cache).get(key);
     }
 
     @Test
-    public void isCodeBlacklisted_WhenNotBlacklisted_ReturnsFalse() {
+    public void isPreAuthCodeUsed_WhenNotUsed_ReturnsFalse() {
         String code = "valid-code";
-        String key = "blacklist:" + code;
+        String key = "used:" + code;
         when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
         when(cache.get(key)).thenReturn(null);
 
-        boolean result = vciCacheService.isCodeBlacklisted(code);
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
 
         assertEquals(false, result);
         verify(cache).get(key);
     }
 
     @Test
-    public void isCodeBlacklisted_WhenWrapperReturnsFalse_ReturnsFalse() {
+    public void isPreAuthCodeUsed_WhenWrapperReturnsFalse_ReturnsFalse() {
         String code = "code";
-        String key = "blacklist:" + code;
+        String key = "used:" + code;
         Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
         when(wrapper.get()).thenReturn(Boolean.FALSE);
         when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
         when(cache.get(key)).thenReturn(wrapper);
 
-        boolean result = vciCacheService.isCodeBlacklisted(code);
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
 
         assertEquals(false, result);
     }
 
-    // Tests for blacklistPreAuthCode
+    // Tests for markPreAuthCodeAsUsed
 
     @Test
-    public void blacklistPreAuthCode_Success() {
-        String code = "code-to-blacklist";
-        String blacklistKey = "blacklist:" + code;
+    public void markPreAuthCodeAsUsed_Success() {
+        String code = "code-to-mark";
+        String usedKey = "used:" + code;
         String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
         when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
 
-        vciCacheService.blacklistPreAuthCode(code);
+        vciCacheService.markPreAuthCodeAsUsed(code);
 
-        verify(cache).put(eq(blacklistKey), eq(true));
+        verify(cache).put(eq(usedKey), eq(true));
         verify(cache).evict(eq(codeKey));
     }
 

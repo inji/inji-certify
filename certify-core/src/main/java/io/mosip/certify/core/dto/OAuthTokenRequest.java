@@ -35,4 +35,14 @@ public class OAuthTokenRequest {
      * REQUIRED (for PKCE). Code verifier used in the Proof Key for Code Exchange (PKCE) extension.
      */
     private String code_verifier;
+
+    /**
+     * REQUIRED (for pre-authorized_code grant). The pre-authorized code received from the credential offer.
+     */
+    private String pre_authorized_code;
+
+    /**
+     * OPTIONAL (for pre-authorized_code grant). The transaction code if required by the credential offer.
+     */
+    private String tx_code;
 }
