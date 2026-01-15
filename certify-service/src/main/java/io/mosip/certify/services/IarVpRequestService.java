@@ -97,7 +97,9 @@ public class IarVpRequestService {
             String vpRequestConfig;
             if (activeProfile != null && activeProfile.contains("local")) {
                 Resource resource = new ClassPathResource(vpRequestConfigUrl);
-                vpRequestConfig = new String(resource.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                try (var inputStream = resource.getInputStream()) {
+                   vpRequestConfig = new String(inputStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                }
             } else {
                 vpRequestConfig = restTemplate.getForObject(vpRequestConfigUrl, String.class);
             }
@@ -105,7 +107,7 @@ public class IarVpRequestService {
                 throw new CertifyException("unknown_error", "VP request configuration is empty or unavailable");
             }
             verifyServiceConfig = objectMapper.readValue(vpRequestConfig, VerifyServiceConfig.class);
-        } catch (IOException e) {
+        } catch (IOException | org.springframework.web.client.RestClientException e) {
             log.error("Failed to load / parse vp request configuration", e);
             throw new CertifyException("unknown_error", "Failed to load / parse vp request configuration", e);
         }
