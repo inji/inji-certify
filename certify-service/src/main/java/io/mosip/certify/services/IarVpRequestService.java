@@ -5,8 +5,11 @@
  */
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.config.VerifyServiceConfig;
 import io.mosip.certify.core.dto.InteractiveAuthorizationRequest;
+import io.mosip.certify.core.dto.PresentationDefinition;
 import io.mosip.certify.core.dto.VerifyVpRequest;
 import io.mosip.certify.core.dto.VerifyVpResponse;
 import io.mosip.certify.core.exception.CertifyException;
@@ -14,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -23,9 +28,12 @@ import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.net.URI;
 
 /**
  * Service for creating VP requests with verify service
@@ -39,8 +47,11 @@ public class IarVpRequestService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Value("${mosip.certify.vp-request.config-file-url}")
+    private String vpRequestConfigUrl;
+
     @Autowired
-    private VerifyServiceConfig verifyServiceConfig;
+    private ObjectMapper objectMapper;
 
     @Value("${mosip.certify.verify.service.vp-request-endpoint:http://localhost/mock-vp}")
     private String verifyServiceVpRequestEndpoint;
@@ -53,6 +64,9 @@ public class IarVpRequestService {
 
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint}")
     private String certifyIarEndpoint;
+
+    @Value("${spring.profiles.active}")
+    private String activeProfile;
 
     /**
      * Validate required configuration properties at startup
@@ -79,8 +93,24 @@ public class IarVpRequestService {
      * @throws CertifyException if request fails
      */
     public VerifyVpResponse createVpRequest(InteractiveAuthorizationRequest iarRequest) throws CertifyException {
-        log.info("Calling verify service for VP request generation for wallet client_id: {} using verifier client_id: {}", 
+        log.info("Calling verify service for VP request generation for wallet client_id: {} using verifier client_id: {}",
                  iarRequest.getClientId(), verifierClientId);
+
+        VerifyServiceConfig verifyServiceConfig;
+        try {
+            log.info("Fetching VP Request Config from : {}", vpRequestConfigUrl);
+            String vpRequestConfig;
+            if(activeProfile.contains("local")) {
+                Resource resource = new ClassPathResource(vpRequestConfigUrl);
+                vpRequestConfig  = (Files.readString(resource.getFile().toPath()));
+            } else {
+                vpRequestConfig = restTemplate.getForObject(URI.create(vpRequestConfigUrl), String.class);
+            }
+            verifyServiceConfig = objectMapper.readValue(vpRequestConfig, VerifyServiceConfig.class);
+        } catch (IOException e) {
+            log.error("Failed to load / parse vp request configuration", e);
+            throw new CertifyException("unknown_error", "Failed to load / parse vp request configuration", e);
+        }
 
         try {
             VerifyVpRequest verifyRequest = new VerifyVpRequest();
