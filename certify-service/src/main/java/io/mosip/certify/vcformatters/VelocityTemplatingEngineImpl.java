@@ -10,6 +10,7 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.certify.config.VelocityEnvConfig;
 import io.mosip.certify.core.constants.*;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.velocity.VelocityContext;
@@ -57,6 +58,9 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
 
     @Value("${mosip.certify.data-provider-plugin.id-field-prefix-uri:}")
     String idPrefix;
+
+    @Autowired
+    private VelocityEnvConfig velocityEnvConfig;
 
     @PostConstruct
     public void initialize() {
@@ -239,6 +243,7 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
         VelocityContext context = new VelocityContext(updatedTemplateParams);
         Map<String, Object> rootContext = new HashMap<>(updatedTemplateParams);
         context.put("rootContext", rootContext);
+        context.put("envConfigs", velocityEnvConfig.getEnvConfigs());
         engine.evaluate(context, writer, /*logTag */ templateName, vcTemplateString); // use vcTemplateString
         JSONObject jsonObject = new JSONObject(writer.toString());
         if (updatedTemplateParams.containsKey(VCDMConstants.CREDENTIAL_ID)) {
