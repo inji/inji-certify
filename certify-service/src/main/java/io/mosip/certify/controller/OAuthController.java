@@ -10,9 +10,11 @@ import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.IarService;
 import io.mosip.certify.core.spi.JwksService;
+import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +31,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/oauth")
+@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class OAuthController {
 
     @Autowired
@@ -37,6 +39,14 @@ public class OAuthController {
 
     @Autowired
     private JwksService jwksService;
+
+    @Autowired
+    private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
+
+    @GetMapping(value = "/.well-known/oauth-authorization-server", produces = "application/json")
+    public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
+        return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
+    }
 
     /**
      * Interactive Authorization Request (IAR) endpoint
@@ -52,7 +62,7 @@ public class OAuthController {
      * @return ResponseEntity with IarResponse or IarAuthorizationResponse
      * @throws CertifyException if request processing fails
      */
-    @PostMapping(value = "/iar",
+    @PostMapping(value = "/oauth/iar",
              consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
              produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> handleIarRequest(@Valid @ModelAttribute IarRequest iarRequest)
@@ -87,7 +97,7 @@ public class OAuthController {
      * @return ResponseEntity with OAuthTokenResponse containing access_token and c_nonce
      * @throws CertifyException if token request processing fails
      */
-    @PostMapping(value = "/token",
+    @PostMapping(value = "/oauth/token",
                  consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
                  produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> processTokenRequest(@Valid OAuthTokenRequest tokenRequest)
@@ -128,7 +138,7 @@ public class OAuthController {
      * 
      * @return ResponseEntity with JWK set containing public keys
      */
-    @GetMapping("/.well-known/jwks.json")
+    @GetMapping("/oauth/.well-known/jwks.json")
     public ResponseEntity<Map<String, Object>> getJwks() {
         log.info("Fetching JWK set for CERTIFY_SERVICE_APP_ID");
         

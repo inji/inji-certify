@@ -264,7 +264,7 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
     @Override
     public JSONArray formatQRData(Map<String, Object> updatedTemplateParams) {
         String templateName = updatedTemplateParams.get(TEMPLATE_NAME).toString();
-        List<Map<String, Object>> qrSettings = getCachedCredentialConfig(templateName).getQrSettings();
+        List<Map<String, Object>> qrSettings = getQRSettings(templateName);
         if(qrSettings == null || qrSettings.isEmpty()) {
             return null;
         }

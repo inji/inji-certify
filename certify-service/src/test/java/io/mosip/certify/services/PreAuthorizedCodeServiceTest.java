@@ -163,7 +163,7 @@ public class PreAuthorizedCodeServiceTest {
         InvalidRequestException exception = assertThrows(InvalidRequestException.class,
                 () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
 
-        Assert.assertTrue(exception.getMessage().contains("expires_in must be between"));
+        Assert.assertEquals(ErrorConstants.INVALID_EXPIRY_RANGE, exception.getErrorCode());
     }
 
     @Test

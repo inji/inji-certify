@@ -2,13 +2,14 @@ package io.mosip.certify.controller;
 
 import io.mosip.certify.core.dto.AuthorizationServerMetadata;
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
-import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.services.AuthorizationServerService;
 import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
@@ -24,7 +25,6 @@ public class WellKnownController {
 
     @Autowired
     private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
-
 
     @GetMapping(value = "/openid-credential-issuer", produces = "application/json")
     public CredentialIssuerMetadataDTO getCredentialIssuerMetadata(
