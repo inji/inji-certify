@@ -129,9 +129,9 @@ public class JwksServiceImpl implements JwksService {
         jwk.getX509CertChain().forEach(c -> { certs.add(c.toString()); });
         map.put("x5c", certs);
         map.put("x5t#S256", jwk.getX509CertSHA256Thumbprint().toString());
-        LinkedHashMap<String, ?> jwkParams = jwk.toPublicJWK().getRequiredParams();
-        map.put("e", jwkParams.get("e"));
-        map.put("n", jwkParams.get("n"));
+        Map<String, ?> jwkParams = jwk.toPublicJWK().getRequiredParams();
+        if (jwkParams.containsKey("e")) map.put("e", jwkParams.get("e"));
+        if (jwkParams.containsKey("n")) map.put("n", jwkParams.get("n"));
 
         // EC parameters
         if (jwkParams.containsKey("x")) map.put("x", jwkParams.get("x"));
