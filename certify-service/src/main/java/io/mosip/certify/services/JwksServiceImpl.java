@@ -129,37 +129,14 @@ public class JwksServiceImpl implements JwksService {
         jwk.getX509CertChain().forEach(c -> { certs.add(c.toString()); });
         map.put("x5c", certs);
         map.put("x5t#S256", jwk.getX509CertSHA256Thumbprint().toString());
-        map.put("e", jwk.toPublicJWK().getRequiredParams().get("e"));
-        map.put("n", jwk.toPublicJWK().getRequiredParams().get("n"));
+        LinkedHashMap<String, ?> jwkParams = jwk.toPublicJWK().getRequiredParams();
+        map.put("e", jwkParams.get("e"));
+        map.put("n", jwkParams.get("n"));
+
+        // EC parameters
+        if (jwkParams.containsKey("x")) map.put("x", jwkParams.get("x"));
+        if (jwkParams.containsKey("y")) map.put("y", jwkParams.get("y"));
+        if (jwkParams.containsKey("crv")) map.put("crv", jwkParams.get("crv"));
         return map;
-    }
-
-    private Map<String, List<String>> getSignatureCryptoSuiteMap() {
-        // Fetch all credential configurations
-        List<CredentialConfig> allConfigs = credentialConfigRepository.findAll();
-
-        // Create a map with signatureCryptoSuite as the key and appId, refId as values
-        Map<String, List<String>> signatureCryptoSuiteMap = new HashMap<>();
-        for (CredentialConfig config : allConfigs) {
-            String appId = config.getKeyManagerAppId();
-            String refId = config.getKeyManagerRefId();
-
-            if(appId != null) {
-                String uniqueKey = appId + "-" + (refId != null ? refId : "");
-                List<String> configDetails = new ArrayList<>();
-                configDetails.add(appId);
-                configDetails.add(refId);
-                if (config.getSignatureAlgo() == null) {
-                    String signatureCryptoSuite = config.getSignatureCryptoSuite();
-                    configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
-                } else {
-                    configDetails.add(config.getSignatureAlgo());
-                }
-
-                signatureCryptoSuiteMap.put(uniqueKey, configDetails);
-            }
-        }
-
-        return signatureCryptoSuiteMap;
     }
 }
