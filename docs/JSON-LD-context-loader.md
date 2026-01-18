@@ -49,6 +49,7 @@ All configuration is under:
 `mosip.certify.jsonld.*`
 
 ### Cache
+
 | Property | Default | Description |
 |---|---:|---|
 | `mosip.certify.jsonld.cache.enabled` | `true` | Enable in-memory cache |
@@ -63,13 +64,13 @@ mosip.certify.jsonld.cache.ttl=24h
 ```
 
 ### Remote fetching
+
 | Property | Default | Description |
 |---|---:|---|
 | `mosip.certify.jsonld.remote.enabled` | `true` | Enable HTTP(S) remote fetching |
 | `mosip.certify.jsonld.remote.allowUnknown` | `false` | Allow unknown context IRIs (not in registry) |
 | `mosip.certify.jsonld.remote.cacheUnknown` | `true` | Cache unknown remote contexts |
 | `mosip.certify.jsonld.remote.enforceAllowedHosts` | `true` | Enable allowlist enforcement. When false, host filtering is disabled. |
-
 
 ### Host allowlist (recommended for production)
 The allowlist defines which remote hosts may be called.
