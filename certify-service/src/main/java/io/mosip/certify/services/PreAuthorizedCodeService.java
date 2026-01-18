@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
-import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -330,21 +329,17 @@ public class PreAuthorizedCodeService {
 
     /**
      * Generate a signed JWT access token for pre-authorized code flow.
-     * Converts PreAuthCodeData to IarSession and uses the existing AccessTokenJwtUtil to generate the JWT.
+     * Calls AccessTokenJwtUtil.generateSignedJwt directly with raw parameters.
      */
     private String generateAccessToken(PreAuthCodeData codeData) {
         try {
-            IarSession session = new IarSession();
-
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
-            session.setIdentityData(claimsJson);
-            session.setScope(codeData.getCredentialConfigurationId());
-            session.setClientId(null);
-            session.setAuthSession("pre-auth-" + UUID.randomUUID().toString().substring(0, 8));
-            session.setTransactionId("pre-auth-txn-" + System.currentTimeMillis());
+            String scope = codeData.getCredentialConfigurationId();
             
             return accessTokenJwtUtil.generateSignedJwt(
-                session,
+                claimsJson,
+                scope,
+                null,  // clientId is null for pre-authorized code flow
                 oauthIssuer,
                 oauthAudience,
                 accessTokenExpirySeconds

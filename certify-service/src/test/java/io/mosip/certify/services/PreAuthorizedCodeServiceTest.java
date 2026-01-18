@@ -269,7 +269,7 @@ public class PreAuthorizedCodeServiceTest {
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
@@ -311,7 +311,7 @@ public class PreAuthorizedCodeServiceTest {
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
@@ -447,7 +447,7 @@ public class PreAuthorizedCodeServiceTest {
     }
 
     @Test
-    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotBlacklist() throws Exception {
+    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotMarkAsUsed() throws Exception {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", false);
 
         String preAuthCode = "test-pre-auth-code";
@@ -464,7 +464,7 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
