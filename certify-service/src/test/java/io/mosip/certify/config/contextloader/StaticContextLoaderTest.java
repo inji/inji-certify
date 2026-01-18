@@ -24,6 +24,7 @@ import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,13 +35,15 @@ class StaticContextLoaderTest {
     private HttpServer server;
     private int port;
     private AtomicInteger hits;
+    private ExecutorService executor;
 
     @BeforeEach
     void startServer() throws Exception {
         hits = new AtomicInteger(0);
 
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.setExecutor(Executors.newCachedThreadPool());
+        executor = Executors.newCachedThreadPool();
+        server.setExecutor(executor);
 
         // Valid JSON-LD context object
         server.createContext("/ctx", exchange -> {
@@ -81,7 +84,7 @@ class StaticContextLoaderTest {
 
     @AfterEach
     void stopServer() {
-        if (server != null) server.stop(0);
+        if (executor != null) executor.shutdownNow();
     }
 
     // ---------------- helpers ----------------
