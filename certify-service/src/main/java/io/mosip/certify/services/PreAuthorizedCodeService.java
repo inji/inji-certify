@@ -335,11 +335,12 @@ public class PreAuthorizedCodeService {
         try {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
             String scope = codeData.getCredentialConfigurationId();
+            String clientId = "pre-auth-" + UUID.randomUUID().toString();
             
             return accessTokenJwtUtil.generateSignedJwt(
                 claimsJson,
                 scope,
-                null,  // clientId is null for pre-authorized code flow
+                clientId,
                 oauthIssuer,
                 oauthAudience,
                 accessTokenExpirySeconds
