@@ -7,7 +7,6 @@ import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
-import io.mosip.certify.core.spi.CredentialConfigurationService;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,7 +17,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertThrows;
@@ -86,6 +84,10 @@ public class PreAuthorizedCodeServiceTest {
         supportedConfigs.put(CONFIG_ID, config);
         issuerMetadata.put(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED, supportedConfigs);
 
+        when(vciCacheService.getIssuerMetadata()).thenReturn(issuerMetadata);
+
+        // Mock ObjectMapper for JSON serialization
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"John Doe\"}");
         // Setup mock for credentialConfigurationService
         Map<String, CredentialConfigurationSupportedDTO> supportedDTOMap = new LinkedHashMap<>();
         CredentialConfigurationSupportedDTO configDTO = new CredentialConfigurationSupportedDTO();
@@ -276,9 +278,9 @@ public class PreAuthorizedCodeServiceTest {
     @Test
     public void exchangePreAuthorizedCode_Success() throws Exception {
         String preAuthCode = "test-pre-auth-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("name", "John Doe");
@@ -291,12 +293,12 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(false);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
-        TokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
+        OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
 
         Assert.assertNotNull(response);
         Assert.assertNotNull(response.getAccessToken());
@@ -307,8 +309,8 @@ public class PreAuthorizedCodeServiceTest {
         Assert.assertEquals(Integer.valueOf(300), response.getCNonceExpiresIn());
 
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
-        verify(vciCacheService).isCodeBlacklisted(preAuthCode);
-        verify(vciCacheService).blacklistPreAuthCode(preAuthCode);
+        verify(vciCacheService).isPreAuthCodeUsed(preAuthCode);
+        verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
         verify(vciCacheService).setTransaction(anyString(), any(Transaction.class));
     }
 
@@ -316,10 +318,10 @@ public class PreAuthorizedCodeServiceTest {
     public void exchangePreAuthorizedCode_WithTxCode_Success() throws Exception {
         String preAuthCode = "test-pre-auth-code";
         String txCode = "1234";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
-        tokenRequest.setTxCode(txCode);
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
+        tokenRequest.setTx_code(txCode);
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("name", "John Doe");
@@ -333,23 +335,23 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(false);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
-        TokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
+        OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
 
         Assert.assertNotNull(response);
         Assert.assertNotNull(response.getAccessToken());
-        verify(vciCacheService).blacklistPreAuthCode(preAuthCode);
+        verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
     }
 
     @Test
     public void exchangePreAuthorizedCode_UnsupportedGrantType_ThrowsCertifyException() {
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType("invalid_grant_type");
-        tokenRequest.setPreAuthorizedCode("test-code");
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type("invalid_grant_type");
+        tokenRequest.setPre_authorized_code("test-code");
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -367,9 +369,9 @@ public class PreAuthorizedCodeServiceTest {
 
     @Test
     public void exchangePreAuthorizedCode_InvalidPreAuthCode_ThrowsCertifyException() {
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode("invalid-code");
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code("invalid-code");
 
         when(vciCacheService.getPreAuthCodeData("invalid-code")).thenReturn(null);
 
@@ -382,9 +384,9 @@ public class PreAuthorizedCodeServiceTest {
     @Test
     public void exchangePreAuthorizedCode_ExpiredCode_ThrowsCertifyException() {
         String preAuthCode = "expired-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -393,7 +395,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(false);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -404,9 +406,9 @@ public class PreAuthorizedCodeServiceTest {
     @Test
     public void exchangePreAuthorizedCode_AlreadyUsedCode_ThrowsCertifyException() {
         String preAuthCode = "used-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -415,7 +417,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(true);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -426,10 +428,9 @@ public class PreAuthorizedCodeServiceTest {
     @Test
     public void exchangePreAuthorizedCode_TxCodeRequired_ThrowsCertifyException() {
         String preAuthCode = "test-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
-        // txCode not provided
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -439,7 +440,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(false);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -450,10 +451,10 @@ public class PreAuthorizedCodeServiceTest {
     @Test
     public void exchangePreAuthorizedCode_TxCodeMismatch_ThrowsCertifyException() {
         String preAuthCode = "test-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
-        tokenRequest.setTxCode("wrong-code");
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
+        tokenRequest.setTx_code("wrong-code");
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -463,7 +464,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isCodeBlacklisted(preAuthCode)).thenReturn(false);
+        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -472,13 +473,13 @@ public class PreAuthorizedCodeServiceTest {
     }
 
     @Test
-    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotBlacklist() throws Exception {
+    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotMarkAsUsed() throws Exception {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", false);
 
         String preAuthCode = "test-pre-auth-code";
-        TokenRequest tokenRequest = new TokenRequest();
-        tokenRequest.setGrantType(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPreAuthorizedCode(preAuthCode);
+        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
+        tokenRequest.setPre_authorized_code(preAuthCode);
 
         PreAuthCodeData codeData = PreAuthCodeData.builder()
                 .credentialConfigurationId(CONFIG_ID)
@@ -489,13 +490,13 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
-        TokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
+        OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
 
         Assert.assertNotNull(response);
-        verify(vciCacheService, never()).isCodeBlacklisted(anyString());
-        verify(vciCacheService, never()).blacklistPreAuthCode(anyString());
+        verify(vciCacheService, never()).isPreAuthCodeUsed(anyString());
+        verify(vciCacheService, never()).markPreAuthCodeAsUsed(anyString());
     }
 }

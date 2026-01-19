@@ -358,4 +358,108 @@ public class VCICacheServiceTest {
 
         assertEquals(null, result);
     }
+
+    // Tests for isPreAuthCodeUsed
+
+    @Test
+    public void isPreAuthCodeUsed_WhenUsed_ReturnsTrue() {
+        String code = "used-code";
+        String key = "used:" + code;
+        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
+        when(wrapper.get()).thenReturn(Boolean.TRUE);
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(wrapper);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(true, result);
+        verify(cache).get(key);
+    }
+
+    @Test
+    public void isPreAuthCodeUsed_WhenNotUsed_ReturnsFalse() {
+        String code = "valid-code";
+        String key = "used:" + code;
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(null);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(false, result);
+        verify(cache).get(key);
+    }
+
+    @Test
+    public void isPreAuthCodeUsed_WhenWrapperReturnsFalse_ReturnsFalse() {
+        String code = "code";
+        String key = "used:" + code;
+        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
+        when(wrapper.get()).thenReturn(Boolean.FALSE);
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(wrapper);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(false, result);
+    }
+
+    // Tests for markPreAuthCodeAsUsed
+
+    @Test
+    public void markPreAuthCodeAsUsed_Success() {
+        String code = "code-to-mark";
+        String usedKey = "used:" + code;
+        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+
+        vciCacheService.markPreAuthCodeAsUsed(code);
+
+        verify(cache).put(eq(usedKey), eq(true));
+        verify(cache).evict(eq(codeKey));
+    }
+
+    // Tests for setTransaction
+
+    @Test
+    public void setTransaction_ShouldReturnSameTransaction() {
+        String accessToken = "test-access-token";
+        io.mosip.certify.core.dto.Transaction transaction = io.mosip.certify.core.dto.Transaction.builder()
+                .credentialConfigurationId("test-config")
+                .cNonce("test-nonce")
+                .build();
+
+        io.mosip.certify.core.dto.Transaction result = vciCacheService.setTransaction(accessToken, transaction);
+
+        assertNotNull(result);
+        assertEquals(transaction, result);
+    }
+
+    // Tests for getTransactionByToken
+
+    @Test
+    public void getTransactionByToken_WhenTransactionExists_ReturnsTransaction() {
+        String accessToken = "test-access-token";
+        io.mosip.certify.core.dto.Transaction transaction = io.mosip.certify.core.dto.Transaction.builder()
+                .credentialConfigurationId("test-config")
+                .cNonce("test-nonce")
+                .build();
+        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
+        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(transaction);
+
+        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
+
+        assertEquals(transaction, result);
+        verify(cache).get(eq(accessToken), eq(io.mosip.certify.core.dto.Transaction.class));
+    }
+
+    @Test
+    public void getTransactionByToken_WhenNotFound_ReturnsNull() {
+        String accessToken = "non-existent-token";
+        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
+        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(null);
+
+        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
+
+        assertEquals(null, result);
+    }
 }
