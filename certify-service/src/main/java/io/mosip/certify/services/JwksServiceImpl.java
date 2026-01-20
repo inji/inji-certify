@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 
+import static io.mosip.certify.core.constants.Constants.CERTIFY_SERVICE_APP_ID;
 import static io.mosip.certify.core.constants.Constants.ED25519_REF_ID;
 
 @Service
@@ -62,6 +63,10 @@ public class JwksServiceImpl implements JwksService {
                 jwkList.addAll(getJwks(response));
             });
         });
+
+        // Add jwks for CERTIFY_SERVICE_APP_ID
+        AllCertificatesDataResponseDto responseDto = keymanagerService.getAllCertificates(CERTIFY_SERVICE_APP_ID, Optional.empty());
+        jwkList.addAll(getJwks(responseDto));
 
         Map<String, Object> response = new HashMap<>();
         response.put("keys", jwkList);
