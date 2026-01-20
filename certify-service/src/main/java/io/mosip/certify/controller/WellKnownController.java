@@ -37,11 +37,6 @@ public class WellKnownController {
         return vcIssuanceService.getDIDDocument();
     }
 
-    @GetMapping(value = "/oauth-authorization-server", produces = "application/json")
-    public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
-        return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
-    }
-
     @GetMapping(value = "/openid-configuration", produces = "application/json")
     public OAuthAuthorizationServerMetadataDTO getOpenIDConfiguration() {
         return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
