@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
-import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
@@ -15,7 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -27,12 +28,6 @@ public class PreAuthorizedCodeService {
 
     @Autowired
     private VCICacheService vciCacheService;
-
-    @Autowired
-    private AccessTokenJwtUtil accessTokenJwtUtil;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private AccessTokenJwtUtil accessTokenJwtUtil;
@@ -80,8 +75,6 @@ public class PreAuthorizedCodeService {
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     public String generatePreAuthorizedCode(PreAuthorizedRequest request) {
-        log.info("Generating pre-authorized code for credential configuration: {}", request.getCredentialConfigurationId());
-
         validatePreAuthorizedRequest(request);
         int expirySeconds = request.getExpiresIn() != null ? request.getExpiresIn() : defaultExpirySeconds;
         if (expirySeconds < minExpirySeconds || expirySeconds > maxExpirySeconds) {
@@ -109,10 +102,7 @@ public class PreAuthorizedCodeService {
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        // Map<String, Object> metadata = vciCacheService.getIssuerMetadata();
         CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
-        // Map<String, Object> supportedConfigs = (Map<String, Object>)
-        // metadata.get(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED);
         Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
                 .getCredentialConfigurationSupportedDTO();
 
@@ -199,6 +189,11 @@ public class PreAuthorizedCodeService {
 
     public CredentialOfferResponse getCredentialOffer(String offerId) {
         log.info("Retrieving credential offer for ID: {}", offerId);
+
+        // Trim offerId early to ensure validation and cache lookup use the same value
+        if (offerId != null) {
+            offerId = offerId.trim();
+        }
 
         if (!isValidUUID(offerId)) {
             log.error("Invalid offer_id format: {}", offerId);
