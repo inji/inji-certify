@@ -31,13 +31,4 @@ public class PreAuthorizedCodeController {
     public CredentialOfferResponse getCredentialOffer(@PathVariable("offer_id") String offerId) {
         return preAuthorizedCodeService.getCredentialOffer(offerId);
     }
-
-    @PostMapping(value = "/token", consumes = "application/x-www-form-urlencoded", produces = "application/json")
-    public TokenResponse token(
-            @RequestParam("grant_type") String grantType,
-            @RequestParam("pre-authorized_code") String preAuthorizedCode,
-            @RequestParam(value = "tx_code", required = false) String txCode) {
-        TokenRequest request = new TokenRequest(grantType, preAuthorizedCode, txCode);
-        return preAuthorizedCodeService.exchangePreAuthorizedCode(request);
-    }
 }
