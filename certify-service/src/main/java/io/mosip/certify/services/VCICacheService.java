@@ -1,6 +1,5 @@
 package io.mosip.certify.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.*;
 import jakarta.annotation.PostConstruct;
@@ -20,15 +19,10 @@ public class VCICacheService {
     @Autowired
     private CacheManager cacheManager;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Value("${spring.cache.type:simple}")
     private String cacheType;
 
-
     private static final String VCISSUANCE_CACHE = "vcissuance";
-    private static final String METADATA_KEY = "metadata";
 
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -111,19 +105,6 @@ public class VCICacheService {
     public Transaction setTransaction(String accessToken, Transaction vcIssuanceTransaction) {
         log.info("Caching VCI transaction for access token");
         return vcIssuanceTransaction;
-    }
-
-    /**
-     * Get VCI transaction by access token
-     * For use in credential endpoint
-     */
-    public Transaction getTransactionByToken(String accessToken) {
-        Cache cache = cacheManager.getCache(VCISSUANCE_CACHE);
-        if (cache == null) {
-            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
-            return null;
-        }
-        return cache.get(accessToken, Transaction.class);
     }
 
     /**

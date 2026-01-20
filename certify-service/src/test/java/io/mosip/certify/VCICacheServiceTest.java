@@ -195,35 +195,6 @@ public class VCICacheServiceTest {
         assertEquals(transaction, result);
     }
 
-    // Tests for getTransactionByToken
-
-    @Test
-    public void getTransactionByToken_WhenTransactionExists_ReturnsTransaction() {
-        String accessToken = "test-access-token";
-        io.mosip.certify.core.dto.Transaction transaction = io.mosip.certify.core.dto.Transaction.builder()
-                .credentialConfigurationId("test-config")
-                .cNonce("test-nonce")
-                .build();
-        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
-        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(transaction);
-
-        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
-
-        assertEquals(transaction, result);
-        verify(cache).get(eq(accessToken), eq(io.mosip.certify.core.dto.Transaction.class));
-    }
-
-    @Test
-    public void getTransactionByToken_WhenNotFound_ReturnsNull() {
-        String accessToken = "non-existent-token";
-        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
-        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(null);
-
-        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
-
-        assertEquals(null, result);
-    }
-
     // Tests for setASMetadata and getASMetadata
 
     private static final String AS_METADATA_CACHE = "asMetadataCache";
