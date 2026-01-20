@@ -128,49 +128,5 @@ public class OAuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
-
-    /**
-     * Get JWK set endpoint for OAuth access token verification
-     * 
-     * Cached for 5 minutes to improve performance and reduce load on keymanager service.
-     * Returns empty keys array if no valid certificates are found (standard OAuth behavior).
-     * Only successful responses (200 OK) are cached - errors are not cached to allow retries.
-     * 
-     * @return ResponseEntity with JWK set containing public keys
-     */
-    @GetMapping("/oauth/.well-known/jwks.json")
-    public ResponseEntity<Map<String, Object>> getJwks() {
-        log.info("Fetching JWK set for CERTIFY_SERVICE_APP_ID");
-        
-        try {
-            Map<String, Object> response = jwksService.getJwks();
-            
-            if (response != null && response.containsKey("keys")) {
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> jwkList = (List<Map<String, Object>>) response.get("keys");
-                if (jwkList != null && !jwkList.isEmpty()) {
-                    log.info("JWK set retrieved successfully with {} keys", jwkList.size());
-                    return ResponseEntity.ok(response);
-                } else {
-                    log.warn("JWK set is empty - no valid certificates available. This may cause token validation failures.");
-                    // Return empty keys array per OAuth 2.0 spec
-                    return ResponseEntity.ok(response);
-                }
-            } else {
-                log.error("Invalid response structure from getJwksInternal");
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("keys", Collections.emptyList());
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
-            }
-            
-        } catch (Exception e) {
-            log.error("Failed to retrieve JWK set from keymanager service", e);
-            // Return empty keys array per OAuth 2.0 spec - clients should handle this gracefully
-            // Do NOT cache error responses - allow retries
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("keys", Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
-        }
-    }
 }
 
