@@ -160,6 +160,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void discoverMetadata_CacheHit_ReturnsCachedMetadata() {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         AuthorizationServerMetadata cachedMetadata = AuthorizationServerMetadata.builder()
                 .issuer(EXTERNAL_SERVER_URL)
                 .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
@@ -175,6 +179,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void discoverMetadata_CacheMiss_DiscoverFromOIDC_Success() throws Exception {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
 
         String metadataJson = "{\"issuer\":\"" + EXTERNAL_SERVER_URL + "\",\"token_endpoint\":\"" + EXTERNAL_SERVER_URL + "/token\"}";
@@ -199,6 +207,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void discoverMetadata_AllAttemptsFail_ThrowsCertifyException() throws Exception {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         when(vciCacheService.getASMetadata(EXTERNAL_SERVER_URL)).thenReturn(null);
 
         ResponseEntity<String> failedResponse = new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
@@ -214,6 +226,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void getTokenEndpoint_Success() {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
                 .issuer(EXTERNAL_SERVER_URL)
                 .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
@@ -230,6 +246,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void supportsPreAuthorizedCodeGrant_Supported_ReturnsTrue() {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
                 .issuer(EXTERNAL_SERVER_URL)
                 .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
@@ -245,6 +265,10 @@ public class AuthorizationServerServiceTest {
 
     @Test
     public void supportsPreAuthorizedCodeGrant_NotSupported_ReturnsFalse() {
+        // Configure external server so validateServerConfigured passes
+        ReflectionTestUtils.setField(authorizationServerService, "externalServersConfig", EXTERNAL_SERVER_URL);
+        authorizationServerService.initialize();
+
         AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
                 .issuer(EXTERNAL_SERVER_URL)
                 .tokenEndpoint(EXTERNAL_SERVER_URL + "/token")
