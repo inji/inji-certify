@@ -43,27 +43,15 @@ public class AuthorizationServerService {
     @Autowired
     private RestTemplate restTemplate;
 
-    /**
-     * Inject the merged OAuthAuthorizationServerMetadataService to get internal issuer URL.
-     * This avoids duplicating the mosip.certify.oauth.issuer property.
-     */
     @Autowired
     private OAuthAuthorizationServerMetadataService oAuthMetadataService;
 
     @Value("${mosip.certify.authorization.discovery.retry-count:3}")
     private int retryCount;
 
-    /**
-     * Optional: Additional external authorization server URLs (comma-separated).
-     * These are in addition to the primary server from OAuthAuthorizationServerMetadataService.
-     */
     @Value("${mosip.certify.authorization.external-servers:}")
     private String externalServersConfig;
 
-    /**
-     * Default authorization server to use when no specific mapping exists.
-     * If not set, uses the primary server (from OAuthAuthorizationServerMetadataService).
-     */
     @Value("${mosip.certify.authorization.default-server:}")
     private String defaultAuthServer;
 
