@@ -180,10 +180,10 @@ public class AuthorizationServerService {
         }
 
         // Try OIDC config first (per RFC 8414 compatibility notes), then OAuth AS discovery
-        AuthorizationServerMetadata metadata = tryDiscoveryEndpoint(serverUrl, Constants.WELL_KNOWN_OIDC_CONFIG);
+        AuthorizationServerMetadata metadata = tryDiscoveryEndpoint(serverUrl, "/.well-known/openid-configuration");
         if (metadata == null) {
             log.info("OIDC configuration discovery failed, trying OAuth AS endpoint");
-            metadata = tryDiscoveryEndpoint(serverUrl, Constants.WELL_KNOWN_OAUTH_AS);
+            metadata = tryDiscoveryEndpoint(serverUrl, "/.well-known/oauth-authorization-server");
         }
 
         if (metadata == null) {
