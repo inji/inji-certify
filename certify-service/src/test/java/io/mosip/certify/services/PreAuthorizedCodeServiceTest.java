@@ -6,6 +6,7 @@ import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import org.junit.Assert;
 import org.junit.Before;
@@ -17,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertThrows;
@@ -83,8 +85,6 @@ public class PreAuthorizedCodeServiceTest {
         config.put(Constants.CLAIMS, requiredClaims);
         supportedConfigs.put(CONFIG_ID, config);
         issuerMetadata.put(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED, supportedConfigs);
-
-        when(vciCacheService.getIssuerMetadata()).thenReturn(issuerMetadata);
 
         // Mock ObjectMapper for JSON serialization
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"John Doe\"}");

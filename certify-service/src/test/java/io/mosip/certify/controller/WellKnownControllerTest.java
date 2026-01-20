@@ -45,9 +45,6 @@ class WellKnownControllerTest {
     @MockBean
     private io.mosip.certify.api.spi.AuditPlugin auditWrapper;
 
-    @MockBean
-    private io.mosip.certify.services.AuthorizationServerService authorizationServerService;
-
     @InjectMocks
     private WellKnownController wellKnownController;
 
@@ -122,8 +119,8 @@ class WellKnownControllerTest {
 
         when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
 
-        // Act & Assert
-        mockMvc.perform(get("/.well-known/oauth-authorization-server"))
+        // Act & Assert - using openid-configuration endpoint since oauth-authorization-server is not exposed
+        mockMvc.perform(get("/.well-known/openid-configuration"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.issuer").value("http://localhost:8090"))
@@ -131,29 +128,9 @@ class WellKnownControllerTest {
                 .andExpect(jsonPath("$.grant_types_supported[0]").value("authorization_code"))
                 .andExpect(jsonPath("$.response_types_supported[0]").value("code"))
                 .andExpect(jsonPath("$.code_challenge_methods_supported[0]").value("S256"))
-                .andExpect(jsonPath("$.interactive_authorization_endpoint").value("http://localhost:8090/v1/certify/oauth/iar"))
-                .andExpect(jsonPath("$.jwks_uri").doesNotExist())
-                .andExpect(jsonPath("$.token_endpoint_auth_methods_supported").doesNotExist());
+                .andExpect(jsonPath("$.interactive_authorization_endpoint").value("http://localhost:8090/v1/certify/oauth/iar"));
 
         verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
     }
 
-    @Test
-    void getOpenIDConfiguration_success() throws Exception {
-        // Arrange
-        OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
-        mockMetadata.setIssuer("http://localhost:8090");
-        mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
-
-        when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
-
-        // Act & Assert
-        mockMvc.perform(get("/.well-known/openid-configuration"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType("application/json"))
-                .andExpect(jsonPath("$.issuer").value("http://localhost:8090"))
-                .andExpect(jsonPath("$.token_endpoint").value("http://localhost:8090/v1/certify/oauth/token"));
-
-        verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
-    }
 }

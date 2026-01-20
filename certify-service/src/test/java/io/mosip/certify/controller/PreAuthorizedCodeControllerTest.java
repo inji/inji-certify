@@ -5,8 +5,6 @@ import io.mosip.certify.api.spi.AuditPlugin;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
 import io.mosip.certify.core.dto.PreAuthorizedRequest;
-import io.mosip.certify.core.dto.TokenRequest;
-import io.mosip.certify.core.dto.TokenResponse;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.constants.ErrorConstants;
