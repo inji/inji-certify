@@ -231,7 +231,6 @@
             <version>0.8.0-RC1</version>
             <scope>compile</scope>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/io.mosip.certify/mock-certify-plugin -->
         <dependency>
             <groupId>io.mosip.kernel</groupId>
             <artifactId>kernel-biometrics-api</artifactId>
