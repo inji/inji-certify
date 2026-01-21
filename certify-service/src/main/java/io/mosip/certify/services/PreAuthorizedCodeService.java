@@ -38,9 +38,6 @@ public class PreAuthorizedCodeService {
     @Autowired
     private CredentialConfigurationService credentialConfigurationService;
 
-    @Autowired
-    private AuthorizationServerService authServerService;
-
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
 
@@ -244,7 +241,6 @@ public class PreAuthorizedCodeService {
         Grant.PreAuthorizedCodeGrantType grant = Grant.PreAuthorizedCodeGrantType.builder()
                 .preAuthorizedCode(preAuthCode)
                 .txCode(StringUtils.hasText(txnCode) ? buildTxCodeInfo(txnCode) : null).build();
-        String authorizationServer = authServerService.getAuthorizationServerForCredentialConfig(configId);
 
         Grant grants = Grant.builder().preAuthorizedCode(grant).build();
 
@@ -252,7 +248,6 @@ public class PreAuthorizedCodeService {
                 .credentialIssuer(issuerIdentifier)
                 .credentialConfigurationIds(Collections.singletonList(configId))
                 .grants(grants)
-                .authorizationServer(authorizationServer)
                 .build();
     }
 

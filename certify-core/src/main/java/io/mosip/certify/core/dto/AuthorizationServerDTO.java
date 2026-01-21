@@ -14,12 +14,12 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthorizationServerConfig implements Serializable {
+public class AuthorizationServerDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String serverId;
     private String serverUrl;
     private String wellKnownUrl;
     private long metadataCachedAt;
-    private AuthorizationServerMetadata metadata;
+    private OAuthAuthorizationServerMetadataDTO metadata;
 }

@@ -45,10 +45,6 @@ public class PreAuthorizedCodeServiceTest {
     @Mock
     private CredentialConfigurationService credentialConfigurationService;
 
-    @Mock
-    private AuthorizationServerService authServerService;
-
-
     private PreAuthorizedRequest request;
     private Map<String, Object> issuerMetadata;
     private Map<String, Object> supportedConfigs;
@@ -99,9 +95,6 @@ public class PreAuthorizedCodeServiceTest {
 
         // KEY FIX: Mock the credentialConfigurationService to return metadataDTO
         when(credentialConfigurationService.fetchCredentialIssuerMetadata(anyString())).thenReturn(metadataDTO);
-
-        // Setup mock for authServerService
-        when(authServerService.getAuthorizationServerForCredentialConfig(anyString())).thenReturn(null);
     }
 
     @Test

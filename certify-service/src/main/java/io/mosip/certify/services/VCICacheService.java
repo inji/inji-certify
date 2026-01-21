@@ -110,7 +110,7 @@ public class VCICacheService {
     /**
      * Cache authorization server metadata
      */
-    public void setASMetadata(String serverUrl, AuthorizationServerMetadata metadata) {
+    public void setASMetadata(String serverUrl, OAuthAuthorizationServerMetadataDTO metadata) {
         String key = Constants.AS_METADATA_PREFIX + serverUrl;
         Cache cache = cacheManager.getCache("asMetadataCache");
         if (cache == null) {
@@ -123,7 +123,7 @@ public class VCICacheService {
     /**
      * Get cached authorization server metadata
      */
-    public AuthorizationServerMetadata getASMetadata(String serverUrl) {
+    public OAuthAuthorizationServerMetadataDTO getASMetadata(String serverUrl) {
         String key = Constants.AS_METADATA_PREFIX + serverUrl;
         Cache cache = cacheManager.getCache("asMetadataCache");
         if (cache == null) {
@@ -131,7 +131,7 @@ public class VCICacheService {
             return null;
         }
         Cache.ValueWrapper wrapper = cache.get(key);
-        return wrapper != null ? (AuthorizationServerMetadata) wrapper.get() : null;
+        return wrapper != null ? (OAuthAuthorizationServerMetadataDTO) wrapper.get() : null;
     }
 
     public boolean isPreAuthCodeUsed(String code) {
