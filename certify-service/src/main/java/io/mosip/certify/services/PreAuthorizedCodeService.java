@@ -3,6 +3,7 @@ package io.mosip.certify.services;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
@@ -117,7 +118,7 @@ public class PreAuthorizedCodeService {
         String format = config.getFormat();
         Set<String> allowedClaimKeys;
 
-        if ("ldp_vc".equals(format)) {
+        if (VCFormats.LDP_VC.equals(format)) {
             // For ldp_vc: claims are defined in credential_definition.credentialSubject
             CredentialDefinition credDef = config.getCredentialDefinition();
             if (credDef != null && credDef.getCredentialSubject() != null) {
