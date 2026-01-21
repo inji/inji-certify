@@ -16,7 +16,9 @@ TokenExchange:
       output: '{
           "token_type": "Bearer",
           "access_token": "",
-          "c_nonce": ""
+          "expires_in": 0,
+          "c_nonce": "",
+          "c_nonce_expires_in": 0
       }'
 
    InjiCertify_TokenExchange_WithTxCode_Smoke_sid:
@@ -34,5 +36,9 @@ TokenExchange:
           "tx_code": "abc12345"
       }'
       output: '{
-          "token_type": "Bearer"
+          "token_type": "Bearer",
+          "access_token": "",
+          "expires_in": 0,
+          "c_nonce": "",
+          "c_nonce_expires_in": 0
       }'
