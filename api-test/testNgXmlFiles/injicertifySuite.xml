@@ -1378,4 +1378,11 @@
 			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="TokenExchangeNegative">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/TokenExchange/TokenExchangeNegative.yml" />
+		<classes>
+			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
 </suite>

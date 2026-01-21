@@ -1,6 +1,6 @@
 TokenExchange:
    InjiCertify_TokenExchange_Valid_Smoke_sid:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      endPoint: $INJICERTIFYBASEURL$/oauth/token
       uniqueIdentifier: TC_preauth_TokenExchange_01
       description: Exchange pre-authorized code for access token
       role: resident
@@ -20,7 +20,7 @@ TokenExchange:
       }'
 
    InjiCertify_TokenExchange_WithTxCode_Smoke_sid:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/token
+      endPoint: $INJICERTIFYBASEURL$/oauth/token
       uniqueIdentifier: TC_preauth_TokenExchange_02
       description: Exchange pre-authorized code with alphanumeric tx_code
       role: resident
