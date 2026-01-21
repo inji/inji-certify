@@ -36,9 +36,6 @@ class WellKnownControllerTest {
     @MockBean
     private ParsedAccessToken parsedAccessToken;
 
-    @MockBean
-    private io.mosip.certify.api.spi.AuditPlugin auditWrapper;
-
     @InjectMocks
     private WellKnownController wellKnownController;
 
@@ -67,10 +64,9 @@ class WellKnownControllerTest {
 
     @Test
     void getCredentialIssuerMetadata_unsupportedVersion_returnsError() throws Exception {
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("unsupported"))
-                .thenThrow(new CertifyException("UNSUPPORTED_VERSION", "Unsupported version"));
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata("unsupported")).thenThrow( new CertifyException("UNSUPPORTED_VERSION", "Unsupported version"));
         mockMvc.perform(get("/.well-known/openid-credential-issuer?version=unsupported"))
-                .andExpect(status().isOk()) // ExceptionHandler returns 200 with errors in body for internal endpoints
+                .andExpect(status().is2xxSuccessful())
                 .andExpect(jsonPath("$.errors[0].errorCode").value("UNSUPPORTED_VERSION"));
     }
 
@@ -93,10 +89,9 @@ class WellKnownControllerTest {
 
     @Test
     void getDIDDocument_serviceThrowsException_returnsError() throws Exception {
-        when(vcIssuanceService.getDIDDocument())
-                .thenThrow(new InvalidRequestException("unsupported_in_current_plugin_mode"));
+        when(vcIssuanceService.getDIDDocument()).thenThrow(new InvalidRequestException("unsupported_in_current_plugin_mode"));
         mockMvc.perform(get("/.well-known/did.json"))
-                .andExpect(status().isOk()) // ExceptionHandler returns 200 with errors in body for internal endpoints
+                .andExpect(status().is2xxSuccessful())
                 .andExpect(jsonPath("$.errors[0].errorCode").value("unsupported_in_current_plugin_mode"));
     }
 }
