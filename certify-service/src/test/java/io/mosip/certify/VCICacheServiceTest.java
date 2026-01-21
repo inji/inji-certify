@@ -2,8 +2,8 @@ package io.mosip.certify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.dto.AuthorizationServerMetadata;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
+import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.dto.PreAuthCodeData;
 import io.mosip.certify.core.dto.VCIssuanceTransaction;
 import io.mosip.certify.services.VCICacheService;
@@ -202,7 +202,7 @@ public class VCICacheServiceTest {
     @Test
     public void setASMetadata_Success() {
         String serverUrl = "https://auth.example.com";
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
+        OAuthAuthorizationServerMetadataDTO metadata = OAuthAuthorizationServerMetadataDTO.builder()
                 .issuer(serverUrl)
                 .tokenEndpoint(serverUrl + "/token")
                 .build();
@@ -220,13 +220,13 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(null);
 
         vciCacheService.setASMetadata("https://auth.example.com",
-                AuthorizationServerMetadata.builder().build());
+                OAuthAuthorizationServerMetadataDTO.builder().build());
     }
 
     @Test
     public void getASMetadata_CacheHit_ReturnsMetadata() {
         String serverUrl = "https://auth.example.com";
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
+        OAuthAuthorizationServerMetadataDTO metadata = OAuthAuthorizationServerMetadataDTO.builder()
                 .issuer(serverUrl)
                 .tokenEndpoint(serverUrl + "/token")
                 .build();
@@ -236,7 +236,7 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(cache);
         when(cache.get(Constants.AS_METADATA_PREFIX + serverUrl)).thenReturn(wrapper);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata(serverUrl);
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata(serverUrl);
 
         assertEquals(metadata, result);
         verify(cache).get(Constants.AS_METADATA_PREFIX + serverUrl);
@@ -249,7 +249,7 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(cache);
         when(cache.get(Constants.AS_METADATA_PREFIX + serverUrl)).thenReturn(null);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata(serverUrl);
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata(serverUrl);
 
         assertEquals(null, result);
     }
@@ -258,7 +258,7 @@ public class VCICacheServiceTest {
     public void getASMetadata_WhenCacheIsNull_ReturnsNull() {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(null);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata("https://auth.example.com");
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata("https://auth.example.com");
 
         assertEquals(null, result);
     }

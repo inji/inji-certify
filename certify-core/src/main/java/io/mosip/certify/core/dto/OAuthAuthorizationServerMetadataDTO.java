@@ -6,6 +6,8 @@
 package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -17,7 +19,9 @@ import java.util.List;
  * uses browser-less flows via interactive_authorization_endpoint.
  */
 @Data
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class OAuthAuthorizationServerMetadataDTO {
 
     /**
