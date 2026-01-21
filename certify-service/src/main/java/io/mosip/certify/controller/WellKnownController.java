@@ -30,4 +30,3 @@ public class WellKnownController {
         return vcIssuanceService.getDIDDocument();
     }
 }
-

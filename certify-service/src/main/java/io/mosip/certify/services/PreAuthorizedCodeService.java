@@ -3,16 +3,21 @@ package io.mosip.certify.services;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -31,6 +36,9 @@ public class PreAuthorizedCodeService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CredentialConfigurationService credentialConfigurationService;
+
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
 
@@ -46,14 +54,11 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.domain.url}")
     private String domainUrl;
 
-    @Value("${mosip.certify.access-token.expiry-seconds:600}")
+    @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
 
-    @Value("${mosip.certify.c-nonce.expiry-seconds:300}")
+    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
     private int cNonceExpirySeconds;
-
-    @Value("${mosip.certify.pre-auth-code.single-use:true}")
-    private boolean singleUsePreAuthCode;
 
     @Value("${mosip.certify.oauth.issuer}")
     private String oauthIssuer;
@@ -65,12 +70,8 @@ public class PreAuthorizedCodeService {
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
     public String generatePreAuthorizedCode(PreAuthorizedRequest request) {
-        log.info("Generating pre-authorized code for credential configuration: {}", request.getCredentialConfigurationId());
-
         validatePreAuthorizedRequest(request);
-
         int expirySeconds = request.getExpiresIn() != null ? request.getExpiresIn() : defaultExpirySeconds;
-
         if (expirySeconds < minExpirySeconds || expirySeconds > maxExpirySeconds) {
             log.error("expires_in {} out of bounds [{}, {}]", expirySeconds, minExpirySeconds, maxExpirySeconds);
             throw new InvalidRequestException(ErrorConstants.INVALID_EXPIRY_RANGE);
@@ -92,37 +93,61 @@ public class PreAuthorizedCodeService {
         CredentialOfferResponse offerResponse = buildCredentialOffer(request.getCredentialConfigurationId(), preAuthCode, request.getTxCode());
         vciCacheService.setCredentialOffer(offerId, offerResponse);
 
-        String offerUri = buildCredentialOfferUri(offerId);
-        log.info("Successfully generated pre-authorized code with offer ID: {}", offerId);
-
-        return offerUri;
+        return buildCredentialOfferUri(offerId);
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        Map<String, Object> metadata = vciCacheService.getIssuerMetadata();
-        Map<String, Object> supportedConfigs = (Map<String, Object>) metadata
-                .get(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED);
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+        Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
+                .getCredentialConfigurationSupportedDTO();
 
         if (supportedConfigs == null || !supportedConfigs.containsKey(request.getCredentialConfigurationId())) {
             log.error("Invalid credential configuration ID: {}", request.getCredentialConfigurationId());
             throw new InvalidRequestException(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID);
         }
 
-        Map<String, Object> config = (Map<String, Object>) supportedConfigs.get(request.getCredentialConfigurationId());
-        Map<String, Object> requiredClaims = (Map<String, Object>) config.get(Constants.CLAIMS);
-
-        validateClaims(requiredClaims, request.getClaims());
+        CredentialConfigurationSupportedDTO config = supportedConfigs.get(request.getCredentialConfigurationId());
+        validateClaims(config, request.getClaims());
     }
 
-    private void validateClaims(Map<String, Object> requiredClaims, Map<String, Object> providedClaims) {
-        if (requiredClaims == null || requiredClaims.isEmpty()) {
-            return;
-        }
-
+    private void validateClaims(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
         if (providedClaims == null) {
             providedClaims = Collections.emptyMap();
         }
 
+        String format = config.getFormat();
+        Set<String> allowedClaimKeys;
+
+        if (VCFormats.LDP_VC.equals(format)) {
+            // For ldp_vc: claims are defined in credential_definition.credentialSubject
+            CredentialDefinition credDef = config.getCredentialDefinition();
+            if (credDef != null && credDef.getCredentialSubject() != null) {
+                allowedClaimKeys = credDef.getCredentialSubject().keySet();
+            } else {
+                return; // No claims defined, allow any
+            }
+            // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
+            List<String> unknownClaims = new ArrayList<>();
+            for (String providedClaim : providedClaims.keySet()) {
+                if (!allowedClaimKeys.contains(providedClaim)) {
+                    unknownClaims.add(providedClaim);
+                }
+            }
+            if (!unknownClaims.isEmpty()) {
+                log.error("Unknown claims provided: {}", unknownClaims);
+                throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
+            }
+        } else {
+            // For mso_mdoc, vc+sd-jwt: use top-level claims with mandatory checking
+            Map<String, Object> requiredClaims = config.getClaims();
+            if (requiredClaims == null || requiredClaims.isEmpty()) {
+                return;
+            }
+            validateClaimsWithMandatory(requiredClaims, providedClaims);
+        }
+    }
+
+    private void validateClaimsWithMandatory(Map<String, Object> requiredClaims, Map<String, Object> providedClaims) {
         List<String> missingClaims = new ArrayList<>();
         List<String> unknownClaims = new ArrayList<>();
 
@@ -159,6 +184,11 @@ public class PreAuthorizedCodeService {
 
     public CredentialOfferResponse getCredentialOffer(String offerId) {
         log.info("Retrieving credential offer for ID: {}", offerId);
+
+        // Trim offerId early to ensure validation and cache lookup use the same value
+        if (offerId != null) {
+            offerId = offerId.trim();
+        }
 
         if (!isValidUUID(offerId)) {
             log.error("Invalid offer_id format: {}", offerId);
@@ -206,7 +236,7 @@ public class PreAuthorizedCodeService {
     }
 
     private CredentialOfferResponse buildCredentialOffer(String configId, String preAuthCode, String txnCode) {
-        Grant.PreAuthorizedCodeGrant grant = Grant.PreAuthorizedCodeGrant.builder()
+        Grant.PreAuthorizedCodeGrantType grant = Grant.PreAuthorizedCodeGrantType.builder()
                 .preAuthorizedCode(preAuthCode)
                 .txCode(StringUtils.hasText(txnCode) ? buildTxCodeInfo(txnCode) : null).build();
 
@@ -215,7 +245,8 @@ public class PreAuthorizedCodeService {
         return CredentialOfferResponse.builder()
                 .credentialIssuer(issuerIdentifier)
                 .credentialConfigurationIds(Collections.singletonList(configId))
-                .grants(grants).build();
+                .grants(grants)
+                .build();
     }
 
     private TxCode buildTxCodeInfo(String txnCode) {
@@ -298,7 +329,7 @@ public class PreAuthorizedCodeService {
         }
 
         // Check if already used
-        if (singleUsePreAuthCode && vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
+        if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
         }
@@ -320,11 +351,8 @@ public class PreAuthorizedCodeService {
             log.error("Transaction code mismatch");
             throw new CertifyException("tx_code_mismatch", "Transaction code does not match");
         }
-        // Mark code as used if single-use
-        if (singleUsePreAuthCode) {
-            vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
-            log.info("Pre-authorized code marked as used");
-        }
+        // Mark code as used
+        vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
     }
 
     /**
@@ -336,7 +364,7 @@ public class PreAuthorizedCodeService {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
             String scope = codeData.getCredentialConfigurationId();
             String clientId = "pre-auth-" + UUID.randomUUID().toString();
-            
+
             return accessTokenJwtUtil.generateSignedJwt(
                 claimsJson,
                 scope,

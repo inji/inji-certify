@@ -6,6 +6,7 @@ import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import org.junit.Assert;
 import org.junit.Before;
@@ -17,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.Assert.assertThrows;
@@ -40,10 +42,14 @@ public class PreAuthorizedCodeServiceTest {
     @InjectMocks
     private PreAuthorizedCodeService preAuthorizedCodeService;
 
+    @Mock
+    private CredentialConfigurationService credentialConfigurationService;
+
     private PreAuthorizedRequest request;
     private Map<String, Object> issuerMetadata;
     private Map<String, Object> supportedConfigs;
     private Map<String, Object> config;
+    private CredentialIssuerMetadataDTO metadataDTO;
     private final String CONFIG_ID = "test-config";
 
     @Before
@@ -55,7 +61,6 @@ public class PreAuthorizedCodeServiceTest {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "domainUrl", "https://domain.com/");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "accessTokenExpirySeconds", 600);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "cNonceExpirySeconds", 300);
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", true);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthIssuer", "https://oauth.issuer.com");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthAudience", "https://oauth.audience.com");
 
@@ -76,10 +81,19 @@ public class PreAuthorizedCodeServiceTest {
         supportedConfigs.put(CONFIG_ID, config);
         issuerMetadata.put(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED, supportedConfigs);
 
-        when(vciCacheService.getIssuerMetadata()).thenReturn(issuerMetadata);
-
         // Mock ObjectMapper for JSON serialization
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"John Doe\"}");
+        // Setup mock for credentialConfigurationService
+        Map<String, CredentialConfigurationSupportedDTO> supportedDTOMap = new LinkedHashMap<>();
+        CredentialConfigurationSupportedDTO configDTO = new CredentialConfigurationSupportedDTO();
+        configDTO.setClaims(requiredClaims);
+        supportedDTOMap.put(CONFIG_ID, configDTO);
+
+        metadataDTO = mock(CredentialIssuerMetadataDTO.class);
+        when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(supportedDTOMap);
+
+        // KEY FIX: Mock the credentialConfigurationService to return metadataDTO
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata(anyString())).thenReturn(metadataDTO);
     }
 
     @Test
@@ -106,8 +120,12 @@ public class PreAuthorizedCodeServiceTest {
     public void generatePreAuthorizedCode_Failure_If_InvalidConfigId() {
         request.setCredentialConfigurationId("invalid-id");
 
+        // Update metadata mock to not include invalid-id
+        Map<String, CredentialConfigurationSupportedDTO> emptyMap = new LinkedHashMap<>();
+        when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(emptyMap);
+
         InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
+                        () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
 
         Assert.assertEquals(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID, exception.getMessage());
     }
@@ -444,33 +462,5 @@ public class PreAuthorizedCodeServiceTest {
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals("tx_code_mismatch", exception.getErrorCode());
-    }
-
-    @Test
-    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotMarkAsUsed() throws Exception {
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", false);
-
-        String preAuthCode = "test-pre-auth-code";
-        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
-        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPre_authorized_code(preAuthCode);
-
-        PreAuthCodeData codeData = PreAuthCodeData.builder()
-                .credentialConfigurationId(CONFIG_ID)
-                .claims(new HashMap<>())
-                .createdAt(System.currentTimeMillis())
-                .expiresAt(System.currentTimeMillis() + 600000)
-                .build();
-
-        when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
-                .thenReturn("test.jwt.token");
-
-        OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
-
-        Assert.assertNotNull(response);
-        verify(vciCacheService, never()).isPreAuthCodeUsed(anyString());
-        verify(vciCacheService, never()).markPreAuthCodeAsUsed(anyString());
     }
 }

@@ -70,6 +70,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     @Value("#{${mosip.certify.signature-algo.key-alias-mapper}}")
     private Map<String, List<List<String>>> keyAliasMapper;
 
+    @Value("#{${mosip.certify.credential-config.as-mapping:{}}}")
+    private Map<String, String> authorizationServerMapping;
+
+
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
 
     @Override
@@ -284,7 +288,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     });
             credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
             credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
+            List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
+            credentialIssuerMetadata.setAuthorizationServers(authServers);
             String credentialEndpoint = credentialIssuer + servletPath + "/issuance" + (!version.equals("latest") ? "/" + version : "") + "/credential";
             credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
             credentialIssuerMetadata.setDisplay(issuerDisplay);
@@ -302,7 +307,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     });
             credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap); // Use a different setter for vd12
             credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
+            // credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
+            List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
+            credentialIssuerMetadata.setAuthorizationServers(authServers);
             String credentialEndpoint = credentialIssuer + servletPath + "/issuance/" + version + "/credential";
             credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
             credentialIssuerMetadata.setDisplay(issuerDisplay);
@@ -321,7 +328,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     });
             credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedList); // Use a different setter for vd11
             credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
+            List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
+            credentialIssuerMetadata.setAuthorizationServers(authServers);
             String credentialEndpoint = credentialIssuer + servletPath + "/issuance/" + version + "/credential";
             credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
             credentialIssuerMetadata.setDisplay(issuerDisplay);
