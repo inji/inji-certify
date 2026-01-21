@@ -53,14 +53,11 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.domain.url}")
     private String domainUrl;
 
-    @Value("${mosip.certify.access-token.expiry-seconds:600}")
+    @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
 
-    @Value("${mosip.certify.c-nonce.expiry-seconds:300}")
+    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
     private int cNonceExpirySeconds;
-
-    @Value("${mosip.certify.pre-auth-code.single-use:true}")
-    private boolean singleUsePreAuthCode;
 
     @Value("${mosip.certify.oauth.issuer}")
     private String oauthIssuer;
@@ -331,7 +328,7 @@ public class PreAuthorizedCodeService {
         }
 
         // Check if already used
-        if (singleUsePreAuthCode && vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
+        if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
         }
@@ -353,11 +350,8 @@ public class PreAuthorizedCodeService {
             log.error("Transaction code mismatch");
             throw new CertifyException("tx_code_mismatch", "Transaction code does not match");
         }
-        // Mark code as used if single-use
-        if (singleUsePreAuthCode) {
-            vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
-            log.info("Pre-authorized code marked as used");
-        }
+        // Mark code as used
+        vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
     }
 
     /**
