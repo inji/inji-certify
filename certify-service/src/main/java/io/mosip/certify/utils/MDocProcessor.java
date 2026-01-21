@@ -457,9 +457,11 @@ public class MDocProcessor {
      */
     public byte[] signMSO(Map<String, Object> mso, String appID, String refID, String signAlgorithm) throws Exception {
         try {
+            byte[] msoCbor = encodeToCBOR(mso);
+
             CoseSignRequestDto signRequest = new CoseSignRequestDto();
-            byte[] msoStringBytes = objectMapper.writeValueAsString(mso).getBytes(StandardCharsets.UTF_8);
-            String base64UrlPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(msoStringBytes);
+
+            String base64UrlPayload = Base64.getUrlEncoder().withoutPadding().encodeToString(msoCbor);
 
             signRequest.setPayload(base64UrlPayload);
             signRequest.setApplicationId(appID);
@@ -469,6 +471,9 @@ public class MDocProcessor {
             Map<String, Object> protectedHeader = new HashMap<>();
             protectedHeader.put("x5c", true);
             signRequest.setProtectedHeader(protectedHeader);
+
+            // Set unprotected header in request
+            signRequest.setUnprotectedHeader(Map.of("includeCertificate", true));
 
             String hexSignedData = coseSignatureService.coseSign1(signRequest).getSignedData();
             return hexStringToByteArray(hexSignedData);
