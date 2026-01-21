@@ -61,7 +61,6 @@ public class PreAuthorizedCodeServiceTest {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "domainUrl", "https://domain.com/");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "accessTokenExpirySeconds", 600);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "cNonceExpirySeconds", 300);
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", true);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthIssuer", "https://oauth.issuer.com");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthAudience", "https://oauth.audience.com");
 
@@ -463,33 +462,5 @@ public class PreAuthorizedCodeServiceTest {
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals("tx_code_mismatch", exception.getErrorCode());
-    }
-
-    @Test
-    public void exchangePreAuthorizedCode_SingleUseDisabled_DoesNotMarkAsUsed() throws Exception {
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "singleUsePreAuthCode", false);
-
-        String preAuthCode = "test-pre-auth-code";
-        OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
-        tokenRequest.setGrant_type(Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE);
-        tokenRequest.setPre_authorized_code(preAuthCode);
-
-        PreAuthCodeData codeData = PreAuthCodeData.builder()
-                .credentialConfigurationId(CONFIG_ID)
-                .claims(new HashMap<>())
-                .createdAt(System.currentTimeMillis())
-                .expiresAt(System.currentTimeMillis() + 600000)
-                .build();
-
-        when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
-                .thenReturn("test.jwt.token");
-
-        OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
-
-        Assert.assertNotNull(response);
-        verify(vciCacheService, never()).isPreAuthCodeUsed(anyString());
-        verify(vciCacheService, never()).markPreAuthCodeAsUsed(anyString());
     }
 }
