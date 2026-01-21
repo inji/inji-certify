@@ -2,16 +2,22 @@ package io.mosip.certify.services;
 
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.entity.IarSession;
+import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -25,10 +31,13 @@ public class PreAuthorizedCodeService {
     private VCICacheService vciCacheService;
 
     @Autowired
-    private CredentialConfigurationService credentialConfigurationService;
+    private AccessTokenJwtUtil accessTokenJwtUtil;
 
     @Autowired
-    private AuthorizationServerService authServerService;
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private CredentialConfigurationService credentialConfigurationService;
 
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
@@ -45,14 +54,17 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.domain.url}")
     private String domainUrl;
 
-    @Value("${mosip.certify.access-token.expiry-seconds:600}")
+    @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
 
-    @Value("${mosip.certify.c-nonce.expiry-seconds:300}")
+    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
     private int cNonceExpirySeconds;
 
-    @Value("${mosip.certify.pre-auth-code.single-use:true}")
-    private boolean singleUsePreAuthCode;
+    @Value("${mosip.certify.oauth.issuer}")
+    private String oauthIssuer;
+
+    @Value("${mosip.certify.oauth.access-token.audience}")
+    private String oauthAudience;
 
     private static final SecureRandom secureRandom = new SecureRandom();
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -85,10 +97,7 @@ public class PreAuthorizedCodeService {
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        // Map<String, Object> metadata = vciCacheService.getIssuerMetadata();
         CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
-        // Map<String, Object> supportedConfigs = (Map<String, Object>)
-        // metadata.get(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED);
         Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
                 .getCredentialConfigurationSupportedDTO();
 
@@ -109,7 +118,7 @@ public class PreAuthorizedCodeService {
         String format = config.getFormat();
         Set<String> allowedClaimKeys;
 
-        if ("ldp_vc".equals(format)) {
+        if (VCFormats.LDP_VC.equals(format)) {
             // For ldp_vc: claims are defined in credential_definition.credentialSubject
             CredentialDefinition credDef = config.getCredentialDefinition();
             if (credDef != null && credDef.getCredentialSubject() != null) {
@@ -176,6 +185,11 @@ public class PreAuthorizedCodeService {
     public CredentialOfferResponse getCredentialOffer(String offerId) {
         log.info("Retrieving credential offer for ID: {}", offerId);
 
+        // Trim offerId early to ensure validation and cache lookup use the same value
+        if (offerId != null) {
+            offerId = offerId.trim();
+        }
+
         if (!isValidUUID(offerId)) {
             log.error("Invalid offer_id format: {}", offerId);
             throw new InvalidRequestException(ErrorConstants.INVALID_OFFER_ID_FORMAT);
@@ -225,7 +239,6 @@ public class PreAuthorizedCodeService {
         Grant.PreAuthorizedCodeGrantType grant = Grant.PreAuthorizedCodeGrantType.builder()
                 .preAuthorizedCode(preAuthCode)
                 .txCode(StringUtils.hasText(txnCode) ? buildTxCodeInfo(txnCode) : null).build();
-        String authorizationServer = authServerService.getAuthorizationServerForCredentialConfig(configId);
 
         Grant grants = Grant.builder().preAuthorizedCode(grant).build();
 
@@ -233,7 +246,6 @@ public class PreAuthorizedCodeService {
                 .credentialIssuer(issuerIdentifier)
                 .credentialConfigurationIds(Collections.singletonList(configId))
                 .grants(grants)
-                .authorizationServer(authorizationServer)
                 .build();
     }
 
@@ -247,8 +259,13 @@ public class PreAuthorizedCodeService {
 
     private String buildCredentialOfferUri(String offerId) {
         String offerFetchUrl = domainUrl + "v1/certify/credential-offer-data/" + offerId;
-        String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8);
-        return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
+        try {
+            String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8.name());
+            return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
+        } catch (java.io.UnsupportedEncodingException e) {
+            // UTF-8 is always supported, this should never happen
+            throw new RuntimeException("UTF-8 encoding not supported", e);
+        }
     }
 
     private String generateSecureCode(int length) {
@@ -262,11 +279,11 @@ public class PreAuthorizedCodeService {
     /**
      * Exchange pre-authorized code for access token
      */
-    public TokenResponse exchangePreAuthorizedCode(TokenRequest request) {
-        log.info("Processing token request for grant_type: {}", request.getGrantType());
+    public OAuthTokenResponse exchangePreAuthorizedCode(OAuthTokenRequest request) {
+        log.info("Processing token request for grant_type: {}", request.getGrant_type());
 
         // Retrieve and validate pre-auth code data
-        PreAuthCodeData codeData = vciCacheService.getPreAuthCodeData(request.getPreAuthorizedCode());
+        PreAuthCodeData codeData = vciCacheService.getPreAuthCodeData(request.getPre_authorized_code());
 
         validateTokenRequest(request, codeData);
 
@@ -289,20 +306,20 @@ public class PreAuthorizedCodeService {
 
         log.info("Successfully exchanged pre-authorized code for access token");
 
-        return TokenResponse.builder()
-                .accessToken(accessToken)
-                .tokenType("Bearer")
-                .expiresIn(accessTokenExpirySeconds)
-                .cNonce(cNonce)
-                .cNonceExpiresIn(cNonceExpirySeconds)
-                .build();
+        OAuthTokenResponse response = new OAuthTokenResponse();
+        response.setAccessToken(accessToken);
+        response.setTokenType("Bearer");
+        response.setExpiresIn(accessTokenExpirySeconds);
+        response.setCNonce(cNonce);
+        response.setCNonceExpiresIn(cNonceExpirySeconds);
+        return response;
     }
 
-    private void validateTokenRequest(TokenRequest request, PreAuthCodeData codeData) {
+    private void validateTokenRequest(OAuthTokenRequest request, PreAuthCodeData codeData) {
 
         // Validate grant type
-        if (!Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(request.getGrantType())) {
-            log.error("Unsupported grant type: {}", request.getGrantType());
+        if (!Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(request.getGrant_type())) {
+            log.error("Unsupported grant type: {}", request.getGrant_type());
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
@@ -311,8 +328,8 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
         }
 
-        // Check if already used (blacklisted)
-        if (singleUsePreAuthCode && vciCacheService.isCodeBlacklisted(request.getPreAuthorizedCode())) {
+        // Check if already used
+        if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
         }
@@ -326,31 +343,39 @@ public class PreAuthorizedCodeService {
 
         // Validate transaction code if required
         String expectedTxCode = codeData.getTxnCode();
-        if (StringUtils.hasText(expectedTxCode) && !StringUtils.hasText(request.getTxCode())) {
+        if (StringUtils.hasText(expectedTxCode) && !StringUtils.hasText(request.getTx_code())) {
             log.error("Transaction code required but not provided");
             throw new CertifyException("tx_code_required", "Transaction code is required for this pre-authorized code");
         }
-        if (StringUtils.hasText(expectedTxCode) && !expectedTxCode.equals(request.getTxCode())) {
+        if (StringUtils.hasText(expectedTxCode) && !expectedTxCode.equals(request.getTx_code())) {
             log.error("Transaction code mismatch");
             throw new CertifyException("tx_code_mismatch", "Transaction code does not match");
         }
-        // Mark code as used if single-use
-        if (singleUsePreAuthCode) {
-            vciCacheService.blacklistPreAuthCode(request.getPreAuthorizedCode());
-            log.info("Pre-authorized code marked as used");
-        }
+        // Mark code as used
+        vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
     }
 
     /**
-     * TEMPORARY WORKAROUND: Generate opaque bearer token
-     * TODO: Replace with proper JWT signing once Presentation during Issuance feature is merged
+     * Generate a signed JWT access token for pre-authorized code flow.
+     * Calls AccessTokenJwtUtil.generateSignedJwt directly with raw parameters.
      */
     private String generateAccessToken(PreAuthCodeData codeData) {
-        // Generate a cryptographically secure random token
-        String accessToken = "at_" + generateSecureCode(64);
+        try {
+            String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
+            String scope = codeData.getCredentialConfigurationId();
+            String clientId = "pre-auth-" + UUID.randomUUID().toString();
 
-        log.warn("WORKAROUND: Generated opaque access token (not JWT). Replace with proper JWT signing.");
-
-        return accessToken;
+            return accessTokenJwtUtil.generateSignedJwt(
+                claimsJson,
+                scope,
+                clientId,
+                oauthIssuer,
+                oauthAudience,
+                accessTokenExpirySeconds
+            );
+        } catch (Exception e) {
+            log.error("Failed to generate access token for pre-authorized code flow", e);
+            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "Failed to generate access token", e);
+        }
     }
 }

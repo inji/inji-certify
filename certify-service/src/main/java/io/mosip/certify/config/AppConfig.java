@@ -5,6 +5,7 @@
  */
 package io.mosip.certify.config;
 
+import io.mosip.pixelpass.PixelPass;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
@@ -27,7 +28,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.services.KeyManagerConstants;
 import io.mosip.kernel.keymanagerservice.dto.KeyPairGenerateRequestDto;
 import io.mosip.kernel.keymanagerservice.dto.SymmetricKeyGenerateRequestDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
@@ -75,9 +75,14 @@ public class AppConfig implements ApplicationRunner {
                 .disableCookieManagement();
         HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
         requestFactory.setHttpClient(httpClientBuilder.build());
+        
         return new RestTemplate(requestFactory);
     }
 
+    @Bean
+    public PixelPass pixelPass() {
+        return new PixelPass();
+    }
     @Override
     public void run(ApplicationArguments args) throws Exception {
             initKeys();

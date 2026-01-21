@@ -6,14 +6,21 @@
 
 package io.mosip.certify.credential;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.kernel.signature.dto.CWTSignRequestDto;
+import io.mosip.kernel.signature.dto.CoseSignResponseDto;
 import io.mosip.kernel.signature.dto.JWSSignatureRequestDto;
 import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
+import io.mosip.kernel.signature.service.CoseSignatureService;
 import io.mosip.kernel.signature.service.SignatureService;
+import io.mosip.kernel.signature.service.impl.CoseSignatureServiceImpl;
+import org.json.JSONArray;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 public abstract class Credential{
@@ -21,6 +28,9 @@ public abstract class Credential{
     protected VCFormatter vcFormatter;
 
     protected SignatureService signatureService;
+
+    @Autowired
+    private CoseSignatureService coseSignatureService;
 
     /**
      * Constructor for credentials
@@ -40,20 +50,33 @@ public abstract class Credential{
     public abstract boolean canHandle(String format);
 
 
-    /** 
-     * createCredential method is resposible to convert the given template and 
-     * templateparams into the requested credential format. This not just a 
-     * template replacement but should also have all logics necessary to conver 
-     * this to a proper verifiable credential.Any additional VC level atributes 
+    /**
+     * createCredential method is resposible to convert the given template and
+     * templateparams into the requested credential format. This not just a
+     * template replacement but should also have all logics necessary to conver
+     * this to a proper verifiable credential.Any additional VC level atributes
      * or context or etc should be handled by the inherrited class.
-     * @param templateParams The params map that would be used to replace the 
+     *
+     * @param updatedTemplateParams The params map that would be used to replace the
      *                       template
-     * @param templateName The actual template
-    */
-    public String createCredential(Map<String, Object> templateParams, String templateName) {
-        
-        templateParams.put(Constants.TEMPLATE_NAME, templateName);
-        return vcFormatter.format(templateParams);
+     * @param templateName   The actual template
+     */
+    public String createCredential(Map<String, Object> updatedTemplateParams, String templateName) {
+
+        updatedTemplateParams.put(Constants.TEMPLATE_NAME, templateName);
+        return vcFormatter.format(updatedTemplateParams);
+    }
+
+    /**
+     * Creates the QR data(JSON Array) based on the final template and template name
+     * @param updatedTemplateParams The params map that would be used to replace the
+     *                       template
+     * @param templateName   The actual template
+     * @return JSON Array representing the QR data
+     */
+    public JSONArray createQRData(Map<String, Object> updatedTemplateParams, String templateName) {
+        updatedTemplateParams.put(Constants.TEMPLATE_NAME, templateName);
+        return vcFormatter.formatQRData(updatedTemplateParams);
     }
 
     /**
@@ -87,6 +110,32 @@ public abstract class Credential{
         vc.setFormat("vc");
         vc.setCredential(jwsSignedData.getJwtSignedData());
         return vc;
+    }
+
+    /*
+    * Signs the QR data payload using CWT signature
+    * @param payload The QR data payload to be signed
+    * @param qrSignAlgorithm The QR signing algorithm
+    * @param appID Application ID for key retrieval
+    * @param refID Reference ID for key retrieval
+    * @param didUrl DID URL of the issuer
+    */
+    public String signQRData(String payload, String qrSignAlgorithm, String appID, String refID, String didUrl) {
+        CWTSignRequestDto cwtSignRequestDto = new CWTSignRequestDto();
+        cwtSignRequestDto.setClaim169Payload(payload);
+        cwtSignRequestDto.setApplicationId(appID);
+        cwtSignRequestDto.setReferenceId(refID);
+        cwtSignRequestDto.setAlgorithm(qrSignAlgorithm);
+        cwtSignRequestDto.setIssuer(didUrl);
+
+        Map<String, Object> protectedHeaders = new HashMap<>();
+        protectedHeaders.put("x5c", true);
+        protectedHeaders.put("kid", true);
+
+        cwtSignRequestDto.setProtectedHeader(protectedHeaders);
+        CoseSignResponseDto coseSignResponseDto = coseSignatureService.cwtSign(cwtSignRequestDto);
+
+        return coseSignResponseDto.getSignedData();
     }
 
 }

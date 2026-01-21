@@ -5,6 +5,7 @@
  */
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.mosip.certify.api.dto.VCRequestDto;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
@@ -36,8 +37,11 @@ import io.mosip.certify.utils.LedgerUtils;
 import io.mosip.certify.utils.VCIssuanceUtil;
 import io.mosip.certify.validators.CredentialRequestValidator;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.pixelpass.PixelPass;
+import io.mosip.pixelpass.shared.ConstantsKt;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,11 +49,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 
+import static io.mosip.certify.utils.CredentialUtils.toJsonMap;
 import static io.mosip.certify.utils.VCIssuanceUtil.getScopeCredentialMapping;
 import static io.mosip.certify.utils.VCIssuanceUtil.validateLdpVcFormatRequest;
 
@@ -91,6 +97,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     @Autowired
     private AuditPlugin auditWrapper;
 
+    @Autowired
+    private PixelPass pixelPass;
+
     private Map<String, Object> didDocument;
 
     @Autowired
@@ -123,12 +132,15 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     @Value("${mosip.certify.data-provider-plugin.vc-expiry-duration:P730D}")
     String defaultExpiryDuration;
 
+    @Value("#{${mosip.certify.signature-algo.key-alias-mapper}}")
+    private Map<String, List<List<String>>> keyAliasMapper;
+
     @Override
     public CredentialResponse getCredential(CredentialRequest credentialRequest) {
         // 1. Credential Request validation
         boolean isValidCredentialRequest = CredentialRequestValidator.isValid(credentialRequest);
         if(!isValidCredentialRequest) {
-            throw new InvalidRequestException(ErrorConstants.INVALID_REQUEST);
+            throw new InvalidRequestException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST);
         }
 
         if(!parsedAccessToken.isActive())
@@ -146,7 +158,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
         if(credentialMetadata == null) {
             log.error("No credential mapping found for the provided scope {}", scopeClaim);
-            throw new CertifyException(ErrorConstants.INVALID_SCOPE);
+            throw new CertifyException(VCIErrorConstants.INVALID_SCOPE, "No credential mapping found for the provided scope.");
         }
 
         // 3. Proof Validation
@@ -155,7 +167,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         proofValidator.validateCNonce(validCNonce, cNonceExpireSeconds, parsedAccessToken, credentialRequest);
         if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
                 credentialRequest.getProof(), credentialMetadata.getProofTypesSupported())) {
-            throw new CertifyException(ErrorConstants.INVALID_PROOF);
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
         // 4. Get VC from configured plugin implementation
@@ -214,10 +226,17 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     jsonObject.put(Constants.TYPE, vcRequestDto.getVct());
                     break;
 
-                default:
-                    throw new CertifyException(ErrorConstants.UNSUPPORTED_VC_FORMAT);
-            }
+                case "mso_mdoc":
+                    vcRequestDto.setDoctype(credentialRequest.getDoctype());
+                    templateName = CredentialUtils.getTemplateName(vcRequestDto);
+                    templateParams.put("_doctype", vcRequestDto.getDoctype());
+                    jsonObject.put(Constants.TYPE, vcRequestDto.getDoctype());
+                    break;
 
+                default:
+                    throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, "Invalid or unsupported VC format requested.");
+
+            }
             // Common logic for all formats
             templateParams.put(Constants.TEMPLATE_NAME, templateName);
             templateParams.put(Constants.DID_URL, didUrl);
@@ -243,8 +262,19 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             templateParams.put(VCDM2Constants.VALID_FROM, time);
             templateParams.put(VCDM2Constants.VALID_UNTIL, expiryTime);
 
-            Credential cred = credentialFactory.getCredential(format).orElseThrow(() -> new CertifyException(ErrorConstants.UNSUPPORTED_VC_FORMAT));
-            String unsignedCredential = cred.createCredential(templateParams, templateName);
+            Credential cred = credentialFactory.getCredential(format).orElseThrow(() -> new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT));
+            Map<String, Object> updatedTemplateParams = toJsonMap(templateParams);
+
+            JSONArray qrDataJson = cred.createQRData(updatedTemplateParams, templateName);
+
+            if (qrDataJson != null) {
+                List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
+                updatedTemplateParams.put("claim_169_values", claim169Values);
+            } else {
+                log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
+            }
+
+            String unsignedCredential = cred.createCredential(updatedTemplateParams, templateName);
             if(isLedgerEnabled) {
                 Map<String, Object> indexedAttributes = ledgerUtils.extractIndexedAttributes(jsonObject);
                 String credentialType = LedgerUtils.extractCredentialType(jsonObject);
@@ -264,9 +294,76 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
         } catch (DataProviderExchangeException e) {
             throw new CertifyException(e.getErrorCode());
-        } catch (JSONException e) {
+        } catch (JSONException | JsonProcessingException e) {
             log.error(e.getMessage(), e);
-            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR);
+            throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
         }
+    }
+
+    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
+        List<String> signedQrCodes = new ArrayList<>();
+        if (qrDataJson == null || qrDataJson.isEmpty()) {
+            return signedQrCodes;
+        }
+        Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
+        Map<String, Map<Object, Integer>> claim169ValueMapper = ConstantsKt.getCLAIM_169_VALUE_MAPPER();
+        for (int i = 0; i < qrDataJson.length(); i++) {
+            Object qrObj = qrDataJson.get(i);
+            String claim169MappedData;
+            if (qrObj instanceof JSONObject) {
+                claim169MappedData = pixelPass
+                        .getMappedData((JSONObject) qrObj, claim169KeyMapper,
+                                claim169ValueMapper, true).toString();
+            } else {
+                log.error("Invalid QR Data json found. The qrSettings needs to be fixed.");
+                throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Unsupported QR entry type: " + qrObj.getClass().getName());
+            }
+
+            // Default QR Signer Configuration
+            String qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
+            String qrSignAppId = vcFormatter.getAppID(templateName);
+            String qrSignRefId = vcFormatter.getRefID(templateName);
+
+            // Override with QR specific signers if available
+            if(qrSignatureAlgo == null || qrSignatureAlgo.isEmpty()) {
+                log.warn("No QR specific signature algorithm configured for template: {}. Falling back to default signature algorithm.", templateName);
+                qrSignatureAlgo = vcFormatter.getProofAlgorithm(templateName);
+            } else {
+                log.info("Using QR specific signature algorithm: {} for template: {}", qrSignatureAlgo, templateName);
+                List<List<String>> qrSignerKeysList = keyAliasMapper.get(qrSignatureAlgo);
+                if (qrSignerKeysList == null || qrSignerKeysList.isEmpty()) {
+                    throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND,
+                            "No key configuration found for QR signature algorithm: " + qrSignatureAlgo);
+                }
+                List<String> qrSignerKeys = qrSignerKeysList.getFirst();
+                qrSignAppId = qrSignerKeys.getFirst();
+                qrSignRefId = qrSignerKeys.getLast();
+            }
+            try {
+                // call addCWTProof to sign this QR payload; adapt params if Signature/API differs
+                String qrSignedResult = cred.signQRData(
+                        claim169MappedData,
+                        qrSignatureAlgo,
+                        qrSignAppId,
+                        qrSignRefId,
+                        domainUrl
+                );
+                if (qrSignedResult != null && !qrSignedResult.isEmpty()) {
+                    try {
+                        signedQrCodes.add(pixelPass.generateQRData(qrSignedResult, ""));
+                    } catch (Exception e) {
+                        log.error("Failed to generate QR code for signed QR entry index {}: {}", i, e.getMessage());
+                        throw new CertifyException(ErrorConstants.QR_CBOR_ENCODING_ERROR, e.getMessage());
+                    }
+                    continue;
+                }
+                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNED_RESULT, "QR signed result failed at index: " + i);
+            } catch (Exception e) {
+                log.error("Failed to sign QR entry index {}: {}", i, e.getMessage());
+                // signing failure is non-recoverable; propagate as domain exception
+                throw new CertifyException(ErrorConstants.ERROR_SIGNING_QR_ENTRY, e.getMessage());
+            }
+        }
+        return signedQrCodes;
     }
 }

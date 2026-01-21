@@ -2,12 +2,10 @@ package io.mosip.certify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.dto.AuthorizationServerMetadata;
-import io.mosip.certify.core.dto.CredentialIssuerMetadataVD13DTO;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
+import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.dto.PreAuthCodeData;
 import io.mosip.certify.core.dto.VCIssuanceTransaction;
-import io.mosip.certify.services.CredentialConfigurationServiceImpl;
 import io.mosip.certify.services.VCICacheService;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,9 +17,6 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -35,9 +30,6 @@ public class VCICacheServiceTest {
 
     @Mock
     private Cache cache;
-
-    @Mock
-    private CredentialConfigurationServiceImpl credentialConfigurationService;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -187,65 +179,6 @@ public class VCICacheServiceTest {
         assertEquals(null, result);
     }
 
-    // Tests for isCodeBlacklisted
-
-    @Test
-    public void isCodeBlacklisted_WhenBlacklisted_ReturnsTrue() {
-        String code = "blacklisted-code";
-        String key = "blacklist:" + code;
-        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
-        when(wrapper.get()).thenReturn(Boolean.TRUE);
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(wrapper);
-
-        boolean result = vciCacheService.isCodeBlacklisted(code);
-
-        assertEquals(true, result);
-        verify(cache).get(key);
-    }
-
-    @Test
-    public void isCodeBlacklisted_WhenNotBlacklisted_ReturnsFalse() {
-        String code = "valid-code";
-        String key = "blacklist:" + code;
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(null);
-
-        boolean result = vciCacheService.isCodeBlacklisted(code);
-
-        assertEquals(false, result);
-        verify(cache).get(key);
-    }
-
-    @Test
-    public void isCodeBlacklisted_WhenWrapperReturnsFalse_ReturnsFalse() {
-        String code = "code";
-        String key = "blacklist:" + code;
-        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
-        when(wrapper.get()).thenReturn(Boolean.FALSE);
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(wrapper);
-
-        boolean result = vciCacheService.isCodeBlacklisted(code);
-
-        assertEquals(false, result);
-    }
-
-    // Tests for blacklistPreAuthCode
-
-    @Test
-    public void blacklistPreAuthCode_Success() {
-        String code = "code-to-blacklist";
-        String blacklistKey = "blacklist:" + code;
-        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-
-        vciCacheService.blacklistPreAuthCode(code);
-
-        verify(cache).put(eq(blacklistKey), eq(true));
-        verify(cache).evict(eq(codeKey));
-    }
-
     // Tests for setTransaction
 
     @Test
@@ -262,35 +195,6 @@ public class VCICacheServiceTest {
         assertEquals(transaction, result);
     }
 
-    // Tests for getTransactionByToken
-
-    @Test
-    public void getTransactionByToken_WhenTransactionExists_ReturnsTransaction() {
-        String accessToken = "test-access-token";
-        io.mosip.certify.core.dto.Transaction transaction = io.mosip.certify.core.dto.Transaction.builder()
-                .credentialConfigurationId("test-config")
-                .cNonce("test-nonce")
-                .build();
-        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
-        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(transaction);
-
-        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
-
-        assertEquals(transaction, result);
-        verify(cache).get(eq(accessToken), eq(io.mosip.certify.core.dto.Transaction.class));
-    }
-
-    @Test
-    public void getTransactionByToken_WhenNotFound_ReturnsNull() {
-        String accessToken = "non-existent-token";
-        when(cacheManager.getCache(VCISSUANCE_CACHE)).thenReturn(cache);
-        when(cache.get(accessToken, io.mosip.certify.core.dto.Transaction.class)).thenReturn(null);
-
-        io.mosip.certify.core.dto.Transaction result = vciCacheService.getTransactionByToken(accessToken);
-
-        assertEquals(null, result);
-    }
-
     // Tests for setASMetadata and getASMetadata
 
     private static final String AS_METADATA_CACHE = "asMetadataCache";
@@ -298,7 +202,7 @@ public class VCICacheServiceTest {
     @Test
     public void setASMetadata_Success() {
         String serverUrl = "https://auth.example.com";
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
+        OAuthAuthorizationServerMetadataDTO metadata = OAuthAuthorizationServerMetadataDTO.builder()
                 .issuer(serverUrl)
                 .tokenEndpoint(serverUrl + "/token")
                 .build();
@@ -316,13 +220,13 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(null);
 
         vciCacheService.setASMetadata("https://auth.example.com",
-                AuthorizationServerMetadata.builder().build());
+                OAuthAuthorizationServerMetadataDTO.builder().build());
     }
 
     @Test
     public void getASMetadata_CacheHit_ReturnsMetadata() {
         String serverUrl = "https://auth.example.com";
-        AuthorizationServerMetadata metadata = AuthorizationServerMetadata.builder()
+        OAuthAuthorizationServerMetadataDTO metadata = OAuthAuthorizationServerMetadataDTO.builder()
                 .issuer(serverUrl)
                 .tokenEndpoint(serverUrl + "/token")
                 .build();
@@ -332,7 +236,7 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(cache);
         when(cache.get(Constants.AS_METADATA_PREFIX + serverUrl)).thenReturn(wrapper);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata(serverUrl);
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata(serverUrl);
 
         assertEquals(metadata, result);
         verify(cache).get(Constants.AS_METADATA_PREFIX + serverUrl);
@@ -345,7 +249,7 @@ public class VCICacheServiceTest {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(cache);
         when(cache.get(Constants.AS_METADATA_PREFIX + serverUrl)).thenReturn(null);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata(serverUrl);
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata(serverUrl);
 
         assertEquals(null, result);
     }
@@ -354,8 +258,66 @@ public class VCICacheServiceTest {
     public void getASMetadata_WhenCacheIsNull_ReturnsNull() {
         when(cacheManager.getCache(AS_METADATA_CACHE)).thenReturn(null);
 
-        AuthorizationServerMetadata result = vciCacheService.getASMetadata("https://auth.example.com");
+        OAuthAuthorizationServerMetadataDTO result = vciCacheService.getASMetadata("https://auth.example.com");
 
         assertEquals(null, result);
     }
+
+    // Tests for isPreAuthCodeUsed
+
+    @Test
+    public void isPreAuthCodeUsed_WhenUsed_ReturnsTrue() {
+        String code = "used-code";
+        String key = "used:" + code;
+        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
+        when(wrapper.get()).thenReturn(Boolean.TRUE);
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(wrapper);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(true, result);
+        verify(cache).get(key);
+    }
+
+    @Test
+    public void isPreAuthCodeUsed_WhenNotUsed_ReturnsFalse() {
+        String code = "valid-code";
+        String key = "used:" + code;
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(null);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(false, result);
+        verify(cache).get(key);
+    }
+
+    @Test
+    public void isPreAuthCodeUsed_WhenWrapperReturnsFalse_ReturnsFalse() {
+        String code = "code";
+        String key = "used:" + code;
+        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
+        when(wrapper.get()).thenReturn(Boolean.FALSE);
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+        when(cache.get(key)).thenReturn(wrapper);
+
+        boolean result = vciCacheService.isPreAuthCodeUsed(code);
+
+        assertEquals(false, result);
+    }
+
+    @Test
+    public void markPreAuthCodeAsUsed_Success() {
+        String code = "code-to-mark";
+        String usedKey = "used:" + code;
+        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
+        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
+
+        vciCacheService.markPreAuthCodeAsUsed(code);
+
+        verify(cache).put(eq(usedKey), eq(true));
+        verify(cache).evict(eq(codeKey));
+    }
 }
+

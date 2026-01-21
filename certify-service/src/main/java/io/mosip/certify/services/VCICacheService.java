@@ -1,6 +1,5 @@
 package io.mosip.certify.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.*;
 import jakarta.annotation.PostConstruct;
@@ -12,12 +11,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.stereotype.Service;
-import io.mosip.certify.services.CredentialConfigurationServiceImpl;
-
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -26,14 +19,10 @@ public class VCICacheService {
     @Autowired
     private CacheManager cacheManager;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @Value("${spring.cache.type:simple}")
     private String cacheType;
 
     private static final String VCISSUANCE_CACHE = "vcissuance";
-    private static final String METADATA_KEY = "metadata";
 
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -51,6 +40,7 @@ public class VCICacheService {
             log.warn("Unknown cache type configured: {}. Please verify configuration.", cacheType);
         }
     }
+
 
     @CachePut(value = VCISSUANCE_CACHE, key = "#accessTokenHash")
     public VCIssuanceTransaction setVCITransaction(String accessTokenHash, VCIssuanceTransaction vcIssuanceTransaction) {
@@ -107,27 +97,6 @@ public class VCICacheService {
         }
     }
 
-    public boolean isCodeBlacklisted(String code) {
-        String key = "blacklist:" + code;
-        Cache.ValueWrapper wrapper = cacheManager.getCache("preAuthCodeCache").get(key);
-        return wrapper != null && Boolean.TRUE.equals(wrapper.get());
-    }
-
-    /**
-     * Blacklist a used pre-authorized code
-     */
-    public void blacklistPreAuthCode(String code) {
-        String key = "blacklist:" + code;
-        // Store in cache with same TTL as pre-auth code
-        cacheManager.getCache("preAuthCodeCache").put(key, true);
-
-        // Also remove the pre-auth code data
-        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
-        cacheManager.getCache("preAuthCodeCache").evict(codeKey);
-
-        log.info("Pre-authorized code blacklisted: {}", code);
-    }
-
     /**
      * Store VCI transaction using access token as key
      * Override existing method to accept String key
@@ -139,22 +108,9 @@ public class VCICacheService {
     }
 
     /**
-     * Get VCI transaction by access token
-     * For use in credential endpoint
-     */
-    public Transaction getTransactionByToken(String accessToken) {
-        Cache cache = cacheManager.getCache(VCISSUANCE_CACHE);
-        if (cache == null) {
-            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
-            return null;
-        }
-        return cache.get(accessToken, Transaction.class);
-    }
-
-    /**
      * Cache authorization server metadata
      */
-    public void setASMetadata(String serverUrl, AuthorizationServerMetadata metadata) {
+    public void setASMetadata(String serverUrl, OAuthAuthorizationServerMetadataDTO metadata) {
         String key = Constants.AS_METADATA_PREFIX + serverUrl;
         Cache cache = cacheManager.getCache("asMetadataCache");
         if (cache == null) {
@@ -167,7 +123,7 @@ public class VCICacheService {
     /**
      * Get cached authorization server metadata
      */
-    public AuthorizationServerMetadata getASMetadata(String serverUrl) {
+    public OAuthAuthorizationServerMetadataDTO getASMetadata(String serverUrl) {
         String key = Constants.AS_METADATA_PREFIX + serverUrl;
         Cache cache = cacheManager.getCache("asMetadataCache");
         if (cache == null) {
@@ -175,6 +131,37 @@ public class VCICacheService {
             return null;
         }
         Cache.ValueWrapper wrapper = cache.get(key);
-        return wrapper != null ? (AuthorizationServerMetadata) wrapper.get() : null;
+        return wrapper != null ? (OAuthAuthorizationServerMetadataDTO) wrapper.get() : null;
+    }
+
+    public boolean isPreAuthCodeUsed(String code) {
+        String key = "used:" + code;
+        Cache cache = cacheManager.getCache("preAuthCodeCache");
+        if (cache == null) {
+            log.error("Cache preAuthCodeCache not available");
+            return false;
+        }
+        Cache.ValueWrapper wrapper = cache.get(key);
+        return wrapper != null && Boolean.TRUE.equals(wrapper.get());
+    }
+
+    /**
+     * Mark a pre-authorized code as used to prevent reuse
+     */
+    public void markPreAuthCodeAsUsed(String code) {
+        String key = "used:" + code;
+        Cache cache = cacheManager.getCache("preAuthCodeCache");
+        if (cache == null) {
+            log.error("Cache preAuthCodeCache not available for marking code as used");
+            return;
+        }
+        // Store in cache with same TTL as pre-auth code
+        cache.put(key, true);
+
+        // Also remove the pre-auth code data
+        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
+        cache.evict(codeKey);
+
+        log.info("Pre-authorized code marked as used");
     }
 }

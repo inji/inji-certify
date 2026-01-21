@@ -39,13 +39,21 @@ public class Constants {
     public  static final String CONFIRMATION = "cnf";
     public  static final String ISSUER = "iss";
     public static final String TYPE = "type";
-    public static final String CREDENTIAL_CONFIGURATIONS_SUPPORTED = "credential_configurations_supported";
+    public static final String DOCTYPE = "docType";
     public static final String CLAIMS = "claims";
+    public static final String DID_JWK_PREFIX = "did:jwk:";
+    public static final String NAMESPACES = "nameSpaces";
+    public static final String DIGEST_ID = "digestID";
+    public static final String VALIDITY_INFO = "validityInfo";
+    public static final String _HOLDER_ID = "_holderId";
+    public static final String ELEMENT_IDENTIFIER = "elementIdentifier";
+    public static final String ELEMENT_VALUE = "elementValue";
+    public static final String __CBOR_TAG = "__cbor_tag";
+    public static final String __CBOR_VALUE = "__cbor_value";
+    public static final String CREDENTIAL_CONFIGURATIONS_SUPPORTED = "credential_configurations_supported";
     public static final String MANDATORY = "mandatory";
     public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
     public static final String PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code";
     public static final String AS_METADATA_PREFIX = "as_metadata:";
-    public static final String WELL_KNOWN_OAUTH_AS = "/.well-known/oauth-authorization-server";
-    public static final String WELL_KNOWN_OIDC_CONFIG = "/.well-known/openid-configuration";
 }
