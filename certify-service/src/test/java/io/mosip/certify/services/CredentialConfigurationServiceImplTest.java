@@ -98,6 +98,9 @@ public class CredentialConfigurationServiceImplTest {
         ReflectionTestUtils.setField(credentialConfigurationService, "credentialSigningAlgValuesSupportedMap", credentialSigningMap);
         ReflectionTestUtils.setField(credentialConfigurationService, "proofTypesSupported", new LinkedHashMap<>());
         ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", keyAliasMapper);
+        Map<String, String> authServerMapping = new HashMap<>();
+        authServerMapping.put("default", "http://auth.com");
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
 
     }
 
