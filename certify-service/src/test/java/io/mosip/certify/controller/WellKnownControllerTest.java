@@ -31,9 +31,6 @@ class WellKnownControllerTest {
     private CredentialConfigurationService credentialConfigurationService;
 
     @MockBean
-    private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
-
-    @MockBean
     private VCIssuanceService vcIssuanceService;
 
     @MockBean
