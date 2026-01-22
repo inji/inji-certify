@@ -2739,7 +2739,7 @@
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.credential_offer_uri).to.be.a('string');",
 									"    var uri = jsonData.credential_offer_uri;",
-									"    var offerId = uri.split('/').pop();",
+									"    var offerId = uri.split('%2F').pop();",
 									"    pm.collectionVariables.set('offer_id', offerId);",
 									"    console.log('Extracted offer_id: ' + offerId);",
 									"});"
@@ -2849,7 +2849,7 @@
 									"type": "text"
 								},
 								{
-									"key": "pre-authorized_code",
+									"key": "pre_authorized_code",
 									"value": "{{pre_authorized_code}}",
 									"type": "text"
 								},
