@@ -42,3 +42,24 @@ TokenExchange:
           "c_nonce": "",
           "c_nonce_expires_in": 0
       }'
+
+   InjiCertify_TokenExchange_ForReuse_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/oauth/token
+      uniqueIdentifier: TC_preauth_TokenExchange_03
+      description: First use of pre-authorized code (to enable reuse/already-used negative test)
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchangeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "$ID:InjiCertify_GeneratePreAuthCode_ForReuse_Smoke_sid_preAuthCode$"
+      }'
+      output: '{
+          "token_type": "Bearer",
+          "access_token": "",
+          "expires_in": 0,
+          "c_nonce": "",
+          "c_nonce_expires_in": 0
+      }'

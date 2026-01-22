@@ -71,3 +71,39 @@ TokenExchangeNegative:
       output: '{
           "error": "tx_code_mismatch"
       }'
+
+   # Pre-authorized code already used
+   InjiCertify_TokenExchange_CodeAlreadyUsed_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/oauth/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_05
+      description: Token exchange with pre-authorized code that has already been used
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "$ID:InjiCertify_GeneratePreAuthCode_ForReuse_Smoke_sid_preAuthCode$"
+      }'
+      output: '{
+          "error": "invalid_grant"
+      }'
+
+   # Pre-authorized code expired
+   InjiCertify_TokenExchange_CodeExpired_Neg_sid:
+      endPoint: $INJICERTIFYBASEURL$/oauth/token
+      uniqueIdentifier: TC_preauth_TokenExchange_Neg_06
+      description: Token exchange with expired pre-authorized code
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+      outputTemplate: injicertify/PreAuthCodeFlow/PreAuthNegative/PreAuthNegativeResult
+      input: '{
+          "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+          "pre-authorized_code": "$ID:InjiCertify_GeneratePreAuthCode_ShortExpiry_Smoke_sid_preAuthCode$"
+      }'
+      output: '{
+          "error": "pre_auth_code_expired"
+      }'

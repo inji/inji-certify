@@ -65,3 +65,47 @@ GeneratePreAuthCode:
       output: '{
           "credential_offer_uri": "openid-credential-offer://"
       }'
+
+   InjiCertify_GeneratePreAuthCode_ForReuse_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_04
+      description: Generate pre-authorized code for reuse/already-used test
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Reuse Test User",
+              "dob": "1988-05-25",
+              "policyNumber": "POL444555666"
+          },
+          "expires_in": 600
+      }'
+      output: '{
+          "credential_offer_uri": "openid-credential-offer://"
+      }'
+
+   InjiCertify_GeneratePreAuthCode_ShortExpiry_Smoke_sid:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+      uniqueIdentifier: TC_preauth_GenerateCode_05
+      description: Generate pre-authorized code with minimum expiry for expiration test
+      role: resident
+      restMethod: post
+      validityCheckRequired: true
+      inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+      input: '{
+          "credential_configuration_id": "InsuranceCredential",
+          "claims": {
+              "fullName": "Short Expiry User",
+              "dob": "1995-11-30",
+              "policyNumber": "POL777888999"
+          },
+          "expires_in": 60
+      }'
+      output: '{
+          "credential_offer_uri": "openid-credential-offer://"
+      }'
