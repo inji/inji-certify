@@ -2849,7 +2849,7 @@
 									"type": "text"
 								},
 								{
-									"key": "pre-authorized_code",
+									"key": "pre_authorized_code",
 									"value": "{{pre_authorized_code}}",
 									"type": "text"
 								},
