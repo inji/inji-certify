@@ -2850,6 +2850,7 @@
 								},
 								{
 									"key": "pre_authorized_code",
+									"key": "pre-authorized_code",
 									"value": "{{pre_authorized_code}}",
 									"type": "text"
 								},
