@@ -2872,8 +2872,64 @@
 					"name": "4. Get Credential with Pre-Auth Token",
 					"event": [
 						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"eval(pm.globals.get('pmlib_code'));",
+									"",
+									"// Generate RSA key pair",
+									"const keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
+									"",
+									"// Convert keys to JWK",
+									"const jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
+									"const jwkPublicKey = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
+									"",
+									"// Add required JWK fields",
+									"jwkPublicKey.alg = \"RS256\";",
+									"jwkPublicKey.use = \"sig\";",
+									"",
+									"// Store keys",
+									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey));",
+									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+									"",
+									"// JWT header",
+									"const header = {",
+									"  alg: \"RS256\",",
+									"  typ: \"openid4vci-proof+jwt\",",
+									"  jwk: jwkPublicKey",
+									"};",
+									"",
+									"console.log(\"c_nonce:\", pm.environment.get(\"c_nonce\"));",
+									"console.log(\"aud:\", pm.environment.get(\"audUrl\"));",
+									"",
+									"// JWT payload",
+									"const payload = {",
+									"  aud: pm.environment.get(\"audUrl\"),",
+									"  nonce: pm.environment.get(\"c_nonce\"),",
+									"  iss: \"demo-certify\"",
+									"};",
+									"",
+									"// Sign JWT (exp = 600s)",
+									"const signedJwt = pmlib.jwtSign(",
+									"  jwkPrivateKey,",
+									"  payload,",
+									"  header,",
+									"  600,",
+									"  \"RS256\"",
+									");",
+									"",
+									"// Store proof JWT",
+									"pm.collectionVariables.set(\"proof_jwt\", signedJwt);",
+									"",
+									"console.log(\"Proof JWT generated\");"
+								]
+							}
+						},
+						{
 							"listen": "test",
 							"script": {
+								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"Status code is 200 or 201\", function () {",
 									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
@@ -2884,8 +2940,7 @@
 									"    pm.expect(jsonData.credential).to.exist;",
 									"    console.log('Credential received successfully');",
 									"});"
-								],
-								"type": "text/javascript"
+								]
 							}
 						}
 					],
@@ -2909,7 +2964,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ],\n        \"type\": [\n            \"VerifiableCredential\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}"
+							"raw": "{\n  \"format\": \"ldp_vc\",\n  \"credential_definition\": {\n    \"@context\": [\"https://www.w3.org/2018/credentials/v1\"],\n    \"type\": [\"VerifiableCredential\"]\n  },\n  \"proof\": {\n    \"proof_type\": \"jwt\",\n    \"jwt\": \"{{proof_jwt}}\"\n  }\n}"
 						},
 						"url": {
 							"raw": "{{certifyurl}}/issuance/credential",
@@ -2919,6 +2974,7 @@
 					},
 					"response": []
 				}
+
 			]
 		}
 	],

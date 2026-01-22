@@ -323,15 +323,14 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
-        if (codeData == null) {
-            log.error("Pre-authorized code not found");
-            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
-        }
-
-        // Check if already used
         if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
+        }
+
+        if (codeData == null) {
+            log.error("Pre-authorized code not found");
+            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
         }
 
         // Check expiry
