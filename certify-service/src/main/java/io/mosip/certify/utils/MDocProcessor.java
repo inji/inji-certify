@@ -468,10 +468,6 @@ public class MDocProcessor {
             signRequest.setReferenceId(refID);
             signRequest.setAlgorithm(signAlgorithm);
 
-            Map<String, Object> protectedHeader = new HashMap<>();
-            protectedHeader.put("x5c", true);
-            signRequest.setProtectedHeader(protectedHeader);
-
             // Set unprotected header in request
             signRequest.setUnprotectedHeader(Map.of("includeCertificate", true));
 
