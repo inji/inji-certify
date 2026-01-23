@@ -7,7 +7,9 @@ import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.entity.IarSession;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,9 @@ public class PreAuthorizedCodeService {
 
     @Autowired
     private CredentialConfigurationService credentialConfigurationService;
+
+    @Autowired
+    private CredentialConfigRepository credentialConfigRepository;
 
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
@@ -361,8 +366,36 @@ public class PreAuthorizedCodeService {
     private String generateAccessToken(PreAuthCodeData codeData) {
         try {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
-            String scope = codeData.getCredentialConfigurationId();
             String clientId = "pre-auth-" + UUID.randomUUID().toString();
+            String credentialConfigId = codeData.getCredentialConfigurationId();
+
+            // Lookup credential configuration in database
+            Optional<CredentialConfig> configOptional =
+                    credentialConfigRepository.findByCredentialConfigKeyId(credentialConfigId);
+
+            if (!configOptional.isPresent()) {
+                log.error("Credential configuration not found for ID: {}", credentialConfigId);
+                throw new CertifyException("invalid_request",
+                        "Invalid credential_configuration_id: " + credentialConfigId);
+            }
+
+            CredentialConfig credentialConfig = configOptional.get();
+
+            // Validate credential configuration is active
+            if (!Constants.ACTIVE.equals(credentialConfig.getStatus())) {
+                log.error("Credential configuration is not active for ID: {}, status: {}",
+                        credentialConfigId, credentialConfig.getStatus());
+                throw new CertifyException("invalid_request",
+                        "Credential configuration is not active: " + credentialConfigId);
+            }
+
+            // Extract and validate scope
+            String scope = credentialConfig.getScope();
+            if (!StringUtils.hasText(scope)) {
+                log.error("Scope is not configured for credential configuration ID: {}", credentialConfigId);
+                throw new CertifyException("server_error",
+                        "Scope not configured for credential: " + credentialConfigId);
+            }
 
             return accessTokenJwtUtil.generateSignedJwt(
                 claimsJson,

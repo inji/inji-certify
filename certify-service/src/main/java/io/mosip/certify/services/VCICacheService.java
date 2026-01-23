@@ -108,6 +108,19 @@ public class VCICacheService {
     }
 
     /**
+     * Retrieve cached transaction by access token hash
+     * Used for pre-auth flow to get cached claims
+     */
+    public Transaction getTransaction(String accessTokenHash) {
+        Cache cache = cacheManager.getCache(VCISSUANCE_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
+            return null;
+        }
+        return cache.get(accessTokenHash, Transaction.class);
+    }
+
+    /**
      * Cache authorization server metadata
      */
     public void setASMetadata(String serverUrl, OAuthAuthorizationServerMetadataDTO metadata) {

@@ -19,6 +19,7 @@ import io.mosip.certify.core.dto.CredentialMetadata;
 import io.mosip.certify.core.dto.CredentialRequest;
 import io.mosip.certify.core.dto.CredentialResponse;
 import io.mosip.certify.core.dto.ParsedAccessToken;
+import io.mosip.certify.core.dto.Transaction;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.exception.NotAuthenticatedException;
@@ -191,8 +192,16 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         vcRequestDto.setFormat(credentialRequest.getFormat());
 
         try {
-            // Fetch data once, as it's common to all formats
-            JSONObject jsonObject = dataProviderPlugin.fetchData(parsedAccessToken.getClaims());
+            // For pre-auth flow, use cached claims from Transaction instead of calling plugin
+            JSONObject jsonObject;
+            Transaction cachedTransaction = vciCacheService.getTransaction(parsedAccessToken.getAccessTokenHash());
+            if (cachedTransaction != null && cachedTransaction.getClaims() != null && !cachedTransaction.getClaims().isEmpty()) {
+                log.info("Using cached claims from pre-auth flow for credential generation");
+                jsonObject = new JSONObject(cachedTransaction.getClaims());
+            } else {
+                // For non-pre-auth flows, fetch data from the plugin
+                jsonObject = dataProviderPlugin.fetchData(parsedAccessToken.getClaims());
+            }
 
             String templateName;
             Map<String, Object> templateParams = new HashMap<>();
