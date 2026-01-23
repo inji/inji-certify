@@ -195,7 +195,7 @@ public class MDocCredentialTest {
                     .thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(taggedNamespaces, signedMSO))
                     .thenReturn(issuerSigned);
-            mockedStatic.when(() -> MDocProcessor.encodeToCBOR(issuerSigned))
+            mockedStatic.when(() -> MDocProcessor.encodeToCBOR(any()))
                     .thenReturn(cborIssuerSigned);
 
             VCResult<?> result = mDocCredential.addProof(

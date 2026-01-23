@@ -28,18 +28,6 @@ public class InputDescriptor {
     @JsonProperty("id")
     private String id;
 
-    /**
-     * Human-readable name for this input descriptor
-     */
-    @JsonProperty("name")
-    private String name;
-
-    /**
-     * Human-readable purpose for this input descriptor
-     */
-    @JsonProperty("purpose")
-    private String purpose;
-
     @JsonProperty("format")
     private Map<String, Map<String, List<String>>> format;
     /**
