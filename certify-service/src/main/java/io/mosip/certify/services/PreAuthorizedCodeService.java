@@ -298,15 +298,16 @@ public class PreAuthorizedCodeService {
         String accessToken = generateAccessToken(codeData, cNonce);
 
         long currentTime = System.currentTimeMillis();
-        Transaction transaction = Transaction.builder()
+        PreAuthTransaction transaction = PreAuthTransaction.builder()
                 .credentialConfigurationId(codeData.getCredentialConfigurationId())
                 .claims(codeData.getClaims())
                 .cNonce(cNonce)
-                .cNonceExpiresAt(currentTime + (cNonceExpirySeconds * 1000L))
+                .cNonceIssuedEpoch(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).toEpochSecond(java.time.ZoneOffset.UTC))
+                .cNonceExpireSeconds(cNonceExpirySeconds)
                 .createdAt(currentTime)
                 .build();
 
-        vciCacheService.setTransaction(accessToken, transaction);
+        vciCacheService.setVCITransaction(accessToken, transaction);
 
         log.info("Successfully exchanged pre-authorized code for access token");
 

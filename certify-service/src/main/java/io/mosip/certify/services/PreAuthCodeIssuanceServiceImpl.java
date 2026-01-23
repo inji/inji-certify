@@ -4,7 +4,7 @@ package io.mosip.certify.services;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
 import io.mosip.certify.api.spi.DataProviderPlugin;
 import io.mosip.certify.core.dto.ParsedAccessToken;
-import io.mosip.certify.core.dto.Transaction;
+import io.mosip.certify.core.dto.PreAuthTransaction;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +25,7 @@ public class PreAuthCodeIssuanceServiceImpl implements DataProviderPlugin {
 
     @Override
     public JSONObject fetchData(Map<String, Object> identityDetails) throws DataProviderExchangeException {
-        Transaction cachedTransaction = vciCacheService.getTransaction(parsedAccessToken.getAccessTokenHash());
+        PreAuthTransaction cachedTransaction = (PreAuthTransaction) vciCacheService.getVCITransaction(parsedAccessToken.getAccessTokenHash());
         if (cachedTransaction != null && cachedTransaction.getClaims() != null && !cachedTransaction.getClaims().isEmpty()) {
             log.info("Using cached claims from pre-auth flow for credential generation");
             return new JSONObject(cachedTransaction.getClaims());

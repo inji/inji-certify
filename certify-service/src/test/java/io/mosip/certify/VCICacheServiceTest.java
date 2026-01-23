@@ -5,6 +5,7 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
 import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.dto.PreAuthCodeData;
+import io.mosip.certify.core.dto.PreAuthTransaction;
 import io.mosip.certify.core.dto.VCIssuanceTransaction;
 import io.mosip.certify.services.VCICacheService;
 import org.junit.Before;
@@ -182,14 +183,16 @@ public class VCICacheServiceTest {
     // Tests for setTransaction
 
     @Test
-    public void setTransaction_ShouldReturnSameTransaction() {
+    public void setVCITransaction_ShouldReturnSameTransaction_PreAuth() {
         String accessToken = "test-access-token";
-        io.mosip.certify.core.dto.Transaction transaction = io.mosip.certify.core.dto.Transaction.builder()
+        PreAuthTransaction transaction = PreAuthTransaction.builder()
+                .credentialConfigurationId("test-config")
+                .claims(java.util.Collections.emptyMap()) // Adding required field or valid dummy
                 .credentialConfigurationId("test-config")
                 .cNonce("test-nonce")
                 .build();
 
-        io.mosip.certify.core.dto.Transaction result = vciCacheService.setTransaction(accessToken, transaction);
+        VCIssuanceTransaction result = vciCacheService.setVCITransaction(accessToken, transaction);
 
         assertNotNull(result);
         assertEquals(transaction, result);

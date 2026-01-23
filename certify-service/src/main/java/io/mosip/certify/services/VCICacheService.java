@@ -98,16 +98,6 @@ public class VCICacheService {
     }
 
     /**
-     * Store VCI transaction using access token as key
-     * Override existing method to accept String key
-     */
-    @CachePut(value = VCISSUANCE_CACHE, key = "#accessToken")
-    public Transaction setTransaction(String accessToken, Transaction vcIssuanceTransaction) {
-        log.info("Caching VCI transaction for access token");
-        return vcIssuanceTransaction;
-    }
-
-    /**
      * Cache authorization server metadata
      */
     public void setASMetadata(String serverUrl, OAuthAuthorizationServerMetadataDTO metadata) {
@@ -165,16 +155,5 @@ public class VCICacheService {
         log.info("Pre-authorized code marked as used");
     }
 
-    /**
-     * Retrieve cached transaction by access token hash
-     * Used for pre-auth flow to get cached claims
-     */
-    public Transaction getTransaction(String accessTokenHash) {
-        Cache cache = cacheManager.getCache(VCISSUANCE_CACHE);
-        if (cache == null) {
-            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
-            return null;
-        }
-        return cache.get(accessTokenHash, Transaction.class);
-    }
+
 }
