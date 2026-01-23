@@ -190,7 +190,9 @@ public class IarServiceImpl implements IarService {
             IarSession session = validateAndMarkAuthorizationCodeUsed(tokenRequest);
 
             OAuthTokenResponse response = new OAuthTokenResponse();
-            response.setAccessToken(generateAccessToken(session));
+            // Generate c_nonce
+            String cNonce = accessTokenJwtUtil.generateCNonce();
+            response.setAccessToken(generateAccessToken(session, cNonce));
             response.setTokenType(tokenType);
             response.setExpiresIn(tokenExpiresInSeconds);
             
@@ -199,8 +201,6 @@ public class IarServiceImpl implements IarService {
                 response.setScope(session.getScope());
             }
             
-            // Extract c_nonce from the JWT access token and set in OAuth response
-            String cNonce = extractCNonceFromJwt(response.getAccessToken());
             if (cNonce != null) {
                 response.setCNonce(cNonce);
                 response.setCNonceExpiresIn(cNonceExpiresInSeconds);
@@ -432,13 +432,14 @@ public class IarServiceImpl implements IarService {
      * @param session The IAR session containing client and transaction information
      * @return Signed JWT access token string
      */
-    private String generateAccessToken(IarSession session) {
+    private String generateAccessToken(IarSession session, String cNonce) {
         try {
             String jwtToken = accessTokenJwtUtil.generateSignedJwt(
                 session, 
                 issuer,
                 audience,
-                tokenExpiresInSeconds
+                tokenExpiresInSeconds,
+                cNonce
             );
             log.debug("Generated JWT access token for client_id: {}, transaction_id: {}", 
                      session.getClientId(), session.getTransactionId());

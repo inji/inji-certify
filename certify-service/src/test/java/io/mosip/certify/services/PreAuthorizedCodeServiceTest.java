@@ -287,7 +287,7 @@ public class PreAuthorizedCodeServiceTest {
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
@@ -329,7 +329,7 @@ public class PreAuthorizedCodeServiceTest {
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
         when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);

@@ -70,8 +70,6 @@ public class OAuthTokenRequestValidator implements ConstraintValidator<ValidOAut
             return false;
         }
 
-        // redirect_uri is optional since we don't support redirect_to_web
-        // client_id is optional for public clients per RFC 7636 Section 3.2
         return true;
     }
 

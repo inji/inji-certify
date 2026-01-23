@@ -164,4 +164,17 @@ public class VCICacheService {
 
         log.info("Pre-authorized code marked as used");
     }
+
+    /**
+     * Retrieve cached transaction by access token hash
+     * Used for pre-auth flow to get cached claims
+     */
+    public Transaction getTransaction(String accessTokenHash) {
+        Cache cache = cacheManager.getCache(VCISSUANCE_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
+            return null;
+        }
+        return cache.get(accessTokenHash, Transaction.class);
+    }
 }
