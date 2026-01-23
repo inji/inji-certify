@@ -7,6 +7,7 @@ import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.util.CommonUtil;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.repository.CredentialConfigRepository;
@@ -307,7 +308,7 @@ public class PreAuthorizedCodeService {
                 .createdAt(currentTime)
                 .build();
 
-        vciCacheService.setVCITransaction(accessToken, transaction);
+        vciCacheService.setVCITransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
 
         log.info("Successfully exchanged pre-authorized code for access token");
 
