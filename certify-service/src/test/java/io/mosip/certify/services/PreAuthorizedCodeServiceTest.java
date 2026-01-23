@@ -286,7 +286,7 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
+        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
@@ -303,7 +303,7 @@ public class PreAuthorizedCodeServiceTest {
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
         verify(vciCacheService).isPreAuthCodeUsed(preAuthCode);
         verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
-        verify(vciCacheService).setTransaction(anyString(), any(Transaction.class));
+        verify(vciCacheService).setVCITransaction(anyString(), any(VCIssuanceTransaction.class));
     }
 
     @Test
@@ -328,7 +328,7 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
+        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
