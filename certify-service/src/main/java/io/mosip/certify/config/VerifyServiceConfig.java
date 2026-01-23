@@ -1,15 +1,12 @@
 package io.mosip.certify.config;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.mosip.certify.core.dto.PresentationDefinition;
 import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
 @Data
-@Component
-@ConfigurationProperties(prefix = "mosip.certify.verify.service")
 public class VerifyServiceConfig {
-
+    @JsonProperty("presentation_definition")
     private PresentationDefinition presentationDefinition;
 }
 

@@ -5,6 +5,7 @@ import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
+import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,9 @@ class WellKnownControllerTest {
 
     @MockBean
     private ParsedAccessToken parsedAccessToken;
+
+    @MockBean
+    private JwksService jwksService;
 
     @InjectMocks
     private WellKnownController wellKnownController;

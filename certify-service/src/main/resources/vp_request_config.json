@@ -1,0 +1,28 @@
+{
+  "presentation_definition": {
+    "id": "MOSIPVerifiableCredential",
+    "name": "MOSIP ID",
+    "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+    "input_descriptors": [
+      {
+        "id": "id card credential",
+        "format": {
+          "ldp_vc": {
+            "proof_type": ["RsaSignature2018"]
+          }
+        },
+        "constraints": {
+          "fields": [
+            {
+              "path": ["$.type"],
+              "filter": {
+                "type": "object",
+                "pattern": "MOSIPVerifiableCredential"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

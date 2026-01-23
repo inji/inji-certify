@@ -1,11 +1,16 @@
 package io.mosip.certify.services;
 
 import com.nimbusds.jose.jwk.JWK;
+import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.JwksService;
+import io.mosip.certify.entity.CredentialConfig;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.kernel.keymanagerservice.dto.AllCertificatesDataResponseDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,6 +27,9 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.*;
 
+import static io.mosip.certify.core.constants.Constants.CERTIFY_SERVICE_APP_ID;
+import static io.mosip.certify.core.constants.Constants.ED25519_REF_ID;
+
 @Service
 @Slf4j
 public class JwksServiceImpl implements JwksService {
@@ -29,17 +37,45 @@ public class JwksServiceImpl implements JwksService {
     @Autowired
     private KeymanagerService keymanagerService;
 
+    @Autowired
+    private CredentialConfigRepository credentialConfigRepository;
+
+    @Value("#{${mosip.certify.credential-config.credential-signing-alg-values-supported}}")
+    private LinkedHashMap<String, List<String>> credentialSigningAlgValuesSupportedMap;
+
+    @Value("#{${mosip.certify.signature-algo.key-alias-mapper:{}}}")
+    private Map<String, List<List<String>>> signatureAlgoKeyAliasMapper;
+
     /**
      * Internal method to fetch JWK set - cached for performance
      * Only successful responses are cached (method returns non-null Map)
      */
     @Cacheable(value = "jwks", key = "'oauth-jwks'")
     public Map<String, Object> getJwks() {
-        AllCertificatesDataResponseDto allCertificatesDataResponseDto = keymanagerService.getAllCertificates(
-                KeyManagerConstants.CERTIFY_SERVICE_APP_ID, Optional.empty());
-
         List<Map<String, Object>> jwkList = new ArrayList<>();
 
+        // Fetch JWKs dynamically from configuration map
+        signatureAlgoKeyAliasMapper.forEach((algo, keyAliases) -> {
+            keyAliases.forEach(keyAlias -> {
+                String appId = keyAlias.get(0);
+                String refId = keyAlias.size() > 1 ? keyAlias.get(1) : "";
+                AllCertificatesDataResponseDto response = keymanagerService.getAllCertificates(appId, Optional.of(refId));
+                jwkList.addAll(getJwks(response));
+            });
+        });
+
+        // Add jwks for CERTIFY_SERVICE_APP_ID
+        AllCertificatesDataResponseDto responseDto = keymanagerService.getAllCertificates(CERTIFY_SERVICE_APP_ID, Optional.empty());
+        jwkList.addAll(getJwks(responseDto));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("keys", jwkList);
+
+        return response;
+    }
+
+    private List<Map<String, Object>> getJwks(AllCertificatesDataResponseDto allCertificatesDataResponseDto) {
+        List<Map<String, Object>> jwkList = new ArrayList<>();
         if (allCertificatesDataResponseDto != null && allCertificatesDataResponseDto.getAllCertificates() != null) {
             Arrays.stream(allCertificatesDataResponseDto.getAllCertificates())
                     .filter(dto -> dto != null
@@ -60,11 +96,7 @@ public class JwksServiceImpl implements JwksService {
         } else {
             log.warn("No certificates found for CERTIFY_SERVICE_APP_ID");
         }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("keys", jwkList);
-
-        return response;
+        return jwkList;
     }
 
     /**
@@ -102,8 +134,14 @@ public class JwksServiceImpl implements JwksService {
         jwk.getX509CertChain().forEach(c -> { certs.add(c.toString()); });
         map.put("x5c", certs);
         map.put("x5t#S256", jwk.getX509CertSHA256Thumbprint().toString());
-        map.put("e", jwk.toPublicJWK().getRequiredParams().get("e"));
-        map.put("n", jwk.toPublicJWK().getRequiredParams().get("n"));
+        Map<String, ?> jwkParams = jwk.toPublicJWK().getRequiredParams();
+        if (jwkParams.containsKey("e")) map.put("e", jwkParams.get("e"));
+        if (jwkParams.containsKey("n")) map.put("n", jwkParams.get("n"));
+
+        // EC parameters
+        if (jwkParams.containsKey("x")) map.put("x", jwkParams.get("x"));
+        if (jwkParams.containsKey("y")) map.put("y", jwkParams.get("y"));
+        if (jwkParams.containsKey("crv")) map.put("crv", jwkParams.get("crv"));
         return map;
     }
 }
