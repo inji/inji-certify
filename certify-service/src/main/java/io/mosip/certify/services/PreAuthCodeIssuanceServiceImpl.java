@@ -25,12 +25,28 @@ public class PreAuthCodeIssuanceServiceImpl implements DataProviderPlugin {
 
     @Override
     public JSONObject fetchData(Map<String, Object> identityDetails) throws DataProviderExchangeException {
-        PreAuthTransaction cachedTransaction = (PreAuthTransaction) vciCacheService.getVCITransaction(parsedAccessToken.getAccessTokenHash());
-        if (cachedTransaction != null && cachedTransaction.getClaims() != null && !cachedTransaction.getClaims().isEmpty()) {
-            log.info("Using cached claims from pre-auth flow for credential generation");
-            return new JSONObject(cachedTransaction.getClaims());
+        // Validate parsedAccessToken and accessTokenHash
+        if (parsedAccessToken == null || parsedAccessToken.getAccessTokenHash() == null || parsedAccessToken.getAccessTokenHash().isEmpty()) {
+            log.error("Invalid or missing access token hash in parsedAccessToken");
+            throw new DataProviderExchangeException("Access token hash is null or empty");
         }
-        log.error("No cached claims found for pre-auth flow with access token hash: {}", parsedAccessToken.getAccessTokenHash());
-        throw new DataProviderExchangeException();
+
+        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
+        Object cachedObject = vciCacheService.getVCITransaction(accessTokenHash);
+
+        // Validate the cached object type
+        if (!(cachedObject instanceof PreAuthTransaction cachedTransaction)) {
+            log.error("Invalid or null cached transaction for access token hash: {}", accessTokenHash);
+            throw new DataProviderExchangeException("Cached transaction is null or of incorrect type");
+        }
+
+        // Validate claims in the cached transaction
+        if (cachedTransaction.getClaims() == null || cachedTransaction.getClaims().isEmpty()) {
+            log.error("No claims found in cached transaction for access token hash: {}", accessTokenHash);
+            throw new DataProviderExchangeException("Cached transaction claims are null or empty");
+        }
+
+        log.info("Using cached claims from pre-auth flow for credential generation");
+        return new JSONObject(cachedTransaction.getClaims());
     }
 }
