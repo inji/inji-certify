@@ -57,7 +57,7 @@ public class IarServiceImpl implements IarService {
     @Value("${mosip.certify.oauth.token.expires-in-seconds:3600}")
     private int tokenExpiresInSeconds;
 
-    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
+    @Value("${mosip.certify.cnonce-expire-seconds:300}")
     private int cNonceExpiresInSeconds;
 
     @Value("${mosip.certify.iar.authorization-code.expires-minutes:10}")

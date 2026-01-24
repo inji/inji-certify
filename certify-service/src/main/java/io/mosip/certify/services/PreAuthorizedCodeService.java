@@ -63,7 +63,7 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
 
-    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
+    @Value("${mosip.certify.cnonce-expire-seconds:300}")
     private int cNonceExpirySeconds;
 
     @Value("${mosip.certify.oauth.issuer}")
