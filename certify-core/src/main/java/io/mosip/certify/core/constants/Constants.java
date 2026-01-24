@@ -50,5 +50,10 @@ public class Constants {
     public static final String ELEMENT_VALUE = "elementValue";
     public static final String __CBOR_TAG = "__cbor_tag";
     public static final String __CBOR_VALUE = "__cbor_value";
-
+    public static final String CREDENTIAL_CONFIGURATIONS_SUPPORTED = "credential_configurations_supported";
+    public static final String MANDATORY = "mandatory";
+    public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
+    public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
+    public static final String PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code";
+    public static final String AS_METADATA_PREFIX = "as_metadata:";
 }

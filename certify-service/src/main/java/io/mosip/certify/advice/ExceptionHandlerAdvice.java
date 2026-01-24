@@ -267,7 +267,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         if (certifyErrorCode == null) {
             return "server_error";
         }
-        
+
         switch (certifyErrorCode.toLowerCase()) {
             case "invalid_request":
             case "invalid_grant":
@@ -299,7 +299,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         if (oauthErrorCode == null) {
             return HttpStatus.INTERNAL_SERVER_ERROR;
         }
-        
+
         switch (oauthErrorCode.toLowerCase()) {
             case "invalid_client":
                 return HttpStatus.UNAUTHORIZED;

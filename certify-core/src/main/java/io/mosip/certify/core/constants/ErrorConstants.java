@@ -80,4 +80,16 @@ public class ErrorConstants {
     public static final String INVALID_QR_SIGNED_RESULT = "invalid_qr_signed_result";
     public static final String ERROR_SIGNING_QR_ENTRY = "error_signing_qr_entry";
     public static final String QR_CBOR_ENCODING_ERROR = "qr_cbor_encoding_error";
+    public static final String INVALID_CREDENTIAL_CONFIGURATION_ID = "invalid_credential_configuration_id";
+    public static final String MISSING_MANDATORY_CLAIM = "missing_mandatory_claim";
+    public static final String CREDENTIAL_OFFER_NOT_FOUND = "credential_offer_not_found";
+    public static final String INVALID_GRANT = "invalid_grant";
+    public static final String UNSUPPORTED_GRANT_TYPE = "unsupported_grant_type";
+    public static final String UNKNOWN_CLAIMS = "unknown_claims";
+    public static final String INVALID_EXPIRY_RANGE = "invalid_expiry_range";
+    public static final String INVALID_OFFER_ID_FORMAT = "invalid_offer_id_format";
+    public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
+    public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
+    public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
+
 }

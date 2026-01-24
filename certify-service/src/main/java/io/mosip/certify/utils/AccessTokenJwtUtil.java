@@ -50,8 +50,46 @@ public class AccessTokenJwtUtil {
      * @param expirySeconds Token expiration time in seconds from now
      * @return Signed JWT string
      */
-    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds) {
+    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds, String cNonce) {
+        String identityData = session.getIdentityData();
+        if (!StringUtils.hasText(identityData)) {
+            log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
+                    session.getAuthSession(), session.getTransactionId());
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required but not found in session");
+        }
+
+        String scope = session.getScope();
+        if (!StringUtils.hasText(scope)) {
+            log.warn("Scope is null or empty for session: {}, transaction_id: {}",
+                    session.getAuthSession(), session.getTransactionId());
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required but not found in session");
+        }
+
+        return generateSignedJwt(identityData, scope, session.getClientId(), issuer, audience, expirySeconds, cNonce);
+    }
+
+    /**
+     * Generate a signed JWT access token using keymanager service.
+     * This method accepts raw parameters directly without requiring an IarSession object.
+     *
+     * @param identityData The identity data (subject) for the JWT
+     * @param scope The scope for the JWT
+     * @param clientId The client ID (can be null for pre-authorized code flow)
+     * @param issuer The issuer URI for the JWT
+     * @param audience The audience for the JWT
+     * @param expirySeconds Token expiration time in seconds from now
+     * @return Signed JWT string
+     */
+    public String generateSignedJwt(String identityData, String scope, String clientId,
+                                     String issuer, String audience, int expirySeconds, String cNonce) {
         try {
+            if (!StringUtils.hasText(identityData)) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required");
+            }
+            if (!StringUtils.hasText(scope)) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required");
+            }
+
             // Current time
             Instant now = Instant.now();
             long issuedAt = now.getEpochSecond();
@@ -60,33 +98,18 @@ public class AccessTokenJwtUtil {
             // Build JWT payload as JSON
             Map<String, Object> payload = new HashMap<>();
             payload.put("iss", issuer);
-            String identityData = session.getIdentityData();
-            if (!StringUtils.hasText(identityData)) {
-                log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
-                        session.getAuthSession(), session.getTransactionId());
-                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required but not found in session");
-            }
             payload.put("sub", identityData);
             payload.put("aud", audience);
             payload.put("iat", issuedAt);
             payload.put("exp", expiresAt);
-            payload.put("client_id", session.getClientId());
-
-            // Add scope from session (dynamically extracted from authorization_details)
-            String scope = session.getScope();
-            if (!StringUtils.hasText(scope)) {
-                log.warn("Scope is null or empty for session: {}, transaction_id: {}",
-                        session.getAuthSession(), session.getTransactionId());
-                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required but not found in session");
-            }
+            payload.put("client_id", clientId);
             payload.put("scope", scope);
-            log.debug("Added scope '{}' to JWT for transaction_id: {}", scope, session.getTransactionId());
+            log.debug("Added scope '{}' to JWT", scope);
 
-            // Generate c_nonce and add to JWT
-            String cNonce = generateCNonce();
+
             payload.put("c_nonce", cNonce);
             payload.put("c_nonce_expires_in", cNonceExpireSeconds);
-            log.debug("Added c_nonce '{}' to JWT for transaction_id: {}", cNonce, session.getTransactionId());
+            log.debug("Added c_nonce '{}' to JWT", cNonce);
 
             // Convert payload to JSON string
             String payloadJson = objectMapper.writeValueAsString(payload);
@@ -108,13 +131,14 @@ public class AccessTokenJwtUtil {
             JWTSignatureResponseDto response = signatureService.jwsSign(signatureRequest);
             String jwtString = response.getJwtSignedData();
 
-            log.debug("Generated JWT access token for client_id: {}, transaction_id: {}",
-                    session.getClientId(), session.getTransactionId());
+            log.debug("Generated JWT access token for client_id: {}", clientId);
 
             return jwtString;
 
+        } catch (CertifyException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to generate signed JWT for session: {}", session.getAuthSession(), e);
+            log.error("Failed to generate signed JWT", e);
             throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "JWT generation failed", e);
         }
     }
@@ -124,7 +148,7 @@ public class AccessTokenJwtUtil {
      *
      * @return Generated c_nonce string
      */
-    private String generateCNonce() {
+    public String generateCNonce() {
         String cNonce = java.util.UUID.randomUUID().toString();
         log.debug("Generated c_nonce following eSignet pattern (length: {})", cNonce.length());
         return cNonce;

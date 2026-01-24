@@ -25,6 +25,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.services.PreAuthorizedCodeService;
+
 /**
  * OAuth Authorization Controller
  * Handles OAuth 2.0 authorization flows including Interactive Authorization Request (IAR)
@@ -42,6 +45,9 @@ public class OAuthController {
 
     @Autowired
     private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
+
+    @Autowired(required = false)
+    private PreAuthorizedCodeService preAuthorizedCodeService;
 
     @GetMapping(value = "/.well-known/oauth-authorization-server", produces = "application/json")
     public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
@@ -91,9 +97,9 @@ public class OAuthController {
      * POST /oauth/token
      * 
      * Exchanges authorization code for access token and c_nonce.
-     * Supports authorization_code grant type for IAR flow.
-     * 
-     * @param tokenRequest OAuth token request containing grant_type, code, redirect_uri, client_id, code_verifier
+     * Supports authorization_code and pre-authorized_code grant types.
+     *
+     * @param tokenRequest OAuth token request containing grant_type and relevant fields
      * @return ResponseEntity with OAuthTokenResponse containing access_token and c_nonce
      * @throws CertifyException if token request processing fails
      */
@@ -105,8 +111,18 @@ public class OAuthController {
         log.info("Processing OAuth token request for grant_type: {}", tokenRequest.getGrant_type());
 
         try {
-            // Process the token request
-            OAuthTokenResponse response = iarService.processTokenRequest(tokenRequest);
+            OAuthTokenResponse response;
+
+            // Check if this is a pre-authorized code grant
+            if (Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(tokenRequest.getGrant_type())) {
+                if (preAuthorizedCodeService == null) {
+                    throw new CertifyException("unsupported_grant_type", "Pre-authorized code flow is not enabled");
+                }
+                response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
+            } else {
+                // Handle authorization_code grant type via IarService
+                response = iarService.processTokenRequest(tokenRequest);
+            }
 
             log.info("Token issued successfully");
 

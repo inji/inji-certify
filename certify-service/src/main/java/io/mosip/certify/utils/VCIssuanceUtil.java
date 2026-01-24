@@ -181,7 +181,7 @@ public class VCIssuanceUtil {
             String accessTokenHash = parsedAccessToken.getAccessTokenHash();
             log.error("Client Nonce not found / expired in the access token, generate new cNonce for accessTokenHash: {}",
                     accessTokenHash != null ? accessTokenHash.substring(0, Math.min(accessTokenHash.length(), 10)) + "..." : "null");
-            VCIssuanceTransaction newTransaction = createVCITransaction(securityHelperService, configuredCNonceExpireSeconds, vciCacheService, accessTokenHash);
+            VCIssuanceTransaction newTransaction = createOrUpdateVCITransaction(securityHelperService, configuredCNonceExpireSeconds, vciCacheService, accessTokenHash, transaction);
             throw new InvalidNonceException(newTransaction.getCNonce(), newTransaction.getCNonceExpireSeconds());
         }
         return cNonce;
@@ -196,9 +196,9 @@ public class VCIssuanceUtil {
         return 0;
     }
 
-    public static VCIssuanceTransaction createVCITransaction(SecurityHelperService securityHelperService, int cNonceExpireSecondsConfig,
-                                                             VCICacheService vciCacheService, String accessTokenHash) {
-        VCIssuanceTransaction transaction = new VCIssuanceTransaction();
+    public static VCIssuanceTransaction createOrUpdateVCITransaction(SecurityHelperService securityHelperService, int cNonceExpireSecondsConfig,
+                                                                     VCICacheService vciCacheService, String accessTokenHash, VCIssuanceTransaction existingTransaction) {
+        VCIssuanceTransaction transaction = (existingTransaction != null) ? existingTransaction : new VCIssuanceTransaction();
         transaction.setCNonce(securityHelperService.generateSecureRandomString(20));
         transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
         transaction.setCNonceExpireSeconds(cNonceExpireSecondsConfig);
