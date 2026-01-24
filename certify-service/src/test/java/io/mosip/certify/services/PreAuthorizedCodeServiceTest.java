@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.*;
+import io.mosip.certify.entity.CredentialConfig;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
@@ -16,6 +18,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -44,6 +48,9 @@ public class PreAuthorizedCodeServiceTest {
 
     @Mock
     private CredentialConfigurationService credentialConfigurationService;
+
+    @Mock
+    private CredentialConfigRepository credentialConfigRepository;
 
     private PreAuthorizedRequest request;
     private Map<String, Object> issuerMetadata;
@@ -94,6 +101,12 @@ public class PreAuthorizedCodeServiceTest {
 
         // KEY FIX: Mock the credentialConfigurationService to return metadataDTO
         when(credentialConfigurationService.fetchCredentialIssuerMetadata(anyString())).thenReturn(metadataDTO);
+
+        // Mock credentialConfigRepository
+        CredentialConfig credentialConfig = new CredentialConfig();
+        credentialConfig.setStatus(Constants.ACTIVE);
+        credentialConfig.setScope("test_scope");
+        when(credentialConfigRepository.findByCredentialConfigKeyId(CONFIG_ID)).thenReturn(Optional.of(credentialConfig));
     }
 
     @Test
@@ -286,8 +299,9 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
+        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
+        when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
@@ -303,7 +317,7 @@ public class PreAuthorizedCodeServiceTest {
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
         verify(vciCacheService).isPreAuthCodeUsed(preAuthCode);
         verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
-        verify(vciCacheService).setTransaction(anyString(), any(Transaction.class));
+        verify(vciCacheService).setVCITransaction(anyString(), any(VCIssuanceTransaction.class));
     }
 
     @Test
@@ -328,8 +342,9 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
-        when(vciCacheService.setTransaction(anyString(), any(Transaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), any(), anyString(), anyString(), anyInt()))
+        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
+        when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);

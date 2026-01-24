@@ -50,7 +50,7 @@ public class AccessTokenJwtUtil {
      * @param expirySeconds Token expiration time in seconds from now
      * @return Signed JWT string
      */
-    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds) {
+    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds, String cNonce) {
         String identityData = session.getIdentityData();
         if (!StringUtils.hasText(identityData)) {
             log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
@@ -65,7 +65,7 @@ public class AccessTokenJwtUtil {
             throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required but not found in session");
         }
         
-        return generateSignedJwt(identityData, scope, session.getClientId(), issuer, audience, expirySeconds);
+        return generateSignedJwt(identityData, scope, session.getClientId(), issuer, audience, expirySeconds, cNonce);
     }
 
     /**
@@ -81,7 +81,7 @@ public class AccessTokenJwtUtil {
      * @return Signed JWT string
      */
     public String generateSignedJwt(String identityData, String scope, String clientId, 
-                                     String issuer, String audience, int expirySeconds) {
+                                     String issuer, String audience, int expirySeconds, String cNonce) {
         try {
             if (!StringUtils.hasText(identityData)) {
                 throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required");
@@ -106,8 +106,7 @@ public class AccessTokenJwtUtil {
             payload.put("scope", scope);
             log.debug("Added scope '{}' to JWT", scope);
 
-            // Generate c_nonce and add to JWT
-            String cNonce = generateCNonce();
+
             payload.put("c_nonce", cNonce);
             payload.put("c_nonce_expires_in", cNonceExpireSeconds);
             log.debug("Added c_nonce '{}' to JWT", cNonce);
@@ -149,7 +148,7 @@ public class AccessTokenJwtUtil {
      *
      * @return Generated c_nonce string
      */
-    private String generateCNonce() {
+    public String generateCNonce() {
         String cNonce = java.util.UUID.randomUUID().toString();
         log.debug("Generated c_nonce following eSignet pattern (length: {})", cNonce.length());
         return cNonce;

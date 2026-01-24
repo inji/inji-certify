@@ -1,5 +1,6 @@
 package io.mosip.certify.core.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Grant {
 
     @JsonProperty("urn:ietf:params:oauth:grant-type:pre-authorized_code")
@@ -22,6 +24,7 @@ public class Grant {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class PreAuthorizedCodeGrantType {
 
         @JsonProperty("pre-authorized_code")
@@ -35,6 +38,7 @@ public class Grant {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class AuthorizationCodeGrantType {
 
         @JsonProperty("issuer_state")

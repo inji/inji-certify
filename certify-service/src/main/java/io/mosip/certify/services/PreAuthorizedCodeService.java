@@ -7,7 +7,10 @@ import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.util.CommonUtil;
+import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.entity.IarSession;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +42,9 @@ public class PreAuthorizedCodeService {
     @Autowired
     private CredentialConfigurationService credentialConfigurationService;
 
+    @Autowired
+    private CredentialConfigRepository credentialConfigRepository;
+
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
 
@@ -57,7 +63,7 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
 
-    @Value("${mosip.certify.oauth.c-nonce.expires-in-seconds:300}")
+    @Value("${mosip.certify.cnonce-expire-seconds:300}")
     private int cNonceExpirySeconds;
 
     @Value("${mosip.certify.oauth.issuer}")
@@ -287,22 +293,22 @@ public class PreAuthorizedCodeService {
 
         validateTokenRequest(request, codeData);
 
-        // Generate access token
-        String accessToken = generateAccessToken(codeData);
-
         // Generate c_nonce
-        String cNonce = generateSecureCode(32);
+        String cNonce = accessTokenJwtUtil.generateCNonce();
+        // Generate access token
+        String accessToken = generateAccessToken(codeData, cNonce);
 
         long currentTime = System.currentTimeMillis();
-        Transaction transaction = Transaction.builder()
+        PreAuthTransaction transaction = PreAuthTransaction.builder()
                 .credentialConfigurationId(codeData.getCredentialConfigurationId())
                 .claims(codeData.getClaims())
                 .cNonce(cNonce)
-                .cNonceExpiresAt(currentTime + (cNonceExpirySeconds * 1000L))
+                .cNonceIssuedEpoch(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).toEpochSecond(java.time.ZoneOffset.UTC))
+                .cNonceExpireSeconds(cNonceExpirySeconds)
                 .createdAt(currentTime)
                 .build();
 
-        vciCacheService.setTransaction(accessToken, transaction);
+        vciCacheService.setVCITransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
 
         log.info("Successfully exchanged pre-authorized code for access token");
 
@@ -323,15 +329,15 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
-        if (codeData == null) {
-            log.error("Pre-authorized code not found");
-            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
-        }
-
         // Check if already used
         if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
+        }
+
+        if (codeData == null) {
+            log.error("Pre-authorized code not found");
+            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
         }
 
         // Check expiry
@@ -359,19 +365,42 @@ public class PreAuthorizedCodeService {
      * Generate a signed JWT access token for pre-authorized code flow.
      * Calls AccessTokenJwtUtil.generateSignedJwt directly with raw parameters.
      */
-    private String generateAccessToken(PreAuthCodeData codeData) {
+    private String generateAccessToken(PreAuthCodeData codeData, String cNonce) {
         try {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
-            String scope = codeData.getCredentialConfigurationId();
-            String clientId = "pre-auth-" + UUID.randomUUID().toString();
+            String credentialConfigId = codeData.getCredentialConfigurationId();
+
+            // Lookup credential configuration in database
+            String credentialScope = credentialConfigRepository.findByCredentialConfigKeyId(credentialConfigId)
+                    .map(credentialConfig -> {
+                        if (!Constants.ACTIVE.equals(credentialConfig.getStatus())) {
+                            log.error("Credential configuration is not active for ID: {}, status: {}",
+                                    credentialConfigId, credentialConfig.getStatus());
+                            throw new CertifyException("invalid_request",
+                                    "Credential configuration is not active: " + credentialConfigId);
+                        }
+                        String scope = credentialConfig.getScope();
+                        if (!StringUtils.hasText(scope)) {
+                            log.error("Scope is not configured for credential configuration ID: {}", credentialConfigId);
+                            throw new CertifyException("server_error",
+                                    "Scope not configured for credential: " + credentialConfigId);
+                        }
+                        return scope;
+                    })
+                    .orElseThrow(() -> {
+                        log.error("Credential configuration not found for ID: {}", credentialConfigId);
+                        return new CertifyException("invalid_request",
+                                "Invalid credential_configuration_id: " + credentialConfigId);
+                    });
 
             return accessTokenJwtUtil.generateSignedJwt(
-                claimsJson,
-                scope,
-                clientId,
-                oauthIssuer,
-                oauthAudience,
-                accessTokenExpirySeconds
+                    claimsJson,
+                    credentialScope,
+                    "",
+                    oauthIssuer,
+                    oauthAudience,
+                    accessTokenExpirySeconds,
+                    cNonce
             );
         } catch (Exception e) {
             log.error("Failed to generate access token for pre-authorized code flow", e);

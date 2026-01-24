@@ -19,6 +19,7 @@
     * Appropriately configure the `mosip.certify.authn.allowed-audiences` to allowed audiences such that it matches with the AuthZ token when the Credential issue request is made to Certify.
 6. (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script.
 7. Perform Authentication & VC Issuance to see if the Certify & AuthZ stack is working apprpriately. Look out for the Postman collections referred to in the main README.md of this project.
+   * Use the **Inji Certify - Pre Auth Code** collection located at `docs/postman-collections/Inji Certify - Pre Auth Code.postman_collection.json` to test the "Credential Offer with Pre Authorisation Code Flow".
 
 
 ## Locally setting up CSV Plugin
