@@ -62,10 +62,4 @@ public class OAuthAuthorizationServerMetadataDTO {
      */
     @JsonProperty("interactive_authorization_endpoint")
     private String interactiveAuthorizationEndpoint;
-
-    @JsonProperty("token_endpoint_auth_methods_supported")
-    private List<String> tokenEndpointAuthMethodsSupported;
-
-    @JsonProperty("scopes_supported")
-    private List<String> scopesSupported;
 }

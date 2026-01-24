@@ -158,6 +158,10 @@ public class PreAuthorizedCodeService {
         List<String> unknownClaims = new ArrayList<>();
 
         for (Map.Entry<String, Object> entry : requiredClaims.entrySet()) {
+            if (!(entry.getValue() instanceof Map)) {
+                log.warn("Claim {} has unexpected format, skipping mandatory check", entry.getKey());
+                continue;
+            }
             Map<String, Object> claimAttrs = (Map<String, Object>) entry.getValue();
             Boolean mandatory = claimAttrs.containsKey(Constants.MANDATORY)
                     ? (Boolean) claimAttrs.get(Constants.MANDATORY)
@@ -264,7 +268,7 @@ public class PreAuthorizedCodeService {
     }
 
     private String buildCredentialOfferUri(String offerId) {
-        String offerFetchUrl = domainUrl + "v1/certify/credential-offer-data/" + offerId;
+        String offerFetchUrl = domainUrl + "/credential-offer-data/" + offerId;
         try {
             String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8.name());
             return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
