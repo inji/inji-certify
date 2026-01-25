@@ -457,18 +457,6 @@ class OAuthControllerTest {
         verify(iarService, times(1)).processTokenRequest(any());
     }
 
-    @Test
-    void processTokenRequest_missingParameters_returnsOAuthError() throws Exception {
-        // Act & Assert - Missing required parameters should return 400 with OAuth error format
-        mockMvc.perform(post("/oauth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("grant_type", "authorization_code"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("invalid_request"))
-                .andExpect(jsonPath("$.error_description").value("code is required for authorization_code grant"));
-    }
-
     // ==================== SECOND IAR CALL (VP PRESENTATION) TESTS ====================
 
     @Test

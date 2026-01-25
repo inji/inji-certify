@@ -5,14 +5,17 @@
  */
 package io.mosip.certify.controller;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.IarStatus;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.IarService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
+import io.mosip.certify.services.PreAuthorizedCodeService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
@@ -20,13 +23,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.services.PreAuthorizedCodeService;
 
 /**
  * OAuth Authorization Controller
@@ -106,21 +104,33 @@ public class OAuthController {
     @PostMapping(value = "/oauth/token",
                  consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
                  produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> processTokenRequest(@Valid OAuthTokenRequest tokenRequest)
+    public ResponseEntity<?> processTokenRequest(@RequestParam Map<String, String> params)
             throws CertifyException {
-        log.info("Processing OAuth token request for grant_type: {}", tokenRequest.getGrant_type());
-
+        log.info("Received OAuth token request");
         try {
             OAuthTokenResponse response;
+            String grantType = params.get("grant_type");
+            if (StringUtils.isEmpty(grantType)) {
+                throw new CertifyException("invalid_request", "grant_type is required");
+            }
+            log.info("Processing OAuth token request for grant_type: {}", grantType);
 
             // Check if this is a pre-authorized code grant
-            if (Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(tokenRequest.getGrant_type())) {
+            if (Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(grantType)) {
                 if (preAuthorizedCodeService == null) {
                     throw new CertifyException("unsupported_grant_type", "Pre-authorized code flow is not enabled");
                 }
+                OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+                tokenRequest.setGrant_type(grantType);
+                tokenRequest.setPre_authorized_code(params.get("pre-authorized_code"));
+                tokenRequest.setTx_code(params.get("tx_code"));
                 response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
             } else {
                 // Handle authorization_code grant type via IarService
+                OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
+                tokenRequest.setGrant_type(grantType);
+                tokenRequest.setCode(params.get("code"));
+                tokenRequest.setCode_verifier(params.get("code_verifier"));
                 response = iarService.processTokenRequest(tokenRequest);
             }
 

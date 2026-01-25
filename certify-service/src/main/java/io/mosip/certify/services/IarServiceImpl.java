@@ -13,6 +13,9 @@ import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.IarService;
+import jakarta.validation.Validator;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +26,8 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.Set;
+
 import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.repository.IarSessionRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
@@ -53,6 +58,9 @@ public class IarServiceImpl implements IarService {
 
     @Autowired
     private AccessTokenJwtUtil accessTokenJwtUtil;
+
+    @Autowired
+    private Validator validator;
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:3600}")
     private int tokenExpiresInSeconds;
@@ -176,6 +184,12 @@ public class IarServiceImpl implements IarService {
     
     @Override
     public OAuthTokenResponse processTokenRequest(OAuthTokenRequest tokenRequest) throws CertifyException {
+        Set<ConstraintViolation<OAuthTokenRequest>> violations =
+                validator.validate(tokenRequest);
+
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
         log.info("Processing OAuth token request for grant_type: {}", 
                  tokenRequest.getGrant_type());
 

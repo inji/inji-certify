@@ -10,6 +10,7 @@ import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
+import jakarta.validation.Validator;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,11 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.Optional;
-
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,6 +49,9 @@ public class PreAuthorizedCodeServiceTest {
     @Mock
     private CredentialConfigRepository credentialConfigRepository;
 
+    @Mock
+    private Validator validator;
+
     private PreAuthorizedRequest request;
     private Map<String, Object> issuerMetadata;
     private Map<String, Object> supportedConfigs;
@@ -65,7 +65,7 @@ public class PreAuthorizedCodeServiceTest {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "defaultExpirySeconds", 600);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "minExpirySeconds", 60);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "maxExpirySeconds", 86400);
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "domainUrl", "https://domain.com/");
+        ReflectionTestUtils.setField(preAuthorizedCodeService, "credentialOfferUrl", "https://credentialOffer.com/");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "accessTokenExpirySeconds", 600);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "cNonceExpirySeconds", 300);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthIssuer", "https://oauth.issuer.com");
@@ -107,6 +107,7 @@ public class PreAuthorizedCodeServiceTest {
         credentialConfig.setStatus(Constants.ACTIVE);
         credentialConfig.setScope("test_scope");
         when(credentialConfigRepository.findByCredentialConfigKeyId(CONFIG_ID)).thenReturn(Optional.of(credentialConfig));
+        when(validator.validate(any())).thenReturn(Collections.emptySet());
     }
 
     @Test

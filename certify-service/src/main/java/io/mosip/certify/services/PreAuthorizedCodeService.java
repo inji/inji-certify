@@ -13,6 +13,10 @@ import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +49,9 @@ public class PreAuthorizedCodeService {
     @Autowired
     private CredentialConfigRepository credentialConfigRepository;
 
+    @Autowired
+    private Validator validator;
+
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
 
@@ -57,8 +64,8 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.pre-auth.max-expiry-seconds:86400}")
     private int maxExpirySeconds;
 
-    @Value("${mosip.certify.domain.url}")
-    private String domainUrl;
+    @Value("${mosip.certify.credential-offer-url}")
+    private String credentialOfferUrl;
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
@@ -268,7 +275,7 @@ public class PreAuthorizedCodeService {
     }
 
     private String buildCredentialOfferUri(String offerId) {
-        String offerFetchUrl = domainUrl + "/credential-offer-data/" + offerId;
+        String offerFetchUrl = credentialOfferUrl + offerId;
         try {
             String encodedUrl = URLEncoder.encode(offerFetchUrl, StandardCharsets.UTF_8.name());
             return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
@@ -290,6 +297,13 @@ public class PreAuthorizedCodeService {
      * Exchange pre-authorized code for access token
      */
     public OAuthTokenResponse exchangePreAuthorizedCode(OAuthTokenRequest request) {
+        Set<ConstraintViolation<OAuthTokenRequest>> violations =
+                validator.validate(request);
+
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
+
         log.info("Processing token request for grant_type: {}", request.getGrant_type());
 
         // Retrieve and validate pre-auth code data

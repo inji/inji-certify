@@ -37,10 +37,10 @@ In particular, certify focuses on the issuer’s role in and provides the follow
 | Support for JSON\_LD VC Format                                      | ✅        |
 | Support for IETF SD\_JWT VC Format with support only for vc+sd\_jwt | ✅        |
 | Revocation support for JSON\_LD                                     | ✅        |
-| Credential Offer with Pre Authorisation Code Flow                   | ✅        |
-| Credential Issuance with Interactive Authorisation Request          | ✅        |
+| Credential Offer with Pre Authorization Code Flow                   | ✅        |
+| Credential Issuance with Interactive Authorization Request          | ✅        |
 | Support for mDoc/mDL VC Format                                      | ❌        |
-| Credential Offer with Authorisation Code Flow                       | ❌        |
+| Credential Offer with Authorization Code Flow                       | ❌        |
 | Credential Binding with cwt proof                                   | ❌        |
 
 To know more about features available in certify please refer to [this documentation](https://docs.inji.io/inji-certify/overview/features).
