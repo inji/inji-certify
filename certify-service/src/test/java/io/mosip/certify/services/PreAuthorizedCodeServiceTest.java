@@ -299,7 +299,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
         when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
@@ -316,8 +316,7 @@ public class PreAuthorizedCodeServiceTest {
         Assert.assertEquals(Integer.valueOf(300), response.getCNonceExpiresIn());
 
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
-        verify(vciCacheService).isPreAuthCodeUsed(preAuthCode);
-        verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
+        verify(vciCacheService).claimPreAuthCode(preAuthCode);
         verify(vciCacheService).setVCITransaction(anyString(), any(VCIssuanceTransaction.class));
     }
 
@@ -342,7 +341,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
         when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
@@ -352,7 +351,7 @@ public class PreAuthorizedCodeServiceTest {
 
         Assert.assertNotNull(response);
         Assert.assertNotNull(response.getAccessToken());
-        verify(vciCacheService).markPreAuthCodeAsUsed(preAuthCode);
+        verify(vciCacheService).claimPreAuthCode(preAuthCode);
     }
 
     @Test
@@ -403,7 +402,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -425,7 +424,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(true);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(false);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -448,7 +447,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -472,7 +471,7 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.isPreAuthCodeUsed(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));

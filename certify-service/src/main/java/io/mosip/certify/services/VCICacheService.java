@@ -135,6 +135,17 @@ public class VCICacheService {
         return wrapper != null && Boolean.TRUE.equals(wrapper.get());
     }
 
+    public boolean claimPreAuthCode(String preAuthCode) {
+        synchronized (this) {
+            PreAuthCodeData codeData = getPreAuthCodeData(preAuthCode);
+            if (codeData == null || isPreAuthCodeUsed(preAuthCode)) {
+                return false;
+            }
+            markPreAuthCodeAsUsed(preAuthCode);
+            return true;
+        }
+    }
+
     /**
      * Mark a pre-authorized code as used to prevent reuse
      */

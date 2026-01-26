@@ -40,7 +40,7 @@ In particular, certify focuses on the issuer’s role in and provides the follow
 | Credential Offer with Pre Authorization Code Flow                   | ✅        |
 | Credential Issuance with Interactive Authorization Request          | ✅        |
 | Support for mDoc/mDL VC Format                                      | ❌        |
-| Credential Offer with Authorization Code Flow                       | ❌        |
+| Credential Offer with Authorization Code Flow(redirect-to-web)      | ❌        |
 | Credential Binding with cwt proof                                   | ❌        |
 
 To know more about features available in certify please refer to [this documentation](https://docs.inji.io/inji-certify/overview/features).

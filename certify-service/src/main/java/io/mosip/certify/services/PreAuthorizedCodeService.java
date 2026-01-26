@@ -347,15 +347,11 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
-        // Check if already used
-        if (vciCacheService.isPreAuthCodeUsed(request.getPre_authorized_code())) {
-            log.error("Pre-authorized code already used");
-            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used");
-        }
-
-        if (codeData == null) {
-            log.error("Pre-authorized code not found");
-            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
+        // Atomically claim the pre-authorized code
+        boolean claimed = vciCacheService.claimPreAuthCode(request.getPre_authorized_code());
+        if (!claimed) {
+            log.error("Pre-authorized code already used or invalid");
+            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used  or invalid");
         }
 
         // Check expiry
@@ -375,8 +371,6 @@ public class PreAuthorizedCodeService {
             log.error("Transaction code mismatch");
             throw new CertifyException("tx_code_mismatch", "Transaction code does not match");
         }
-        // Mark code as used
-        vciCacheService.markPreAuthCodeAsUsed(request.getPre_authorized_code());
     }
 
     /**
