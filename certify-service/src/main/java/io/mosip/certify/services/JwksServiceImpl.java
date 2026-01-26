@@ -168,33 +168,50 @@ public class JwksServiceImpl implements JwksService {
     }
 
     private boolean isEd25519(X509Certificate cert) {
-        String algorithm = cert.getSigAlgName();
+        String algorithm = cert.getPublicKey().getAlgorithm();
         return JWSAlgorithm.EdDSA.getName().equalsIgnoreCase(algorithm) ||
                 JWSAlgorithm.Ed25519.getName().equalsIgnoreCase(algorithm);
     }
 
-    private Map<String, Object> buildEd25519Jwk(String keyId, X509Certificate cert, LocalDateTime expiryAt) {
-        byte[] publicKeyBytes = cert.getPublicKey().getEncoded();
+    private List<String> buildX5c(X509Certificate cert) throws Exception {
+        return List.of(
+                Base64.getEncoder().encodeToString(cert.getEncoded())
+        );
+    }
 
+    private String buildX5tS256(X509Certificate cert) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] digest = md.digest(cert.getEncoded());
+        return Base64URL.encode(digest).toString();
+    }
+
+    private Map<String, Object> buildEd25519Jwk(String keyId, X509Certificate cert, LocalDateTime expiryAt) throws Exception {
+        byte[] publicKeyBytes = cert.getPublicKey().getEncoded();
+        // SPKI format for Ed25519: 12-byte ASN.1 header + 32-byte raw key
+        // Extract the raw 32-byte Ed25519 public key from SPKI encoding
+        if (publicKeyBytes.length != 44) {
+            throw new CertifyException("Invalid Ed25519 public key length: expected 44 bytes (SPKI), got " + publicKeyBytes.length);
+        }
+        byte[] rawPublicKey = new byte[32];
+        System.arraycopy(publicKeyBytes, 12, rawPublicKey, 0, 32);
         OctetKeyPair okp = new OctetKeyPair.Builder(
                 Curve.Ed25519,
-                Base64URL.encode(publicKeyBytes)
+                Base64URL.encode(rawPublicKey)
         )
                 .keyID(keyId)
                 .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE)
                 .build();
-
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("kid", keyId);
         map.put("kty", "OKP");
         map.put("crv", "Ed25519");
         map.put("x", okp.getX().toString());
         map.put("use", "sig");
-
+        map.put("x5c", buildX5c(cert));
+        map.put("x5t#S256", buildX5tS256(cert));
         if (expiryAt != null) {
             map.put("exp", expiryAt.toEpochSecond(ZoneOffset.UTC));
         }
-
         return map;
     }
 }
