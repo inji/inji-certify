@@ -14,6 +14,7 @@ import io.mosip.certify.api.spi.DataProviderPlugin;
 import io.mosip.certify.api.util.Action;
 import io.mosip.certify.api.util.ActionStatus;
 import io.mosip.certify.api.util.AuditHelper;
+import io.mosip.certify.config.VelocityEnvConfig;
 import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.CredentialMetadata;
 import io.mosip.certify.core.dto.CredentialRequest;
@@ -134,6 +135,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
     @Value("#{${mosip.certify.signature-algo.key-alias-mapper}}")
     private Map<String, List<List<String>>> keyAliasMapper;
+
+    @Autowired
+    private VelocityEnvConfig velocityEnvConfig;
 
     @Override
     public CredentialResponse getCredential(CredentialRequest credentialRequest) {
@@ -264,6 +268,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
             Credential cred = credentialFactory.getCredential(format).orElseThrow(() -> new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT));
             Map<String, Object> updatedTemplateParams = toJsonMap(templateParams);
+            Map<String, Object> rootContext = new HashMap<>(templateParams);
+            updatedTemplateParams.put("rootContext", rootContext);
+            updatedTemplateParams.put("envConfigs", velocityEnvConfig.getEnvConfigs());
 
             JSONArray qrDataJson = cred.createQRData(updatedTemplateParams, templateName);
 

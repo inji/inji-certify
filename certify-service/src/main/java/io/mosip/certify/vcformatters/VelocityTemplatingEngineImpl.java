@@ -59,9 +59,6 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
     @Value("${mosip.certify.data-provider-plugin.id-field-prefix-uri:}")
     String idPrefix;
 
-    @Autowired
-    private VelocityEnvConfig velocityEnvConfig;
-
     @PostConstruct
     public void initialize() {
         engine = new VelocityEngine();
@@ -241,9 +238,6 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
             }
         }
         VelocityContext context = new VelocityContext(updatedTemplateParams);
-        Map<String, Object> rootContext = new HashMap<>(updatedTemplateParams);
-        context.put("rootContext", rootContext);
-        context.put("envConfigs", velocityEnvConfig.getEnvConfigs());
         engine.evaluate(context, writer, /*logTag */ templateName, vcTemplateString); // use vcTemplateString
         JSONObject jsonObject = new JSONObject(writer.toString());
         if (updatedTemplateParams.containsKey(VCDMConstants.CREDENTIAL_ID)) {

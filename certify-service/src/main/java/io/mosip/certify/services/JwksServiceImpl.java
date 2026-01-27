@@ -1,6 +1,10 @@
 package io.mosip.certify.services;
 
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.OctetKeyPair;
+import com.nimbusds.jose.util.Base64URL;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.JwksService;
@@ -123,6 +127,13 @@ public class JwksServiceImpl implements JwksService {
             return null;
         }
 
+        X509Certificate cert = parseCertificate(certificateData);
+        /* ---------- ED25519 ---------- */
+        if (isEd25519(cert)) {
+            return buildEd25519Jwk(keyId, cert, expiryAt);
+        }
+
+        /* ---------- RSA / EC ---------- */
         JWK jwk = JWK.parseFromPEMEncodedX509Cert(certificateData);
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("kid", keyId);
@@ -142,6 +153,65 @@ public class JwksServiceImpl implements JwksService {
         if (jwkParams.containsKey("x")) map.put("x", jwkParams.get("x"));
         if (jwkParams.containsKey("y")) map.put("y", jwkParams.get("y"));
         if (jwkParams.containsKey("crv")) map.put("crv", jwkParams.get("crv"));
+        return map;
+    }
+
+    private X509Certificate parseCertificate(String pem) throws Exception {
+        String cleanPem = pem
+                .replace("-----BEGIN CERTIFICATE-----", "")
+                .replace("-----END CERTIFICATE-----", "")
+                .replaceAll("\\s", "");
+
+        byte[] certBytes = Base64.getDecoder().decode(cleanPem);
+        CertificateFactory cf = CertificateFactory.getInstance("X.509");
+        return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(certBytes));
+    }
+
+    private boolean isEd25519(X509Certificate cert) {
+        String algorithm = cert.getPublicKey().getAlgorithm();
+        return JWSAlgorithm.EdDSA.getName().equalsIgnoreCase(algorithm) ||
+                JWSAlgorithm.Ed25519.getName().equalsIgnoreCase(algorithm);
+    }
+
+    private List<String> buildX5c(X509Certificate cert) throws Exception {
+        return List.of(
+                Base64.getEncoder().encodeToString(cert.getEncoded())
+        );
+    }
+
+    private String buildX5tS256(X509Certificate cert) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] digest = md.digest(cert.getEncoded());
+        return Base64URL.encode(digest).toString();
+    }
+
+    private Map<String, Object> buildEd25519Jwk(String keyId, X509Certificate cert, LocalDateTime expiryAt) throws Exception {
+        byte[] publicKeyBytes = cert.getPublicKey().getEncoded();
+        // SPKI format for Ed25519: 12-byte ASN.1 header + 32-byte raw key
+        // Extract the raw 32-byte Ed25519 public key from SPKI encoding
+        if (publicKeyBytes.length != 44) {
+            throw new CertifyException("Invalid Ed25519 public key length: expected 44 bytes (SPKI), got " + publicKeyBytes.length);
+        }
+        byte[] rawPublicKey = new byte[32];
+        System.arraycopy(publicKeyBytes, 12, rawPublicKey, 0, 32);
+        OctetKeyPair okp = new OctetKeyPair.Builder(
+                Curve.Ed25519,
+                Base64URL.encode(rawPublicKey)
+        )
+                .keyID(keyId)
+                .keyUse(com.nimbusds.jose.jwk.KeyUse.SIGNATURE)
+                .build();
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("kid", keyId);
+        map.put("kty", "OKP");
+        map.put("crv", "Ed25519");
+        map.put("x", okp.getX().toString());
+        map.put("use", "sig");
+        map.put("x5c", buildX5c(cert));
+        map.put("x5t#S256", buildX5tS256(cert));
+        if (expiryAt != null) {
+            map.put("exp", expiryAt.toEpochSecond(ZoneOffset.UTC));
+        }
         return map;
     }
 }

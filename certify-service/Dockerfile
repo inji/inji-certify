@@ -34,10 +34,10 @@ ENV spring_config_label_env=${spring_config_label}
 ENV spring_config_url_env=${spring_config_url}
 
 # can be passed during Docker build as build time environment for github branch to pickup configuration from.
-ARG container_user=mosip
+ARG container_user=inji
 
 # can be passed during Docker build as build time environment for github branch to pickup configuration from.
-ARG container_user_group=mosip
+ARG container_user_group=inji
 
 # can be passed during Docker build as build time environment for github branch to pickup configuration from.
 ARG container_user_uid=1001
