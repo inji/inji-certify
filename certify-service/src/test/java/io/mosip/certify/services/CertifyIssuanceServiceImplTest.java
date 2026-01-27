@@ -15,6 +15,7 @@ import io.mosip.certify.api.spi.AuditPlugin;
 import io.mosip.certify.api.spi.DataProviderPlugin;
 import io.mosip.certify.api.util.Action;
 import io.mosip.certify.api.util.ActionStatus;
+import io.mosip.certify.config.VelocityEnvConfig;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.constants.VCIErrorConstants;
@@ -93,6 +94,9 @@ public class CertifyIssuanceServiceImplTest {
     @Mock
     private PixelPass pixelPass;
 
+    @Mock
+    private VelocityEnvConfig velocityEnvConfig;
+
     @InjectMocks
     private CertifyIssuanceServiceImpl issuanceService;
 
@@ -136,6 +140,7 @@ public class CertifyIssuanceServiceImplTest {
         ReflectionTestUtils.setField(issuanceService, "credentialLedgerService", credentialLedgerService);
         ReflectionTestUtils.setField(issuanceService, "defaultExpiryDuration", "P730D");
         ReflectionTestUtils.setField(issuanceService, "pixelPass", pixelPass);
+        ReflectionTestUtils.setField(issuanceService, "velocityEnvConfig", velocityEnvConfig);
 
         when(parsedAccessToken.getAccessTokenHash()).thenReturn(TEST_ACCESS_TOKEN_HASH);
 
