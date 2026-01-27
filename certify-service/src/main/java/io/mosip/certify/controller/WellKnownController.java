@@ -47,23 +47,14 @@ public class WellKnownController {
             if (response != null && response.containsKey("keys")) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> jwkList = (List<Map<String, Object>>) response.get("keys");
-                if (jwkList != null && !jwkList.isEmpty()) {
-//                    log.info("JWK set retrieved successfully with {} keys", jwkList.size());
-                    return ResponseEntity.ok(response);
-                } else {
-//                    log.warn("JWK set is empty - no valid certificates available. This may cause token validation failures.");
-                    // Return empty keys array per OAuth 2.0 spec
-                    return ResponseEntity.ok(response);
-                }
+                return ResponseEntity.ok(response);
             } else {
-//                log.error("Invalid response structure from getJwksInternal");
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("keys", Collections.emptyList());
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
             }
 
         } catch (Exception e) {
-//            log.error("Failed to retrieve JWK set from keymanager service", e);
             // Return empty keys array per OAuth 2.0 spec - clients should handle this gracefully
             // Do NOT cache error responses - allow retries
             Map<String, Object> errorResponse = new HashMap<>();
