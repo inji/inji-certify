@@ -33,11 +33,6 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
-/**
- * JUnit 4 tests for JwksServiceImpl.
- * - Includes the user's original tests (unchanged).
- * - Adds tests for valid RSA/Ed25519 JWK generation, aggregation, and field verification.
- */
 @RunWith(MockitoJUnitRunner.class)
 public class JwksServiceImplTest {
 
@@ -80,10 +75,6 @@ public class JwksServiceImplTest {
                 new LinkedHashMap<String, List<String>>()
         );
     }
-
-    // -----------------------------
-    // Your original tests (verbatim)
-    // -----------------------------
 
     private AllCertificatesDataResponseDto buildAllCertificatesDto(
             String keyId,
@@ -186,10 +177,6 @@ public class JwksServiceImplTest {
         assertTrue(keys.isEmpty());
     }
 
-    // -----------------------------
-    // Additional coverage tests
-    // -----------------------------
-
     @Test
     public void testGetJwks_RSAHappyPath_BuildsValidJwkFields() throws Exception {
         LocalDateTime future = LocalDateTime.now().plusDays(90);
@@ -217,7 +204,7 @@ public class JwksServiceImplTest {
 
         Map<String, Object> k = keys.get(0);
         assertEquals("kid-rsa", k.get("kid"));
-        assertThat((String) k.get("kty"), anyOf(is("RSA"), is("EC"))); // kty should be RSA for RSA cert
+        assertThat((String) k.get("kty"), is("RSA")); // kty should be RSA for RSA cert
         assertNotNull("x5c missing", k.get("x5c"));
         assertNotNull("x5t#S256 missing", k.get("x5t#S256"));
         assertNotNull("exp missing", k.get("exp"));
