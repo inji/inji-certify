@@ -15,8 +15,8 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@ConditionalOnProperty(value = "mosip.certify.integration.data-provider-plugin", havingValue = "PreAuthCodeDataProviderPlugin")
-public class PreAuthCodeIssuanceServiceImpl implements DataProviderPlugin {
+@ConditionalOnProperty(value = "mosip.certify.integration.data-provider-plugin", havingValue = "PreAuthDataProviderPlugin")
+public class PreAuthIssuanceServiceImpl implements DataProviderPlugin {
 
     @Autowired
     private VCICacheService vciCacheService;
