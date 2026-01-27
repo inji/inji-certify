@@ -40,7 +40,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     @Autowired
     private CredentialConfigMapper credentialConfigMapper;
 
-    @Value("${mosip.certify.domain.url:}")
+    @Value("${mosip.certify.domain.url}")
     private String credentialIssuer;
 
     @Value("${mosip.certify.authorization.url}")

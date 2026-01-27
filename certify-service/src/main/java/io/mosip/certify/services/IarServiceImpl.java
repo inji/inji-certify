@@ -19,7 +19,6 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -41,7 +40,6 @@ import io.mosip.certify.utils.AccessTokenJwtUtil;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarServiceImpl implements IarService {
 
     @Autowired
@@ -74,10 +72,10 @@ public class IarServiceImpl implements IarService {
     @Value("${mosip.certify.oauth.token.type:Bearer}")
     private String tokenType;
 
-    @Value("${mosip.certify.oauth.issuer:http://localhost/8090}")
+    @Value("${mosip.certify.oauth.issuer:}")
     private String issuer;
 
-    @Value("${mosip.certify.oauth.access-token.audience:http://localhost/8090/v1/certify/issuance/credential}")
+    @Value("${mosip.certify.oauth.access-token.audience:}")
     private String audience;
 
     private static final String AUTH_CODE_PREFIX = "iar_auth_";

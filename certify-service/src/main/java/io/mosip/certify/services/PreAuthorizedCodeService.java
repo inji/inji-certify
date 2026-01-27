@@ -64,7 +64,7 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.pre-auth.max-expiry-seconds:86400}")
     private int maxExpirySeconds;
 
-    @Value("${mosip.certify.credential-offer-url}")
+    @Value("${mosip.certify.credential-offer-url:}")
     private String credentialOfferUrl;
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
@@ -73,10 +73,10 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.cnonce-expire-seconds:300}")
     private int cNonceExpirySeconds;
 
-    @Value("${mosip.certify.oauth.issuer}")
+    @Value("${mosip.certify.oauth.issuer:}")
     private String oauthIssuer;
 
-    @Value("${mosip.certify.oauth.access-token.audience}")
+    @Value("${mosip.certify.oauth.access-token.audience:}")
     private String oauthAudience;
 
     private static final SecureRandom secureRandom = new SecureRandom();

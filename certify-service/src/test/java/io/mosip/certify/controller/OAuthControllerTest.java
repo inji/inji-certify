@@ -8,6 +8,7 @@ import io.mosip.certify.core.spi.IarService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.filter.AccessTokenValidationFilter;
 import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
+import io.mosip.certify.services.PreAuthorizedCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +52,7 @@ class OAuthControllerTest {
     private MessageSource messageSource;
 
     @MockBean
-    private JwksService jwksService;
+    private PreAuthorizedCodeService preAuthorizedCodeService;
 
     @BeforeEach
     void setUp() {

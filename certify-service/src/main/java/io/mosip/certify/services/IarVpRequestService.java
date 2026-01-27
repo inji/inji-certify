@@ -11,11 +11,9 @@ import io.mosip.certify.core.dto.InteractiveAuthorizationRequest;
 import io.mosip.certify.core.dto.VerifyVpRequest;
 import io.mosip.certify.core.dto.VerifyVpResponse;
 import io.mosip.certify.core.exception.CertifyException;
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
@@ -36,49 +34,31 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarVpRequestService {
 
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${mosip.certify.vp-request.config-file-url}")
+    @Value("${mosip.certify.vp-request.config-file-url:}")
     private String vpRequestConfigUrl;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${mosip.certify.verify.service.vp-request-endpoint:http://localhost/mock-vp}")
+    @Value("${mosip.certify.verify.service.vp-request-endpoint:}")
     private String verifyServiceVpRequestEndpoint;
 
-    @Value("${mosip.certify.verify.service.verifier-client-id:test-verifier}")
+    @Value("${mosip.certify.verify.service.verifier-client-id:}")
     private String verifierClientId;
 
     @Value("${mosip.certify.iar.response-mode.iar-post:iar-post}")
     private String iarPostResponseMode;
 
-    @Value("${mosip.certify.oauth.interactive-authorization-endpoint}")
+    @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
     private String certifyIarEndpoint;
 
-    @Value("${spring.profiles.active:}")
+    @Value("${spring.profiles.active:!local}")
     private String activeProfile;
-
-    /**
-     * Validate required configuration properties at startup
-     */
-    @PostConstruct
-    public void validateConfiguration() {
-        if (!StringUtils.hasText(verifyServiceVpRequestEndpoint)) {
-            throw new IllegalStateException("mosip.certify.verify.service.vp-request-endpoint must be configured");
-        }
-        if (!StringUtils.hasText(verifierClientId)) {
-            throw new IllegalStateException("mosip.certify.verify.service.verifier-client-id must be configured");
-        }
-        if (!StringUtils.hasText(certifyIarEndpoint)) {
-            throw new IllegalStateException("mosip.certify.oauth.interactive-authorization-endpoint must be configured");
-        }
-        log.info("IarVpRequestService configuration validation successful");
-    }
 
     /**
      * Create VP request with verify service
@@ -91,6 +71,7 @@ public class IarVpRequestService {
         log.info("Calling verify service for VP request generation for wallet client_id: {} using verifier client_id: {}",
                  iarRequest.getClientId(), verifierClientId);
 
+        validateConfiguration();
         VerifyServiceConfig verifyServiceConfig;
         try {
             log.info("Fetching VP Request Config from : {}", vpRequestConfigUrl);
@@ -198,5 +179,18 @@ public class IarVpRequestService {
                   openId4VpRequest.get("response_uri"), openId4VpRequest.get("nonce"));
 
         return openId4VpRequest;
+    }
+
+    private void validateConfiguration() {
+        if (!StringUtils.hasText(verifyServiceVpRequestEndpoint)) {
+            throw new IllegalStateException("mosip.certify.verify.service.vp-request-endpoint must be configured");
+        }
+        if (!StringUtils.hasText(verifierClientId)) {
+            throw new IllegalStateException("mosip.certify.verify.service.verifier-client-id must be configured");
+        }
+        if (!StringUtils.hasText(certifyIarEndpoint)) {
+            throw new IllegalStateException("mosip.certify.oauth.interactive-authorization-endpoint must be configured");
+        }
+        log.info("IarVpRequestService configuration validation successful");
     }
 }

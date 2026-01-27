@@ -314,3 +314,34 @@ CREATE TABLE IF NOT EXISTS certify.shedlock (
   locked_by VARCHAR(255) NOT NULL,
   PRIMARY KEY (name)
 );
+
+-- This script creates the iar_session table for Interactive Authorization Request functionality
+
+CREATE TABLE IF NOT EXISTS certify.iar_session (
+                                                   id SERIAL PRIMARY KEY,
+                                                   auth_session VARCHAR(128) NOT NULL UNIQUE,
+    transaction_id VARCHAR(64) NOT NULL,
+    request_id VARCHAR(64),
+    verify_nonce VARCHAR(64),
+    expires_at TIMESTAMP NOT NULL,
+    client_id VARCHAR(128),
+    scope VARCHAR(128),
+    authorization_code VARCHAR(128) UNIQUE,
+    response_uri VARCHAR(512),
+    code_challenge VARCHAR(128),
+    code_challenge_method VARCHAR(10),
+    code_issued_at TIMESTAMP,
+    is_code_used BOOLEAN NOT NULL DEFAULT FALSE,
+    code_used_at TIMESTAMP,
+    cr_dtimes TIMESTAMP NOT NULL DEFAULT NOW(),
+    identity_data TEXT
+    );
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_iar_session_auth_session ON certify.iar_session(auth_session);
+CREATE INDEX IF NOT EXISTS idx_iar_session_authorization_code ON certify.iar_session(authorization_code);
+CREATE INDEX IF NOT EXISTS idx_iar_session_request_id ON certify.iar_session(request_id);
+CREATE INDEX IF NOT EXISTS idx_iar_session_expires_at ON certify.iar_session(expires_at);
+CREATE INDEX IF NOT EXISTS idx_iar_session_authorization_code_used ON certify.iar_session(authorization_code, is_code_used) WHERE authorization_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_iar_session_scope ON certify.iar_session(scope);
+CREATE INDEX IF NOT EXISTS idx_iar_session_transaction_id ON certify.iar_session(transaction_id);

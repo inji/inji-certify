@@ -10,14 +10,12 @@ import io.mosip.certify.core.constants.IarStatus;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.IarService;
-import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import io.mosip.certify.services.PreAuthorizedCodeService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,19 +30,15 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class OAuthController {
 
     @Autowired
     private IarService iarService;
 
     @Autowired
-    private JwksService jwksService;
-
-    @Autowired
     private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
 
-    @Autowired(required = false)
+    @Autowired
     private PreAuthorizedCodeService preAuthorizedCodeService;
 
     @GetMapping(value = "/.well-known/oauth-authorization-server", produces = "application/json")

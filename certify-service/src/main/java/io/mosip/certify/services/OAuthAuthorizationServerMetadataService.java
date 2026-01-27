@@ -19,28 +19,27 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class OAuthAuthorizationServerMetadataService {
 
-    @Value("${mosip.certify.oauth.issuer}")
+    @Value("${mosip.certify.oauth.issuer:}")
     private String issuer;
 
-    @Value("${mosip.certify.oauth.token-endpoint}")
+    @Value("${mosip.certify.oauth.token-endpoint:}")
     private String tokenEndpoint;
 
-    @Value("${mosip.certify.oauth.jwks-uri}")
+    @Value("${mosip.certify.oauth.jwks-uri:}")
     private String jwksUri;
 
-    @Value("${mosip.certify.oauth.grant-types-supported}")
+    @Value("${mosip.certify.oauth.grant-types-supported:authorization_code}")
     private String grantTypesSupported;
 
-    @Value("${mosip.certify.oauth.response-types-supported}")
+    @Value("${mosip.certify.oauth.response-types-supported:code}")
     private String responseTypesSupported;
 
-    @Value("${mosip.certify.oauth.code-challenge-methods-supported}")
+    @Value("${mosip.certify.oauth.code-challenge-methods-supported:S256}")
     private String codeChallengeMethodsSupported;
 
-    @Value("${mosip.certify.oauth.interactive-authorization-endpoint}")
+    @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
     private String interactiveAuthorizationEndpoint;
 
     /**

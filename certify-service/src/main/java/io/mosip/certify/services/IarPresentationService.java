@@ -17,7 +17,6 @@ import io.mosip.certify.repository.IarSessionRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -41,7 +40,6 @@ import java.util.*;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(name = "mosip.certify.authorization-module", havingValue = "certify")
 public class IarPresentationService {
 
     @Autowired
@@ -53,7 +51,7 @@ public class IarPresentationService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Value("${mosip.certify.verify.service.vp-result-endpoint:http://localhost:8080}")
+    @Value("${mosip.certify.verify.service.vp-result-endpoint:}")
     private String verifyServiceVpResultEndpoint;
 
     @Value("${mosip.certify.iar.authorization-code.length:24}")
@@ -61,17 +59,6 @@ public class IarPresentationService {
 
     @Value("#{'${mosip.certify.iar.identity-data:uin,vid,UIN,UID}'.split(',')}")
     private Set<String> identityKeys;
-
-    /**
-     * Validate required configuration properties at startup
-     */
-    @PostConstruct
-    public void validateConfiguration() {
-        if (!StringUtils.hasText(verifyServiceVpResultEndpoint)) {
-            throw new IllegalStateException("mosip.certify.verify.service.vp-result-endpoint must be configured");
-        }
-        log.info("IarPresentationService configuration validation successful");
-    }
 
     /**
      * Process VP presentation and return authorization response
@@ -214,6 +201,9 @@ public class IarPresentationService {
      * Get VP verification result from verifier service
      */
     private VpVerificationResponse getVpVerificationResult(String transactionId) throws CertifyException {
+        if (!StringUtils.hasText(verifyServiceVpResultEndpoint)) {
+            throw new IllegalStateException("mosip.certify.verify.service.vp-result-endpoint must be configured");
+        }
         try {
             String vpResultUrl = verifyServiceVpResultEndpoint + "/" + transactionId;
             log.debug("Getting verification results from: {}", vpResultUrl);
