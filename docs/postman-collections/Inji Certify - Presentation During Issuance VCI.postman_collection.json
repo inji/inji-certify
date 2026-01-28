@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "715f98d4-33cf-4c2e-b889-bd08a027f047",
+		"_postman_id": "fd7002a2-0db6-4eab-bc4f-f312d90dbe43",
 		"name": "Inji Certify - Presentation During Issuance VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "1282483"
@@ -27,6 +27,7 @@
 									"    pm.expect(jsonData).to.have.property('credential_endpoint');",
 									"",
 									"    pm.collectionVariables.set('authorization_server', jsonData.authorization_servers[0]);",
+									"    pm.collectionVariables.set('credential_endpoint', jsonData.credential_endpoint);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -88,11 +89,13 @@
 							}
 						],
 						"url": {
-							"raw": "{{authorization_server}}/.well-known/oauth-authorization-server",
+							"raw": "{{authorization_server}}/v1/certify/.well-known/oauth-authorization-server",
 							"host": [
 								"{{authorization_server}}"
 							],
 							"path": [
+								"v1",
+								"certify",
 								".well-known",
 								"oauth-authorization-server"
 							]
@@ -157,10 +160,6 @@
 								{
 									"key": "code_challenge_method",
 									"value": "S256"
-								},
-								{
-									"key": "redirect_uri",
-									"value": "{{redirectionUrl}}"
 								},
 								{
 									"key": "interaction_types_supported",
@@ -271,7 +270,7 @@
 									"    // Store access token",
 									"    console.log(\"access_token:\", accessToken);",
 									"    pm.collectionVariables.set('access_token', accessToken);",
-									"    pm.environment.set('access_token', accessToken);",
+									"    // pm.environment.set('access_token', accessToken);",
 									"    console.log(\"✅ Access token saved successfully\");",
 									"    const cNonce = jsonData.c_nonce;",
 									"    const cNonceExpiresIn = jsonData.c_nonce_expires_in;",
@@ -312,29 +311,15 @@
 									"value": "{{authorization_code}}"
 								},
 								{
-									"key": "redirect_uri",
-									"value": "{{redirectionUrl}}"
-								},
-								{
 									"key": "code_verifier",
 									"value": "{{code-verifier}}"
 								}
 							]
 						},
 						"url": {
-							"raw": "https://injicertify-mdl.dev-int-inji.mosip.net/v1/certify/oauth/token",
-							"protocol": "https",
+							"raw": "{{token_endpoint}}",
 							"host": [
-								"injicertify-mdl",
-								"dev-int-inji",
-								"mosip",
-								"net"
-							],
-							"path": [
-								"v1",
-								"certify",
-								"oauth",
-								"token"
+								"{{token_endpoint}}"
 							]
 						}
 					},
@@ -343,7 +328,7 @@
 			]
 		},
 		{
-			"name": "5. Creedential download",
+			"name": "5. Credential download",
 			"item": [
 				{
 					"name": "5.1 Get Credential",
@@ -353,41 +338,35 @@
 							"script": {
 								"exec": [
 									"eval(pm.globals.get('pmlib_code'))",
-									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");",
+									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
 									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
 									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
-									"jwkPublicKey[\"alg\"] = \"ES256\";",
+									"jwkPublicKey[\"alg\"] = \"RS256\";",
 									"jwkPublicKey[\"use\"] = \"sig\";",
 									"",
-									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
-									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+									"pm.collectionVariables.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
+									"pm.collectionVariables.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
 									"",
 									"// Set headers for JWT",
 									"var header = {\t",
-									"\t\"alg\": \"ES256\",",
+									"\t\"alg\": \"RS256\",",
 									"    \"typ\" : \"openid4vci-proof+jwt\",",
-									"    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
+									"    \"jwk\" : JSON.parse(pm.collectionVariables.get(\"holder_public_key\"))",
 									"};",
 									"",
 									"",
-									"const c_nonce = pm.collectionVariables.get('c_nonce');",
-									"console.log(\"Getting c_nonce >> \" +  c_nonce);",
+									"const cNonce = pm.collectionVariables.get('c_nonce');",
+									"console.log(\"Getting c_nonce >> \" +  cNonce);",
 									"const clientId = pm.environment.get('clientId');",
 									"console.log(\"Getting clientId >> \" +  clientId);",
-									"const aud = pm.environment.get('vci-aud');",
-									"console.log(\"Getting aud >> \" +  aud);",
-									"console.log(\"aud: \", aud);",
 									"",
-									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
-									"    \"aud\": aud,",
-									"\t\"nonce\": c_nonce,",
+									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.collectionVariables.get(\"holder_private_key\")), {",
+									"    \"aud\" : pm.environment.get('audUrl'),",
+									"\t\"nonce\": cNonce,",
 									"    \"iss\" : clientId,",
-									"}, header, exp=600, alg = \"ES256\")",
+									"}, header, exp=600, alg = \"RS256\")",
 									"",
-									"console.log(\"proof - \",signed_jwt);",
-									"",
-									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
-									""
+									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
 								],
 								"type": "text/javascript"
 							}
@@ -417,7 +396,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ],\n        \"type\": [\n            \"VerifiableCredential\",\n            \"FarmerCredential\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -425,19 +404,9 @@
 							}
 						},
 						"url": {
-							"raw": "https://injicertify-mdl.dev-int-inji.mosip.net/v1/certify/issuance/credential",
-							"protocol": "https",
+							"raw": "{{credential_endpoint}}",
 							"host": [
-								"injicertify-mdl",
-								"dev-int-inji",
-								"mosip",
-								"net"
-							],
-							"path": [
-								"v1",
-								"certify",
-								"issuance",
-								"credential"
+								"{{credential_endpoint}}"
 							]
 						}
 					},
@@ -617,6 +586,10 @@
 		},
 		{
 			"key": "authorization_details",
+			"value": ""
+		},
+		{
+			"key": "credential_endpoint",
 			"value": ""
 		}
 	]
