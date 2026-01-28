@@ -268,85 +268,92 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     @Override
     public CredentialIssuerMetadataDTO fetchCredentialIssuerMetadata(String version) {
-        List<CredentialConfig> credentialConfigList = credentialConfigRepository.findAll();
+        List<CredentialConfig> credentialConfigList = credentialConfigRepository.findAll()
+                .stream()
+                .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
+                .toList();
 
-        if ("latest".equals(version)) {
-            CredentialIssuerMetadataVD13DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD13DTO();
-            Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
-            credentialConfigList.stream()
-                    .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
-                    .forEach(credentialConfig -> {
-                        CredentialConfigurationSupportedDTO credentialConfigurationSupported = mapToSupportedDTO(credentialConfig);
-                        if (credentialConfig.getSignatureCryptoSuite() != null) {
-                            credentialConfigurationSupported.setCredentialSigningAlgValuesSupported(credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite()));
-                        } else {
-                            credentialConfigurationSupported.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureAlgo()));
-                        }
-                        credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), credentialConfigurationSupported);
-                    });
-            credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
-            credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            if(authorizationServerMapping.isEmpty()) {
-                credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
+        return switch (version) {
+            case "latest" -> buildMetadataVD13(credentialConfigList, version);
+            case "vd12"   -> buildMetadataVD12(credentialConfigList, version);
+            case "vd11"   -> buildMetadataVD11(credentialConfigList, version);
+            default       -> throw new CertifyException("Unsupported version: " + version);
+        };
+    }
+
+    private CredentialIssuerMetadataVD13DTO buildMetadataVD13(List<CredentialConfig> credentialConfigList, String version) {
+        CredentialIssuerMetadataVD13DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD13DTO();
+        Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
+
+        credentialConfigList.forEach(credentialConfig -> {
+            CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
+            if (credentialConfig.getSignatureCryptoSuite() != null) {
+                dto.setCredentialSigningAlgValuesSupported(
+                        credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite())
+                );
             } else {
-                List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
-                credentialIssuerMetadata.setAuthorizationServers(authServers);
+                dto.setCredentialSigningAlgValuesSupported(
+                        Collections.singletonList(credentialConfig.getSignatureAlgo())
+                );
             }
-            String credentialEndpoint = credentialIssuer + servletPath + "/issuance" + (!version.equals("latest") ? "/" + version : "") + "/credential";
-            credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
-            credentialIssuerMetadata.setDisplay(issuerDisplay);
+            credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
+        });
 
-            return credentialIssuerMetadata;
-        } else if ("vd12".equals(version)) {
-            CredentialIssuerMetadataVD12DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD12DTO();
-            Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
-            credentialConfigList.stream()
-                    .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
-                    .forEach(credentialConfig -> {
-                        CredentialConfigurationSupportedDTO credentialConfigurationSupported = mapToSupportedDTO(credentialConfig);
-                        credentialConfigurationSupported.setCryptographicSuitesSupported(credentialConfig.getCredentialSigningAlgValuesSupported());
-                        credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), credentialConfigurationSupported);
-                    });
-            credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap); // Use a different setter for vd12
-            credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            if(authorizationServerMapping.isEmpty()) {
-                credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
-            } else {
-                List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
-                credentialIssuerMetadata.setAuthorizationServers(authServers);
-            }
-            String credentialEndpoint = credentialIssuer + servletPath + "/issuance/" + version + "/credential";
-            credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
-            credentialIssuerMetadata.setDisplay(issuerDisplay);
+        credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
+        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        return credentialIssuerMetadata;
+    }
 
-            return credentialIssuerMetadata;
-        } else if ("vd11".equals(version)) {
-            CredentialIssuerMetadataVD11DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD11DTO();
-            List<CredentialConfigurationSupportedDTO> credentialConfigurationSupportedList = new ArrayList<>();
-            credentialConfigList.stream()
-                    .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
-                    .forEach(credentialConfig -> {
-                        CredentialConfigurationSupportedDTO credentialConfigurationSupported = mapToSupportedDTO(credentialConfig);
-                        credentialConfigurationSupported.setId(credentialConfig.getCredentialConfigKeyId());
-                        credentialConfigurationSupported.setCryptographicSuitesSupported(credentialConfig.getCredentialSigningAlgValuesSupported());
-                        credentialConfigurationSupportedList.add(credentialConfigurationSupported);
-                    });
-            credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedList); // Use a different setter for vd11
-            credentialIssuerMetadata.setCredentialIssuer(credentialIssuer);
-            if(authorizationServerMapping.isEmpty()) {
-                credentialIssuerMetadata.setAuthorizationServers(Collections.singletonList(authUrl));
-            } else {
-                List<String> authServers = authorizationServerMapping.values().stream().distinct().toList();
-                credentialIssuerMetadata.setAuthorizationServers(authServers);
-            }
-            String credentialEndpoint = credentialIssuer + servletPath + "/issuance/" + version + "/credential";
-            credentialIssuerMetadata.setCredentialEndpoint(credentialEndpoint);
-            credentialIssuerMetadata.setDisplay(issuerDisplay);
+    private CredentialIssuerMetadataVD12DTO buildMetadataVD12(List<CredentialConfig> credentialConfigList, String version) {
+        CredentialIssuerMetadataVD12DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD12DTO();
+        Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
 
-            return credentialIssuerMetadata;
+        credentialConfigList.forEach(credentialConfig -> {
+            CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
+            dto.setCryptographicSuitesSupported(credentialConfig.getCredentialSigningAlgValuesSupported());
+            credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
+        });
+
+        credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
+        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        return credentialIssuerMetadata;
+    }
+
+    private CredentialIssuerMetadataVD11DTO buildMetadataVD11(List<CredentialConfig> credentialConfigList, String version) {
+        CredentialIssuerMetadataVD11DTO credentialIssuerMetadata = new CredentialIssuerMetadataVD11DTO();
+        List<CredentialConfigurationSupportedDTO> credentialConfigurationSupportedList = new ArrayList<>();
+
+        credentialConfigList.forEach(credentialConfig -> {
+            CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
+            dto.setId(credentialConfig.getCredentialConfigKeyId());
+            dto.setCryptographicSuitesSupported(credentialConfig.getCredentialSigningAlgValuesSupported());
+            credentialConfigurationSupportedList.add(dto);
+        });
+
+        credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedList);
+        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        return credentialIssuerMetadata;
+    }
+
+    private void populateCommonMetadataFields(CredentialIssuerMetadataDTO metadata, String version) {
+        metadata.setCredentialIssuer(credentialIssuer);
+        metadata.setAuthorizationServers(resolveAuthorizationServers());
+        metadata.setCredentialEndpoint(buildCredentialEndpoint(version));
+        metadata.setDisplay(issuerDisplay);
+    }
+
+    private List<String> resolveAuthorizationServers() {
+        if (authorizationServerMapping.isEmpty()) {
+            return Collections.singletonList(authUrl);
         }
+        return authorizationServerMapping.values().stream().distinct().toList();
+    }
 
-        throw new CertifyException("Unsupported version: " + version);
+    private String buildCredentialEndpoint(String version) {
+        if ("latest".equals(version)) {
+            return credentialIssuer + servletPath + "/issuance/credential";
+        }
+        return credentialIssuer + servletPath + "/issuance/" + version + "/credential";
     }
 
     private CredentialConfigurationSupportedDTO mapToSupportedDTO(CredentialConfig credentialConfig) {
