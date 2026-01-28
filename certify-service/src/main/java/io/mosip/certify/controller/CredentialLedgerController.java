@@ -21,7 +21,7 @@ public class CredentialLedgerController {
     @Autowired
     private CredentialLedgerService credentialLedgerService;
 
-    @PostMapping("/ledger-search")
+    @PostMapping(value = "/ledger-search", produces = "application/json")
     public ResponseEntity<List<CredentialStatusResponse>> searchCredentials(
             @Valid @RequestBody CredentialLedgerSearchRequest request) {
         List<CredentialStatusResponse> result = credentialLedgerService.searchCredentialLedger(request);
@@ -31,7 +31,7 @@ public class CredentialLedgerController {
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/v2/ledger-search")
+    @PostMapping(value = "/v2/ledger-search", produces = "application/json")
     public ResponseEntity<List<CredentialStatusResponse>> searchCredentialsV2(
             @Valid @RequestBody CredentialLedgerSearchRequest request) {
         List<CredentialStatusResponse> result = credentialLedgerService.searchCredentialLedgerV2(request);

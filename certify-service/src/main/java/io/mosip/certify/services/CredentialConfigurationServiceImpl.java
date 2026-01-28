@@ -277,7 +277,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             case "latest" -> buildMetadataVD13(credentialConfigList, version);
             case "vd12"   -> buildMetadataVD12(credentialConfigList, version);
             case "vd11"   -> buildMetadataVD11(credentialConfigList, version);
-            default       -> throw new CertifyException("Unsupported version: " + version);
+            default       -> throw new CertifyException("UNSUPPORTED_METADATA_VERSION", "Unsupported version: " + version);
         };
     }
 

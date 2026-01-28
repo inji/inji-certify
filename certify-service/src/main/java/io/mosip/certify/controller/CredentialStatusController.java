@@ -44,7 +44,7 @@ public class CredentialStatusController {
         return statusListCredentialService.getStatusListCredential(id);
     }
 
-    @PostMapping("/status")
+    @PostMapping(value = "/status", produces = "application/json")
     public ResponseEntity<CredentialStatusResponse> updateCredential(
             @Valid @RequestBody UpdateCredentialStatusRequest updateCredentialStatusRequest) {
         CredentialStatusResponse result = credentialStatusService.updateCredentialStatus(updateCredentialStatusRequest);
@@ -54,7 +54,7 @@ public class CredentialStatusController {
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/v2/status")
+    @PostMapping(value = "/v2/status", produces = "application/json")
     public ResponseEntity<CredentialStatusResponse> updateCredentialV2(
             @Valid @RequestBody UpdateCredentialStatusRequestV2 updateCredentialStatusRequestV2) {
         CredentialStatusResponse result = credentialStatusService.updateCredentialStatusV2(updateCredentialStatusRequestV2);

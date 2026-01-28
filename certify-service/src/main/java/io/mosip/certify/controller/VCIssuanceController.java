@@ -86,7 +86,7 @@ public class VCIssuanceController {
     }
 
     @Deprecated
-    @GetMapping(value = "/.well-known/did.json")
+    @GetMapping(value = "/.well-known/did.json", produces = "application/json")
     public Map<String, Object> getDIDDocument() {
        return vcIssuanceService.getDIDDocument();
     }
