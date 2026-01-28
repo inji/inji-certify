@@ -98,32 +98,8 @@ public class VCICacheService {
     }
 
     /**
-     * Cache authorization server metadata
-     */
-    public void setASMetadata(String serverUrl, OAuthAuthorizationServerMetadataDTO metadata) {
-        String key = Constants.AS_METADATA_PREFIX + serverUrl;
-        Cache cache = cacheManager.getCache("asMetadataCache");
-        if (cache == null) {
-            throw new IllegalStateException("asMetadataCache not available");
-        }
-        cache.put(key, metadata);
-        log.info("Cached AS metadata for: {}", serverUrl);
-    }
-
-    /**
      * Get cached authorization server metadata
      */
-    public OAuthAuthorizationServerMetadataDTO getASMetadata(String serverUrl) {
-        String key = Constants.AS_METADATA_PREFIX + serverUrl;
-        Cache cache = cacheManager.getCache("asMetadataCache");
-        if (cache == null) {
-            log.error("Cache {} not available", "asMetadataCache");
-            return null;
-        }
-        Cache.ValueWrapper wrapper = cache.get(key);
-        return wrapper != null ? (OAuthAuthorizationServerMetadataDTO) wrapper.get() : null;
-    }
-
     public boolean isPreAuthCodeUsed(String code) {
         String key = "used:" + code;
         Cache cache = cacheManager.getCache("preAuthCodeCache");

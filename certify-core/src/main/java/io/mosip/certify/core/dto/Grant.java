@@ -7,12 +7,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Grant {
+public class Grant implements Serializable {
 
     @JsonProperty("urn:ietf:params:oauth:grant-type:pre-authorized_code")
     private PreAuthorizedCodeGrantType preAuthorizedCode;
@@ -25,7 +27,7 @@ public class Grant {
     @AllArgsConstructor
     @NoArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class PreAuthorizedCodeGrantType {
+    public static class PreAuthorizedCodeGrantType implements Serializable{
 
         @JsonProperty("pre-authorized_code")
         private String preAuthorizedCode;
@@ -39,7 +41,7 @@ public class Grant {
     @AllArgsConstructor
     @NoArgsConstructor
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class AuthorizationCodeGrantType {
+    public static class AuthorizationCodeGrantType implements Serializable{
 
         @JsonProperty("issuer_state")
         private String issuerState;
