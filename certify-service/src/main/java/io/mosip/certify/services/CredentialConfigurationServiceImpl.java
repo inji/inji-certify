@@ -343,7 +343,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     private List<String> resolveAuthorizationServers() {
-        if (authorizationServerMapping.isEmpty()) {
+        if (authorizationServerMapping == null || authorizationServerMapping.isEmpty()) {
             return Collections.singletonList(authUrl);
         }
         return authorizationServerMapping.values().stream().distinct().toList();
