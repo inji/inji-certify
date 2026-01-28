@@ -34,23 +34,17 @@ import java.util.*;
 @Slf4j
 public class PreAuthorizedCodeService {
 
-    @Autowired
-    private VCICacheService vciCacheService;
+    private final VCICacheService vciCacheService;
 
-    @Autowired
-    private AccessTokenJwtUtil accessTokenJwtUtil;
+    private final AccessTokenJwtUtil accessTokenJwtUtil;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private CredentialConfigurationService credentialConfigurationService;
+    private final CredentialConfigurationService credentialConfigurationService;
 
-    @Autowired
-    private CredentialConfigRepository credentialConfigRepository;
+    private final CredentialConfigRepository credentialConfigRepository;
 
-    @Autowired
-    private Validator validator;
+    private final Validator validator;
 
     @Value("${mosip.certify.identifier}")
     private String issuerIdentifier;
@@ -79,6 +73,20 @@ public class PreAuthorizedCodeService {
     @Value("${mosip.certify.oauth.access-token.audience:}")
     private String oauthAudience;
 
+    @Autowired
+    public PreAuthorizedCodeService(VCICacheService vciCacheService,
+                                    AccessTokenJwtUtil accessTokenJwtUtil,
+                                    ObjectMapper objectMapper,
+                                    CredentialConfigurationService credentialConfigurationService,
+                                    CredentialConfigRepository credentialConfigRepository,
+                                    Validator validator) {
+        this.vciCacheService = vciCacheService;
+        this.accessTokenJwtUtil = accessTokenJwtUtil;
+        this.objectMapper = objectMapper;
+        this.credentialConfigurationService = credentialConfigurationService;
+        this.credentialConfigRepository = credentialConfigRepository;
+        this.validator = validator;
+    }
     private static final SecureRandom secureRandom = new SecureRandom();
     private static final String ALPHANUMERIC = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -129,27 +137,10 @@ public class PreAuthorizedCodeService {
         }
 
         String format = config.getFormat();
-        Set<String> allowedClaimKeys;
 
         if (VCFormats.LDP_VC.equals(format)) {
             // For ldp_vc: claims are defined in credential_definition.credentialSubject
-            CredentialDefinition credDef = config.getCredentialDefinition();
-            if (credDef != null && credDef.getCredentialSubject() != null) {
-                allowedClaimKeys = credDef.getCredentialSubject().keySet();
-            } else {
-                return; // No claims defined, allow any
-            }
-            // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
-            List<String> unknownClaims = new ArrayList<>();
-            for (String providedClaim : providedClaims.keySet()) {
-                if (!allowedClaimKeys.contains(providedClaim)) {
-                    unknownClaims.add(providedClaim);
-                }
-            }
-            if (!unknownClaims.isEmpty()) {
-                log.error("Unknown claims provided: {}", unknownClaims);
-                throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
-            }
+            validateClaimsForLDPVC(config, providedClaims);
         } else {
             // For mso_mdoc, vc+sd-jwt: use top-level claims with mandatory checking
             Map<String, Object> requiredClaims = config.getClaims();
@@ -157,6 +148,27 @@ public class PreAuthorizedCodeService {
                 return;
             }
             validateClaimsWithMandatory(requiredClaims, providedClaims);
+        }
+    }
+
+    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
+        Set<String> allowedClaimKeys;
+        CredentialDefinition credDef = config.getCredentialDefinition();
+        if (credDef != null && credDef.getCredentialSubject() != null) {
+            allowedClaimKeys = credDef.getCredentialSubject().keySet();
+        } else {
+            return;
+        }
+        // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
+        List<String> unknownClaims = new ArrayList<>();
+        for (String providedClaim : providedClaims.keySet()) {
+            if (!allowedClaimKeys.contains(providedClaim)) {
+                unknownClaims.add(providedClaim);
+            }
+        }
+        if (!unknownClaims.isEmpty()) {
+            log.error("Unknown claims provided: {}", unknownClaims);
+            throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
         }
     }
 
@@ -174,11 +186,9 @@ public class PreAuthorizedCodeService {
                     ? (Boolean) claimAttrs.get(Constants.MANDATORY)
                     : Boolean.FALSE;
 
-            if (Boolean.TRUE.equals(mandatory)) {
-                if (!providedClaims.containsKey(entry.getKey()) ||
-                        providedClaims.get(entry.getKey()) == null) {
+            if (Boolean.TRUE.equals(mandatory) &&
+                    (!providedClaims.containsKey(entry.getKey()) || providedClaims.get(entry.getKey()) == null)) {
                     missingClaims.add(entry.getKey());
-                }
             }
         }
 
@@ -281,7 +291,7 @@ public class PreAuthorizedCodeService {
             return "openid-credential-offer://?credential_offer_uri=" + encodedUrl;
         } catch (java.io.UnsupportedEncodingException e) {
             // UTF-8 is always supported, this should never happen
-            throw new RuntimeException("UTF-8 encoding not supported", e);
+            throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "UTF-8 encoding not supported", e);
         }
     }
 

@@ -32,14 +32,18 @@ import java.util.Map;
 @RestController
 public class OAuthController {
 
-    @Autowired
-    private IarService iarService;
+    private final IarService iarService;
+    private final OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
+    private final PreAuthorizedCodeService preAuthorizedCodeService;
 
     @Autowired
-    private OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService;
-
-    @Autowired
-    private PreAuthorizedCodeService preAuthorizedCodeService;
+    public OAuthController(IarService iarService,
+                           OAuthAuthorizationServerMetadataService oAuthAuthorizationServerMetadataService,
+                           PreAuthorizedCodeService preAuthorizedCodeService) {
+        this.iarService = iarService;
+        this.oAuthAuthorizationServerMetadataService = oAuthAuthorizationServerMetadataService;
+        this.preAuthorizedCodeService = preAuthorizedCodeService;
+    }
 
     @GetMapping(value = "/.well-known/oauth-authorization-server", produces = "application/json")
     public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
@@ -63,24 +67,26 @@ public class OAuthController {
     @PostMapping(value = "/oauth/iar",
              consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
              produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> handleIarRequest(@Valid @ModelAttribute IarRequest iarRequest)
+    public ResponseEntity<IarResponse> handleIarRequest(@Valid @ModelAttribute IarRequest iarRequest)
         throws CertifyException {
 
         log.info("Received IAR request");
 
         Object response = iarService.handleIarRequest(iarRequest);
 
-        if (response instanceof IarAuthorizationResponse presentationResponse) {
-            if (IarStatus.OK.equals(presentationResponse.getStatus())) {
-                return ResponseEntity.ok(presentationResponse);
+        if (response instanceof IarAuthorizationResponse iarAuthorizationResponse) {
+            if (IarStatus.OK.equals(iarAuthorizationResponse.getStatus())) {
+                return ResponseEntity.ok(iarAuthorizationResponse);
             }
-            return ResponseEntity.badRequest().body(presentationResponse);
-        } else if (response instanceof IarResponse) {
-            return ResponseEntity.ok(response);
+            return ResponseEntity.badRequest().body(iarAuthorizationResponse);
+        } else if (response instanceof IarPresentationResponse presentationResponse) {
+            return ResponseEntity.ok(presentationResponse);
         } else {
             log.error("Unexpected response type from service: {}",
                     response != null ? response.getClass().getSimpleName() : "null");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal server error");
+            IarResponse iarResponse = new IarResponse();
+            iarResponse.setStatus(IarStatus.ERROR);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(iarResponse);
         }
     }
 
@@ -91,14 +97,14 @@ public class OAuthController {
      * Exchanges authorization code for access token and c_nonce.
      * Supports authorization_code and pre-authorized_code grant types.
      *
-     * @param tokenRequest OAuth token request containing grant_type and relevant fields
+     * @param params OAuth token request containing grant_type and relevant fields
      * @return ResponseEntity with OAuthTokenResponse containing access_token and c_nonce
      * @throws CertifyException if token request processing fails
      */
     @PostMapping(value = "/oauth/token",
                  consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
                  produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> processTokenRequest(@RequestParam Map<String, String> params)
+    public ResponseEntity<OAuthTokenResponse> processTokenRequest(@RequestParam Map<String, String> params)
             throws CertifyException {
         log.info("Received OAuth token request");
         try {
@@ -111,9 +117,6 @@ public class OAuthController {
 
             // Check if this is a pre-authorized code grant
             if (Constants.PRE_AUTHORIZED_CODE_GRANT_TYPE.equals(grantType)) {
-                if (preAuthorizedCodeService == null) {
-                    throw new CertifyException("unsupported_grant_type", "Pre-authorized code flow is not enabled");
-                }
                 OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
                 tokenRequest.setGrant_type(grantType);
                 tokenRequest.setPre_authorized_code(params.get("pre-authorized_code"));
@@ -135,17 +138,10 @@ public class OAuthController {
         } catch (CertifyException e) {
             log.error("Failed to process token request, error: {}",
                       e.getMessage(), e);
-
-            // Return OAuth error response
-            OAuthTokenError errorResponse = new OAuthTokenError(e.getErrorCode(), e.getMessage());
-
-            return ResponseEntity.badRequest().body(errorResponse);
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error processing token request", e);
-
-            OAuthTokenError errorResponse = new OAuthTokenError("server_error", "Internal server error");
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            throw e;
         }
     }
 }

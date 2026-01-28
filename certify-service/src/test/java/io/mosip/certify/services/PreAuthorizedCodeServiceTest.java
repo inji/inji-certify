@@ -40,9 +40,6 @@ public class PreAuthorizedCodeServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
-    @InjectMocks
-    private PreAuthorizedCodeService preAuthorizedCodeService;
-
     @Mock
     private CredentialConfigurationService credentialConfigurationService;
 
@@ -59,8 +56,17 @@ public class PreAuthorizedCodeServiceTest {
     private CredentialIssuerMetadataDTO metadataDTO;
     private final String CONFIG_ID = "test-config";
 
+    private PreAuthorizedCodeService preAuthorizedCodeService;
     @Before
     public void setup() throws Exception {
+        preAuthorizedCodeService = new PreAuthorizedCodeService(
+                vciCacheService,
+                accessTokenJwtUtil,
+                objectMapper,
+                credentialConfigurationService,
+                credentialConfigRepository,
+                validator
+        );
         ReflectionTestUtils.setField(preAuthorizedCodeService, "issuerIdentifier", "https://issuer.com");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "defaultExpirySeconds", 600);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "minExpirySeconds", 60);

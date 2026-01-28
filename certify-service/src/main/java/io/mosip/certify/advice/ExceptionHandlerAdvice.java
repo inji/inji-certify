@@ -165,11 +165,11 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         }
         if(ex instanceof NotAuthenticatedException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
-            return new ResponseEntity<VCError>(getVCErrorDto(errorCode, getMessage(errorCode)), HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<VCError>(getVCErrorDto(errorCode, getMessage(errorCode, errorCode)), HttpStatus.UNAUTHORIZED);
         }
         if(ex instanceof InvalidRequestException) {
             String errorCode = ((InvalidRequestException) ex).getErrorCode();
-            return new ResponseEntity<VCError>(getVCErrorDto(errorCode, getMessage(errorCode)), HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<VCError>(getVCErrorDto(errorCode, getMessage(errorCode, errorCode)), HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof CertifyException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
@@ -207,14 +207,15 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         }
         if(ex instanceof NotAuthenticatedException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
-            OAuthTokenError oauthError = new OAuthTokenError("invalid_client", getMessage(errorCode));
+            OAuthTokenError oauthError = new OAuthTokenError("invalid_client", getMessage(errorCode, errorCode));
             return new ResponseEntity<Object>(oauthError, HttpStatus.UNAUTHORIZED);
         }
         if(ex instanceof CertifyException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
+            String errorMessage = ex.getMessage();
             // Map CertifyException error codes to OAuth 2.0 error codes
             String oauthErrorCode = mapToOAuthErrorCode(errorCode);
-            OAuthTokenError oauthError = new OAuthTokenError(oauthErrorCode, getMessage(errorCode));
+            OAuthTokenError oauthError = new OAuthTokenError(oauthErrorCode, getMessage(errorCode, errorMessage));
             HttpStatus status = getOAuthErrorStatus(oauthErrorCode);
             return new ResponseEntity<Object>(oauthError, status);
         }
@@ -247,9 +248,9 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         handleExceptions(accessDeniedException, (WebRequest) request);
     }
 
-    private String getMessage(String errorCode) {
+    private String getMessage(String errorCode, String defaultMessage) {
         try {
-            messageSource.getMessage(errorCode, null, errorCode, Locale.getDefault());
+            return messageSource.getMessage(errorCode, null, defaultMessage, Locale.getDefault());
         } catch (NoSuchMessageException ex) {
             log.error("Message not found in the i18n bundle", ex);
         }

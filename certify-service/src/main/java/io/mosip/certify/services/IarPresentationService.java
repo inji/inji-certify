@@ -27,7 +27,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
-import jakarta.annotation.PostConstruct;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 
@@ -42,14 +41,11 @@ import java.util.*;
 @Service
 public class IarPresentationService {
 
-    @Autowired
-    private IarSessionRepository iarSessionRepository;
+    private final IarSessionRepository iarSessionRepository;
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Value("${mosip.certify.verify.service.vp-result-endpoint:}")
     private String verifyServiceVpResultEndpoint;
@@ -59,6 +55,15 @@ public class IarPresentationService {
 
     @Value("#{'${mosip.certify.iar.identity-data:uin,vid,UIN,UID}'.split(',')}")
     private Set<String> identityKeys;
+
+    @Autowired
+    public IarPresentationService(IarSessionRepository iarSessionRepository,
+                                 RestTemplate restTemplate,
+                                 ObjectMapper objectMapper) {
+        this.iarSessionRepository = iarSessionRepository;
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Process VP presentation and return authorization response
@@ -141,8 +146,8 @@ public class IarPresentationService {
             log.debug("Using requestId: {} for Verify service", requestId);
             
             String vpTokenJson;
-            if (vpTokenObj instanceof String) {
-                vpTokenJson = (String) vpTokenObj;
+            if (vpTokenObj instanceof String vpTokenString) {
+                vpTokenJson = vpTokenString;
                 log.debug("vp_token is a JWT string");
             } else {
                 vpTokenJson = objectMapper.writeValueAsString(vpTokenObj);
@@ -150,8 +155,8 @@ public class IarPresentationService {
             }
             
             String presentationSubmissionJson;
-            if (presentationSubmissionObj instanceof String) {
-                presentationSubmissionJson = (String) presentationSubmissionObj;
+            if (presentationSubmissionObj instanceof String presentationSubmissionString) {
+                presentationSubmissionJson = presentationSubmissionString;
             } else {
                 presentationSubmissionJson  = objectMapper.writeValueAsString(presentationSubmissionObj);
                 log.debug("presentation_submission serialized to JSON, length: {}", presentationSubmissionJson.length());
@@ -356,7 +361,9 @@ public class IarPresentationService {
                 }
             }
 
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+            log.warn("Failed to parse VC JSON for identity extraction", ex);
+        }
 
         return null;
     }

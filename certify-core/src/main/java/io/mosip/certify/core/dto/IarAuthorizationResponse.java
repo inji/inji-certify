@@ -16,15 +16,7 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class IarAuthorizationResponse {
-
-    /**
-     * Status of the presentation response
-     * - "ok": VP verification successful
-     * - "error": VP verification failed
-     */
-    @JsonProperty("status")
-    private IarStatus status;
+public class IarAuthorizationResponse extends IarResponse{
 
     /**
      * OAuth 2.0 authorization code (if status is "ok")

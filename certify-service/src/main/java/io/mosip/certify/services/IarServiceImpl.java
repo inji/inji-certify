@@ -42,23 +42,17 @@ import io.mosip.certify.utils.AccessTokenJwtUtil;
 @Service
 public class IarServiceImpl implements IarService {
 
-    @Autowired
-    private IarSessionRepository iarSessionRepository;
+    private final IarSessionRepository iarSessionRepository;
 
-    @Autowired
-    private IarPresentationService iarPresentationService;
+    private final IarPresentationService iarPresentationService;
 
-    @Autowired
-    private IarSessionService iarSessionService;
+    private final IarSessionService iarSessionService;
 
-    @Autowired
-    private IarVpRequestService iarVpRequestService;
+    private final IarVpRequestService iarVpRequestService;
 
-    @Autowired
-    private AccessTokenJwtUtil accessTokenJwtUtil;
+    private final AccessTokenJwtUtil accessTokenJwtUtil;
 
-    @Autowired
-    private Validator validator;
+    private final Validator validator;
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:3600}")
     private int tokenExpiresInSeconds;
@@ -80,6 +74,20 @@ public class IarServiceImpl implements IarService {
 
     private static final String AUTH_CODE_PREFIX = "iar_auth_";
 
+    @Autowired
+    public IarServiceImpl(IarSessionRepository iarSessionRepository,
+                          IarPresentationService iarPresentationService,
+                          IarSessionService iarSessionService,
+                          IarVpRequestService iarVpRequestService,
+                          AccessTokenJwtUtil accessTokenJwtUtil,
+                          Validator validator) {
+        this.iarSessionRepository = iarSessionRepository;
+        this.iarPresentationService = iarPresentationService;
+        this.iarSessionService = iarSessionService;
+        this.iarVpRequestService = iarVpRequestService;
+        this.accessTokenJwtUtil = accessTokenJwtUtil;
+        this.validator = validator;
+    }
 
     private IarResponse processAuthorizationRequest(InteractiveAuthorizationRequest iarRequest) throws CertifyException {
         log.info("Processing IAR for client_id: {}, response_type: {}", 
@@ -144,42 +152,6 @@ public class IarServiceImpl implements IarService {
         return iarInitialRequest;
     }
 
-    /**
-     * Extract c_nonce from JWT access token payload
-     * 
-     * @param jwtToken The JWT access token
-     * @return The c_nonce value or null if not found
-     */
-    private String extractCNonceFromJwt(String jwtToken) {
-        try {
-            // Split JWT into parts
-            String[] parts = jwtToken.split("\\.");
-            if (parts.length != 3) {
-                log.warn("Invalid JWT format - expected 3 parts, got {}", parts.length);
-                return null;
-            }
-            
-            // Decode the payload (second part)
-            String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
-            
-            // Parse JSON payload
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.JsonNode jsonNode = mapper.readTree(payload);
-            
-            // Extract c_nonce
-            if (jsonNode.has("c_nonce")) {
-                return jsonNode.get("c_nonce").asText();
-            }
-            
-            log.warn("c_nonce not found in JWT payload");
-            return null;
-            
-        } catch (Exception e) {
-            log.error("Failed to extract c_nonce from JWT", e);
-            return null;
-        }
-    }
-    
     @Override
     public OAuthTokenResponse processTokenRequest(OAuthTokenRequest tokenRequest) throws CertifyException {
         Set<ConstraintViolation<OAuthTokenRequest>> violations =
@@ -305,7 +277,7 @@ public class IarServiceImpl implements IarService {
         log.info("Generating OpenID4VP request for auth_session: {}", authSession);
 
         try {
-            IarResponse response = new IarResponse();
+            IarPresentationResponse response = new IarPresentationResponse();
             response.setStatus(IarStatus.REQUIRE_INTERACTION);
             response.setType(InteractionType.OPENID4VP_PRESENTATION);
             response.setAuthSession(authSession);

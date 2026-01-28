@@ -17,13 +17,25 @@ import lombok.NoArgsConstructor;
  */
 @Data
 @NoArgsConstructor
-public class IarResponse {
+public class IarPresentationResponse extends IarResponse{
 
     /**
-     * Status of the authorization request
-     * - "require_interaction": Interaction is required (OpenID4VP presentation)
-     * - "complete": Authorization is complete, no interaction needed
+     * Type of interaction required
+     * - "openid4vp_presentation": OpenID4VP presentation required
      */
-    @JsonProperty("status")
-    private IarStatus status;
+    @JsonProperty("type")
+    private InteractionType type;
+
+    /**
+     * Authorization session identifier for tracking the auth flow
+     */
+    @JsonProperty("auth_session")
+    private String authSession;
+
+    /**
+     * OpenID4VP request details when interaction is required
+     * Using Object to handle dynamic structure from Verify service
+     */
+    @JsonProperty("openid4vp_request")
+    private Object openid4vpRequest;
 }

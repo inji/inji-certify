@@ -36,14 +36,12 @@ import java.util.Map;
 @Service
 public class IarVpRequestService {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
+
+    private final ObjectMapper objectMapper;
 
     @Value("${mosip.certify.vp-request.config-file-url:}")
     private String vpRequestConfigUrl;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Value("${mosip.certify.verify.service.vp-request-endpoint:}")
     private String verifyServiceVpRequestEndpoint;
@@ -57,9 +55,14 @@ public class IarVpRequestService {
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
     private String certifyIarEndpoint;
 
-    @Value("${spring.profiles.active:!local}")
+    @Value("${spring.profiles.active:}")
     private String activeProfile;
 
+    @Autowired
+    public IarVpRequestService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
+    }
     /**
      * Create VP request with verify service
      * 
