@@ -121,30 +121,34 @@ sequenceDiagram
     participant I as Issuer System (Issuer Portal)
     participant C as Inji Certify (Credential Issuer Service)
 
-    box rgb(255,255,200) OpenID4VCI Pre-Authorized Code Flow\n(Direct URI String - Inji Certify)
+    box rgb(255,255,200) OpenID4VCI Pre-Authorized Code Flow<br/>(Direct URI String - Inji Certify)
     end
 
-    I->>C: POST /pre-authorized-data\n(user data, credential_configuration_id,\noptional expires_in)
+    I->>C: POST /pre-authorized-data<br/>(user data, credential_configuration_id,<br/>optional expires_in)
     C-->>I: openid-credential-offer:///?credential_offer_uri=...
 
-    note left of W: Deliver URI string\n(Wallet receives URI)
-    W->>W: Parse URI & extract\ncredential_offer_uri
+    note left of W: Deliver URI string<br/>(Wallet receives URI)
+    W->>W: Parse URI & extract<br/>credential_offer_uri
 
     W->>C: GET /credential-offer-data/{offer_id}
-    C-->>W: CredentialOffer JSON\n(includes pre-authorized_code,\nno expiry info)
+    C-->>W: CredentialOffer JSON<br/>(includes pre-authorized_code,<br/>no expiry info)
 
-    W->>C: GET /.well-known/openid-credential-issuer\nGET /.well-known/oauth-authorization-server\n(Metadata Discovery)
-    C-->>W: Issuer & AS Metadata
+    W->>C: GET /.well-known/openid-credential-issuer<br/>(Metadata Discovery)
+    C-->>W: Issuer Metadata
 
-    W->>C: POST /token\n(grant_type=pre-authorized_code,\npre-authorized_code)
+    W->>C: GET /.well-known/oauth-authorization-server<br/>(Metadata Discovery)
+    C-->>W: AS Metadata
+
+    W->>C: POST /token<br/>(grant_type=pre-authorized_code,<br/>pre-authorized_code)
     C-->>W: access_token, c_nonce
 
-    W->>C: POST /credential\n(access_token + JWT proof with c_nonce)
+    W->>C: POST /credential<br/>(access_token + JWT proof with c_nonce)
     C-->>W: Verifiable Credential
 ```
 
 ## Limitations
-Client authorisation is not supported. Therefore, only a single issuance mode can be configured for an issuer. For example, if an issuer is configured to issue Verifiable Credentials using the pre-authorised flow, other modes—such as wallet-initiated issuance—will not be supported.
+1. Client Authentication is not supported. It means certify doesn't verify the client who is requesting the credential.
+2. If an issuer is configured to issue Verifiable Credentials using the pre-authorised flow, other modes—such as wallet-initiated issuance—will not be supported.
 
 ## Conclusion
 Implementing the Pre-Authorized Code Flow in Inji Certify enhances the credential issuance process by providing a seamless, user-friendly experience while maintaining robust security measures. This flow is particularly beneficial in scenarios where prior authorization has been granted, allowing for efficient and automated issuance of verifiable credentials.
