@@ -1,13 +1,18 @@
 # Pre-authorized-code flow with Credential offer
-The Pre-Authorized Code Flow, as defined in the OpenID for Verifiable Credential Issuance (OID4VCI) specification, enables a credential issuer to provide a pre-authorized code to a wallet or client application. This allows the client to request and obtain verifiable credentials without requiring the user to manually authenticate or authorize the request at the time of issuance.
+The Pre-Authorized Code Flow with Credential Offer enhances the credential issuance experience by enabling wallets to obtain Verifiable Credentials (VCs) directly using a pre-authorized code embedded in a credential offer. This flow is part of the OpenID for Verifiable Credential Issuance (OpenID4VCI) standard, designed to streamline issuance where the issuer has already authenticated the user or established user context outside of the standard interactive authentication flow.
 
-Inji Certify needs to support this flow to improve user experience, enable automated credential issuance, and streamline processes where prior authorization has already been granted.
+In this flow, the Credential Issuer prepares and issues a Credential Offer that contains:
+ - Credential metadata
+ - Issuer endpoints
+ - A pre-authorized code that the wallet can exchange for an access token
+
+The wallet then uses this pre-authorized code to securely request the VC from the issuer without requiring the user to authenticate again through a separate interactive login step.
 
 ## Need for Pre-Authorized Code Flow
 1. **Seamless User Experience:** Eliminates the need for end-user interactive authentication (e.g., signing in) during VC issuance when prior authentication is already completed by the issuer.
 2. **Flexible Delivery:** Credential Offers can be delivered via QR codes, deep links, or other channels, enabling both same-device and cross-device issuance experiences.
 3. **Optional Transaction Code:** Issuers can require an additional user transaction code (PIN), adding an extra factor of security during issuance.
-4. **Interoperability:* Aligns with OpenID4VCI standards, improving compatibility with other identity systems and wallets.
+4. **Interoperability:** Aligns with OpenID4VCI standards, improving compatibility with other identity systems and wallets.
 
 ## Solution Overview
 The Pre-Authorized Code Flow involves the following key steps:
@@ -68,7 +73,7 @@ The following endpoints are involved in the Pre-Authorized Code Flow:
 
 3. POST `/pre-authorized-data (Formerly /credential-offer)`
 
-   **Purpose:** Initiate Credential Offer via Data Push. Allows the initiating issuer system (rather than the end-user/Wallet directly) to submit the required user data (identified by credential_configuration_id) directly to the credential issuer service (e.g., certify). The service validates the data and responds with either the full CredentialOffer (containing the pre-authorized_code) or a credential_offer_uri.
+   **Purpose:** Initiate Credential Offer via Data Push. Allows the initiating issuer system (rather than the end-user/Wallet directly) to submit the required user data (identified by credential_configuration_id) directly to the credential issuer service (e.g., certify). The service validates the data and responds with the credential_offer_uri.
 
 4. GET `/credential-offer-data/{offer_id} (Formerly /credential-offer/{offer_id})`
 

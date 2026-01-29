@@ -178,8 +178,8 @@ To enable QR code support in your credential configurations, you need to include
 ```
 
 **Extensibility**
-- Currently, QR code signing method is implemented as the default implementation `` in the base class: `com.mosip.certify.credential.Credential`.
-- The QR code signer method can be overridden in `W3CJsonLD`, `SDJWT` and `MDocCredential` classes if any specific implementation is required for QR code signing for a particular credential format in future.
+- Currently, QR code signing method is implemented as the default implementation in the base class: `io.inji.certify.credential.Credential`.
+- The QR code signer method can be overridden in `W3CJsonLD`, `SDJWT` and `MDocCredential` classes if any specific implementation is required for QR code signing for a particular credential format in the future.
 - Add custom headers or claims to the QR code payload by updating the protective headers map.
 
 **Sequence Diagram**
