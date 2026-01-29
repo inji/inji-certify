@@ -86,8 +86,10 @@ To enable QR code support in your credential configurations, you need to include
             "dateOfBirth": "${dateOfBirth}",
             "gender": "${gender}",
             "state": "${state}",
-            "identityQRCode": $claim_169_values[0],
-            "faceQRCode": $claim_169_values[1]
+            "claim169": {
+              "identityQRCode": "$claim_169_values[0]",
+              "faceQRCode": "$claim_169_values[1]" 
+            }
         }
     }
 ```
@@ -143,16 +145,36 @@ To enable QR code support in your credential configurations, you need to include
 10. This list of QR code data objects will then be integrated with pixel-pass to generate claim-169 unsigned QR payload.
 ```json
     [
-      "<Base64-encoded-QR-code-data-1>",
-      "<Base64-encoded-QR-code-data-2>"
+      "<claim169-mapped-data-payload-1>",
+      "<claim169-mapped-data-payload-2>"
     ]
 ```
-11. Each QR code data object in the list will be signed using the specified signature algorithm to produce a signed QR code (CWT). These signed qr-codes are added to the `claim_169_values` list in the same order as defined in the `qrSettings`.
+11. Each QR code payload will be signed with the `cwtSign` method of `CoseSignatureService` in Keymanager using the specified signature algorithm to produce a signed CWT in hex format.
 ```json
     [
-        "<Base64-encoded-signed-QR-code-data-1>",
-        "<Base64-encoded-signed-QR-code-data-2>"
+        "<CWT-Hex-1>",
+        "<CWT-Hex-2>"
     ]
+```
+12. The signed CWT hex values are again converted into base45 qr code format by using the `generateQRData` method of pixel-pass library.
+13. These signed qr-codes are added to the `claim_169_values` list in the same order as defined in the `qrSettings`
+```json
+    [
+        "<Base45-QR-Code-1>",
+        "<Base45-QR-Code-2>"
+    ]
+```
+14. Finally, these qr-codes can be integrated into the VC template under `claim169` key which is map data structure. Here the keys are the QR Code labels that can be used by wallet. The values are the respective signed QR codes in base45 format. Check below example for ref: 
+```json
+{
+  "credentialSubject": {
+    "...keys": "...values",
+    "claim169": {
+      "identityQRCode": "<Base45-QR-Code-1>",
+      "faceQRCode": "<Base45-QR-Code-2>"
+    }
+  }
+}
 ```
 
 **Extensibility**
@@ -177,22 +199,20 @@ sequenceDiagram
 
     alt QR data present
         loop For each QR data object
-            CredentialAPI->>PixelPass: Generate unsigned QR payload
-            PixelPass-->>CredentialAPI: Return unsigned QR payload
-            CredentialAPI->>Credential: signQRData(payload, qrSignAlgorithm, appID, refID, didUrl)
+            CredentialAPI->>PixelPass: Generate unsigned claim169 payload
+            PixelPass-->>CredentialAPI: Return unsigned claim169 payload
+            CredentialAPI->>Credential: signQRData(claim169Payload, qrSignAlgorithm, appID, refID, didUrl)
             Credential->>KeyManager: cwtSign(cwtSignRequest)
             KeyManager-->>Credential: Return signed QR data
             Credential-->>CredentialAPI: Return signed QR data
-            CredentialAPI->>CredentialAPI: Add signed QR data to claim_169_values
+            CredentialAPI->>PixelPass: generateQRData(cwtHex)
+            PixelPass ->> CredentialAPI: Return base45 encoded QR code data
+            CredentialAPI ->> CredentialAPI: Add signed QR data to claim_169_values
         end
     else No QR data
         CredentialAPI->>CredentialAPI: Skip QR signing
     end
 ```
 
-**Note:** To be completed post Pixel Pass and keymanager integration for QR code signing
- - After the QR code data is generated based on the `qrSettings`, it will be integrated with `Pixel Pass` and keymanager to convert each QR object into a signed QR code i.e `CWT`.
- - After the QR code is signed, it will then be integrated into the VC as shown in the velocity template above.
- - The rest of the VC issuance flow will remain the same as before.
- - The VC with embedded QR codes can be verified by any compatible verifier that supports QR code verification.
- - The respective context should be updated accordingly to accommodate the QR code keys in the credential subject.
+## Conclusion
+The QR code support in Inji Certify significantly enhances the functionality of Verifiable Credentials by enabling easy sharing and verification through QR codes. By following the steps outlined above, administrators can effectively implement and utilize this feature in their credential issuance processes.
