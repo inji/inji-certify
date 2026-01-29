@@ -1647,9 +1647,8 @@ paths:
       summary: OAuth 2.0 Token Endpoint
       description: |
         Token endpoint supporting:
-        - Authorization codes from authorize-challenge
-        - Pre-authorized codes
-        - Refresh tokens
+        - Authorization code
+        - Pre-authorized code
       operationId: processTokenRequest
       requestBody:
         required: true
@@ -1690,6 +1689,70 @@ paths:
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
+  /pre-authorized-data:
+    post:
+      tags:
+        - Pre-Authorized Code
+      summary: Pre-Authorized Verifiable Credential data generation
+      description: Inji Certify's pre-authorized api to generate verifiable credential data
+      operationId: generatePreAuthorizedCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreAuthorizedRequest'
+            examples:
+              with tx_code example:
+                value:
+                  credential_configuration_id: "MockVerifiableCredential"
+                  claims:
+                    - 'claim_1'
+                    - 'claim_2'
+                  expires_in: 600
+                  tx_code: 11111
+              without tx_code example:
+                value:
+                  credential_configuration_id: "MockVerifiableCredential"
+                  claims:
+                    - 'claim_1'
+                    - 'claim_2'
+                  expires_in: 600
+      responses:
+        '200':
+          description: Provide credential offer uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreAuthorizedResponse'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
+  /credential-offer-data/{offer_id}:
+    get:
+      tags:
+        - Pre-Authorized Code
+      summary: Api to get credential offer uri
+      description: Inji Certify's api to generate credential offer uri
+      operationId: getCredentialOffer
+      parameters:
+        - name: offer_id
+          in: path
+          description: Unique offer id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provide credential offer response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialOfferResponse'
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
+
 tags:
   - name: cryptomanager
     description: Operation related to Encryption and Decryption
@@ -1707,6 +1770,11 @@ tags:
     description: Operations for Credential Status
   - name: 'Ledger Search'
     description: Operations for Ledger Search
+  - name: o-auth-controller
+    description: Operation to handle IAR and token api
+  - name: Pre-Authorized Code
+    description: Operation to create pre-authorize data and get credential offer
+
 components:
   schemas:
     CredentialConfigurationDTO:
@@ -2850,12 +2918,10 @@ components:
       type: object
       required:
         - grant_type
-        - code
-        - code_verifier
       properties:
         grant_type:
           type: string
-          description: OAuth 2.0 grant type (authorization_code, refresh_token, etc.)
+          description: OAuth 2.0 grant type (authorization_code, urn:ietf:params:oauth:grant-type:pre-authorized_code)
           example: "authorization_code"
         code:
           type: string
@@ -2864,13 +2930,20 @@ components:
         code_verifier:
           type: string
           description: PKCE code verifier
+        pre-authorized_code:
+          type: string
+          description: Pre-Authorized code
+          example: "SplxlOBeZQQYbYS6WxSbIA"
+        tx_code:
+          type: string
+          description: transaction code
+          example: "11111"
     TokenResponse:
       type: object
       required:
         - access_token
         - token_type
         - expires_in
-        - scope
         - c_nonce
         - c_nonce_expires_in
       properties:
@@ -2956,3 +3029,83 @@ components:
               exp:
                 type: integer
                 description: Key expiry in seconds
+    PreAuthorizedRequest:
+      type: object
+      required:
+        - credential_configuration_id
+        - claims
+      properties:
+        credential_configuration_id:
+          type: string
+        claims:
+          type: object
+          description: claims to be issued for verifiable credential
+        expires_in:
+          type: integer
+          example: 600
+        tx_code:
+          type: string
+          description: alphanumeric characters, if specified must be 4-8 characters
+          example: 11111
+    PreAuthorizedResponse:
+      type: object
+      required:
+        - credential_offer_uri
+      properties:
+        credential_offer_uri:
+          type: string
+          description: credential offer uri for pre-authorized credential
+          example: openid-credential-offer://?credential_offer_uri=http%3A%2F%2Flocalhost%3A8090%2Fv1%2Fcertify%2Fcredential-offer-data%2Fbfb5a082-3782-4851-9f11-064095a7c7a5
+    CredentialOfferResponse:
+      type: object
+      required:
+        - credential_issuer
+        - credential_configuration_ids
+        - grants
+      properties:
+        credential_issuer:
+          type: string
+          description: Issuer uri
+        credential_configuration_ids:
+          type: array
+          description: Credential type for which credential offer is issued
+          items:
+            type: string
+        grants:
+          $ref: '#/components/schemas/Grant'
+    Grant:
+      type: object
+      properties:
+        urn:ietf:params:oauth:grant-type:pre-authorized_code:
+          $ref: '#/components/schemas/PreAuthorizedCodeGrantType'
+        authorization_code:
+          $ref: '#/components/schemas/AuthorizationCodeGrantType'
+    PreAuthorizedCodeGrantType:
+      type: object
+      required:
+        - pre-authorized_code
+      properties:
+        pre-authorized_code:
+          type: string
+        tx_code:
+          $ref: '#/components/schemas/TxCode'
+    TxCode:
+      type: object
+      properties:
+        length:
+          type: integer
+          format: int32
+        input_mode:
+          type: string
+          pattern: '^(numeric|text)$'
+        description:
+          type: string
+          minLength: 0
+          maxLength: 300
+    AuthorizationCodeGrantType:
+      type: object
+      properties:
+        authorization_server:
+          type: string
+        issuer_state:
+          type: string
