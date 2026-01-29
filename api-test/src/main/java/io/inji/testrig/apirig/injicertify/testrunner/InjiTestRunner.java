@@ -45,7 +45,7 @@ import io.mosip.testrig.apirig.utils.PartnerRegistration;
 import io.mosip.testrig.apirig.utils.SkipTestCaseHandler;
 
 /**
- * Class to initiate mosip api test execution
+ * Class to initiate inji api test execution
  * 
  * @author Vignesh
  *
@@ -167,7 +167,7 @@ public class InjiTestRunner {
 		if (InjiCertifyConfigManager.IsDebugEnabled())
 			LOGGER.setLevel(Level.ALL);
 		else
-			LOGGER.info("Test Framework for Mosip api Initialized");
+			LOGGER.info("Test Framework for Inji api Initialized");
 		BaseTestCase.initialize();
 		LOGGER.info("Done with BeforeSuite and test case setup! su TEST EXECUTION!\n\n");
 
