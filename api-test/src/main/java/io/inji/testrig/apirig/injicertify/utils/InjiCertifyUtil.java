@@ -1,4 +1,4 @@
-package io.mosip.testrig.apirig.injicertify.utils;
+package io.inji.testrig.apirig.injicertify.utils;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -72,10 +72,10 @@ import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 
+import io.inji.testrig.apirig.injicertify.testrunner.InjiTestRunner;
 import io.mosip.testrig.apirig.dataprovider.BiometricDataProvider;
 import io.mosip.testrig.apirig.dbaccess.DBManager;
 import io.mosip.testrig.apirig.dto.TestCaseDTO;
-import io.mosip.testrig.apirig.injicertify.testrunner.MosipTestRunner;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.testrunner.OTPListener;
@@ -981,7 +981,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 			throw new SkipException(GlobalConstants.CAPTCHA_ENABLED_MESSAGE);
 		}
 
-		if (MosipTestRunner.skipAll == true) {
+		if (InjiTestRunner.skipAll == true) {
 			throw new SkipException(GlobalConstants.PRE_REQUISITE_FAILED_MESSAGE);
 		}
 

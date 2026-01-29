@@ -1,4 +1,4 @@
-package io.mosip.testrig.apirig.injicertify.utils;
+package io.inji.testrig.apirig.injicertify.utils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -7,7 +7,7 @@ import java.util.Properties;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
-import io.mosip.testrig.apirig.injicertify.testrunner.MosipTestRunner;
+import io.inji.testrig.apirig.injicertify.testrunner.InjiTestRunner;
 import io.mosip.testrig.apirig.utils.ConfigManager;
 
 public class InjiCertifyConfigManager extends ConfigManager{
@@ -20,7 +20,7 @@ public class InjiCertifyConfigManager extends ConfigManager{
 		Map<String, Object> moduleSpecificPropertiesMap = new HashMap<>();
 		// Load scope specific properties
 		try {
-			String path = MosipTestRunner.getGlobalResourcePath() + "/config/injiCertify.properties";
+			String path = InjiTestRunner.getGlobalResourcePath() + "/config/injiCertify.properties";
 			Properties props = getproperties(path);
 			// Convert Properties to Map and add to moduleSpecificPropertiesMap
 			for (String key : props.stringPropertyNames()) {

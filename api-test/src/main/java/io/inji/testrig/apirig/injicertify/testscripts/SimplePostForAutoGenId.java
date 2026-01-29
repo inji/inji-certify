@@ -1,11 +1,14 @@
-package io.mosip.testrig.apirig.injicertify.testscripts;
+package io.inji.testrig.apirig.injicertify.testscripts;
 
 import java.lang.reflect.Field;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
@@ -21,10 +24,10 @@ import org.testng.annotations.Test;
 import org.testng.internal.BaseTestMethod;
 import org.testng.internal.TestResult;
 
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.dto.OutputValidationDto;
 import io.mosip.testrig.apirig.dto.TestCaseDTO;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.utils.AdminTestException;
@@ -36,12 +39,14 @@ import io.mosip.testrig.apirig.utils.ReportUtil;
 import io.mosip.testrig.apirig.utils.SecurityXSSException;
 import io.restassured.response.Response;
 
-public class GetWithParam extends InjiCertifyUtil implements ITest {
-	private static final Logger logger = Logger.getLogger(GetWithParam.class);
+public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
+	private static final Logger logger = Logger.getLogger(SimplePostForAutoGenId.class);
 	protected String testCaseName = "";
+	public String idKeyName = null;
 	public Response response = null;
 	public boolean sendEsignetToken = false;
 	public boolean auditLogCheck = false;
+	public String isJsonArrayResponse = null;
 
 	@BeforeClass
 	public static void setLogLevel() {
@@ -68,6 +73,8 @@ public class GetWithParam extends InjiCertifyUtil implements ITest {
 	public Object[] getTestCaseList(ITestContext context) {
 		String ymlFile = context.getCurrentXmlTest().getLocalParameters().get("ymlFile");
 		sendEsignetToken = context.getCurrentXmlTest().getLocalParameters().containsKey("sendEsignetToken");
+		idKeyName = context.getCurrentXmlTest().getLocalParameters().get("idKeyName");
+		isJsonArrayResponse = context.getCurrentXmlTest().getLocalParameters().get("isJsonArrayResponse");
 		logger.info("Started executing yml: " + ymlFile);
 		return getYmlTestData(ymlFile);
 	}
@@ -80,81 +87,97 @@ public class GetWithParam extends InjiCertifyUtil implements ITest {
 	 * @param testcaseName
 	 * @throws AuthenticationTestException
 	 * @throws AdminTestException
+	 * @throws NoSuchAlgorithmException
 	 */
 	@Test(dataProvider = "testcaselist")
-	public void test(TestCaseDTO testCaseDTO) throws AuthenticationTestException, AdminTestException, SecurityXSSException {
+	public void test(TestCaseDTO testCaseDTO)
+			throws AuthenticationTestException, AdminTestException, NoSuchAlgorithmException, SecurityXSSException {
 		testCaseName = testCaseDTO.getTestCaseName();
 		testCaseDTO = InjiCertifyUtil.isTestCaseValidForExecution(testCaseDTO);
 		if (HealthChecker.signalTerminateExecution) {
 			throw new SkipException(
 					GlobalConstants.TARGET_ENV_HEALTH_CHECK_FAILED + HealthChecker.healthCheckFailureMapS);
 		}
-
 		if (testCaseDTO.getTestCaseName().contains("VID") || testCaseDTO.getTestCaseName().contains("Vid")) {
 			if (!BaseTestCase.getSupportedIdTypesValueFromActuator().contains("VID")
 					&& !BaseTestCase.getSupportedIdTypesValueFromActuator().contains("vid")) {
 				throw new SkipException(GlobalConstants.VID_FEATURE_NOT_SUPPORTED);
 			}
 		}
-		auditLogCheck = testCaseDTO.isAuditLogCheck();
-		String[] templateFields = testCaseDTO.getTemplateFields();
 
-		if (testCaseDTO.getInputTemplate().contains(GlobalConstants.$PRIMARYLANG$))
-			testCaseDTO.setInputTemplate(testCaseDTO.getInputTemplate().replace(GlobalConstants.$PRIMARYLANG$,
-					BaseTestCase.languageList.get(0)));
-		if (testCaseDTO.getOutputTemplate().contains(GlobalConstants.$PRIMARYLANG$))
-			testCaseDTO.setOutputTemplate(testCaseDTO.getOutputTemplate().replace(GlobalConstants.$PRIMARYLANG$,
-					BaseTestCase.languageList.get(0)));
-		if (testCaseDTO.getInput().contains(GlobalConstants.$PRIMARYLANG$))
-			testCaseDTO.setInput(
-					testCaseDTO.getInput().replace(GlobalConstants.$PRIMARYLANG$, BaseTestCase.languageList.get(0)));
-		if (testCaseDTO.getOutput().contains(GlobalConstants.$PRIMARYLANG$))
-			testCaseDTO.setOutput(
-					testCaseDTO.getOutput().replace(GlobalConstants.$PRIMARYLANG$, BaseTestCase.languageList.get(0)));
+		String[] templateFields = testCaseDTO.getTemplateFields();
+		String inputJson = "";
+
+		inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
+		JSONObject requestJson = new JSONObject(inputJson);
+		// Check and encode vcTemplate
+		if (requestJson.has("vcTemplate") && requestJson.get("vcTemplate") instanceof JSONObject) {
+
+			inputJson = extractAndEncodeVcTemplate(requestJson.toString());
+		}
+		
+		
+		if (requestJson.has("credentialId")) {
+
+			String key = requestJson.get("credentialId").toString();
+			if (key.contains("$ID:") && key.contains("$")) {
+				String cachedValue = autoGeneratedIDValueCache
+						.get(StringUtils.substringBetween(key, "$ID:", "$").trim());
+				if (cachedValue == null || cachedValue.isEmpty()) {
+					requestJson.put("credentialId", JSONObject.NULL); // sets it to null
+					inputJson = requestJson.toString();
+				}
+			}
+		}
+
 
 		if (testCaseDTO.getTemplateFields() != null && templateFields.length > 0) {
 			ArrayList<JSONObject> inputtestCases = AdminTestUtil.getInputTestCase(testCaseDTO);
 			ArrayList<JSONObject> outputtestcase = AdminTestUtil.getOutputTestCase(testCaseDTO);
 			for (int i = 0; i < languageList.size(); i++) {
-				response = getWithPathParamAndCookie(ApplnURI + testCaseDTO.getEndPoint(),
+				response = postWithBodyAndCookieForAutoGeneratedId(ApplnURI + testCaseDTO.getEndPoint(),
 						getJsonFromTemplate(inputtestCases.get(i).toString(), testCaseDTO.getInputTemplate()),
-						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName());
+						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), idKeyName);
 
 				Map<String, List<OutputValidationDto>> ouputValid = OutputValidationUtil.doJsonOutputValidation(
 						response.asString(),
 						getJsonFromTemplate(outputtestcase.get(i).toString(), testCaseDTO.getOutputTemplate()),
 						testCaseDTO, response.getStatusCode());
+				if (testCaseDTO.getTestCaseName().toLowerCase().contains("dynamic")) {
+					JSONObject json = new JSONObject(response.asString());
+					idField = json.getJSONObject("response").get("id").toString();
+				}
 				Reporter.log(ReportUtil.getOutputValidationReport(ouputValid));
 
 				if (!OutputValidationUtil.publishOutputResult(ouputValid))
 					throw new AdminTestException("Failed at output validation");
 			}
-		}
-
-		else {
-			String inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
+		} else {
 			inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 			if (testCaseName.contains("ESignet_")) {
 				if (InjiCertifyConfigManager.isInServiceNotDeployedList(GlobalConstants.ESIGNET)) {
 					throw new SkipException("esignet is not deployed hence skipping the testcase");
 				}
+				String tempUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
+				String endPointKeyWord = "";
+				
+				if (testCaseDTO.getEndPoint().contains("BASEURL$")) {
+					tempUrl = InjiCertifyUtil.getTempURL(testCaseDTO);
+					endPointKeyWord = InjiCertifyUtil.getKeyWordFromEndPoint(testCaseDTO.getEndPoint());
 
-				String tempUrl = ApplnURI;
-
-				if (testCaseDTO.getEndPoint().startsWith("$SUNBIRDBASEURL$") && testCaseName.contains("SunBirdR")) {
-
-					if (InjiCertifyConfigManager.isInServiceNotDeployedList("sunbirdrc"))
-						throw new SkipException(GlobalConstants.SERVICE_NOT_DEPLOYED_MESSAGE);
-
-					if (InjiCertifyConfigManager.getSunBirdBaseURL() != null
-							&& !InjiCertifyConfigManager.getSunBirdBaseURL().isBlank())
-						tempUrl = InjiCertifyConfigManager.getSunBirdBaseURL();
-					testCaseDTO.setEndPoint(testCaseDTO.getEndPoint().replace("$SUNBIRDBASEURL$", ""));
+					if (!(endPointKeyWord.isBlank()) && testCaseDTO.getEndPoint().startsWith(endPointKeyWord)) {
+						testCaseDTO.setEndPoint(testCaseDTO.getEndPoint().replace(endPointKeyWord, ""));
+					}
 				}
-
-				response = getWithPathParamAndCookie(tempUrl + testCaseDTO.getEndPoint(), inputJson, auditLogCheck,
-						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), sendEsignetToken);
-
+				
+				if (testCaseName.contains("_AuthorizationCode_")) {
+					response = postRequestWithCookieAuthHeaderAndXsrfTokenForAutoGenId(
+							tempUrl + testCaseDTO.getEndPoint(), inputJson, COOKIENAME, testCaseDTO.getTestCaseName(),
+							idKeyName);
+				} else {
+					response = postWithBodyAndBearerTokenForAutoGeneratedId(tempUrl + testCaseDTO.getEndPoint(),
+							inputJson, COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), idKeyName);
+				}
 			} else {
 				String tempUrl = ApplnURI;
 				String endPointKeyWord = "";
@@ -167,14 +190,18 @@ public class GetWithParam extends InjiCertifyUtil implements ITest {
 						testCaseDTO.setEndPoint(testCaseDTO.getEndPoint().replace(endPointKeyWord, ""));
 					}
 				}
-
-				response = getWithPathParamAndCookie(tempUrl + testCaseDTO.getEndPoint(), inputJson, auditLogCheck,
-						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), sendEsignetToken);
+				response = postWithBodyAndCookieForAutoGeneratedId(tempUrl + testCaseDTO.getEndPoint(), inputJson,
+						auditLogCheck, COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), idKeyName,
+						sendEsignetToken);
+			}
+			
+			if (isJsonArrayResponse != null && isJsonArrayResponse.equalsIgnoreCase("yes")
+					&& testCaseName.toLowerCase().contains("_sid")) {
+				writeAutoGeneratedIdWithResponse(response, idKeyName, testCaseName);
 			}
 
 			Map<String, List<OutputValidationDto>> ouputValid = null;
 			if (testCaseName.contains("_StatusCode")) {
-
 				OutputValidationDto customResponse = customStatusCodeResponse(String.valueOf(response.getStatusCode()),
 						testCaseDTO.getOutput());
 
@@ -185,11 +212,11 @@ public class GetWithParam extends InjiCertifyUtil implements ITest {
 						getJsonFromTemplate(testCaseDTO.getOutput(), testCaseDTO.getOutputTemplate()), testCaseDTO,
 						response.getStatusCode());
 			}
-
 			Reporter.log(ReportUtil.getOutputValidationReport(ouputValid));
 			if (!OutputValidationUtil.publishOutputResult(ouputValid))
 				throw new AdminTestException("Failed at output validation");
 		}
+
 	}
 
 	/**

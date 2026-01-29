@@ -14,7 +14,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.AddIdentity" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.AddIdentity" />
 		</classes>
 	</test>
 	<test name="AddIdentityMock">
@@ -22,7 +22,7 @@
 			value="injicertify/AddIdentityMock/AddIdentity.yml" />
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
-			<class name="io.mosip.testrig.apirig.injicertify.testscripts.AddIdentity" />
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.AddIdentity" />
 		</classes>
 	</test>
 	
@@ -30,7 +30,7 @@
 		<parameter name="ymlFile"
 			value="injicertify/InsertDBData/InsertDBData.yml" />
 		<classes>
-			<class name="io.mosip.testrig.apirig.injicertify.testscripts.DBIntegration" />
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.DBIntegration" />
 		</classes>
 	</test>
 	<test name="CreatePolicySunBirdR">
@@ -40,7 +40,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetPolicySunBirdR">
@@ -49,7 +49,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.GetWithParam" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
 		</classes>
 	</test>
 	<test name="SearchPolicySunBirdR">
@@ -57,7 +57,7 @@
 			value="injicertify/SunBirdR/SearchPolicySunBirdR/SearchPolicySunBirdR.yml" />
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
-			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePost" />
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
 	<test name="CreateOIDCClientV2SunBirdC">
@@ -67,7 +67,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="CreatePolicyGroup">
@@ -75,7 +75,7 @@
 		<parameter name="idKeyName" value="id,name" />
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
-			<class name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="DefinePolicy">
@@ -85,7 +85,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="PublishPolicy">
@@ -94,7 +94,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.PostWithOnlyPathParam" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.PostWithOnlyPathParam" />
 		</classes>
 	</test>
 	<test name="CreatePartner">
@@ -104,7 +104,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="UploadCACertificate">
@@ -113,7 +113,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePost" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
 	<test name="UploadPartnerCertificate">
@@ -123,7 +123,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="RequestAPIKeyForAuthPartner">
@@ -133,7 +133,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="ApproveAPIKey">
@@ -143,7 +143,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.PutWithPathParamsAndBody" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.PutWithPathParamsAndBody" />
 		</classes>
 	</test>
 	<test name="OIDCClient">
@@ -152,7 +152,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="CreateOIDCClientV2ForMockIDA">
@@ -162,7 +162,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="CreateOIDCClientV2FormDoc">
@@ -172,7 +172,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="CreateOIDCClientV2FormDocvp">
@@ -192,7 +192,7 @@
 		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="CreateVID">
@@ -200,7 +200,7 @@
 		<parameter name="idKeyName" value="VID" />
 		<classes>
 			<class
-				name="io.mosip.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 </suite>

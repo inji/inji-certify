@@ -203,7 +203,7 @@
 								<transformer
 										implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<mainClass>
-										io.mosip.testrig.apirig.injicertify.testrunner.MosipTestRunner</mainClass>
+										io.inji.testrig.apirig.injicertify.testrunner.InjiTestRunner</mainClass>
 								</transformer>
 							</transformers>
 							<!-- add this to prevent some security issues when

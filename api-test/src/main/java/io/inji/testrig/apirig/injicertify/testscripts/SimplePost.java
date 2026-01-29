@@ -1,8 +1,7 @@
-package io.mosip.testrig.apirig.injicertify.testscripts;
+package io.inji.testrig.apirig.injicertify.testscripts;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,10 +21,10 @@ import org.testng.annotations.Test;
 import org.testng.internal.BaseTestMethod;
 import org.testng.internal.TestResult;
 
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.dto.OutputValidationDto;
 import io.mosip.testrig.apirig.dto.TestCaseDTO;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.utils.AdminTestException;
@@ -37,11 +36,12 @@ import io.mosip.testrig.apirig.utils.ReportUtil;
 import io.mosip.testrig.apirig.utils.SecurityXSSException;
 import io.restassured.response.Response;
 
-public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
-	private static final Logger logger = Logger.getLogger(PutWithPathParamsAndBody.class);
+public class SimplePost extends InjiCertifyUtil implements ITest {
+	private static final Logger logger = Logger.getLogger(SimplePost.class);
 	protected String testCaseName = "";
-	String pathParams = null;
 	public Response response = null;
+	public boolean sendEsignetToken = false;
+	public boolean auditLogCheck = false;
 
 	@BeforeClass
 	public static void setLogLevel() {
@@ -67,7 +67,7 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 	@DataProvider(name = "testcaselist")
 	public Object[] getTestCaseList(ITestContext context) {
 		String ymlFile = context.getCurrentXmlTest().getLocalParameters().get("ymlFile");
-		pathParams = context.getCurrentXmlTest().getLocalParameters().get("pathParams");
+		sendEsignetToken = context.getCurrentXmlTest().getLocalParameters().containsKey("sendEsignetToken");
 		logger.info("Started executing yml: " + ymlFile);
 		return getYmlTestData(ymlFile);
 	}
@@ -85,6 +85,7 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 	public void test(TestCaseDTO testCaseDTO) throws AuthenticationTestException, AdminTestException, SecurityXSSException {
 		testCaseName = testCaseDTO.getTestCaseName();
 		testCaseDTO = InjiCertifyUtil.isTestCaseValidForExecution(testCaseDTO);
+		auditLogCheck = testCaseDTO.isAuditLogCheck();
 		String[] templateFields = testCaseDTO.getTemplateFields();
 		if (HealthChecker.signalTerminateExecution) {
 			throw new SkipException(
@@ -97,24 +98,16 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 				throw new SkipException(GlobalConstants.VID_FEATURE_NOT_SUPPORTED);
 			}
 		}
-		testCaseDTO = AdminTestUtil.filterHbs(testCaseDTO);
-		String inputJson = filterInputHbs(testCaseDTO);
-		inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 
-		JSONObject requestJson = new JSONObject(inputJson);
-		// Check and encode vcTemplate
-		if (requestJson.has("vcTemplate") && requestJson.get("vcTemplate") instanceof JSONObject) {
-
-			inputJson = extractAndEncodeVcTemplate(requestJson.toString());
-		}
+		String inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
 
 		if (testCaseDTO.getTemplateFields() != null && templateFields.length > 0) {
 			ArrayList<JSONObject> inputtestCases = AdminTestUtil.getInputTestCase(testCaseDTO);
 			ArrayList<JSONObject> outputtestcase = AdminTestUtil.getOutputTestCase(testCaseDTO);
 			for (int i = 0; i < languageList.size(); i++) {
-				response = putWithPathParamsBodyAndCookie(ApplnURI + testCaseDTO.getEndPoint(),
+				response = postWithBodyAndCookie(ApplnURI + testCaseDTO.getEndPoint(),
 						getJsonFromTemplate(inputtestCases.get(i).toString(), testCaseDTO.getInputTemplate()),
-						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), pathParams);
+						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName());
 
 				Map<String, List<OutputValidationDto>> ouputValid = OutputValidationUtil.doJsonOutputValidation(
 						response.asString(),
@@ -128,13 +121,10 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 		}
 
 		else {
-			if (testCaseName.contains("ESignet_")) {
-				String tempUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
-				response = putWithPathParamsBodyAndBearerToken(tempUrl + testCaseDTO.getEndPoint(), inputJson,
-						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), pathParams);
-			} else 
-			{
-				String tempUrl = ApplnURI;
+			inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
+			String tempUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
+			if (testCaseName.contains("ESignet_") || testCaseName.contains("InjiCertify")) {
+
 				String endPointKeyWord = "";
 
 				if (testCaseDTO.getEndPoint().contains("BASEURL$")) {
@@ -144,55 +134,41 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 					if (!(endPointKeyWord.isBlank()) && testCaseDTO.getEndPoint().startsWith(endPointKeyWord)) {
 						testCaseDTO.setEndPoint(testCaseDTO.getEndPoint().replace(endPointKeyWord, ""));
 					}
-				}			
-				response = putWithPathParamsBodyAndCookie(tempUrl + testCaseDTO.getEndPoint(), inputJson, COOKIENAME,
-						testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), pathParams);
-			}
-			Map<String, List<OutputValidationDto>> ouputValid = null;
-			if (testCaseName.contains("_StatusCode")) {
-
-				OutputValidationDto customResponse = customStatusCodeResponse(String.valueOf(response.getStatusCode()),
-						testCaseDTO.getOutput());
-
-				ouputValid = new HashMap<>();
-				ouputValid.put(GlobalConstants.EXPECTED_VS_ACTUAL, List.of(customResponse));
+				}
+				response = postRequestWithCookieAuthHeaderAndXsrfToken(tempUrl + testCaseDTO.getEndPoint(), inputJson,
+						COOKIENAME, testCaseDTO.getTestCaseName());
 			} else {
-				ouputValid = OutputValidationUtil.doJsonOutputValidation(response.asString(),
-						getJsonFromTemplate(testCaseDTO.getOutput(), testCaseDTO.getOutputTemplate()), testCaseDTO,
-						response.getStatusCode());
+				response = postWithBodyAndCookie(ApplnURI + testCaseDTO.getEndPoint(), inputJson, auditLogCheck,
+						COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), sendEsignetToken);
 			}
-			Reporter.log(ReportUtil.getOutputValidationReport(ouputValid));
+				Map<String, List<OutputValidationDto>> ouputValid = null;
+				if (testCaseName.contains("_StatusCode")) {
 
-			if (!OutputValidationUtil.publishOutputResult(ouputValid))
-				throw new AdminTestException("Failed at output validation");
+					OutputValidationDto customResponse = customStatusCodeResponse(
+							String.valueOf(response.getStatusCode()), testCaseDTO.getOutput());
+
+					ouputValid = new HashMap<>();
+					ouputValid.put(GlobalConstants.EXPECTED_VS_ACTUAL, List.of(customResponse));
+				} else {
+					ouputValid = OutputValidationUtil.doJsonOutputValidation(response.asString(),
+							getJsonFromTemplate(testCaseDTO.getOutput(), testCaseDTO.getOutputTemplate()), testCaseDTO,
+							response.getStatusCode());
+				}
+
+				Reporter.log(ReportUtil.getOutputValidationReport(ouputValid));
+
+				if (!OutputValidationUtil.publishOutputResult(ouputValid)) {
+					if (response.asString().contains("IDA-OTA-001"))
+						throw new AdminTestException(
+								"Exceeded number of OTP requests in a given time, Increase otp.request.flooding.max-count");
+					else
+						throw new AdminTestException("Failed at otp output validation");
+				}
+			}
+
 		}
 
-	}
-
-	private String filterOutputHbs(TestCaseDTO testCaseDTO) {
-		String outputJson = getJsonFromTemplate(testCaseDTO.getOutput(), testCaseDTO.getOutputTemplate());
-
-		if (outputJson.contains(GlobalConstants.$1STLANG$))
-			outputJson = outputJson.replace(GlobalConstants.$1STLANG$, BaseTestCase.languageList.get(0));
-		if (outputJson.contains(GlobalConstants.$2STLANG$))
-			outputJson = outputJson.replace(GlobalConstants.$2STLANG$, BaseTestCase.languageList.get(1));
-		if (outputJson.contains(GlobalConstants.$3STLANG$))
-			outputJson = outputJson.replace(GlobalConstants.$3STLANG$, BaseTestCase.languageList.get(2));
-		return outputJson;
-	}
-
-	private String filterInputHbs(TestCaseDTO testCaseDTO) {
-		String inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
-
-		if (inputJson.contains(GlobalConstants.$1STLANG$))
-			inputJson = inputJson.replace(GlobalConstants.$1STLANG$, BaseTestCase.languageList.get(0));
-		if (inputJson.contains(GlobalConstants.$2STLANG$))
-			inputJson = inputJson.replace(GlobalConstants.$2STLANG$, BaseTestCase.languageList.get(1));
-		if (inputJson.contains(GlobalConstants.$3STLANG$))
-			inputJson = inputJson.replace(GlobalConstants.$3STLANG$, BaseTestCase.languageList.get(2));
-
-		return inputJson;
-	}
+	
 
 	/**
 	 * The method ser current test name to result

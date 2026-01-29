@@ -1,4 +1,4 @@
-package io.mosip.testrig.apirig.injicertify.testscripts;
+package io.inji.testrig.apirig.injicertify.testscripts;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -21,10 +21,10 @@ import org.testng.internal.TestResult;
 
 import com.github.openjson.JSONObject;
 
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
+import io.inji.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.dto.OutputValidationDto;
 import io.mosip.testrig.apirig.dto.TestCaseDTO;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
-import io.mosip.testrig.apirig.injicertify.utils.InjiCertifyUtil;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.utils.AdminTestException;
