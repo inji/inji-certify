@@ -382,10 +382,8 @@ public class MDocProcessor {
         // Create valueDigests structure
         Map<String, Object> nameSpacesDigests = new HashMap<>();
         nameSpacesDigests.putAll(namespaceDigests);
-        Map<String, Object> valueDigests = new HashMap<>();
-        valueDigests.put(Constants.NAMESPACES, nameSpacesDigests);
 
-        mso.put("valueDigests", valueDigests);
+        mso.put("valueDigests", nameSpacesDigests);
         mso.put(Constants.DOCTYPE, mDocJson.get("_docType"));
 
         // Create validity info with current timestamp
