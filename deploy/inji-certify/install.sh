@@ -226,7 +226,8 @@ function installing_inji-certify() {
 
   echo "Installing inji-certify service..."
   helm -n $NS install inji-certify inji/inji-certify \
-    --set istio.hosts[0]=$INJICERTIFY_HOST 
+    --set istio.hosts[0]=$INJICERTIFY_HOST \
+    --version $CHART_VERSION
 
   kubectl -n $NS get deploy -o name | xargs -n1 -t kubectl -n $NS rollout status
   echo "Installed inji-certify service"
