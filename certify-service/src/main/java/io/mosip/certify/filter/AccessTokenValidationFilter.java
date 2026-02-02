@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
@@ -64,7 +65,11 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
 
     private NimbusJwtDecoder getNimbusJwtDecoder() {
         if(nimbusJwtDecoder == null) {
-            nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+            nimbusJwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).jwsAlgorithms((algo) -> {
+                algo.add(SignatureAlgorithm.ES256);
+                algo.add(SignatureAlgorithm.RS256);
+                algo.add(SignatureAlgorithm.PS256);
+            }).build();
             nimbusJwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                     new JwtTimestampValidator(),
                     new JwtIssuerValidator(issuerUri),
