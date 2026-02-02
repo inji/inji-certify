@@ -6,7 +6,7 @@
 - Git Bash for Windows users
 
 1. Clone the repo, usually the active development happens on the `develop` branch but one can check out a tagged version as well.
-2. Run the DB init scripts present in `db_scripts/mosip_certify` , running `./deploy.sh deploy.properties` is a good way to init the DB.
+2. Run the DB init scripts present in `db_scripts/inji_certify` , running `./deploy.sh deploy.properties` is a good way to init the DB.
 3. Decide on the issuance mode of Certify. Some plugins enable Certify to operate as a Proxy and others enable it to work as an Issuer, configure `mosip.certify.plugin-mode` appropriately as `DataProvider` or `VCIssuance`.
     * [Recommended] Set it to `DataProvider` if you want a quickest possible working setup, and configure `mosip.certify.data-provider-plugin.issuer-uri` and `mosip.certify.data-provider-plugin.issuer-public-key-uri` appropriately.
     * If you have another Issuance module such as Sunbird, MOSIP Stack, you may want to set it up in `VCIssuance` mode.
