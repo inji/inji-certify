@@ -152,6 +152,7 @@ spec:
         {{- if .Values.sidecars }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
         {{- end }}
+      volumes:
       {{- if .Values.persistence.enabled }}
       - name: {{ .Values.persistence.volume_name }}
         persistentVolumeClaim:

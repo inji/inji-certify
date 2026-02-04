@@ -3,7 +3,7 @@ commonLabels:
 
 containerSecurityContext:
   enabled: false
-  runAsUser: inji
+  runAsUser: 1001
   runAsNonRoot: true
 
 modules:
