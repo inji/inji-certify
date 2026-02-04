@@ -129,8 +129,53 @@ mvn clean install -Dgpg.skip=true
 ```
 
 ## Run Inji Certify locally with default-setup
+1. Add the plugin dependency to `certify-service/pom.xml` as shown above.
+2. Run the application using your IDE from the [Certify Service Application](../certify-service/src/main/java/io/mosip/certify/CertifyServiceApplication.java)
+3. Use the CredentialConfig endpoints to add a vc type to local certify issuer. Refer to [Credential-Issuer-Configuration.md](./Credential-Issuer-Configuration.md) and [Mosip Stoplight Documentation](https://mosip.stoplight.io/docs/inji-certify/b27d7165a3af7-add-credential-configuration) for more details.
+  **Note:** Refer to [Resources](../certify-service/src/main/resources/) folder for sample configuration files for default setup. Use the `/credential-configurations` POST api endpoint for adding the configuration.
+4. Update the `didUrl`, `vcTemplate`, `signatureCryptoSuite`, `keyManagerAppId`, `keyManagerRefId`, `signatureAlgo`, `format` and other relevant fields in the Credential Configuration appropriately to match your plugin and VC format.
+5. Access the did.json endpoint at `http://localhost:8090/v1/certify/.well-known/did.json` to get the DID document. This did.json document can be hosted in the following ways:
+  - Update the `mosip.certify.data-provider-plugin.did-url` to a did url from where did.json can be hosted.
+      ```properties
+      mosip.certify.data-provider-plugin.did-url=did:web:someuser.github.io:somerepo:somedirectory
+      ```
+  - (required for VC verification) Certify will automatically generate the DID document for your usecase at [this endpoint](http://localhost:8090/v1/certify/.well-known/did.json), please copy the contents of the HTTP response and host it appropriately in the same location.
+    - A did with the ID `did:web:someuser.github.io:somerepo:somedirectory` will have be accessible at `https://someuser.github.io/somerepo/somedirectory/did.json`, i.e. if GitHub Pages is used to host the file, the contents should go in https://github.com/someuser/somerepo/blob/gh-pages/somedirectory/did.json assuming `gh-pages` is the branch for publishing GitHub Pages as per repository settings.
+    - To verify if everything is working you can try to resolve the DID via public DID resolvers such as [Uniresolver](https://dev.uniresolver.io/).
+  - Update the `didUrl` field of the `credentialConfig` to have the same value as the above property to verify the VC.
+
+## VC Issuance With Local Setup
+1. Use the Postman collection and environment located at [Inji Certify Mock Collection](./postman-collections/inji-certify-with-mock-identity.postman_collection.json) and [Inji Certify Mock Environment](./postman-collections/inji-certify-with-mock-identity.postman_environment.json) to test the VC issuance flow.
+2. Locate the `Get Farmer Credential` POST request inside the VCI folder
+3. Send the VC request and the response will be farmer credential json.
+4. Try verification with [Univerifier](https://univerifier.io)
 
 
+## Setting up Presentation During Issuance
+To setup presentation requirement during issuance, follow the steps below:
+1. **Configuration:** Use the following properties in `application-local.properties` to setup presentation requirement during issuance.
+```properties
+## Use certify as Auth Server
+# Use below properties to use certify as authorization server
+#mosip.certify.authorization.url=http://localhost:8090
+#mosip.certify.authn.issuer-uri=${mosip.certify.authorization.url}
+#mosip.certify.authn.jwk-set-uri=${mosip.certify.authorization.url}${server.servlet.path}/.well-known/jwks.json
+#mosip.certify.authn.allowed-audiences={ '${mosip.certify.authorization.url}${server.servlet.path}/issuance/credential' }
+
+## Auth Server Configurations
+mosip.certify.oauth.issuer=${mosip.certify.authorization.url}
+mosip.certify.oauth.token-endpoint=${mosip.certify.authorization.url}${server.servlet.path}/oauth/token
+mosip.certify.oauth.jwks-uri=${mosip.certify.authorization.url}${server.servlet.path}/.well-known/jwks.json
+mosip.certify.oauth.grant-types-supported=authorization_code,urn:ietf:params:oauth:grant-type:pre-authorized_code
+mosip.certify.oauth.response-types-supported=code
+mosip.certify.oauth.code-challenge-methods-supported=S256
+mosip.certify.oauth.interactive-authorization-endpoint=${mosip.certify.authorization.url}${server.servlet.path}/oauth/iar
+```
+2. Refer to the collections in [Presentation During Issuance](./postman-collections/Presentation-During-Issuance.postman_collection.json) and the respective env to test the flow.
+3. Use `Discovery Endpoints Copy` to get the issuer and oauth metadata endpoints.
+4. Use `IAR Request` to get the IAR code.
+5. Use the code to get the access token with `OAuth Token Exchange`.
+6. Use the access token to request VC issuance with `Get Credential` request inside the `Credential Download` folder.
 
 ## Locally setting up CSV Plugin
 

@@ -2206,6 +2206,93 @@
 					},
 					"response": []
 				},
+                {
+                  "name": "Get Farmer Credential",
+                  "event": [
+                    {
+                      "listen": "prerequest",
+                      "script": {
+                        "exec": [
+                          "eval(pm.globals.get('pmlib_code'))",
+                          "keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
+                          "jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
+                          "jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
+                          "jwkPublicKey[\"alg\"] = \"RS256\";",
+                          "jwkPublicKey[\"use\"] = \"sig\";",
+                          "",
+                          "pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
+                          "pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+                          "",
+                          "// Set headers for JWT",
+                          "var header = {\t",
+                          "\t\"alg\": \"RS256\",",
+                          "    \"typ\" : \"openid4vci-proof+jwt\",",
+                          "    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
+                          "};",
+                          "",
+                          "",
+                          "console.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));",
+                          "",
+                          "const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
+                          "    \"aud\" : pm.environment.get('audUrl'),",
+                          "\t\"nonce\": pm.environment.get('c_nonce'),",
+                          "    \"iss\" : \"demo-certify\",",
+                          "}, header, exp=600, alg = \"RS256\")",
+                          "",
+                          "pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
+                          ""
+                        ],
+                        "type": "text/javascript"
+                      }
+                    },
+                    {
+                      "listen": "test",
+                      "script": {
+                        "exec": [
+                          "pm.test(\"Validate c_nonce\", function () {",
+                          "    var jsonData = pm.response.json();",
+                          "    if(jsonData.c_nonce != null) {",
+                          "        pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
+                          "        console.log(\"setting c_nonce\");",
+                          "    }    ",
+                          "});"
+                        ],
+                        "type": "text/javascript"
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Authorization",
+                        "value": "Bearer {{access_token}}",
+                        "type": "text"
+                      }
+
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"MockVerifiableCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\", \"https://inji.github.io/inji-config/contexts/farmer.json\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+                      "options": {
+                        "raw": {
+                          "language": "json"
+                        }
+                      }
+                    },
+                    "url": {
+                      "raw": "{{certifyurl}}/issuance/credential",
+                      "host": [
+                        "{{certifyurl}}"
+                      ],
+                      "path": [
+                        "issuance",
+                        "credential"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
 				{
 					"name": "Get credential vd11 Copy",
 					"event": [

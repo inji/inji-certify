@@ -1,0 +1,79 @@
+{
+  "credentialConfigKeyId": "FarmerCredential",
+  "vcTemplate": "ewogICAgICAgICJAY29udGV4dCI6IFsKICAgICAgICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgICAgICAgImh0dHBzOi8vcGl5dXNoNzAzNC5naXRodWIuaW8vbXktZmlsZXMvZmFybWVyLmpzb24iCiAgICAgICAgXSwKICAgICAgICAiaXNzdWVyIjogIiR7X2lzc3Vlcn0iLAogICAgICAgICJ0eXBlIjogWwogICAgICAgICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAgICAgICAiRmFybWVyQ3JlZGVudGlhbCIKICAgICAgICBdLAogICAgICAgICJpc3N1YW5jZURhdGUiOiAiJHt2YWxpZEZyb219IiwKICAgICAgICAiZXhwaXJhdGlvbkRhdGUiOiAiJHt2YWxpZFVudGlsfSIsCiAgICAgICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAgICAgICAiaWQiOiAiJHtfaG9sZGVySWR9IiwKICAgICAgICAgICAgImZ1bGxOYW1lIjogIiR7ZnVsbE5hbWV9IiwKICAgICAgICAgICAgIm1vYmlsZU51bWJlciI6ICIke21vYmlsZU51bWJlcn0iLAogICAgICAgICAgICAiZGF0ZU9mQmlydGgiOiAiJHtkYXRlT2ZCaXJ0aH0iLAogICAgICAgICAgICAiZ2VuZGVyIjogIiR7Z2VuZGVyfSIsCiAgICAgICAgICAgICJzdGF0ZSI6ICIke3N0YXRlfSIsCiAgICAgICAgICAgICJkaXN0cmljdCI6ICIke2Rpc3RyaWN0fSIsCiAgICAgICAgICAgICJ2aWxsYWdlT3JUb3duIjogIiR7dmlsbGFnZU9yVG93bn0iLAogICAgICAgICAgICAicG9zdGFsQ29kZSI6ICIke3Bvc3RhbENvZGV9IiwKICAgICAgICAgICAgImxhbmRBcmVhIjogIiR7bGFuZEFyZWF9IiwKICAgICAgICAgICAgImxhbmRPd25lcnNoaXBUeXBlIjogIiR7bGFuZE93bmVyc2hpcFR5cGV9IiwKICAgICAgICAgICAgInByaW1hcnlDcm9wVHlwZSI6ICIke3ByaW1hcnlDcm9wVHlwZX0iLAogICAgICAgICAgICAic2Vjb25kYXJ5Q3JvcFR5cGUiOiAiJHtzZWNvbmRhcnlDcm9wVHlwZX0iLAogICAgICAgICAgICAiZmFjZSI6ICIke2ZhY2V9IiwKICAgICAgICAgICAgImZhcm1lcklEIjogIiR7ZmFybWVySUR9IgogICAgICAgIH0KICAgIH0=",
+  "keyManagerAppId": "CERTIFY_VC_SIGN_ED25519",
+  "keyManagerRefId": "ED25519_SIGN",
+  "signatureAlgo": "EdDSA",
+  "signatureCryptoSuite": "Ed25519Signature2020",
+  "contextURLs": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://inji.github.io/inji-config/contexts/farmer.json"
+  ],
+  "credentialTypes": [
+    "VerifiableCredential",
+    "FarmerCredential"
+  ],
+  "credentialFormat": "ldp_vc",
+  "didUrl": "did:web:inji.github.io:inji-config:local:farmer",
+  "metaDataDisplay": [{
+    "name": "Farmer Credential",
+    "locale": "en",
+    "logo": {
+      "url": "https://example.com/logo.png",
+      "alt_text": "Farmer Logo"
+    },
+    "background_color": "#12107c",
+    "background_image": { "uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png" },
+    "text_color": "#FFFFFF"
+  }],
+  "displayOrder": [
+    "fullName",
+    "mobileNumber",
+    "dateOfBirth",
+    "gender",
+    "state",
+    "district",
+    "villageOrTown",
+    "postalCode",
+    "landArea",
+    "landOwnershipType",
+    "primaryCropType",
+    "secondaryCropType",
+    "farmerID"
+  ],
+  "scope": "sample_vc_ldp",
+  "credentialSubjectDefinition": {
+    "fullName": {
+      "display": [
+        {
+          "name": "Full Name",
+          "locale": "en"
+        }
+      ]
+    },
+    "phone": {
+      "display": [
+        {
+          "name": "Phone Number",
+          "locale": "en"
+        }
+      ]
+    },
+    "dateOfBirth": {
+      "display": [
+        {
+          "name": "Date of Birth",
+          "locale": "en"
+        }
+      ]
+    },
+    "gender": {
+      "display": [
+        {
+          "name": "Gender",
+          "locale": "en"
+        }
+      ]
+    }
+  }
+}
