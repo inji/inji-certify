@@ -41,10 +41,10 @@ Get the source code for the plugins.
 git clone https://github.com/mosip/digital-credential-plugins
 ```
 
-### 1.2 Using an Existing Plugin
+### 1.2. Using an Existing Plugin
 Currently, certify supports 2 types of plugins in `DataProvider` mode.
 
-### 1.2.1 Mock CSV Data Provider Plugin
+### 1.2.1. Mock CSV Data Provider Plugin
 This plugin reads user data from a CSV file.
 - **Location:** [MockCSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/master/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java)
 
@@ -80,7 +80,7 @@ mosip.certify.mock.data-provider.csv.data-columns=id,name,age
 </dependency>
 ```
 
-### 1.2.2 Postgres Data Provider Plugin
+### 1.2.2. Postgres Data Provider Plugin
 This plugin fetches user data from a PostgreSQL database.
 - **Location:** [PostgresDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/tree/master/postgres-dataprovider-plugin)
 
@@ -110,7 +110,7 @@ mosip.certify.data-provider-plugin.postgres.scope-query-mapping={\
 </dependency>
 ```
 
-### 1.2. Develop Your Own Plugin
+### 1.2.3 Develop Your Own Plugin
 
 Create a new project or modify an existing project within the cloned repository.
 
@@ -139,8 +139,8 @@ mvn clean install -Dgpg.skip=true
       ```properties
       mosip.certify.data-provider-plugin.did-url=did:web:someuser.github.io:somerepo:somedirectory
       ```
-  - (required for VC verification) Certify will automatically generate the DID document for your usecase at [this endpoint](http://localhost:8090/v1/certify/.well-known/did.json), please copy the contents of the HTTP response and host it appropriately in the same location.
-    - A did with the ID `did:web:someuser.github.io:somerepo:somedirectory` will have be accessible at `https://someuser.github.io/somerepo/somedirectory/did.json`, i.e. if GitHub Pages is used to host the file, the contents should go in https://github.com/someuser/somerepo/blob/gh-pages/somedirectory/did.json assuming `gh-pages` is the branch for publishing GitHub Pages as per repository settings.
+  - (required for VC verification) Certify will automatically generate the DID document for your use case at [this endpoint](http://localhost:8090/v1/certify/.well-known/did.json), please copy the contents of the HTTP response and host it appropriately in the same location.
+    - A did with the ID `did:web:someuser.github.io:somerepo:somedirectory` will be accessible at `https://someuser.github.io/somerepo/somedirectory/did.json`, i.e. if GitHub Pages is used to host the file, the contents should go in https://github.com/someuser/somerepo/blob/gh-pages/somedirectory/did.json assuming `gh-pages` is the branch for publishing GitHub Pages as per repository settings.
     - To verify if everything is working you can try to resolve the DID via public DID resolvers such as [Uniresolver](https://dev.uniresolver.io/).
   - Update the `didUrl` field of the `credentialConfig` to have the same value as the above property to verify the VC.
 
