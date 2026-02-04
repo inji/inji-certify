@@ -240,7 +240,7 @@ updateStrategy:
 ##   - name: FOO
 ##     value: "bar"
 ##
-extraEnvVars: |
+extraEnvVars:
   - name: DB_DBUSER_PASSWORD
     valueFrom:
       secretKeyRef:
@@ -446,4 +446,4 @@ istio:
       uri: /
       port: 80
 
-installHSMPlugin: "true"
+installHSMPlugin: true
