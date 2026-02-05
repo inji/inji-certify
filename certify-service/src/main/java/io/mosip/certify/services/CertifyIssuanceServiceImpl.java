@@ -309,6 +309,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         } catch (JSONException | JsonProcessingException e) {
             log.error(e.getMessage(), e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
+        } catch (CertifyException e) {
+            log.error("Error during signing qr data: {}", e.getMessage());
+            throw new CertifyException("ERROR_SIGNING_QR_DATA", e.getMessage());
         }
     }
 
