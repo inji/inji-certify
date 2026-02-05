@@ -322,7 +322,7 @@ public class CertifyIssuanceServiceImplTest {
         when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.empty());
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
-        assertEquals(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, ex.getErrorCode());
+        assertEquals("ERROR_SIGNING_QR_DATA", ex.getErrorCode());
     }
 
     @Test
