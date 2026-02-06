@@ -113,14 +113,7 @@ public class JwtProofValidator implements ProofValidator {
             }
             List<String> algorithms = (List<String>) jwtConfiguration.getOrDefault("proof_signing_alg_values_supported", List.of());
             validateHeaderClaims(jwt.getHeader(), algorithms);
-            String kid = jwt.getHeader().getKeyID();
-            if(kid == null) {
-                if(jwt.getHeader().getJWK() != null) {
-                    Map<String, Object> jwk = jwt.getHeader().getJWK().toJSONObject();
-                    kid = jwk.get("kid") != null ? jwk.get("kid").toString() : null;
-                }
-            }
-            JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getJWK().getKeyID());
+            JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
             JWK jwk = jpkm.getKeyFromHeader(jwt.getHeader())
                     .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_AMBIGUOUS_KEY));
             if(jwk.isPrivate()) {
