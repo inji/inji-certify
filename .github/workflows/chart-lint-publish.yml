@@ -39,6 +39,7 @@ on:
       - develop
       - MOSIP*
       - release*
+      - INJI*
     paths:
       - 'helm/**'
 
