@@ -135,7 +135,7 @@ public abstract class Credential{
         protectedHeaders.put("kid", true);
 
         cwtSignRequestDto.setProtectedHeader(protectedHeaders);
-        log.debug("Building CWT sign request dto completed: {}", cwtSignRequestDto);
+        log.info("CWT sign request DTO built successfully");
         CoseSignResponseDto coseSignResponseDto = coseSignatureService.cwtSign(cwtSignRequestDto);
 
         return coseSignResponseDto.getSignedData();
