@@ -154,7 +154,7 @@ public class InjiTestRunner {
 		// Used for generating the test case interdependency JSON file
 		if ("yes".equalsIgnoreCase(generateDependency)) {
 			LOGGER.info("Generating test case inter-dependencies");
-			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.testCaseInterDependencyPath);
+			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
 		} else {
 			LOGGER.info("Skipping dependency generation");
 		}
