@@ -21,7 +21,7 @@ public class MetaDataDisplayDTO {
 
     @Data
     public static class Logo {
-        private String url;
+        private String uri;
 
         @JsonProperty("alt_text")
         private String altText;

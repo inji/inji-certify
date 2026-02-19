@@ -28,7 +28,7 @@ public class MetaDataDisplay implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Logo implements Serializable {
-        private String url;
+        private String uri;
 
         @JsonProperty("alt_text")
         private String altText;
