@@ -90,10 +90,12 @@ public class InjiTestRunner {
 			setLogLevels();
 
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
-			
-			BaseTestCase.testCaseInterDependencyPath = Paths
-					.get(System.getProperty("user.dir"), "src", "main", "resources", "config", "testCaseInterDependency_"+useCaseToExecute+".json")
-					.toString();
+			if (useCaseToExecute == null) {
+				useCaseToExecute = "";
+			}
+
+			BaseTestCase.testCaseInterDependencyPath = Paths.get(System.getProperty("user.dir"), "src", "main",
+					"resources", "config", "testCaseInterDependency_" + useCaseToExecute + ".json").toString();
 
 			HealthChecker healthcheck = new HealthChecker();
 			healthcheck.setCurrentRunningModule(BaseTestCase.currentModule);

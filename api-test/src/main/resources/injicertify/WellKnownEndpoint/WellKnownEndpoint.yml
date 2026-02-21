@@ -225,7 +225,7 @@ WellKnownEndpoint:
    InjiCertify_WellKnownEndpoint_PreAuthCode_all_Valid_Smoke:
       endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_01
-      description: Get Credential Metadata from Well Known Endpoint
+      description: Get Credential Metadata from Well Known Endpoint for Pre-Auth Code flow
       role: resident
       checkErrorsOnlyInResponse: true
       restMethod: get
