@@ -310,7 +310,6 @@ public class InjiCertifyUtil extends AdminTestUtil {
 		    jsonString = jsonString.replace("$FETCH_ID_FROM_CSV$", id);
 		}
 		
-		
 		if (jsonString.contains("$offer_id$")) {
 			JSONObject request = new JSONObject(jsonString);
 			String credeuri = "";
