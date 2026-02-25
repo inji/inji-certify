@@ -1715,11 +1715,9 @@ public class InjiCertifyUtil extends AdminTestUtil {
 		try (BufferedReader reader = new BufferedReader(
 				new InputStreamReader(URI.create(url).toURL().openStream(), StandardCharsets.UTF_8))) {
 
-			// Read header
 			String header = reader.readLine();
 			logger.info("CSV Header");
 
-			// Read first data row
 			String line = reader.readLine();
 			logger.info("CSV First Data Row");
 
@@ -1728,7 +1726,6 @@ public class InjiCertifyUtil extends AdminTestUtil {
 				return "";
 			}
 
-			// Extract ID (value before first comma)
 			int commaIndex = line.indexOf(',');
 
 			if (commaIndex == -1) {
