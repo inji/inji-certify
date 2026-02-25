@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -66,6 +67,8 @@ public class InjiTestRunner {
 	 * @param arg
 	 */
 	public static void main(String[] arg) {
+		
+		
 
 		try {
 			LOGGER.info("** ------------- API Test Rig Run Started --------------------------------------------- **");
@@ -87,6 +90,9 @@ public class InjiTestRunner {
 			setLogLevels();
 
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
+
+			BaseTestCase.testCaseInterDependencyPath = Paths.get(System.getProperty("user.dir"), "src", "main",
+					"resources", "config", "testCaseInterDependency_" + useCaseToExecute + ".json").toString();
 
 			HealthChecker healthcheck = new HealthChecker();
 			healthcheck.setCurrentRunningModule(BaseTestCase.currentModule);
@@ -112,7 +118,7 @@ public class InjiTestRunner {
 
 				if (testCasesToExecute != null && !testCasesToExecute.isBlank()) {
 					DependencyResolver
-							.loadDependencies(getGlobalResourcePath() + "/config/testCaseInterDependency.json");
+							.loadDependencies(getGlobalResourcePath() + "/config/testCaseInterDependency_" + useCaseToExecute + ".json");
 
 					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(testCasesToExecute);
 				}

@@ -1,0 +1,119 @@
+TokenExchange:
+  InjiCertify_TokenExchange_preauthcode_Valid_Smoke_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_01
+    description: Exchange pre-authorized code for access token
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchangeResult
+    input: '{
+      "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_Valid_Smoke_sid_pre-authorized_code$",
+      "tx_code": "1234"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_WithoutTxCode_Smoke_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_02
+    description: Exchange pre-authorized code with without tx_code
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchangeResult
+    input: '{
+      "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_WithoutTxCode_Smoke_sid_pre-authorized_code$",
+      "tx_code": "$REMOVE$"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_UnsupportedGrantType_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_Neg_03
+    description: Token exchange with unsupported grant type
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/error2
+    input: '{
+      "grant_type": "authorization_code",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_Valid_Smoke_sid_pre-authorized_code$",
+      "tx_code": "1234"
+    }'
+    output: '{
+      "error": "server_error"
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_InvalidCode_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_Neg_04
+    description: Token exchange with invalid pre-authorized code
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/error2
+    input: '{
+      "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+      "pre-authorized_code": "invalid_pre_auth_code_12345",
+      "tx_code": "1234"
+    }'
+    output: '{
+      "error": "invalid_grant"
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_MissingTxCode_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_Neg_05
+    description: Token exchange without tx_code when it is required
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/error2
+    input: '{
+      "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_randomTxn_sid_pre-authorized_code$",
+      "tx_code": "$REMOVE$"
+    }'
+    output: '{
+      "error": "invalid_request"
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_randomTxCode_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_Neg_06
+    description: Token exchange with incorrect tx_code value
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/error2
+    input: '{
+      "grant_type": "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_mismatchTxn_sid_pre-authorized_code$",
+      "tx_code": "wrongcode"
+    }'
+    output: '{
+      "error": "invalid_request"
+    }'
+
+  InjiCertify_TokenExchange_preauthcode_withoutGrantType_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
+    uniqueIdentifier: TC_preauth_TokenExchange_Neg_07
+    description: Token exchange with without grant type
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
+    outputTemplate: injicertify/error2
+    input: '{
+      "grant_type": "$REMOVE$",
+      "pre-authorized_code": "$ID:GetCredentialOffer_preauthcode_Valid_Smoke_sid_pre-authorized_code$",
+      "tx_code": "1234"
+    }'
+    output: '{
+      "error": "invalid_request"
+    }'

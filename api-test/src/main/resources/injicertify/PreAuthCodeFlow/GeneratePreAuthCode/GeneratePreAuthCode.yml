@@ -1,0 +1,318 @@
+GeneratePreAuthCode:
+  InjiCertify_Generatepreauthcode_Valid_Smoke_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_01
+    description: Generate pre-authorized code with valid claims
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 600,
+      "tx_code": "1234"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_Generatepreauthcode_WithoutExpiry_Smoke_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_02
+    description: Generate pre-authorized code without explicit expiry (uses default)
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": "$REMOVE$",
+      "tx_code": "1234"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_Generatepreauthcode_WithoutTxCode_Smoke_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_03
+    description: Generate pre-authorized code without transaction code
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 300,
+      "tx_code": "$REMOVE$"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_Generatepreauthcode_InvalidConfigId_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_Neg_04
+    description: Generate pre-auth code with invalid credential configuration ID
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/error
+    input: '{
+      "credential_configuration_id": "InvalidCredentialConfig123",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 300,
+      "tx_code": "1234"
+    }'
+    output: '{
+      "errors": [
+        {
+          "errorCode": "invalid_credential_configuration_id"
+        }
+      ]
+    }'
+
+  InjiCertify_Generatepreauthcode_invalidClaims_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_Neg_05
+    description: Generate pre-auth code with invalid claims
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/error
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": "$REMOVE$",
+      "expires_in": 300,
+      "tx_code": "1234"
+    }'
+    output: '{
+      "errors": [
+        {
+          "errorCode": "unknown_claims"
+        }
+      ]
+    }'
+
+  InjiCertify_Generatepreauthcode_ExpiryTooLow_Neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_Neg_06
+    description: Generate pre-auth code with expiry below minimum
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/error
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 10,
+      "tx_code": "1234"
+    }'
+    output: '{
+      "errors": [
+        {
+          "errorCode": "Minimum expiry is 60 seconds"
+        }
+      ]
+    }'
+
+  InjiCertify_Generatepreauthcode_ExpiryTooHigh_neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_07
+    description: Generate pre-auth code with expiry above maximum
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/error
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 999999,
+      "tx_code": "1234"
+    }'
+    output: '{
+      "errors": [
+        {
+          "errorCode": "Maximum expiry is 24 hours"
+        }
+      ]
+    }'
+
+  InjiCertify_Generatepreauthcode_reuse_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_08
+    description: Generate pre-authorized code reuse offerid
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 600,
+      "tx_code": "1234"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_Generatepreauthcode_randomTxn_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_09
+    description: Generate pre-authorized code with random transaction code
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 600,
+      "tx_code": "abc345"
+    }'
+    output: '{
+    }'
+
+  InjiCertify_Generatepreauthcode_Trn_validation_neg:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_10
+    description: Generate pre-authorized code invalid transaction code validations
+    role: noauth
+    restMethod: post
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/error
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 600,
+      "tx_code": "abc345123e"
+    }'
+    output: '{
+      "errors": [
+        {
+          "errorCode": "Transaction code must be 4-8 alphanumeric characters"
+        }
+      ]
+    }'
+
+  InjiCertify_Generatepreauthcode_mismatch_txncode_sid:
+    endPoint: $INJICERTIFYBASEURL$/v1/certify/pre-authorized-data
+    uniqueIdentifier: TC_preauth_GenerateCode_11
+    description: Generate pre-authorized code with valid claims and mismatched transaction code
+    role: noauth
+    restMethod: post
+    checkErrorsOnlyInResponse: true
+    inputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode
+    outputTemplate: injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCodeResult
+    input: '{
+      "credential_configuration_id": "UniversityCredential",
+      "claims": {
+        "studentName": "Test User",
+        "rollNumber": "1990-01-15",
+        "gender": "POL123456789",
+        "result": "Pass",
+        "courseName": "Computer Science",
+        "courseDuration": "4 Years",
+        "completionDate": "2022-05-15",
+        "startDate": "2018-05-15",
+        "courseDivisionName": "A"
+      },
+      "expires_in": 600,
+      "tx_code": "123456"
+    }'
+    output: '{
+    }'

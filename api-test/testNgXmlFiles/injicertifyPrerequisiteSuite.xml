@@ -185,6 +185,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
+	<test name="CreateOIDCClientV2PreauthCode">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/CreateOIDCClientV2PreAuthCode/CreateOIDCClientV2PreAuthCode.yml" />
+		<parameter name="idKeyName" value="clientId" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>	
 	<test name="CreateOIDCClientV2ForLandRegistry">
 		<parameter name="ymlFile"
 			value="injicertify/VCILandRegistry/CreateOIDCClientV2ForLandRegistry/CreateOIDCClientV2ForLandRegistry.yml" />

@@ -1,0 +1,31 @@
+CreateOIDCClientV2VCIPreAuthCode:
+   InjiCertify_ESignet_CreateOIDCClientV2_PreAuthCode_all_Valid_Smoke_sid:
+      endPoint: $ESIGNETMOCKIDABASEURL$/v1/esignet/client-mgmt/oauth-client
+      uniqueIdentifier: TC_esignetDependent_CreateOidc_PreAuthCode_01      
+      description: Create OIDC client      
+      role: partner
+      restMethod: post
+      inputTemplate: injicertify/PreAuthCodeFlow/CreateOIDCClientV2PreAuthCode/CreateOIDCClientV2PreAuthCode
+      outputTemplate: injicertify/PreAuthCodeFlow/CreateOIDCClientV2PreAuthCode/CreateOIDCClientV2PreAuthCodeResult
+      input: '{
+      	"requestTime": "$TIMESTAMP$",
+      	"clientId": "$RANDOMID$V2S3",
+      	"clientName": "preauthcode OIDC Client",
+      	"logoUri": "https://health-services.com/logo.png",
+      	"relyingPartyId": "Bharathi-Inc",
+      	"redirectUris": "$IDPREDIRECTURI$",
+      	"publicKey": "$OIDCJWKKEY4$",
+      	"userClaims1": "name",
+      	"userClaims2": "email",
+      	"userClaims3": "gender",
+      	"userClaims4": "phone_number",
+      	"userClaims5": "birthdate",
+      	"authContextRefs": [{acrValues: "mosip:idp:acr:static-code"},{acrValues: "mosip:idp:acr:generated-code"},{acrValues: "mosip:idp:acr:biometrics"},{acrValues: "mosip:idp:acr:knowledge"}],
+      	"grantTypes": "authorization_code",
+      	"clientAuthMethods": "private_key_jwt",
+      	"keyLang1": "$1STLANG$",
+      	"clientNameLang": "preauthcode OIDC Client"
+}'
+      output: '{
+    	"status": "ACTIVE"
+}'
