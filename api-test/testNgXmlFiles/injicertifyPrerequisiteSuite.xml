@@ -189,7 +189,6 @@
 		<parameter name="ymlFile"
 			value="injicertify/PreAuthCodeFlow/CreateOIDCClientV2PreAuthCode/CreateOIDCClientV2PreAuthCode.yml" />
 		<parameter name="idKeyName" value="clientId" />
-		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />

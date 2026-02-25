@@ -2,7 +2,7 @@ CreateOIDCClientV2VCIPreAuthCode:
    InjiCertify_ESignet_CreateOIDCClientV2_PreAuthCode_all_Valid_Smoke_sid:
       endPoint: $ESIGNETMOCKIDABASEURL$/v1/esignet/client-mgmt/oauth-client
       uniqueIdentifier: TC_esignetDependent_CreateOidc_PreAuthCode_01      
-      description: Create OIDC client      
+      description: Create OIDC client for preauth code flow with valid details and validate the response    
       role: partner
       restMethod: post
       inputTemplate: injicertify/PreAuthCodeFlow/CreateOIDCClientV2PreAuthCode/CreateOIDCClientV2PreAuthCode
