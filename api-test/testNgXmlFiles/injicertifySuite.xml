@@ -801,7 +801,6 @@
 		<parameter name="ymlFile"
 			value="injicertify/mDocMDL/AddCredentialConfigurationForMdoc/AddCredentialConfigurationForMdoc.yml" />
 		<parameter name="idKeyName" value="id" />
-		<parameter name="prerequisite" value="Yes" />			
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
