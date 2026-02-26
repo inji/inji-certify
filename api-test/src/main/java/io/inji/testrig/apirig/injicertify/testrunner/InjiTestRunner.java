@@ -154,7 +154,7 @@ public class InjiTestRunner {
 		// Used for generating the test case interdependency JSON file
 		if ("yes".equalsIgnoreCase(generateDependency)) {
 			LOGGER.info("Generating test case inter-dependencies");
-			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.testCaseInterDependencyPath);
+			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
 		} else {
 			LOGGER.info("Skipping dependency generation");
 		}
@@ -211,7 +211,7 @@ public class InjiTestRunner {
 			LOGGER.info("IDE :" + homeDir);
 		} else {
 			File dir = new File(System.getProperty("user.dir"));
-			homeDir = new File(dir.getParent() + "/mosip/testNgXmlFiles");
+			homeDir = new File(dir.getParent() + "/inji/testNgXmlFiles");
 			LOGGER.info("ELSE :" + homeDir);
 		}
 		File[] files = homeDir.listFiles();

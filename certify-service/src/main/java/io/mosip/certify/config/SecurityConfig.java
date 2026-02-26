@@ -18,6 +18,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
@@ -78,7 +81,13 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
         ).oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
-                        .jwkSetUri(jwkSetUri)
+                        .decoder(NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
+                                .jwsAlgorithms((signatureAlgorithms -> {
+                                    signatureAlgorithms.add(SignatureAlgorithm.ES256);
+                                    signatureAlgorithms.add(SignatureAlgorithm.RS256);
+                                    signatureAlgorithms.add(SignatureAlgorithm.PS256);
+                                }))
+                                .build())
                 )
         );
         http.exceptionHandling(exceptionConfigurer -> exceptionConfigurer.authenticationEntryPoint(localAuthenticationEntryPoint));

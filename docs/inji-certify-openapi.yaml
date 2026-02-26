@@ -1616,7 +1616,7 @@ paths:
   /oauth/iar:
     post:
       tags:
-        - o-auth-controller
+        - oAuth-controller
       summary: Interactive Authorization Request Endpoint
       description: |
         Interactive Authorization Request endpoint - authorization request
@@ -1643,7 +1643,7 @@ paths:
   /oauth/token:
     post:
       tags:
-        - o-auth-controller
+        - oAuth-controller
       summary: OAuth 2.0 Token Endpoint
       description: |
         Token endpoint supporting:
@@ -1675,7 +1675,7 @@ paths:
   /oauth/.well-known/jwks.json:
     get:
       tags:
-        - o-auth-controller
+        - Well-known
       summary: JSON Web Key Set
       description: Inji Certify's public keys for token verification
       operationId: getJwks
@@ -1707,16 +1707,16 @@ paths:
                 value:
                   credential_configuration_id: "MockVerifiableCredential"
                   claims:
-                    - 'claim_1'
-                    - 'claim_2'
+                    claim1: value1
+                    claim2: value2
                   expires_in: 600
                   tx_code: 11111
               without tx_code example:
                 value:
                   credential_configuration_id: "MockVerifiableCredential"
                   claims:
-                    - 'claim_1'
-                    - 'claim_2'
+                    claim1: value1
+                    claim2: value2
                   expires_in: 600
       responses:
         '200':
@@ -1770,7 +1770,7 @@ tags:
     description: Operations for Credential Status
   - name: 'Ledger Search'
     description: Operations for Ledger Search
-  - name: o-auth-controller
+  - name: oAuth-controller
     description: Operation to handle IAR and token api
   - name: Pre-Authorized Code
     description: Operation to create pre-authorize data and get credential offer
@@ -3040,6 +3040,7 @@ components:
         claims:
           type: object
           description: claims to be issued for verifiable credential
+          additionalProperties: true
         expires_in:
           type: integer
           example: 600

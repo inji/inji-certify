@@ -1373,7 +1373,7 @@
 	</test>
 	<test name="OauthTokenPresentationDuringIssuance">
 		<parameter name="ymlFile"
-			value="injicertify/PresentationDuringIssuance/oAuthToken/oAuthToken.yml" />
+			value="injicertify/PresentationDuringIssuance/oAuthToken/oauthToken.yml" />
 		<parameter name="idKeyName" value="access_token" />
 		<classes>
 			<class

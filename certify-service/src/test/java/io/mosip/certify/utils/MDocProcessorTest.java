@@ -660,11 +660,11 @@ public class MDocProcessorTest {
         Map<String, Object> valueDigests = (Map<String, Object>) result.get("valueDigests");
         assertNotNull("ValueDigests should not be null", valueDigests);
 
-        Map<String, Object> nameSpaces = (Map<String, Object>) valueDigests.get("nameSpaces");
-        assertTrue("Should contain namespace1", nameSpaces.containsKey("namespace1"));
-        assertTrue("Should contain namespace2", nameSpaces.containsKey("namespace2"));
+        // nameSpaces is now directly under valueDigests
+        assertTrue("Should contain namespace1", valueDigests.containsKey("namespace1"));
+        assertTrue("Should contain namespace2", valueDigests.containsKey("namespace2"));
 
-        Map<Integer, byte[]> ns1Digests = (Map<Integer, byte[]>) nameSpaces.get("namespace1");
+        Map<Integer, byte[]> ns1Digests = (Map<Integer, byte[]>) valueDigests.get("namespace1");
         assertEquals("Namespace1 should have 2 digests", 2, ns1Digests.size());
     }
 
