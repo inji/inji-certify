@@ -1519,7 +1519,8 @@ public class InjiCertifyUtil extends AdminTestUtil {
 	public static JSONArray certifyActuatorResponseArray = null;
 	
 	public static String getValueFromCertifyActuator(String section, String key) {
-		String url = InjiCertifyConfigManager.getInjiCertifyBaseUrl() + "/v1/certify/actuator/env";
+		String url = InjiCertifyConfigManager.getInjiCertifyBaseUrl()
+				+ InjiCertifyConfigManager.getproperty("actuatorCertifyEndpoint");
 		// Combine the cache key to uniquely identify each request
 		String actuatorCacheKey = url + section + key;
 
