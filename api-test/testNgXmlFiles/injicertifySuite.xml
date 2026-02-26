@@ -797,7 +797,15 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
-
+	<test name="AddCredentialConfigForMdocMDL">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/AddCredentialConfigurationForMdoc/AddCredentialConfigurationForMdoc.yml" />
+		<parameter name="idKeyName" value="id" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>	
 	<test name="OAuthDetailsRequestVCIFormDocMDL">
 		<parameter name="ymlFile"
 			value="injicertify/mDocMDL/OAuthDetailsRequestFormDoc/OAuthDetailsRequestFormDoc.yml" />
@@ -845,6 +853,13 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="DeleteCredentialConfigForMdocMDL">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/DeleteCredentialConfigurationForMdoc/DeleteCredentialConfigurationForMdoc.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
+		</classes>
+	</test>	
 	<test name="AddCredentialConfig">
 		<parameter name="ymlFile"
 			value="injicertify/CredentialConfig/NewCredentialConfiguration/AddCredentialConfiguration.yml" />
