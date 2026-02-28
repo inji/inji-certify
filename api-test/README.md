@@ -82,7 +82,7 @@ The Test Rig is dynamically configured based on the core service plugin being te
 - **mosip_components_base_urls**: A string defining the base URLs for various components.
 - **useCaseToExecute**: Specifies the use case to be executed, such as "mdocvp".
 
-### 6. Configuration for Data provider Plugin(Academic Use case-preauthcode):
+### 7. Configuration for Data provider Plugin(Academic Use case-preauthcode):
 - **injiCertifyBaseURL**: The Test Rig will use the live inji-certify instance integrated with the Mock-Identity-service.
 - **mosip_components_base_urls**: A string defining the base URLs for various components.
 - **useCaseToExecute**: Specifies the use case to be executed, such as "preauthcode".
