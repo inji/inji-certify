@@ -69,7 +69,7 @@ The Test Rig is dynamically configured based on the core service plugin being te
 - **usePreConfiguredOtp**: A flag to use pre-configured OTPs. Set to `"true"` for OTP-based workflows.
 - **esignetActuatorPropertySection**: To fetch the configuration and properties from the actuator for service interactions.
 
-### 5. Configuration for VC Issuance Plugin(mdl Use case):
+### 5. Configuration for Data provider Plugin(mdl Use case):
 - **eSignetbaseurl**: The Test Rig will use the live eSignet instance integrated with the Mock-Identity-service.
 - **injiCertifyBaseURL**: The Test Rig will use the live inji-certify instance integrated with the Mock-Identity-service.
 - **mosip_components_base_urls**: A string defining the base URLs for various components.
@@ -77,10 +77,15 @@ The Test Rig is dynamically configured based on the core service plugin being te
 - **usePreConfiguredOtp**: A flag to use pre-configured OTPs. Set to `"true"` for OTP-based workflows.
 - **esignetActuatorPropertySection**: To fetch the configuration and properties from the actuator for service interactions.
 
-### 6. Configuration for VC Issuance Plugin(mDoc MDL Use case):
+### 6. Configuration for Data provider Plugin(mDoc MDL Use case):
 - **injiCertifyBaseURL**: The Test Rig will use the live inji-certify instance integrated with the Mock-Identity-service.
 - **mosip_components_base_urls**: A string defining the base URLs for various components.
 - **useCaseToExecute**: Specifies the use case to be executed, such as "mdocvp".
+
+### 6. Configuration for Data provider Plugin(Academic Use case-preauthcode):
+- **injiCertifyBaseURL**: The Test Rig will use the live inji-certify instance integrated with the Mock-Identity-service.
+- **mosip_components_base_urls**: A string defining the base URLs for various components.
+- **useCaseToExecute**: Specifies the use case to be executed, such as "preauthcode".
 ---
 
 ## Test Categories
@@ -104,7 +109,7 @@ Before running the automation tests, ensure the following software is installed 
 - **Maven 3.9.6** or higher ([installation guide](https://maven.apache.org/install.html))
 - **Lombok** (Refer to [Lombok Project](https://projectlombok.org/))
 - **setting.xml** ([download here](https://github.com/mosip/mosip-functional-tests/blob/master/settings.xml))
-- **apitest-commons** library should be cloned and the JAR should be built. Refer to ([README](https://github.com/mosip/mosip-functional-tests/blob/release-1.3.0/apitest-commons/README.md))
+- **apitest-commons** library should be cloned and the JAR should be built. Refer to ([README](https://github.com/mosip/mosip-functional-tests/blob/release-1.4.0/apitest-commons/README.md))
 
 ### For Windows
 
@@ -125,17 +130,17 @@ You can access the test automation code using either of the following methods:
 
 ### From Browser
 
-1. Clone or download the repository as a zip file from [GitHub](https://github.com/mosip/inji-certify).
+1. Clone or download the repository as a zip file from [GitHub](https://github.com/inji/inji-certify).
 2. Unzip the contents to your local machine.
 3. Open a terminal (Linux) or command prompt (Windows) and continue with the following steps.
 
 ### From Git Bash
 
-1. Copy the Git repository URL: `https://github.com/mosip/inji-certify`
+1. Copy the Git repository URL: `https://github.com/inji/inji-certify`
 2. Open **Git Bash** on your local machine.
 3. Run the following command to clone the repository:
    ```sh
-   git clone https://github.com/mosip/inji-certify
+   git clone https://github.com/inji/inji-certify
    ```
 
 ---
@@ -173,7 +178,7 @@ To execute the tests using Jar, use the following steps:
 
 2. Run the automation test suite JAR file:
    ```
-   java -jar -Dmodules=injicertify -Denv.user=api-internal.<env_name> -Denv.endpoint=<base_env> -Denv.testLevel=smokeAndRegression -jar apitest-injicertify-0.10.0-jar-with-dependencies.jar
+   java -jar -Dmodules=injicertify -Denv.user=api-internal.<env_name> -Denv.endpoint=<base_env> -Denv.testLevel=smokeAndRegression -jar apitest-injicertify-0.14.0-jar-with-dependencies.jar
    ```
    
 # Using Eclipse IDE
@@ -205,7 +210,7 @@ To execute the tests using Eclipse IDE, use the following steps:
    - Go to `Run` > `Run Configurations`.
    - In the **Run Configurations** window, create a new configuration for your tests:
      - Right-click on **Java Application** and select **New**.
-     - In the **Main** tab, select the project by browsing the location where the `api-test` folder is saved, and select the **Main class** as `io.mosip.testrig.apirig.injicertify.testrunner.MosipTestRunner`.
+     - In the **Main** tab, select the project by browsing the location where the `api-test` folder is saved, and select the **Main class** as `io.inji.testrig.apirig.injicertify.testrunner.InjiTestRunner`.
    - In the **Arguments** tab, add the necessary **VM arguments**:
      - **VM Arguments**:
        ```
@@ -234,7 +239,7 @@ To execute the tests using Eclipse IDE, use the following steps:
 - **env.user**: Replace `<env_name>` with the appropriate environment name (e.g., `dev`, `qa`, etc.).
 - **env.endpoint**: The environment where the application under test is deployed. Replace `<base_env>` with the correct base URL for the environment (e.g., `https://api-internal.<env_name>.mosip.net`).
 - **env.testLevel**: Set this to `smoke` to run only smoke test cases, or `smokeAndRegression` to run both smoke and regression tests.
-- **jar**: Specify the name of the JAR file to execute. The version will change according to the development code version. For example, the current version may look like `apitest-injicertify-0.10.0-jar-with-dependencies.jar`.
+- **jar**: Specify the name of the JAR file to execute. The version will change according to the development code version. For example, the current version may look like `apitest-injicertify-0.14.0-jar-with-dependencies.jar`.
 
 ### Build and Run Info
 
