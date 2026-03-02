@@ -1,6 +1,7 @@
 package io.mosip.certify.controller;
 
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
+import io.mosip.certify.core.dto.CredentialIssuerMetadataDTOV2;
 import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
@@ -71,6 +72,32 @@ class WellKnownControllerTest {
     void getCredentialIssuerMetadata_unsupportedVersion_returnsError() throws Exception {
         when(credentialConfigurationService.fetchCredentialIssuerMetadata("unsupported")).thenThrow( new CertifyException("UNSUPPORTED_VERSION", "Unsupported version"));
         mockMvc.perform(get("/.well-known/openid-credential-issuer?version=unsupported"))
+                .andExpect(status().is2xxSuccessful())
+                .andExpect(jsonPath("$.errors[0].errorCode").value("UNSUPPORTED_VERSION"));
+    }
+
+    @Test
+    void getCredentialIssuerMetadataV2_noVersionParam_defaultsToLatest() throws Exception {
+        CredentialIssuerMetadataDTOV2 mockMetadata = mock(CredentialIssuerMetadataDTOV2.class);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2("latest")).thenReturn(mockMetadata);
+        mockMvc.perform(get("/v2/.well-known/openid-credential-issuer"))
+                .andExpect(status().isOk());
+        verify(credentialConfigurationService, times(1)).fetchCredentialIssuerMetadataV2("latest");
+    }
+
+    @Test
+    void getCredentialIssuerMetadataV2_emptyVersion_defaultsToLatest() throws Exception {
+        CredentialIssuerMetadataDTOV2 mockMetadata = mock(CredentialIssuerMetadataDTOV2.class);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2("latest")).thenReturn(mockMetadata);
+        mockMvc.perform(get("/v2/.well-known/openid-credential-issuer?version="))
+                .andExpect(status().isOk());
+        verify(credentialConfigurationService, times(1)).fetchCredentialIssuerMetadataV2("latest");
+    }
+
+    @Test
+    void getCredentialIssuerMetadataV2_unsupportedVersion_returnsError() throws Exception {
+        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2("unsupported")).thenThrow( new CertifyException("UNSUPPORTED_VERSION", "Unsupported version"));
+        mockMvc.perform(get("/v2/.well-known/openid-credential-issuer?version=unsupported"))
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(jsonPath("$.errors[0].errorCode").value("UNSUPPORTED_VERSION"));
     }
