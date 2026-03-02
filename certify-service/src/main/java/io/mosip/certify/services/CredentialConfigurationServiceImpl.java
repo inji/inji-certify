@@ -80,7 +80,22 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         validateCredentialConfiguration(credentialConfigurationDTO, true);
 
         CredentialConfig credentialConfig = credentialConfigMapper.toEntity(credentialConfigurationDTO);
-        return saveCredentialConfiguration(credentialConfig);
+        credentialConfig.setConfigId(UUID.randomUUID().toString());
+        credentialConfig.setStatus(Constants.ACTIVE);
+
+
+        credentialConfig.setCryptographicBindingMethodsSupported(cryptographicBindingMethodsSupportedMap.get(credentialConfig.getCredentialFormat()));
+        credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
+        credentialConfig.setProofTypesSupported(proofTypesSupported);
+
+        CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
+        log.info("Added credential configuration: {}", savedConfig.getConfigId());
+
+        CredentialConfigResponse credentialConfigResponse = new CredentialConfigResponse();
+        credentialConfigResponse.setId(savedConfig.getCredentialConfigKeyId());
+        credentialConfigResponse.setStatus(savedConfig.getStatus());
+
+        return credentialConfigResponse;
     }
 
     @Override
@@ -88,10 +103,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         validateCredentialConfigurationV2(credentialConfigurationDTO, true);
 
         CredentialConfig credentialConfig = credentialConfigMapper.toEntityV2(credentialConfigurationDTO);
-        return saveCredentialConfiguration(credentialConfig);
-    }
-
-    private CredentialConfigResponse saveCredentialConfiguration(CredentialConfig credentialConfig) {
         credentialConfig.setConfigId(UUID.randomUUID().toString());
         credentialConfig.setStatus(Constants.ACTIVE);
 
@@ -112,7 +123,30 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private void validateCredentialConfiguration(CredentialConfigurationDTO credentialConfig, boolean shouldCheckDuplicate) {
 
-        validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate(),credentialConfig.getQrSettings(),credentialConfig.getQrSignatureAlgo());
+        if (credentialConfig.getCredentialStatusPurposes() != null && credentialConfig.getCredentialStatusPurposes().size() > 1){
+            throw new CertifyException(ErrorConstants.MULTIPLE_STATUS_PURPOSES_NOT_SUPPORTED, "Multiple credential status purposes are not supported. Please specify only one.");
+        }
+
+        if (credentialConfig.getCredentialStatusPurposes() != null && !credentialConfig.getCredentialStatusPurposes().isEmpty() && !allowedCredentialStatusPurposes.contains(credentialConfig.getCredentialStatusPurposes().getFirst())) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "Invalid credential status purpose. Allowed values are: " + allowedCredentialStatusPurposes);
+        }
+
+        if(pluginMode.equals("DataProvider") && (credentialConfig.getVcTemplate() == null || credentialConfig.getVcTemplate().isEmpty())) {
+            throw new CertifyException(ErrorConstants.CREDENTIAL_TEMPLATE_REQUIRED, "A Credential Template is required for issuers using the Data Provider plugin.");
+        }
+
+        if(credentialConfig.getQrSettings() == null || credentialConfig.getQrSettings().isEmpty()) {
+            if(credentialConfig.getQrSignatureAlgo() != null) {
+                throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED, "QR signature algorithm is not allowed when QR settings are not set.");
+
+            }
+        } else {
+            String qrSignatureAlgo = credentialConfig.getQrSignatureAlgo();
+            if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && !keyAliasMapper.containsKey(qrSignatureAlgo)) {
+                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, "The algorithm " + qrSignatureAlgo + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
+            }
+        }
+
         switch (credentialConfig.getCredentialFormat()) {
             case VCFormats.LDP_VC:
                 if (!LdpVcCredentialConfigValidator.isValidCheck(credentialConfig)) {
@@ -146,7 +180,29 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private void validateCredentialConfigurationV2(CredentialConfigurationDTOV2 credentialConfig, boolean shouldCheckDuplicate) {
 
-        validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate(),credentialConfig.getQrSettings(),credentialConfig.getQrSignatureAlgo());
+        if (credentialConfig.getCredentialStatusPurposes() != null && credentialConfig.getCredentialStatusPurposes().size() > 1){
+            throw new CertifyException(ErrorConstants.MULTIPLE_STATUS_PURPOSES_NOT_SUPPORTED, "Multiple credential status purposes are not supported. Please specify only one.");
+        }
+
+        if (credentialConfig.getCredentialStatusPurposes() != null && !credentialConfig.getCredentialStatusPurposes().isEmpty() && !allowedCredentialStatusPurposes.contains(credentialConfig.getCredentialStatusPurposes().getFirst())) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "Invalid credential status purpose. Allowed values are: " + allowedCredentialStatusPurposes);
+        }
+
+        if(pluginMode.equals("DataProvider") && (credentialConfig.getVcTemplate() == null || credentialConfig.getVcTemplate().isEmpty())) {
+            throw new CertifyException(ErrorConstants.CREDENTIAL_TEMPLATE_REQUIRED, "A Credential Template is required for issuers using the Data Provider plugin.");
+        }
+
+        if(credentialConfig.getQrSettings() == null || credentialConfig.getQrSettings().isEmpty()) {
+            if(credentialConfig.getQrSignatureAlgo() != null) {
+                throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED, "QR signature algorithm is not allowed when QR settings are not set.");
+
+            }
+        } else {
+            String qrSignatureAlgo = credentialConfig.getQrSignatureAlgo();
+            if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && !keyAliasMapper.containsKey(qrSignatureAlgo)) {
+                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, "The algorithm " + qrSignatureAlgo + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
+            }
+        }
 
         switch (credentialConfig.getCredentialFormat()) {
             case VCFormats.LDP_VC:
@@ -178,36 +234,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
         }
     }
-
-    private void validateCommonCredentialConfig(
-            List<String> credentialStatusPurposes,
-            String vcTemplate,
-            List<Map<String, Object>> qrSettings,
-            String qrSignatureAlgo){
-        if (credentialStatusPurposes != null && credentialStatusPurposes.size() > 1){
-            throw new CertifyException(ErrorConstants.MULTIPLE_STATUS_PURPOSES_NOT_SUPPORTED, "Multiple credential status purposes are not supported. Please specify only one.");
-        }
-
-        if (credentialStatusPurposes != null && !credentialStatusPurposes.isEmpty() && !allowedCredentialStatusPurposes.contains(credentialStatusPurposes.getFirst())) {
-            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "Invalid credential status purpose. Allowed values are: " + allowedCredentialStatusPurposes);
-        }
-
-        if(pluginMode.equals("DataProvider") && (vcTemplate == null || vcTemplate.isEmpty())) {
-            throw new CertifyException(ErrorConstants.CREDENTIAL_TEMPLATE_REQUIRED, "A Credential Template is required for issuers using the Data Provider plugin.");
-        }
-
-        if(qrSettings == null || qrSettings.isEmpty()) {
-            if(qrSignatureAlgo != null) {
-                throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED, "QR signature algorithm is not allowed when QR settings are not set.");
-
-            }
-        } else {
-            if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && !keyAliasMapper.containsKey(qrSignatureAlgo)) {
-                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, "The algorithm " + qrSignatureAlgo + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
-            }
-        }
-    }
-
 
     private void validateKeyAliasMapperConfiguration(CredentialConfigurationDTO credentialConfig) {
         if(pluginMode.equals("VCIssuance")) {
@@ -287,19 +313,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     @Override
     public CredentialConfigurationDTO getCredentialConfigurationById(String credentialConfigKeyId) {
-        CredentialConfig credentialConfig = getActiveCredentialConfig(credentialConfigKeyId);
-
-        return credentialConfigMapper.toDto(credentialConfig);
-    }
-
-    @Override
-    public CredentialConfigurationDTOV2 getCredentialConfigurationByIdV2(String credentialConfigKeyId) {
-        CredentialConfig credentialConfig = getActiveCredentialConfig(credentialConfigKeyId);
-
-        return credentialConfigMapper.toDtoV2(credentialConfig);
-    }
-
-    private CredentialConfig getActiveCredentialConfig(String credentialConfigKeyId) {
         Optional<CredentialConfig> optional = credentialConfigRepository.findByCredentialConfigKeyId(credentialConfigKeyId);
 
         if(optional.isEmpty()) {
@@ -310,7 +323,24 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         if(!credentialConfig.getStatus().equals(Constants.ACTIVE)) {
             throw new CertifyException(ErrorConstants.CONFIG_NOT_ACTIVE, "Configuration is inactive.");
         }
-        return credentialConfig;
+
+        return credentialConfigMapper.toDto(credentialConfig);
+    }
+
+    @Override
+    public CredentialConfigurationDTOV2 getCredentialConfigurationByIdV2(String credentialConfigKeyId) {
+        Optional<CredentialConfig> optional = credentialConfigRepository.findByCredentialConfigKeyId(credentialConfigKeyId);
+
+        if(optional.isEmpty()) {
+            throw new CredentialConfigException(ErrorConstants.CONFIG_NOT_FOUND_BY_ID, "Configuration not found for the provided ID: " + credentialConfigKeyId);
+        }
+
+        CredentialConfig credentialConfig = optional.get();
+        if(!credentialConfig.getStatus().equals(Constants.ACTIVE)) {
+            throw new CertifyException(ErrorConstants.CONFIG_NOT_ACTIVE, "Configuration is inactive.");
+        }
+
+        return credentialConfigMapper.toDtoV2(credentialConfig);
     }
 
     /**
@@ -333,8 +363,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigMapper.updateEntityFromDto(credentialConfigurationDTO, credentialConfig);
 
         validateCredentialConfiguration(credentialConfigMapper.toDto(credentialConfig), false);
-
-        credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
         log.info("Updated credential configuration: {}", savedConfig.getConfigId());
@@ -360,8 +388,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigMapper.updateEntityFromDtoV2(credentialConfigurationDTO, credentialConfig);
 
         validateCredentialConfigurationV2(credentialConfigMapper.toDtoV2(credentialConfig), false);
-
-        credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
         log.info("Updated credential configuration: {}", savedConfig.getConfigId());

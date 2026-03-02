@@ -35,7 +35,7 @@ public class MsoMdocCredentialConfigValidator {
     }
 
     public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
-                                                   CredentialConfigRepository credentialConfigRepository) {
+                                                 CredentialConfigRepository credentialConfigRepository) {
         Optional<CredentialConfig> optional =
                 credentialConfigRepository.findByCredentialFormatAndDocType(
                         credentialConfig.getCredentialFormat(),
