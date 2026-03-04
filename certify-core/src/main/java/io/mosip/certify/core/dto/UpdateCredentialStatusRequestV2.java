@@ -17,6 +17,7 @@ public class UpdateCredentialStatusRequestV2 {
     public static class CredentialStatusDtoV2 {
         private String id;
         private String type;
+        @NotNull
         private String statusPurpose;
         @NotNull
         private Long statusListIndex;
