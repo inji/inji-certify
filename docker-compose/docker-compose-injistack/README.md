@@ -22,7 +22,8 @@ You have two options for the certify plugin which gives Verifiable Credentials o
 - Basic understanding of Docker and container operations
 - Relevant Postman collections available from [here](../../docs/postman-collections/), please add the `mock` ones and install the [pmlib library](https://joolfe.github.io/postman-util-lib/) as per the steps given under the heading `Postman Collection` to the Postman setup
 - Network Connectivity to access the AuthZ Service, in this example MOSIP Collab setup has been used
-- (optional, required if Farmer Credential configured) GitHub Pages or similar service required to host a DID/public key
+- DID/public ket setup if Farmer Credential is configured
+  - Expose certify-nginx through a public URL using services like ngrok
 
 ## Directory Structure Setup
 
@@ -108,15 +109,12 @@ public interface VCIssuancePlugin {
 
 ### Recommended
 
-- If you are going ahead with the Farmer usecase, configure the below values in [here](config/certify-csvdp-farmer.properties) to refer to the web location where you'd host the DID.
-
+- If you are going ahead with the Farmer usecase, configure the below values in [here](config/certify-csvdp-farmer.properties) to refer to DID exposed by certify
+Below did is configured after exposing certify-nginx(port 8091) through a public URL using ngrok
+- 
 ```properties
-mosip.certify.data-provider-plugin.did-url=did:web:someuser.github.io:somerepo:somedirectory
+mosip.certify.data-provider-plugin.did-url=did:web:8398-2405-201-1029-3025-e142.ngrok-free.app
 ```
-
-- (required for Farmer setup) Certify will automatically generate the DID document for your usecase at [this endpoint](http://localhost:8090/v1/certify/.well-known/did.json), please copy the contents of the HTTP response and host it appropriately in the same location.
-    - A did with the ID `did:web:someuser.github.io:somerepo:somedirectory` will have be accessible at `https://someuser.github.io/somerepo/somedirectory/did.json`, i.e. if GitHub Pages is used to host the file, the contents should go in https://github.com/someuser/somerepo/blob/gh-pages/somedirectory/did.json assuming `gh-pages` is the branch for publishing GitHub Pages as per repository settings.
-    - To verify if everything is working you can try to resolve the DID via public DID resolvers such as [Uniresolver](https://dev.uniresolver.io/).
 
 **Important**: Difference between `didUrl` in `credential_config` and `mosip.certify.data-provider-plugin.did-url`
 - The `didUrl` in the `credential_config` table identifies the DID to be associated with a specific Verifiable Credential (VC) type. Different credential types can have different `didUrl` values as needed.
@@ -263,7 +261,6 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 7. VC download is failing with Mimoto error logs stating that VC Verification is failing.
     - Check if the DID is updated & resolvable. The Multibase hash changes on each restart, please update it whenever a newer instance of Certify is setup.
     - Check if the hosted DID matches with the [DID endpoint](http://localhost:8090/v1/certify/.well-known/did.json)
-    - As of now, Mimoto/Inji Web only supports downloads for Ed25519Signature2020 signed VerifiableCredential due to a limitation of the integrated VC-Verification module.
 
 8. While running `docker compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
    ```bash
@@ -288,7 +285,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 ## location /.well-known/did.json 
 *This block handles requests to the DID document endpoint, which is part of decentralized identity standards.*
-- It proxies the request to http://certify:8090/v1/certify/issuance/.well-known/did.json.
+- It proxies the request to http://certify:8090/v1/certify/.well-known/did.json.
 - CORS headers and preflight handling are included.
 
 
@@ -342,9 +339,9 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 ```
 
 ## Test Endpoints:
-1. curl http://localhost/v1/certify/actuator/health
-2. curl http://localhost/.well-known/did.json
-3. curl http://localhost/.well-known/openid-credential-issuer
+1. curl http://localhost:8090/v1/certify/actuator/health
+2. curl http://localhost:8091/.well-known/did.json
+3. curl http://localhost:8091/.well-known/openid-credential-issuer
 
 
 ### Health Checks
