@@ -110,7 +110,7 @@ services:
 
   verify-service:
     container_name: verify-service
-    image: injistackqa/inji-verify-service:develop
+    image: injistack/inji-verify-service:0.17.0
     user: root
     ports:
       - "8095:8080"
