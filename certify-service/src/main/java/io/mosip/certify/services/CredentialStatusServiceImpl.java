@@ -1,5 +1,6 @@
 package io.mosip.certify.services;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialStatusResponse;
 import io.mosip.certify.core.dto.UpdateCredentialStatusRequest;
@@ -39,6 +40,11 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {
+        String resolvedPurpose = null;
+        if (request.getCredentialStatus() != null) {
+            resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus().getStatusPurpose());
+        }
+
         Ledger ledger = ledgerRepository.findByCredentialId(request.getCredentialId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Credential not found: " + request.getCredentialId()));
 
@@ -47,13 +53,15 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         }
 
         CredentialStatusDetail credentialStatusDetail = ledger.getCredentialStatusDetails().getFirst();
+
+        StatusListCredential statusListCredential = statusListCredentialRepository.findById(credentialStatusDetail.getStatusListCredentialId())
+                .orElseThrow(() -> new CertifyException(ErrorConstants.STATUS_LIST_NOT_FOUND, "Status List Credential not found for ID: " + credentialStatusDetail.getStatusListCredentialId()));
+
+        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex(), statusListCredential);
+
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
         transaction.setCredentialId(ledger.getCredentialId());
-        if(request.getCredentialStatus().getStatusPurpose() != null) {
-            transaction.setStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-        } else {
-            transaction.setStatusPurpose(credentialStatusDetail.getStatusPurpose());
-        }
+        transaction.setStatusPurpose(resolvedPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(credentialStatusDetail.getStatusListCredentialId());
         transaction.setStatusListIndex(credentialStatusDetail.getStatusListIndex());
@@ -74,8 +82,14 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Override
     public CredentialStatusResponse updateCredentialStatusV2(UpdateCredentialStatusRequestV2 request) {
+        String resolvedPurpose = null;
+        if (request.getCredentialStatus() != null) {
+            resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus().getStatusPurpose());
+        }
+
         String statusListCredentialId = request.getCredentialStatus().getStatusListCredential();
         Long statusListIndex = request.getCredentialStatus().getStatusListIndex();
+
         String id = request.getCredentialStatus().getId();
 
         if(id != null && !id.equals(statusListCredentialId)) {
@@ -84,12 +98,10 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         StatusListCredential statusListCredential = statusListCredentialRepository.findById(statusListCredentialId)
                 .orElseThrow(() -> new CertifyException(ErrorConstants.STATUS_LIST_NOT_FOUND, "Status List Credential not found for ID: " + statusListCredentialId));
 
+        validateStatusListIndex(statusListIndex, statusListCredential);
+
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
-        if(request.getCredentialStatus().getStatusPurpose() == null) {
-            transaction.setStatusPurpose(statusListCredential.getStatusPurpose());
-        } else {
-            transaction.setStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-        }
+        transaction.setStatusPurpose(resolvedPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(statusListCredentialId);
         transaction.setStatusListIndex(statusListIndex);
@@ -104,5 +116,45 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
             dto.setCredentialType(request.getCredentialStatus().getType());
         }
         return dto;
+    }
+
+    private String resolveAndValidateStatusPurpose(String rawPurpose) {
+        if(rawPurpose == null || rawPurpose.trim().isEmpty()) {
+            return Constants.DEFAULT_STATUS_PURPOSE;
+        }
+        String statusPurposeValue = rawPurpose.trim().toLowerCase();
+        if(!Constants.DEFAULT_STATUS_PURPOSE.equalsIgnoreCase(statusPurposeValue)) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "statusPurpose must be 'revocation'");
+        }
+        return statusPurposeValue;
+    }
+
+    private void validateStatusListIndex(Long statusListIndex, StatusListCredential statusListCredential) {
+        if (statusListIndex == null) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_LIST_INDEX, "statusListIndex must not be null");
+        }
+        if(statusListIndex < 0) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_LIST_INDEX, "statusListIndex must be a non-negative integer");
+        }
+        long listSize = getStatusListSize(statusListCredential);
+        if(statusListIndex >= listSize) {
+            String errorMsg = String.format("statusListIndex must be between 0 and %d for status list %s", listSize - 1, statusListCredential.getId());
+            throw new CertifyException(ErrorConstants.STATUS_LIST_INDEX_OUT_OF_RANGE, errorMsg);
+        }
+    }
+
+    private long getStatusListSize(StatusListCredential statusListCredential) {
+        try {
+            Long capacityInKB = statusListCredential.getCapacityInKB();
+            if(capacityInKB == null) {
+                return 131072;
+            }
+            return capacityInKB * 1024 * 8;
+        }
+        catch (Exception e) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_LIST_CONFIGURATION,
+                    "Unable to determine status list size for credential: " + statusListCredential.getId()
+            );
+        }
     }
 }
