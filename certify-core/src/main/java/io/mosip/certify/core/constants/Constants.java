@@ -56,4 +56,6 @@ public class Constants {
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
     public static final String PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code";
     public static final String AS_METADATA_PREFIX = "as_metadata:";
+    public static final String DEFAULT_STATUS_PURPOSE = "revocation";
+
 }
