@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -12,6 +13,7 @@ import java.security.interfaces.RSAPublicKey;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -66,6 +68,8 @@ public class InjiTestRunner {
 	 * @param arg
 	 */
 	public static void main(String[] arg) {
+		
+		
 
 		try {
 			LOGGER.info("** ------------- API Test Rig Run Started --------------------------------------------- **");
@@ -85,8 +89,10 @@ public class InjiTestRunner {
 			GlobalMethods.setModuleNameAndReCompilePattern(InjiCertifyConfigManager.getproperty("moduleNamePattern"));
 			GlobalMethods.reportCaptchaStatus(GlobalConstants.CAPTCHA_ENABLED, false);
 			setLogLevels();
+			
 
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
+
 
 			HealthChecker healthcheck = new HealthChecker();
 			healthcheck.setCurrentRunningModule(BaseTestCase.currentModule);
@@ -106,15 +112,9 @@ public class InjiTestRunner {
 			generateDependency = InjiCertifyConfigManager.getproperty("generateDependencyJson");
 
 			if (!"yes".equalsIgnoreCase(generateDependency)) {
-
-				String testCasesToExecute = InjiCertifyConfigManager.getproperty("testCasesToExecute");
-				LOGGER.info("Testcases to execute as per config: " + testCasesToExecute);
-
-				if (testCasesToExecute != null && !testCasesToExecute.isBlank()) {
-					DependencyResolver
-							.loadDependencies(getGlobalResourcePath() + "/config/testCaseInterDependency.json");
-
-					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(testCasesToExecute);
+				if (useCaseToExecute != null && !useCaseToExecute.isBlank()) {
+					DependencyResolver.loadDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
+					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(useCaseToExecute);
 				}
 			}
 
@@ -151,12 +151,9 @@ public class InjiTestRunner {
 
 		HealthChecker.bTerminate = true;
 		
-		// Used for generating the test case interdependency JSON file
 		if ("yes".equalsIgnoreCase(generateDependency)) {
 			LOGGER.info("Generating test case inter-dependencies");
 			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
-		} else {
-			LOGGER.info("Skipping dependency generation");
 		}
 
 		System.exit(0);
