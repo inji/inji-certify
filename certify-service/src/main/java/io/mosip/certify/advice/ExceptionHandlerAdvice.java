@@ -92,16 +92,19 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     @ExceptionHandler(value = { Exception.class, RuntimeException.class, MissingRequestHeaderException.class })
     public ResponseEntity handleExceptions(Exception ex, WebRequest request) {
         log.error("Unhandled exception encountered in handler advice", ex);
-        String pathInfo = ((ServletWebRequest)request).getRequest().getPathInfo();
+        HttpServletRequest servletRequest = ((ServletWebRequest) request).getRequest();
+        String servletPath = servletRequest.getServletPath();
 
-        if(pathInfo != null && pathInfo.startsWith("/issuance/")) {
+        if (servletPath == null || servletPath.isEmpty()) {
+            servletPath = servletRequest.getRequestURI();
+        }
+        if (servletPath != null && servletPath.contains("/issuance/")) {
             return handleVCIControllerExceptions(ex);
         }
-
-        if(pathInfo != null && pathInfo.startsWith("/oauth/")) {
+        String grantTypeParam = servletRequest.getParameter("grant_type");
+        if ((servletPath != null && servletPath.contains("/oauth/")) || grantTypeParam != null) {
             return handleOAuthControllerExceptions(ex);
         }
-
         return handleInternalControllerException(ex);
     }
 
