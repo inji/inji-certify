@@ -22,6 +22,13 @@ You have two options for the certify plugin which gives Verifiable Credentials o
 - Basic understanding of Docker and container operations
 - Relevant Postman collections available from [here](../../docs/postman-collections/), please add the `mock` ones and install the [pmlib library](https://joolfe.github.io/postman-util-lib/) as per the steps given under the heading `Postman Collection` to the Postman setup
 - Network Connectivity to access the AuthZ Service, in this example MOSIP Collab setup has been used
+  - We can set up AuthZ server locally as well or use the one deployed in any other environment. If we do so, we need to update following values in environment variable of [postman collection](../../docs/postman-collections/inji-certify-with-mock-identity.postman_environment.json)
+    - authServerUrl - host of auth server. If it's esignet running locally then value will be http://localhost:8088/v1/esignet
+    - aud - token audience. If it's esignet running locally then value will be http://localhost:8088/v1/esignet/oauth/v2/token
+    - Create OIDC client if supporting `private_key_jwt` client authentication. While doing this, update following values
+      - clientId - client id of the created client.
+      - privateKey_jwk - private key of the created client as JWK.
+      - publicKey_jwk - public key of the created client as JWK.
 - DID/public key setup if Farmer Credential is configured
   - Expose certify-nginx through a public URL using services like ngrok
 
@@ -51,23 +58,27 @@ docker-compose-injistack/
 
 
 
-## Choosing a VCI plugin for issuance
+## Choosing plugin for issuance
 
 
-### Recommended: Use one of the Existing Mock Plugin
+### Recommended: Use one of the Existing Plugin
 
-- Supported versions: 0.5.0 and above
-- Download the latest JAR from:
+Docker setup uses `inji-certify-with-plugins` image for certify which includes all the plugins supported by Inji Certify.
+Plugins available in docker image can still be overridden by following below steps:
+
+- Supported versions: 0.6.0 and above
+- Download the plugin JAR from:
   ```
-  https://repo1.maven.org/maven2/io/mosip/certify/mock-certify-plugin/0.5.0/
+  https://repo1.maven.org/maven2/io/mosip/certify/
   ```
+- Create `loader_path/certify/` directory under `docker-compose-injistack/` if it doesn't exist.
 - Place the downloaded JAR in `loader_path/certify/`
+- uncomment volume mount for certify-service in `docker-compose.yaml`
+
 
 ### For Advanced Users: Create Custom Plugin
 
-You can create your own plugin by implementing the following interface and place the resultant jar in `loader_path`:
-
-Reference Implementation: [CSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+- You can create your own plugin by implementing the one of the following interfaces:
 
 ```java
 public interface DataProviderPlugin {
@@ -75,13 +86,17 @@ public interface DataProviderPlugin {
 }
 ```
 
-or, if you chose the VCIssuancePlugin implement the below interface. The above two examples
-
 ```java
 public interface VCIssuancePlugin {
     // Implement your custom logic here
 }
 ```
+
+- Create `loader_path/certify/` directory under `docker-compose-injistack/` if it doesn't exist.
+- Place the resultant JAR in `loader_path/certify/`
+- uncomment volume mount for certify-service in `docker-compose.yaml`
+
+Reference Implementation: [CSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
 
 ## Certificate Setup
 
@@ -103,8 +118,8 @@ public interface VCIssuancePlugin {
 
 | Use Case                      | active_profile_env    | config file                              | 
 |-------------------------------|-----------------------|------------------------------------------|
-| Farmer credential   (default) | `default, csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
-| Mobile driving license        | `default, mock-mdl`     | ./config/certify-mock-mdl.properties     |
+| Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
+| Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
 
 
 ### Recommended
@@ -169,14 +184,16 @@ The following services will be available:
 
 - Database (PostgreSQL): `localhost:5433`
 - Certify Service: `localhost:8090`
+- Certify Nginx: `localhost:8091`
 - Mimoto Service: `localhost:8099`
-- Inji Web: `localhost:3001`
+- Inji Web: `localhost:3004`
+- Inji Verify: `localhost:8095`
 
 ## Using the Application
 
 ### Recommended: Accessing the Web Interface
 
-1. Open your browser and navigate to `http://localhost:3001`
+1. Open your browser and navigate to `http://localhost:3004`
 2. You can:
     - Download credentials
     - View credential status at a Standards Compliant VC Verfier such as [Inji Verify](https://injiverify.collab.mosip.net).
@@ -214,7 +231,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 2. Deploying Inji Certify over a public URL, _using ngrok to demonstrate this_
 
-- change the value of the `mosipbox_public_url` to point to the public URL in ./docker-compose.yaml where Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8090`, which is the port for Certify and access the Inji Web at http://localhost:3001, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
+- change the value of the `mosipbox_public_url` to point to the public URL in ./docker-compose.yaml where Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8090`, which is the port for Certify and access the Inji Web at http://localhost:3004, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
 
 3. While downloading credentials with `inji-web`, there are 2 modes supported. 
 - First is `Continue as guest` which does not require any auth setup and works out of the box. This is the recommended option for quick testing.
