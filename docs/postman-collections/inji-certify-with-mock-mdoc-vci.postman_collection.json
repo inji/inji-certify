@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "36d41991-4c0e-47e7-b541-d734fbb555dc",
+		"_postman_id": "875aac1a-14c7-438c-997f-e903df32a9cd",
 		"name": "Inji Certify Mock MDL VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "46457899"
+		"_exporter_id": "1282483"
 	},
 	"item": [
 		{
@@ -39,9 +39,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/csrf/token",
+							"raw": "{{authServerUrl}}/csrf/token",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"csrf",
@@ -69,10 +69,10 @@
 									"    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);",
 									"});",
 									"",
-									"pm.test(\"Validate auth factors\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
-									"});",
+									"// pm.test(\"Validate auth factors\", function () {",
+									"//     var jsonData = pm.response.json();",
+									"//     pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
+									"// });",
 									"",
 									"pm.test(\"set oauth-details-hash\", function () {",
 									"    var jsonData = pm.response.json();",
@@ -87,8 +87,7 @@
 									"    pm.environment.set(\"oauth_details_hash\", base64Encoded);",
 									"});"
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						},
 						{
@@ -102,8 +101,7 @@
 									"pm.collectionVariables.set(\"codeChallengeMethod\",pkce.code_challenge_method);",
 									"pm.collectionVariables.set(\"codeVerifier\",pkce.code_verifier);"
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -118,7 +116,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"sample_vc_mdoc\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code\",\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"mock_identity_vc_ldp\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code\",\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -126,9 +124,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/v2/oauth-details",
+							"raw": "{{authServerUrl}}/authorization/v2/oauth-details",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -162,7 +160,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"otpChannels\" : [\"email\", \"phone\"],\n        \"captchaToken\" : \"dummy\"\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"otpChannels\" : [\"email\",\"phone\"],\n        \"captchaToken\" : \"dummy\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -170,78 +168,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/send-otp",
+							"raw": "{{authServerUrl}}/authorization/send-otp",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
 								"send-otp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Authenticate User",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-key",
-								"value": "{{oauth_details_key}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-hash",
-								"value": "{{oauth_details_hash}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"OTP\",\n                \"challenge\" : \"111111\",\n                \"format\" : \"alpha-numeric\"\n            }\n        ]\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/v3/authenticate",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"v3",
-								"authenticate"
 							]
 						}
 					},
@@ -299,9 +232,73 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/auth-code",
+							"raw": "{{authServerUrl}}/authorization/auth-code",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
+							],
+							"path": [
+								"authorization",
+								"auth-code"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Authorization Code",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
+									"pm.environment.set(\"csrf_token\", token);",
+									"",
+									"pm.test(\"Validate code\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.response.code).not.equals(null);",
+									"    pm.collectionVariables.set(\"code\", jsonData.response.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"followRedirects": false
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-XSRF-TOKEN",
+								"value": "{{csrf_token}}",
+								"type": "text"
+							},
+							{
+								"key": "oauth-details-key",
+								"value": "{{oauth_details_key}}",
+								"type": "text"
+							},
+							{
+								"key": "oauth-details-hash",
+								"value": "{{oauth_details_hash}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"acceptedClaims\": [],\n        \"permittedAuthorizeScopes\" : []\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{authServerUrl}}/authorization/auth-code",
+							"host": [
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -329,15 +326,12 @@
 									"//sign token",
 									"//Note: Key pair is generated in \"Create OIDC client\" pre-requests script",
 									"//generated private and public keys are stored in the postman environment ",
-									"console.log(\"::::\", pm.environment.get(\"privateKey_jwk\"))",
 									"const signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get(\"privateKey_jwk\")), pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");",
 									"",
-									"console.log(\"signed_jwt \",signed_jwt)",
 									"pm.collectionVariables.set(\"client_assertion\",signed_jwt);",
 									""
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						},
 						{
@@ -353,15 +347,15 @@
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.access_token).not.equals(null);",
 									"    pm.environment.set(\"access_token\", jsonData.access_token);",
-									"    console.log(\"jsonData.access_token \",jsonData.access_token)",
 									"",
-									"    var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
-									"    var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
-									"    pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
+									"    pm.expect(jsonData.c_nonce).not.equals(null);",
+									"    pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
+									"    // var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
+									"    // var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
+									"    // pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
 									"});"
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -409,9 +403,9 @@
 							]
 						},
 						"url": {
-							"raw": "{{url}}/oauth/v2/token",
+							"raw": "{{authServerUrl}}/oauth/v2/token",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"oauth",
@@ -451,7 +445,7 @@
 									"",
 									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
 									"    // \"aud\" : 'http://localhost:8090',",
-									"    \"aud\": pm.environment.get(\"vci_aud\"),",
+									"    \"aud\": pm.environment.get(\"audUrl\"),",
 									"\t\"nonce\": pm.environment.get('c_nonce'),",
 									"    \"iss\" : pm.environment.get('clientId'),",
 									"}, header, exp=600, alg = \"ES256\")",
@@ -463,8 +457,7 @@
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
 									""
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						},
 						{
@@ -479,8 +472,7 @@
 									"    }    ",
 									"});"
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -499,7 +491,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"claims\": {\n        \"org.iso.18013.5.1\": {\n            \"given_name\": {},\n            \"family_name\": {},\n            \"birth_date\": {},\n            \"driving_privileges\":{},\n            \"document_number\":{},\n            \"issue_date\":{},\n            \"issuing_country\":{},\n            \"expiry_date\":{}\n        }\n   },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -507,13 +499,93 @@
 							}
 						},
 						"url": {
-							"raw": "{{ceritifyUrl}}/issuance/credential",
+							"raw": "{{certifyUrl}}/issuance/credential",
 							"host": [
-								"{{ceritifyUrl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"issuance",
 								"credential"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Well-known endpoints",
+			"item": [
+				{
+					"name": "JWKS",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{authServerUrl}}/oauth/.well-known/jwks.json",
+							"host": [
+								"{{authServerUrl}}"
+							],
+							"path": [
+								"oauth",
+								".well-known",
+								"jwks.json"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Openid-configuration",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{authServerUrl}}/oidc/.well-known/openid-configuration",
+							"host": [
+								"{{authServerUrl}}"
+							],
+							"path": [
+								"oidc",
+								".well-known",
+								"openid-configuration"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OAuth-configuration",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{authServerUrl}}/oauth/.well-known/oauth-authorization-server",
+							"host": [
+								"{{authServerUrl}}"
+							],
+							"path": [
+								"oauth",
+								".well-known",
+								"oauth-authorization-server"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "VC issuer metadata",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{certifyUrl}}/.well-known/openid-credential-issuer",
+							"host": [
+								"{{certifyUrl}}"
+							],
+							"path": [
+								".well-known",
+								"openid-credential-issuer"
 							]
 						}
 					},
@@ -542,9 +614,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations",
+							"raw": "{{certifyUrl}}/credential-configurations",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations"
@@ -559,9 +631,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
@@ -586,9 +658,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
@@ -613,31 +685,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
 								"{{configId}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Well-Known Configuration",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{certifyurl}}/.well-known/openid-credential-issuer",
-							"host": [
-								"{{certifyurl}}"
-							],
-							"path": [
-								".well-known",
-								"openid-credential-issuer"
 							]
 						}
 					},

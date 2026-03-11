@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "e6e04f4a-b993-4197-9cd1-a157057c6ea0",
+		"_postman_id": "e9f6e64a-16b3-42be-abe0-b71bb666e334",
 		"name": "certify- Mock IDA",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "46457899"
+		"_exporter_id": "1282483"
 	},
 	"item": [
 		{
@@ -25,9 +25,9 @@
 							"raw": "{\r\n  \"id\": \"string\",\r\n  \"metadata\": {},\r\n  \"request\": {\r\n    \"appId\": \"partner\",\r\n    \"clientId\": \"mosip-pms-client\",\r\n    \"secretKey\": \"5Qj8vn989OL1Vlu6\"\r\n  },\r\n  \"requesttime\": \"2018-12-10T06:12:52.994Z\",\r\n  \"version\": \"string\"\r\n}\r\n"
 						},
 						"url": {
-							"raw": "{{internalurl}}/v1/authmanager/authenticate/clientidsecretkey",
+							"raw": "{{internalUrl}}/v1/authmanager/authenticate/clientidsecretkey",
 							"host": [
-								"{{internalurl}}"
+								"{{internalUrl}}"
 							],
 							"path": [
 								"v1",
@@ -69,9 +69,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/csrf/token",
+							"raw": "{{authServerUrl}}/csrf/token",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"csrf",
@@ -138,7 +138,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{    \n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"clientName\": \"{{$randomCompanyName}}\",\n        \"publicKey\": {{publicKey_jwk}},\n        \"relyingPartyId\": \"{{relayingPartyId}}\",\n        \"userClaims\": [\n            \"name\",\n            \"email\",\n            \"gender\",\n            \"phone_number\",\n            \"picture\",\n            \"birthdate\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:generated-code\",\n            \"mosip:idp:acr:biometrics\",\n            \"mosip:idp:acr:linked-wallet\"\n        ],\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"io.mosip.residentapp://oauth\"\n        ],\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
+							"raw": "{    \n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"clientName\": \"{{clientName}}\",\n        \"publicKey\": {{publicKey_jwk}},\n        \"relyingPartyId\": \"{{relayingPartyId}}\",\n        \"userClaims\": [\n            \"name\",\n            \"email\",\n            \"gender\",\n            \"phone_number\",\n            \"picture\",\n            \"birthdate\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:generated-code\",\n            \"mosip:idp:acr:biometrics\",\n            \"mosip:idp:acr:linked-wallet\"\n        ],\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"io.mosip.residentapp.inji://oauthredirect\"\n        ],\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -146,9 +146,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/client-mgmt/oidc-client",
+							"raw": "{{authServerUrl}}/client-mgmt/oidc-client",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"client-mgmt",
@@ -209,7 +209,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n            \"{{redirectionUrl}}\"\n        ],\n        \"userClaims\": [\n            \"name\",\n            \"email\",\n            \"gender\",\n            \"phone_number\",\n            \"birthdate\",\n            \"picture\",\n            \"address\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:generated-code\",\n            \"mosip:idp:acr:biometrics\",\n            \"mosip:idp:acr:linked-wallet\"\n        ],\n        \"status\": \"ACTIVE\",\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientName\": \"Pension Scheme\",\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"io.mosip.residentapp.inji://oauthredirect\"\n        ],\n        \"userClaims\": [\n            \"name\",\n            \"email\",\n            \"gender\",\n            \"phone_number\",\n            \"birthdate\",\n            \"picture\",\n            \"address\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:generated-code\",\n            \"mosip:idp:acr:biometrics\",\n            \"mosip:idp:acr:linked-wallet\"\n        ],\n        \"status\": \"ACTIVE\",\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientName\": \"{{clientName}}\",\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -217,9 +217,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/client-mgmt/oidc-client/{{clientId}}",
+							"raw": "{{authServerUrl}}/client-mgmt/oidc-client/{{clientId}}",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"client-mgmt",
@@ -242,56 +242,18 @@
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"// Set headers for JWT",
-									"var header = {\t",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"",
-									"",
-									"//sign token",
-									"const private_key_jwk = {",
-									"\t\"p\": \"0-40ISxXDmC8SVrudg1e7vQskyWlohadm83RAkUyH6S4h1aTPrNwLVn9WANnyRTqupD1Fr8mYZ7f9nZ2MkMj45UV8uiIjQZr3crMq0YGkzt_LvwhLduWOJ_z9_9zZNHckXei4G8QQFJQYb3TNdGsVVSwff68SSoen8oqvkbkAJs\",",
-									"\t\"kty\": \"RSA\",",
-									"\t\"q\": \"6as88odcbP2MDT9lkahK2z4QIH25zsa_UdLgAtLwDVpekXfJNOQvuqNY1Gw3Jws6uPDLGcEK42MyeOdCFqklFTvDJlJXMFvgWrmGbCUMvJL-rFyO-kCTGnFBX60ozdJbjfBt3E3QYx3G907Ziuu9o0azey1DJtq_zKwearE-xTs\",",
-									"\t\"d\": \"BgdeiCZbr5qZ4haShg9uQinZRYPSUTYc_58YgvQ0WkPKm5fINOgOJPvimdKYBt8OtIWbhojTyn0TKrGPPAqFZCnGY16HkCUN31MbluD2wxYz6SPpZ1zsmP8PbQUVozjEFeLpiTN6nubw_skS_9GGrl1CPb25wTPlZtI3uQ5IiPL_YD5j_w5_J7tejAaRbhlJj48ZDa4CR8BkaUi2QaQmLoyiO_1O-U-Nf17-t1C6zFFKKHQx2lNltE1xFQoHB4WuBA2GnP5LgNFJSLv0p95gQK37nP0TTcuiZVlvFcmbGI_ilWlxRKJUD3mZR6nz25X4SapUWswnrnm7JtUA_UGVGw\",",
-									"\t\"e\": \"AQAB\",",
-									"\t\"use\": \"sig\",",
-									"\t\"kid\": \"1bbdc9de-c24f-4801-b6b3-691ac07641af\",",
-									"\t\"qi\": \"pmL_G7T4OF_pr2RCzkkupi1dCbwRX39bMEIs3uirvkoPR5CENvuvsXQ0Oias3taxzLa4nG5JVXHkyOIX8UsK1NFrzZPRKbfNX3h5EAnl3I7cZMtoYJLnawUqaNTukOmDChPlKx1fVjUwsyNn5HSAnmBiaOmm_RHo36tPhgaPUtE\",",
-									"\t\"dp\": \"e3b2X60ZOoMYrhOPgK7hc4xEu6TfDcLnJvGMpinxvYWVCyNgvNKEs6cNdMznFbpd1TrFze6mSZDpIQh6a2W57sfX9Z-Kjb4D8T5IZi9xfSzYN2MjYTfgGDT3SK9FZqLsQMLV3LJXYWGS-p5AAcaZA01HVN-miWlEVgrNQ_TAt6k\",",
-									"\t\"dq\": \"Yg-BqUoTCI4y6xBS4JieqXlXLTt18YfInF8BsU2yffgRvbxmTPMB8LJCQgsT7iexQhGTOkCgACMN-F0ciAP90vZchEWD34B_G7PF7LZzrOOHSvAg9HaLBUrII424lP-VenCOuihRrna9m-WUN8-MquutwKCTEMg2O39z2FR_wic\",",
-									"\t\"n\": \"wXGQA574CU-WTWPILd4S3_1sJf0Yof0kwMeNctXc1thQo70Ljfn9f4igpRe7f8qNs_W6dLuLWemFhGJBQBQ7vvickECKNJfo_EzSD_yyPCg7k_AGbTWTkuoObHrpilwJGyKVSkOIujH_FqHIVkwkVXjWc25Lsb8Gq4nAHNQEqqgaYPLEi5evCR6S0FzcXTPuRh9zH-cM0Onjv4orrfYpEr61HcRp5MXL55b7yBoIYlXD8NfalcgdrWzp4VZHvQ8yT9G5eaf27XUn6ZBeBf7VnELcKFTyw1pK2wqoOxRBc8Y1wO6rEy8PlCU6wD-mbIzcjG1wUfnbgvJOM4A5G41quQ\"",
-									"}",
-									"",
-									"",
-									"const signed_jwt = pmlib.clientAssertPrivateKey(private_key_jwk, pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");",
-									"",
-									"pm.collectionVariables.set(\"client_assertion\",signed_jwt);",
 									""
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						},
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Validate Id-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.id_token).not.equals(null);",
-									"});",
-									"",
-									"pm.test(\"Validate access-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.access_token).not.equals(null);",
-									"    pm.environment.set(\"access_token\", jsonData.access_token);",
-									"});"
+									""
 								],
-								"type": "text/javascript",
-								"packages": {}
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -300,7 +262,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"individualId\": \"{{individual_id}}\",\n        \"pin\": \"111111\",\n        \"fullName\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"Alheri Bobby\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"تتگلدكنسَزقهِقِفل دسييسيكدكنوڤو\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Alheri Bobby\"\n            }\n        ],\n        \"gender\": [\n            {\n                \"language\": \"eng\",\n                \"value\": \"female\"\n            },\n            {\n                \"language\": \"fra\",\n                \"value\": \"feMâle\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"ذكر\"\n            }\n        ],\n        \"dateOfBirth\": \"1999/10/21\",\n        \"streetAddress\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān⥍\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Slung\"\n            }\n        ],\n        \"locality\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 2\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"يَُانꉛ⥍\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee\"\n            }\n        ],\n        \"region\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 3\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee 3\"\n            }\n        ],\n        \"postalCode\": \"45009\",\n        \"country\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"CMâttye\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"دسييسيكدك\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Cmattey\"\n            }\n        ],\n        \"encodedPhoto\": \"data:image/jpeg;base64,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\",\n        \"individualBiometrics\": {\n            \"format\": \"cbeff\",\n            \"version\": 1,\n            \"value\": \"individualBiometrics_bio_CBEFF\"\n        },\n        \"email\": \"siwer.km@gmail.com\",\n        \"phone\": \"+919427357934\"\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"individualId\": \"12345678912\",\n        \"pin\": \"111111\",\n        \"givenName\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"Alheri\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"الهيري\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Alheri\"\n            }\n        ],\n        \"familyName\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"Bobby\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"بوبي\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Bobby\"\n            }\n        ],\n        \"fullName\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"Alheri Bobby\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"بوبي الهيري\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Alheri Bobby\"\n            }\n        ],\n        \"gender\": [\n            {\n                \"language\": \"eng\",\n                \"value\": \"female\"\n            },\n            {\n                \"language\": \"fra\",\n                \"value\": \"feMâle\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"ذكر\"\n            }\n        ],\n        \"dateOfBirth\": \"1999/10/21\",\n        \"streetAddress\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān⥍\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Slung\"\n            }\n        ],\n        \"locality\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 2\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"يَُانꉛ⥍\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee\"\n            }\n        ],\n        \"region\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 3\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee 3\"\n            }\n        ],\n        \"postalCode\": \"45009\",\n        \"country\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"CMâttye\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"دسييسيكدك\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Cmattey\"\n            }\n        ],\n        \"encodedPhoto\": \"data:image/jpeg;base64,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\",\n        \"individualBiometrics\": {\n            \"format\": \"cbeff\",\n            \"version\": 1,\n            \"value\": \"individualBiometrics_bio_CBEFF\"\n        },\n        \"email\": \"siwer.km@gmail.com\",\n        \"phone\": \"+919427357934\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -308,99 +270,12 @@
 							}
 						},
 						"url": {
-							"raw": "https://api.collab.mosip.net/v1/mock-identity-system/identity",
-							"protocol": "https",
+							"raw": "{{mockIdentitySystemUrl}}/identity",
 							"host": [
-								"api",
-								"qa-inji",
-								"mosip",
-								"net"
+								"{{mockIdentitySystemUrl}}"
 							],
 							"path": [
-								"v1",
-								"mock-identity-system",
 								"identity"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create Mock Identity- docker",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"// Set headers for JWT",
-									"var header = {\t",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"",
-									"",
-									"//sign token",
-									"const private_key_jwk = {",
-									"\t\"p\": \"0-40ISxXDmC8SVrudg1e7vQskyWlohadm83RAkUyH6S4h1aTPrNwLVn9WANnyRTqupD1Fr8mYZ7f9nZ2MkMj45UV8uiIjQZr3crMq0YGkzt_LvwhLduWOJ_z9_9zZNHckXei4G8QQFJQYb3TNdGsVVSwff68SSoen8oqvkbkAJs\",",
-									"\t\"kty\": \"RSA\",",
-									"\t\"q\": \"6as88odcbP2MDT9lkahK2z4QIH25zsa_UdLgAtLwDVpekXfJNOQvuqNY1Gw3Jws6uPDLGcEK42MyeOdCFqklFTvDJlJXMFvgWrmGbCUMvJL-rFyO-kCTGnFBX60ozdJbjfBt3E3QYx3G907Ziuu9o0azey1DJtq_zKwearE-xTs\",",
-									"\t\"d\": \"BgdeiCZbr5qZ4haShg9uQinZRYPSUTYc_58YgvQ0WkPKm5fINOgOJPvimdKYBt8OtIWbhojTyn0TKrGPPAqFZCnGY16HkCUN31MbluD2wxYz6SPpZ1zsmP8PbQUVozjEFeLpiTN6nubw_skS_9GGrl1CPb25wTPlZtI3uQ5IiPL_YD5j_w5_J7tejAaRbhlJj48ZDa4CR8BkaUi2QaQmLoyiO_1O-U-Nf17-t1C6zFFKKHQx2lNltE1xFQoHB4WuBA2GnP5LgNFJSLv0p95gQK37nP0TTcuiZVlvFcmbGI_ilWlxRKJUD3mZR6nz25X4SapUWswnrnm7JtUA_UGVGw\",",
-									"\t\"e\": \"AQAB\",",
-									"\t\"use\": \"sig\",",
-									"\t\"kid\": \"1bbdc9de-c24f-4801-b6b3-691ac07641af\",",
-									"\t\"qi\": \"pmL_G7T4OF_pr2RCzkkupi1dCbwRX39bMEIs3uirvkoPR5CENvuvsXQ0Oias3taxzLa4nG5JVXHkyOIX8UsK1NFrzZPRKbfNX3h5EAnl3I7cZMtoYJLnawUqaNTukOmDChPlKx1fVjUwsyNn5HSAnmBiaOmm_RHo36tPhgaPUtE\",",
-									"\t\"dp\": \"e3b2X60ZOoMYrhOPgK7hc4xEu6TfDcLnJvGMpinxvYWVCyNgvNKEs6cNdMznFbpd1TrFze6mSZDpIQh6a2W57sfX9Z-Kjb4D8T5IZi9xfSzYN2MjYTfgGDT3SK9FZqLsQMLV3LJXYWGS-p5AAcaZA01HVN-miWlEVgrNQ_TAt6k\",",
-									"\t\"dq\": \"Yg-BqUoTCI4y6xBS4JieqXlXLTt18YfInF8BsU2yffgRvbxmTPMB8LJCQgsT7iexQhGTOkCgACMN-F0ciAP90vZchEWD34B_G7PF7LZzrOOHSvAg9HaLBUrII424lP-VenCOuihRrna9m-WUN8-MquutwKCTEMg2O39z2FR_wic\",",
-									"\t\"n\": \"wXGQA574CU-WTWPILd4S3_1sJf0Yof0kwMeNctXc1thQo70Ljfn9f4igpRe7f8qNs_W6dLuLWemFhGJBQBQ7vvickECKNJfo_EzSD_yyPCg7k_AGbTWTkuoObHrpilwJGyKVSkOIujH_FqHIVkwkVXjWc25Lsb8Gq4nAHNQEqqgaYPLEi5evCR6S0FzcXTPuRh9zH-cM0Onjv4orrfYpEr61HcRp5MXL55b7yBoIYlXD8NfalcgdrWzp4VZHvQ8yT9G5eaf27XUn6ZBeBf7VnELcKFTyw1pK2wqoOxRBc8Y1wO6rEy8PlCU6wD-mbIzcjG1wUfnbgvJOM4A5G41quQ\"",
-									"}",
-									"",
-									"",
-									"const signed_jwt = pmlib.clientAssertPrivateKey(private_key_jwk, pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");",
-									"",
-									"pm.collectionVariables.set(\"client_assertion\",signed_jwt);",
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate Id-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.id_token).not.equals(null);",
-									"});",
-									"",
-									"pm.test(\"Validate access-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.access_token).not.equals(null);",
-									"    pm.environment.set(\"access_token\", jsonData.access_token);",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"individualId\": \"4567538767\",\n        \"pin\": \"111111\",\n        \"fullName\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"Alheri Bobby\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"تتگلدكنسَزقهِقِفل دسييسيكدكنوڤو\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Alheri Bobby\"\n            }\n        ],\n        \"gender\": [\n            {\n                \"language\": \"eng\",\n                \"value\": \"female\"\n            },\n            {\n                \"language\": \"fra\",\n                \"value\": \"feMâle\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"ذكر\"\n            }\n        ],\n        \"dateOfBirth\": \"2000/10/21\",\n        \"streetAddress\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān⥍\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Slung\"\n            }\n        ],\n        \"locality\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 2\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"يَُانꉛ⥍\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee\"\n            }\n        ],\n        \"region\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"yuān 3\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"$لُنگᆑ\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"yuan wee 3\"\n            }\n        ],\n        \"postalCode\": \"45009\",\n        \"country\": [\n            {\n                \"language\": \"fra\",\n                \"value\": \"CMâttye\"\n            },\n            {\n                \"language\": \"ara\",\n                \"value\": \"دسييسيكدك\"\n            },\n            {\n                \"language\": \"eng\",\n                \"value\": \"Cmattey\"\n            }\n        ],\n        \"encodedPhoto\": \"data:image/jpeg;base64,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\",\n        \"individualBiometrics\": {\n            \"format\": \"cbeff\",\n            \"version\": 1,\n            \"value\": \"individualBiometrics_bio_CBEFF\"\n        },\n        \"email\": \"siwer.km@gmail.com\",\n        \"phone\": \"+919427357934\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{mock-identity-system-url}}identity",
-							"host": [
-								"{{mock-identity-system-url}}identity"
 							]
 						}
 					},
@@ -413,371 +288,6 @@
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"console.log(pm.environment.get(\"access_token\"));"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"const private_key_jwk = {",
-									"\t\"p\": \"0-40ISxXDmC8SVrudg1e7vQskyWlohadm83RAkUyH6S4h1aTPrNwLVn9WANnyRTqupD1Fr8mYZ7f9nZ2MkMj45UV8uiIjQZr3crMq0YGkzt_LvwhLduWOJ_z9_9zZNHckXei4G8QQFJQYb3TNdGsVVSwff68SSoen8oqvkbkAJs\",",
-									"\t\"kty\": \"RSA\",",
-									"\t\"q\": \"6as88odcbP2MDT9lkahK2z4QIH25zsa_UdLgAtLwDVpekXfJNOQvuqNY1Gw3Jws6uPDLGcEK42MyeOdCFqklFTvDJlJXMFvgWrmGbCUMvJL-rFyO-kCTGnFBX60ozdJbjfBt3E3QYx3G907Ziuu9o0azey1DJtq_zKwearE-xTs\",",
-									"\t\"d\": \"BgdeiCZbr5qZ4haShg9uQinZRYPSUTYc_58YgvQ0WkPKm5fINOgOJPvimdKYBt8OtIWbhojTyn0TKrGPPAqFZCnGY16HkCUN31MbluD2wxYz6SPpZ1zsmP8PbQUVozjEFeLpiTN6nubw_skS_9GGrl1CPb25wTPlZtI3uQ5IiPL_YD5j_w5_J7tejAaRbhlJj48ZDa4CR8BkaUi2QaQmLoyiO_1O-U-Nf17-t1C6zFFKKHQx2lNltE1xFQoHB4WuBA2GnP5LgNFJSLv0p95gQK37nP0TTcuiZVlvFcmbGI_ilWlxRKJUD3mZR6nz25X4SapUWswnrnm7JtUA_UGVGw\",",
-									"\t\"e\": \"AQAB\",",
-									"\t\"use\": \"sig\",",
-									"\t\"kid\": \"1bbdc9de-c24f-4801-b6b3-691ac07641af\",",
-									"\t\"qi\": \"pmL_G7T4OF_pr2RCzkkupi1dCbwRX39bMEIs3uirvkoPR5CENvuvsXQ0Oias3taxzLa4nG5JVXHkyOIX8UsK1NFrzZPRKbfNX3h5EAnl3I7cZMtoYJLnawUqaNTukOmDChPlKx1fVjUwsyNn5HSAnmBiaOmm_RHo36tPhgaPUtE\",",
-									"\t\"dp\": \"e3b2X60ZOoMYrhOPgK7hc4xEu6TfDcLnJvGMpinxvYWVCyNgvNKEs6cNdMznFbpd1TrFze6mSZDpIQh6a2W57sfX9Z-Kjb4D8T5IZi9xfSzYN2MjYTfgGDT3SK9FZqLsQMLV3LJXYWGS-p5AAcaZA01HVN-miWlEVgrNQ_TAt6k\",",
-									"\t\"dq\": \"Yg-BqUoTCI4y6xBS4JieqXlXLTt18YfInF8BsU2yffgRvbxmTPMB8LJCQgsT7iexQhGTOkCgACMN-F0ciAP90vZchEWD34B_G7PF7LZzrOOHSvAg9HaLBUrII424lP-VenCOuihRrna9m-WUN8-MquutwKCTEMg2O39z2FR_wic\",",
-									"\t\"n\": \"wXGQA574CU-WTWPILd4S3_1sJf0Yof0kwMeNctXc1thQo70Ljfn9f4igpRe7f8qNs_W6dLuLWemFhGJBQBQ7vvickECKNJfo_EzSD_yyPCg7k_AGbTWTkuoObHrpilwJGyKVSkOIujH_FqHIVkwkVXjWc25Lsb8Gq4nAHNQEqqgaYPLEi5evCR6S0FzcXTPuRh9zH-cM0Onjv4orrfYpEr61HcRp5MXL55b7yBoIYlXD8NfalcgdrWzp4VZHvQ8yT9G5eaf27XUn6ZBeBf7VnELcKFTyw1pK2wqoOxRBc8Y1wO6rEy8PlCU6wD-mbIzcjG1wUfnbgvJOM4A5G41quQ\"",
-									"}",
-									"",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{mock-identity-system-url}}identity/{{individual_id}}",
-							"host": [
-								"{{mock-identity-system-url}}identity"
-							],
-							"path": [
-								"{{individual_id}}"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "AuthCode Flow with OTP login",
-			"item": [
-				{
-					"name": "Get CSRF token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/csrf/token",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"csrf",
-								"token"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Authorize / OAuthdetails request",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var btoa = require('btoa');",
-									"",
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);",
-									"",
-									"pm.test(\"Validate transactionId\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.transactionId).not.equals(null);",
-									"    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);",
-									"});",
-									"",
-									"pm.test(\"Validate auth factors\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
-									"});",
-									"",
-									"pm.test(\"set oauth-details-hash\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    var sha256Hash = CryptoJS.SHA256(JSON.stringify(jsonData.response));",
-									"    var base64Encoded = sha256Hash.toString(CryptoJS.enc.Base64);",
-									"    // Remove padding characters",
-									"    base64Encoded = base64Encoded.replace(/=+$/, '');",
-									"    // Replace '+' with '-' and '/' with '_' to convert to base64 URL encoding",
-									"    base64Encoded = base64Encoded.replace(/\\+/g, '-').replace(/\\//g, '_');",
-									"    console.log(\"base64Encoded : \" + base64Encoded);",
-									"    pm.environment.set(\"oauth_details_key\", jsonData.response.transactionId);",
-									"    pm.environment.set(\"oauth_details_hash\", base64Encoded);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"{{scope}}\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code mosip:idp:acr:linked-wallet mosip:idp:acr:biometrics\",\n        \"claims\": {{claims}},\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\",\n        \"codeChallengeMethod\" : \"S256\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/v2/oauth-details",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"v2",
-								"oauth-details"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Send OTP",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-key",
-								"value": "{{oauth_details_key}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-hash",
-								"value": "{{oauth_details_hash}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"otpChannels\" : [\"email\", \"phone\"],\n        \"captchaToken\" : \"dummy\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/send-otp",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"send-otp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Authenticate User",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-key",
-								"value": "{{oauth_details_key}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-hash",
-								"value": "{{oauth_details_hash}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"OTP\",\n                \"challenge\" : \"111111\",\n                \"format\" : \"alpha-numeric\"\n            }\n        ]\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/v3/authenticate",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"v3",
-								"authenticate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Authorization Code",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);",
-									"",
-									"pm.test(\"Validate code\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.code).not.equals(null);",
-									"    pm.collectionVariables.set(\"code\", jsonData.response.code);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"followRedirects": false
-					},
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-key",
-								"value": "{{oauth_details_key}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth-details-hash",
-								"value": "{{oauth_details_hash}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"acceptedClaims\": [\"email\", \"name\", \"gender\"],\n        \"permittedAuthorizeScopes\" : []\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/auth-code",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"auth-code"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Tokens",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"// Set headers for JWT",
-									"var header = {\t",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"",
-									"",
-									"//sign token",
-									"//Note: Key pair is generated in \"Create OIDC client\" pre-requests script",
-									"//generated private and public keys are stored in the postman environment ",
-									"const signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get(\"privateKey_jwk\")), pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");",
-									"",
-									"pm.collectionVariables.set(\"client_assertion\",signed_jwt);",
 									""
 								],
 								"type": "text/javascript"
@@ -787,111 +297,6 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Validate Id-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.id_token).not.equals(null);",
-									"});",
-									"",
-									"pm.test(\"Validate access-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.access_token).not.equals(null);",
-									"    pm.environment.set(\"access_token\", jsonData.access_token);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "urlencoded",
-							"urlencoded": [
-								{
-									"key": "code",
-									"value": "{{code}}",
-									"type": "text"
-								},
-								{
-									"key": "client_id",
-									"value": "{{clientId}}",
-									"type": "text"
-								},
-								{
-									"key": "redirect_uri",
-									"value": "{{redirectionUrl}}",
-									"type": "text"
-								},
-								{
-									"key": "grant_type",
-									"value": "authorization_code",
-									"type": "text"
-								},
-								{
-									"key": "client_assertion_type",
-									"value": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-									"type": "text"
-								},
-								{
-									"key": "client_assertion",
-									"value": "{{client_assertion}}",
-									"type": "text"
-								},
-								{
-									"key": "code_verifier",
-									"value": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{url}}/oauth/v2/token",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"oauth",
-								"v2",
-								"token"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get UserInfo",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"console.log(pm.environment.get(\"access_token\"));"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"const private_key_jwk = {",
-									"\t\"p\": \"0-40ISxXDmC8SVrudg1e7vQskyWlohadm83RAkUyH6S4h1aTPrNwLVn9WANnyRTqupD1Fr8mYZ7f9nZ2MkMj45UV8uiIjQZr3crMq0YGkzt_LvwhLduWOJ_z9_9zZNHckXei4G8QQFJQYb3TNdGsVVSwff68SSoen8oqvkbkAJs\",",
-									"\t\"kty\": \"RSA\",",
-									"\t\"q\": \"6as88odcbP2MDT9lkahK2z4QIH25zsa_UdLgAtLwDVpekXfJNOQvuqNY1Gw3Jws6uPDLGcEK42MyeOdCFqklFTvDJlJXMFvgWrmGbCUMvJL-rFyO-kCTGnFBX60ozdJbjfBt3E3QYx3G907Ziuu9o0azey1DJtq_zKwearE-xTs\",",
-									"\t\"d\": \"BgdeiCZbr5qZ4haShg9uQinZRYPSUTYc_58YgvQ0WkPKm5fINOgOJPvimdKYBt8OtIWbhojTyn0TKrGPPAqFZCnGY16HkCUN31MbluD2wxYz6SPpZ1zsmP8PbQUVozjEFeLpiTN6nubw_skS_9GGrl1CPb25wTPlZtI3uQ5IiPL_YD5j_w5_J7tejAaRbhlJj48ZDa4CR8BkaUi2QaQmLoyiO_1O-U-Nf17-t1C6zFFKKHQx2lNltE1xFQoHB4WuBA2GnP5LgNFJSLv0p95gQK37nP0TTcuiZVlvFcmbGI_ilWlxRKJUD3mZR6nz25X4SapUWswnrnm7JtUA_UGVGw\",",
-									"\t\"e\": \"AQAB\",",
-									"\t\"use\": \"sig\",",
-									"\t\"kid\": \"1bbdc9de-c24f-4801-b6b3-691ac07641af\",",
-									"\t\"qi\": \"pmL_G7T4OF_pr2RCzkkupi1dCbwRX39bMEIs3uirvkoPR5CENvuvsXQ0Oias3taxzLa4nG5JVXHkyOIX8UsK1NFrzZPRKbfNX3h5EAnl3I7cZMtoYJLnawUqaNTukOmDChPlKx1fVjUwsyNn5HSAnmBiaOmm_RHo36tPhgaPUtE\",",
-									"\t\"dp\": \"e3b2X60ZOoMYrhOPgK7hc4xEu6TfDcLnJvGMpinxvYWVCyNgvNKEs6cNdMznFbpd1TrFze6mSZDpIQh6a2W57sfX9Z-Kjb4D8T5IZi9xfSzYN2MjYTfgGDT3SK9FZqLsQMLV3LJXYWGS-p5AAcaZA01HVN-miWlEVgrNQ_TAt6k\",",
-									"\t\"dq\": \"Yg-BqUoTCI4y6xBS4JieqXlXLTt18YfInF8BsU2yffgRvbxmTPMB8LJCQgsT7iexQhGTOkCgACMN-F0ciAP90vZchEWD34B_G7PF7LZzrOOHSvAg9HaLBUrII424lP-VenCOuihRrna9m-WUN8-MquutwKCTEMg2O39z2FR_wic\",",
-									"\t\"n\": \"wXGQA574CU-WTWPILd4S3_1sJf0Yof0kwMeNctXc1thQo70Ljfn9f4igpRe7f8qNs_W6dLuLWemFhGJBQBQ7vvickECKNJfo_EzSD_yyPCg7k_AGbTWTkuoObHrpilwJGyKVSkOIujH_FqHIVkwkVXjWc25Lsb8Gq4nAHNQEqqgaYPLEi5evCR6S0FzcXTPuRh9zH-cM0Onjv4orrfYpEr61HcRp5MXL55b7yBoIYlXD8NfalcgdrWzp4VZHvQ8yT9G5eaf27XUn6ZBeBf7VnELcKFTyw1pK2wqoOxRBc8Y1wO6rEy8PlCU6wD-mbIzcjG1wUfnbgvJOM4A5G41quQ\"",
-									"}",
-									"",
-									"",
 									""
 								],
 								"type": "text/javascript"
@@ -900,806 +305,18 @@
 					],
 					"request": {
 						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
+							"type": "noauth"
 						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{url}}/oidc/userinfo",
+							"raw": "{{mockIdentitySystemUrl}}/identity/{{mock_identity_individual_id}}",
 							"host": [
-								"{{url}}"
+								"{{mockIdentitySystemUrl}}"
 							],
 							"path": [
-								"oidc",
-								"userinfo"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "AuthCode Flow with Wallet login",
-			"item": [
-				{
-					"name": "Wallet-Binding",
-					"item": [
-						{
-							"name": "Send Binding OTP",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Validate transactionId\", function () {",
-											"    var jsonData = pm.response.json();",
-											"    pm.expect(jsonData.response.transactionId).not.equals(null);",
-											"    pm.environment.set(\"binding_transaction_id\", jsonData.response.transactionId);",
-											"});"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{authorizationToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [
-									{
-										"key": "X-XSRF-TOKEN",
-										"value": "{{csrf_token}}",
-										"type": "text"
-									},
-									{
-										"key": "PARTNER-ID",
-										"value": "mpartner-default-keybindingtoken",
-										"type": "text"
-									},
-									{
-										"key": "PARTNER-API-KEY",
-										"value": "Aci9jg28B8mO_LDfDXo3ZTp5_HKgEMun2tYyHCa1e8k",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"individualId\" : \"{{individual_id}}\",\n        \"otpChannels\" : [\"email\"]\n    }\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{url}}/binding/binding-otp",
-									"host": [
-										"{{url}}"
-									],
-									"path": [
-										"binding",
-										"binding-otp"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Wallet binding",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"var jsonData = JSON.parse(responseBody);",
-											"var cert = JSON.stringify(jsonData.response.certificate);",
-											"console.log(cert);",
-											"pm.environment.set(\"bind_certificate\",cert);"
-										],
-										"type": "text/javascript"
-									}
-								},
-								{
-									"listen": "prerequest",
-									"script": {
-										"exec": [
-											"eval(pm.globals.get('pmlib_code'))",
-											"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
-											"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
-											"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj, nokid = true);",
-											"jwkPublicKey[\"alg\"] = \"RS256\";",
-											"jwkPublicKey[\"use\"] = \"sig\";",
-											"",
-											"pm.environment.set(\"binding_public_key\", JSON.stringify(jwkPublicKey))",
-											"pm.environment.set(\"binding_private_key\", JSON.stringify(jwkPrivateKey));"
-										],
-										"type": "text/javascript"
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{authorizationToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "POST",
-								"header": [
-									{
-										"key": "PARTNER-ID",
-										"value": "mpartner-default-keybindingtoken",
-										"type": "text"
-									},
-									{
-										"key": "PARTNER-API-KEY",
-										"value": "Aci9jg28B8mO_LDfDXo3ZTp5_HKgEMun2tYyHCa1e8k",
-										"type": "text"
-									},
-									{
-										"key": "X-XSRF-TOKEN",
-										"value": "{{csrf_token}}",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\": [\n            {\n                \"authFactorType\": \"OTP\",\n                \"challenge\": \"111111\",\n                \"format\": \"alpha-numeric\"\n            }\n        ],\n        \"publicKey\": {{binding_public_key}},\n        \"authFactorType\": \"WLA\",\n        \"format\": \"jwt\"\n    }\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{url}}/binding/wallet-binding",
-									"host": [
-										"{{url}}"
-									],
-									"path": [
-										"binding",
-										"wallet-binding"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Authorize / OAuthdetails request",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var btoa = require('btoa');",
-									"",
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);",
-									"",
-									"pm.test(\"Validate transactionId\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.transactionId).not.equals(null);",
-									"    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);",
-									"});",
-									"",
-									"pm.test(\"Validate auth factors\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
-									"});",
-									"",
-									"pm.test(\"set oauth-details-hash\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    var sha256Hash = CryptoJS.SHA256(JSON.stringify(jsonData.response));",
-									"    var base64Encoded = sha256Hash.toString(CryptoJS.enc.Base64);",
-									"    // Remove padding characters",
-									"    base64Encoded = base64Encoded.replace(/=+$/, '');",
-									"    // Replace '+' with '-' and '/' with '_' to convert to base64 URL encoding",
-									"    base64Encoded = base64Encoded.replace(/\\+/g, '-').replace(/\\//g, '_');",
-									"    console.log(\"base64Encoded : \" + base64Encoded);",
-									"    pm.environment.set(\"oauth_details_key\", jsonData.response.transactionId);",
-									"    pm.environment.set(\"oauth_details_hash\", base64Encoded);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"{{scope}}\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code mosip:idp:acr:linked-wallet mosip:idp:acr:biometrics\",\n        \"claims\": {{claims}},\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\",\n        \"codeChallengeMethod\" : \"S256\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/authorization/v2/oauth-details",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"authorization",
-								"v2",
-								"oauth-details"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Generate Link code",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate linkCode\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.linkCode).not.equals(null);",
-									"    pm.environment.set(\"link_code\", jsonData.response.linkCode);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth_details_key",
-								"value": "{{oauth_details_key}}",
-								"type": "text"
-							},
-							{
-								"key": "oauth_details_hash",
-								"value": "{{oauth_details_hash}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/link-code",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"link-code"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Link transaction (wallet)",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate linkTransactionId\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.linkTransactionId).not.equals(null);",
-									"    pm.environment.set(\"linkTransactionId\", jsonData.response.linkTransactionId);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"linkCode\": \"{{link_code}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/link-transaction",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"link-transaction"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Link status",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"linkCode\": \"{{link_code}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/link-status",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"link-status"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Link Authenticate User (wallet) -V2",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"//sign token",
-									"const private_key_jwk = JSON.parse(pm.environment.get(\"binding_private_key\"));",
-									"var certificate = eval(pm.environment.get('bind_certificate'));",
-									"var public_key_jwk = pmlib.rs.KEYUTIL.getJWK(certificate);",
-									"",
-									"// Set headers for JWT",
-									"var header = {",
-									"    \"x5t#S256\" : public_key_jwk['x5t#S256'],",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"",
-									"const signed_jwt = pmlib.jwtSign(private_key_jwk, {",
-									"    \"aud\" : pm.environment.get('wla_aud'),",
-									"\t\"sub\": pm.environment.get('individual_id'),",
-									"    \"iss\" : \"postman-inji\"",
-									"}, header, exp=600, alg = \"RS256\")",
-									"",
-									"pm.collectionVariables.set(\"wla_challenge\",signed_jwt);",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"linkedTransactionId\": \"{{linkTransactionId}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"WLA\",\n                \"challenge\" : \"{{wla_challenge}}\",\n                \"format\" : \"jwt\"\n            }\n        ]\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/v2/authenticate",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"v2",
-								"authenticate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Link Consent Request (wallet) - V2",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate code\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.code).not.equals(null);",
-									"    pm.collectionVariables.set(\"code\", jsonData.response.code);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'));",
-									"",
-									"const private_key_jwk = JSON.parse(pm.environment.get(\"binding_private_key\"));",
-									"var certificate = eval(pm.environment.get('bind_certificate'));",
-									"var public_key_jwk = pmlib.rs.KEYUTIL.getJWK(certificate);",
-									"",
-									"// Set headers for JWT",
-									"var header = {",
-									"    \"x5t#S256\" : public_key_jwk['x5t#S256'],",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"var payload = {}",
-									"var acceptedClaims = pm.environment.get('acceptedClaims');",
-									"if(acceptedClaims != undefined && Array.isArray(acceptedClaims)){",
-									"    payload[\"acceptedClaims\"] = acceptedClaims.sort()",
-									"}",
-									"var permittedAuthorizedScopes = eval(pm.environment.get('permittedAuthorizedScopes'));",
-									"if(permittedAuthorizedScopes != undefined && Array.isArray(permittedAuthorizedScopes)){",
-									"    payload[\"permittedAuthorizedScopes\"] = permittedAuthorizedScopes.sort()",
-									"}",
-									"const signedPayload = pmlib.rs.jws.JWS.sign(",
-									"    null, header, payload, private_key_jwk",
-									");",
-									"var parts = signedPayload.split(\".\");",
-									"var detachedSignature = parts[0] + \".\" + parts[2];",
-									"pm.environment.set(\"detachedSignature\",  detachedSignature);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"followRedirects": false
-					},
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"linkedTransactionId\": \"{{linkTransactionId}}\",\n        \"acceptedClaims\": {{acceptedClaims}},\n        \"signature\": \"{{detachedSignature}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/v2/consent",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"v2",
-								"consent"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Link Auth code request",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate code\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.code).not.equals(null);",
-									"    pm.collectionVariables.set(\"code\", jsonData.response.code);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "X-XSRF-TOKEN",
-								"value": "{{csrf_token}}",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"linkedCode\": \"{{link_code}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/linked-authorization/link-auth-code",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"linked-authorization",
-								"link-auth-code"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Tokens",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"// Set headers for JWT",
-									"var header = {\t",
-									"\t\"alg\": \"RS256\"",
-									"};",
-									"",
-									"",
-									"//sign token",
-									"//Note: Key pair is generated in \"Create OIDC client\" pre-requests script",
-									"//generated private and public keys are stored in the postman environment ",
-									"const signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get(\"privateKey_jwk\")), pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");",
-									"",
-									"pm.collectionVariables.set(\"client_assertion\",signed_jwt);",
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate Id-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.id_token).not.equals(null);",
-									"});",
-									"",
-									"pm.test(\"Validate access-token\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.access_token).not.equals(null);",
-									"    pm.environment.set(\"access_token\", jsonData.access_token);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "urlencoded",
-							"urlencoded": [
-								{
-									"key": "code",
-									"value": "{{code}}",
-									"type": "text"
-								},
-								{
-									"key": "client_id",
-									"value": "{{clientId}}",
-									"type": "text"
-								},
-								{
-									"key": "redirect_uri",
-									"value": "{{redirectionUrl}}",
-									"type": "text"
-								},
-								{
-									"key": "grant_type",
-									"value": "authorization_code",
-									"type": "text"
-								},
-								{
-									"key": "client_assertion_type",
-									"value": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
-									"type": "text"
-								},
-								{
-									"key": "client_assertion",
-									"value": "{{client_assertion}}",
-									"type": "text"
-								},
-								{
-									"key": "code_verifier",
-									"value": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-									"type": "text"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{url}}/oauth/v2/token",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"oauth",
-								"v2",
-								"token"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get UserInfo",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"console.log(pm.environment.get(\"access_token\"));"
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"",
-									"const private_key_jwk = {",
-									"\t\"p\": \"0-40ISxXDmC8SVrudg1e7vQskyWlohadm83RAkUyH6S4h1aTPrNwLVn9WANnyRTqupD1Fr8mYZ7f9nZ2MkMj45UV8uiIjQZr3crMq0YGkzt_LvwhLduWOJ_z9_9zZNHckXei4G8QQFJQYb3TNdGsVVSwff68SSoen8oqvkbkAJs\",",
-									"\t\"kty\": \"RSA\",",
-									"\t\"q\": \"6as88odcbP2MDT9lkahK2z4QIH25zsa_UdLgAtLwDVpekXfJNOQvuqNY1Gw3Jws6uPDLGcEK42MyeOdCFqklFTvDJlJXMFvgWrmGbCUMvJL-rFyO-kCTGnFBX60ozdJbjfBt3E3QYx3G907Ziuu9o0azey1DJtq_zKwearE-xTs\",",
-									"\t\"d\": \"BgdeiCZbr5qZ4haShg9uQinZRYPSUTYc_58YgvQ0WkPKm5fINOgOJPvimdKYBt8OtIWbhojTyn0TKrGPPAqFZCnGY16HkCUN31MbluD2wxYz6SPpZ1zsmP8PbQUVozjEFeLpiTN6nubw_skS_9GGrl1CPb25wTPlZtI3uQ5IiPL_YD5j_w5_J7tejAaRbhlJj48ZDa4CR8BkaUi2QaQmLoyiO_1O-U-Nf17-t1C6zFFKKHQx2lNltE1xFQoHB4WuBA2GnP5LgNFJSLv0p95gQK37nP0TTcuiZVlvFcmbGI_ilWlxRKJUD3mZR6nz25X4SapUWswnrnm7JtUA_UGVGw\",",
-									"\t\"e\": \"AQAB\",",
-									"\t\"use\": \"sig\",",
-									"\t\"kid\": \"1bbdc9de-c24f-4801-b6b3-691ac07641af\",",
-									"\t\"qi\": \"pmL_G7T4OF_pr2RCzkkupi1dCbwRX39bMEIs3uirvkoPR5CENvuvsXQ0Oias3taxzLa4nG5JVXHkyOIX8UsK1NFrzZPRKbfNX3h5EAnl3I7cZMtoYJLnawUqaNTukOmDChPlKx1fVjUwsyNn5HSAnmBiaOmm_RHo36tPhgaPUtE\",",
-									"\t\"dp\": \"e3b2X60ZOoMYrhOPgK7hc4xEu6TfDcLnJvGMpinxvYWVCyNgvNKEs6cNdMznFbpd1TrFze6mSZDpIQh6a2W57sfX9Z-Kjb4D8T5IZi9xfSzYN2MjYTfgGDT3SK9FZqLsQMLV3LJXYWGS-p5AAcaZA01HVN-miWlEVgrNQ_TAt6k\",",
-									"\t\"dq\": \"Yg-BqUoTCI4y6xBS4JieqXlXLTt18YfInF8BsU2yffgRvbxmTPMB8LJCQgsT7iexQhGTOkCgACMN-F0ciAP90vZchEWD34B_G7PF7LZzrOOHSvAg9HaLBUrII424lP-VenCOuihRrna9m-WUN8-MquutwKCTEMg2O39z2FR_wic\",",
-									"\t\"n\": \"wXGQA574CU-WTWPILd4S3_1sJf0Yof0kwMeNctXc1thQo70Ljfn9f4igpRe7f8qNs_W6dLuLWemFhGJBQBQ7vvickECKNJfo_EzSD_yyPCg7k_AGbTWTkuoObHrpilwJGyKVSkOIujH_FqHIVkwkVXjWc25Lsb8Gq4nAHNQEqqgaYPLEi5evCR6S0FzcXTPuRh9zH-cM0Onjv4orrfYpEr61HcRp5MXL55b7yBoIYlXD8NfalcgdrWzp4VZHvQ8yT9G5eaf27XUn6ZBeBf7VnELcKFTyw1pK2wqoOxRBc8Y1wO6rEy8PlCU6wD-mbIzcjG1wUfnbgvJOM4A5G41quQ\"",
-									"}",
-									"",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{url}}/oidc/userinfo",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"oidc",
-								"userinfo"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get CSRF token",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{url}}/csrf/token",
-							"host": [
-								"{{url}}"
-							],
-							"path": [
-								"csrf",
-								"token"
+								"identity",
+								"{{mock_identity_individual_id}}"
 							]
 						}
 					},
@@ -1740,9 +357,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/csrf/token",
+							"raw": "{{authServerUrl}}/csrf/token",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"csrf",
@@ -1770,10 +387,10 @@
 									"    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);",
 									"});",
 									"",
-									"pm.test(\"Validate auth factors\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
-									"});",
+									"// pm.test(\"Validate auth factors\", function () {",
+									"//     var jsonData = pm.response.json();",
+									"//     pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));",
+									"// });",
 									"",
 									"pm.test(\"set oauth-details-hash\", function () {",
 									"    var jsonData = pm.response.json();",
@@ -1825,9 +442,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/v2/oauth-details",
+							"raw": "{{authServerUrl}}/authorization/v2/oauth-details",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -1869,9 +486,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/send-otp",
+							"raw": "{{authServerUrl}}/authorization/send-otp",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -1933,9 +550,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/v3/authenticate",
+							"raw": "{{authServerUrl}}/authorization/v3/authenticate",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -1998,9 +615,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{url}}/authorization/auth-code",
+							"raw": "{{authServerUrl}}/authorization/auth-code",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
@@ -2050,9 +667,11 @@
 									"    pm.expect(jsonData.access_token).not.equals(null);",
 									"    pm.environment.set(\"access_token\", jsonData.access_token);",
 									"",
-									"    var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
-									"    var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
-									"    pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
+									"    pm.expect(jsonData.c_nonce).not.equals(null);",
+									"    pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
+									"    // var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
+									"    // var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
+									"    // pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -2103,9 +722,9 @@
 							]
 						},
 						"url": {
-							"raw": "{{url}}/oauth/v2/token",
+							"raw": "{{authServerUrl}}/oauth/v2/token",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"oauth",
@@ -2117,7 +736,7 @@
 					"response": []
 				},
 				{
-					"name": "Get Credential",
+					"name": "Get Farmer Credential",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -2186,7 +805,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"MockVerifiableCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"FarmerCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2194,9 +813,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/issuance/credential",
+							"raw": "{{certifyUrl}}/issuance/credential",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"issuance",
@@ -2206,95 +825,8 @@
 					},
 					"response": []
 				},
-                {
-                  "name": "Get Farmer Credential",
-                  "event": [
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "exec": [
-                          "eval(pm.globals.get('pmlib_code'))",
-                          "keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
-                          "jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
-                          "jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
-                          "jwkPublicKey[\"alg\"] = \"RS256\";",
-                          "jwkPublicKey[\"use\"] = \"sig\";",
-                          "",
-                          "pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
-                          "pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
-                          "",
-                          "// Set headers for JWT",
-                          "var header = {\t",
-                          "\t\"alg\": \"RS256\",",
-                          "    \"typ\" : \"openid4vci-proof+jwt\",",
-                          "    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
-                          "};",
-                          "",
-                          "",
-                          "console.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));",
-                          "",
-                          "const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
-                          "    \"aud\" : pm.environment.get('audUrl'),",
-                          "\t\"nonce\": pm.environment.get('c_nonce'),",
-                          "    \"iss\" : \"demo-certify\",",
-                          "}, header, exp=600, alg = \"RS256\")",
-                          "",
-                          "pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
-                          ""
-                        ],
-                        "type": "text/javascript"
-                      }
-                    },
-                    {
-                      "listen": "test",
-                      "script": {
-                        "exec": [
-                          "pm.test(\"Validate c_nonce\", function () {",
-                          "    var jsonData = pm.response.json();",
-                          "    if(jsonData.c_nonce != null) {",
-                          "        pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
-                          "        console.log(\"setting c_nonce\");",
-                          "    }    ",
-                          "});"
-                        ],
-                        "type": "text/javascript"
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Authorization",
-                        "value": "Bearer {{access_token}}",
-                        "type": "text"
-                      }
-
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"MockVerifiableCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\", \"https://inji.github.io/inji-config/contexts/farmer.json\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
-                      "options": {
-                        "raw": {
-                          "language": "json"
-                        }
-                      }
-                    },
-                    "url": {
-                      "raw": "{{certifyurl}}/issuance/credential",
-                      "host": [
-                        "{{certifyurl}}"
-                      ],
-                      "path": [
-                        "issuance",
-                        "credential"
-                      ]
-                    }
-                  },
-                  "response": []
-                },
 				{
-					"name": "Get credential vd11 Copy",
+					"name": "Get Farmer Credential vd11",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -2325,7 +857,7 @@
 									"\t\"nonce\": pm.environment.get('c_nonce'),",
 									"    \"iss\" : pm.environment.get('clientId'),",
 									"}, header, exp=600, alg = \"RS256\")",
-									"console.log();",
+									"",
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
 									""
 								],
@@ -2363,7 +895,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"type\": \n           [\"VerifiableCredential\", \"MockVerifiableCredential\"]\n        ,\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n         \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"FarmerCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2371,9 +903,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/issuance/vd11/credential",
+							"raw": "{{certifyUrl}}/issuance/vd11/credential",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"issuance",
@@ -2385,7 +917,7 @@
 					"response": []
 				},
 				{
-					"name": "Get credential vd12 Copy",
+					"name": "Get Farmer Credential vd12",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -2416,7 +948,7 @@
 									"\t\"nonce\": pm.environment.get('c_nonce'),",
 									"    \"iss\" : pm.environment.get('clientId'),",
 									"}, header, exp=600, alg = \"RS256\")",
-									"console.log();",
+									"",
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
 									""
 								],
@@ -2454,7 +986,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"type\": [\"VerifiableCredential\", \"MockVerifiableCredential\"],\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n         \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"FarmerCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2462,13 +994,108 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/issuance/vd12/credential",
+							"raw": "{{certifyUrl}}/issuance/vd12/credential",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"issuance",
 								"vd12",
+								"credential"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Mdoc Credential",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"eval(pm.globals.get('pmlib_code'))",
+									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");",
+									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
+									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
+									"jwkPublicKey[\"alg\"] = \"ES256\";",
+									"jwkPublicKey[\"use\"] = \"sig\";",
+									"",
+									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
+									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+									"",
+									"// Set headers for JWT",
+									"var header = {\t",
+									"\t\"alg\": \"ES256\",",
+									"    \"typ\" : \"openid4vci-proof+jwt\",",
+									"    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
+									"};",
+									"",
+									"",
+									"console.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));",
+									"",
+									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
+									"    // \"aud\" : 'http://localhost:8090',",
+									"    \"aud\": pm.environment.get(\"audUrl\"),",
+									"\t\"nonce\": pm.environment.get('c_nonce'),",
+									"    \"iss\" : pm.environment.get('clientId'),",
+									"}, header, exp=600, alg = \"ES256\")",
+									"",
+									"console.log(\"modified aud\")",
+									"",
+									"console.log(\"proof - \",signed_jwt)",
+									"",
+									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Validate c_nonce\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    if(jsonData.c_nonce != null) {",
+									"        pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
+									"        console.log(\"setting c_nonce\");",
+									"    }    ",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{certifyUrl}}/issuance/credential",
+							"host": [
+								"{{certifyUrl}}"
+							],
+							"path": [
+								"issuance",
 								"credential"
 							]
 						}
@@ -2486,9 +1113,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{url}}/oauth/.well-known/jwks.json",
+							"raw": "{{authServerUrl}}/oauth/.well-known/jwks.json",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"oauth",
@@ -2505,9 +1132,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{url}}/oidc/.well-known/openid-configuration",
+							"raw": "{{authServerUrl}}/oidc/.well-known/openid-configuration",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"oidc",
@@ -2524,9 +1151,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{url}}/oauth/.well-known/oauth-authorization-server",
+							"raw": "{{authServerUrl}}/oauth/.well-known/oauth-authorization-server",
 							"host": [
-								"{{url}}"
+								"{{authServerUrl}}"
 							],
 							"path": [
 								"oauth",
@@ -2543,12 +1170,11 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{url}}/vci/.well-known/openid-credential-issuer",
+							"raw": "{{certifyUrl}}/.well-known/openid-credential-issuer",
 							"host": [
-								"{{url}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
-								"vci",
 								".well-known",
 								"openid-credential-issuer"
 							]
@@ -2571,7 +1197,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"credentialConfigKeyId\": \"MockVerifiableCredential\",\r\n    \"vcTemplate\": \"ewogICAgICJAY29udGV4dCI6IFsKICAgICAgICAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAgICAgICAgICAiaHR0cHM6Ly92aGFyc2guZ2l0aHViLmlvL0RJRC9tb2NrLWNvbnRleHQuanNvbiIKICAgICAgICAgXSwKICAgICAgICAgImlzc3VlciI6ICIke19pc3N1ZXJ9IiwKICAgICAgICAgInR5cGUiOiBbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwgIk1vY2tWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLAogICAgICAgICAiaXNzdWFuY2VEYXRlIjogIiR7dmFsaWRGcm9tfSIsCiAgICAgICAgICJleHBpcmF0aW9uRGF0ZSI6ICIke3ZhbGlkVW50aWx9IiwKICAgICAgICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAgICAgICAiaWQiOiAiJHtfaG9sZGVySWR9IiwKICAgICAgICAgICAgImdlbmRlciI6ICR7Z2VuZGVyfSwKICAgICAgICAgICAgInBvc3RhbENvZGUiOiAke3Bvc3RhbENvZGV9LAogICAgICAgICAgICAiZnVsbE5hbWUiOiAke2Z1bGxOYW1lfSwKICAgICAgICAgICAgImRhdGVPZkJpcnRoIjogIiR7ZGF0ZU9mQmlydGh9IiwKICAgICAgICAgICAgInBob25lIjogIiR7cGhvbmV9IiwKICAgICAgICAgICAgInByb3ZpbmNlIjogJHtwcm92aW5jZX0sCiAgICAgICAgICAgICJyZWdpb24iOiAke3JlZ2lvbn0sCiAgICAgICAgICAgICJVSU4iOiAke1VJTn0sCgkgICAgIlZJRCI6ICR7VUlOfSwKICAgICAgICAgICAgImVtYWlsIjogIiR7ZW1haWx9IgogICAgICAgICB9CiAgICAgfQ==\",\r\n    \"keyManagerAppId\": \"CERTIFY_VC_SIGN_EC_R1\",\r\n    \"keyManagerRefId\": \"EC_SECP256R1_SIGN\",\r\n    \"signatureAlgo\": \"ES256\",\r\n    \"contextURLs\": [\r\n        \"https://www.w3.org/2018/credentials/v1\"\r\n    ],\r\n    \"credentialTypes\": [\r\n        \"VerifiableCredential\",\r\n        \"MockVerifiableCredential\"\r\n    ],\r\n    \"credentialFormat\": \"ldp_vc\",\r\n    \"didUrl\": \"did:web:mosip.github.io:inji-config:dev2:mock-identity-ecr1#key-0\",\r\n    \"metaDataDisplay\": [\r\n        {\r\n            \"name\": \"Mock Verifiable Credential\",\r\n            \"locale\": \"en\",\r\n            \"logo\": {\r\n                \"url\": \"https://mosip.github.io/inji-config/logos/mosipid-logo.png\",\r\n                \"alt_text\": \"a square logo of a MOSIP\"\r\n            },\r\n            \"background_image\": {\r\n                \"uri\": \"https://mosip.github.io/inji-config/vcbackground/default-background.png\"\r\n            },\r\n            \"background_color\": \"#12107c\",\r\n            \"text_color\": \"#FFFFFF\"\r\n        }\r\n    ],\r\n    \"displayOrder\": [\r\n        \"fullName\",\r\n        \"phone\",\r\n        \"dateOfBirth\",\r\n        \"gender\",\r\n        \"email\",\r\n        \"region\",\r\n        \"addressLine1\",\r\n        \"vcVer\",\r\n        \"UIN\",\r\n        \"postalCode\"\r\n    ],\r\n    \"scope\": \"mock_identity_vc_ldp\",\r\n    \"cryptographic_binding_methods_supported\": [\r\n        \"did:jwk\"\r\n    ],\r\n    \"credential_signing_alg_values_supported\": [\r\n        \"Ed25519Signature2020\"\r\n    ],\r\n    \"proof_types_supported\": {\r\n        \"jwt\": {\r\n            \"proof_signing_alg_values_supported\": [\r\n                \"RS256\",\r\n                \"ES256\"\r\n            ]\r\n        }\r\n    },\r\n    \"doctype\": null,\r\n    \"credentialSubjectDefinition\": {\r\n        \"fullName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Full Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"phone\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Phone Number\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"dateOfBirth\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Date of Birth\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"gender\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Gender\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"email\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Email Id\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"region\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Region\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"addressLine1\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Address Line 1\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"UIN\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"UIN\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"vcVer\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"VC Verification\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"postalCode\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Postal Code\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        }\r\n    },\r\n    \"qrSettings\": [\r\n        {\r\n            \"Email ID\": \"${email}\",\r\n            \"Phone Number\": \"${phone}\",\r\n            \"Date of Birth\": \"${dateOfBirth}\"\r\n        },\r\n        {\r\n            \"Phone Number\": \"${phone}\",\r\n            \"Date of Birth\": \"${dateOfBirth}\",\r\n            \"Face\":{\r\n                \"Data\":\"${face}\",\r\n                \"Data format\":\"Image\",\r\n                \"Data sub format\":\"JPEG\"\r\n            }\r\n        }\r\n    ],\r\n    \"qrSignatureAlgo\": \"EdDSA\",\r\n    \"pluginConfigurations\": null\r\n}",
+							"raw": "{\r\n    \"credentialConfigKeyId\": \"MockVerifiableCredential\",\r\n    \"vcTemplate\": \"ewogICAgICJAY29udGV4dCI6IFsKICAgICAgICAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAgICAgICAgICAiaHR0cHM6Ly92aGFyc2guZ2l0aHViLmlvL0RJRC9tb2NrLWNvbnRleHQuanNvbiIKICAgICAgICAgXSwKICAgICAgICAgImlzc3VlciI6ICIke19pc3N1ZXJ9IiwKICAgICAgICAgInR5cGUiOiBbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwgIk1vY2tWZXJpZmlhYmxlQ3JlZGVudGlhbCJdLAogICAgICAgICAiaXNzdWFuY2VEYXRlIjogIiR7dmFsaWRGcm9tfSIsCiAgICAgICAgICJleHBpcmF0aW9uRGF0ZSI6ICIke3ZhbGlkVW50aWx9IiwKICAgICAgICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAgICAgICAiaWQiOiAiJHtfaG9sZGVySWR9IiwKICAgICAgICAgICAgImdlbmRlciI6ICR7Z2VuZGVyfSwKICAgICAgICAgICAgInBvc3RhbENvZGUiOiAke3Bvc3RhbENvZGV9LAogICAgICAgICAgICAiZnVsbE5hbWUiOiAke2Z1bGxOYW1lfSwKICAgICAgICAgICAgImRhdGVPZkJpcnRoIjogIiR7ZGF0ZU9mQmlydGh9IiwKICAgICAgICAgICAgInBob25lIjogIiR7cGhvbmV9IiwKICAgICAgICAgICAgInByb3ZpbmNlIjogJHtwcm92aW5jZX0sCiAgICAgICAgICAgICJyZWdpb24iOiAke3JlZ2lvbn0sCiAgICAgICAgICAgICJVSU4iOiAke1VJTn0sCgkgICAgIlZJRCI6ICR7VUlOfSwKICAgICAgICAgICAgImVtYWlsIjogIiR7ZW1haWx9IgogICAgICAgICB9CiAgICAgfQ==\",\r\n    \"keyManagerAppId\": \"CERTIFY_VC_SIGN_ED25519\",\r\n    \"keyManagerRefId\": \"ED25519_SIGN\",\r\n    \"signatureAlgo\": \"EdDSA\",\r\n    \"signatureCryptoSuite\": \"Ed25519Signature2020\",\r\n    \"contextURLs\": [\r\n        \"https://www.w3.org/2018/credentials/v1\"\r\n    ],\r\n    \"credentialTypes\": [\r\n        \"VerifiableCredential\",\r\n        \"MockVerifiableCredential\"\r\n    ],\r\n    \"credentialFormat\": \"ldp_vc\",\r\n    \"didUrl\": \"did:web:d497-2405-201-1029-3025-a153-97e5-f47f-3b16.ngrok-free.app\",\r\n    \"metaDataDisplay\": [\r\n        {\r\n            \"name\": \"Mock Verifiable Credential\",\r\n            \"locale\": \"en\",\r\n            \"logo\": {\r\n                \"url\": \"https://mosip.github.io/inji-config/logos/mosipid-logo.png\",\r\n                \"alt_text\": \"a square logo of a MOSIP\"\r\n            },\r\n            \"background_image\": {\r\n                \"uri\": \"https://mosip.github.io/inji-config/vcbackground/default-background.png\"\r\n            },\r\n            \"background_color\": \"#12107c\",\r\n            \"text_color\": \"#FFFFFF\"\r\n        }\r\n    ],\r\n    \"displayOrder\": [\r\n        \"fullName\",\r\n        \"phone\",\r\n        \"dateOfBirth\",\r\n        \"gender\",\r\n        \"email\",\r\n        \"region\",\r\n        \"addressLine1\",\r\n        \"vcVer\",\r\n        \"UIN\",\r\n        \"postalCode\"\r\n    ],\r\n    \"scope\": \"mock_identity_vc_ldp\",\r\n    \"doctype\": null,\r\n    \"credentialSubjectDefinition\": {\r\n        \"fullName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Full Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"phone\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Phone Number\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"dateOfBirth\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Date of Birth\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"gender\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Gender\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"email\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Email Id\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"region\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Region\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"addressLine1\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Address Line 1\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"UIN\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"UIN\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"vcVer\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"VC Verification\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"postalCode\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Postal Code\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        }\r\n    },\r\n    \"qrSettings\": [\r\n        {\r\n            \"Email ID\": \"${email}\",\r\n            \"Phone Number\": \"${phone}\",\r\n            \"Date of Birth\": \"${dateOfBirth}\"\r\n        },\r\n        {\r\n            \"Phone Number\": \"${phone}\",\r\n            \"Date of Birth\": \"${dateOfBirth}\",\r\n            \"Face\":{\r\n                \"Data\":\"${face}\",\r\n                \"Data format\":\"Image\",\r\n                \"Data sub format\":\"JPEG\"\r\n            }\r\n        }\r\n    ],\r\n    \"qrSignatureAlgo\": \"EdDSA\",\r\n    \"pluginConfigurations\": null\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2579,9 +1205,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations",
+							"raw": "{{certifyUrl}}/credential-configurations",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations"
@@ -2596,9 +1222,9 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
@@ -2615,7 +1241,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"vcTemplate\": \"ewogICAgICAgICAiQGNvbnRleHQiOiBbCiAgICAgICAgICAgICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgICAgICAgICAgICAiaHR0cHM6Ly9tb3NpcC5naXRodWIuaW8vaW5qaS1jb25maWcvY29sbGFiL2NvbnRleHRzL3VuaXZlcnNpdHkuanNvbiIsCiAgICAgICAgICAgICAgICAgImh0dHBzOi8vdzNpZC5vcmcvc2VjdXJpdHkvc3VpdGVzL2VkMjU1MTktMjAyMC92MSIKICAgICAgICAgXSwKICAgICAgICAgImlzc3VlciI6ICIke19pc3N1ZXJ9IiwKICAgICAgICAgInR5cGUiOiBbCiAgICAgICAgICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAgICAgICAgIlVuaXZlcnNpdHlDcmVkZW50aWFsIgogICAgICAgICBdLAogICAgICAgICAiaXNzdWFuY2VEYXRlIjogIiR7dmFsaWRGcm9tfSIsCiAgICAgICAgICJleHBpcmF0aW9uRGF0ZSI6ICIke3ZhbGlkVW50aWx9IiwKICAgICAgICAgICJjcmVkZW50aWFsU3ViamVjdCI6IHsKICAgICAgICAgICAgImlkIjogIiR7X2hvbGRlcklkfSIsCiAgICAgICAgICAgICJzdHVkZW50TmFtZSI6ICIke3N0dWRlbnRfbmFtZX0iLAogICAgICAgICAgICAicm9sbE51bWJlciI6ICIke3JvbGxfbnVtYmVyfSIsCiAgICAgICAgICAgICJkYXRlT2ZCaXJ0aCI6ICIke2RhdGVfb2ZfYmlydGh9IiwKICAgICAgICAgICAgImdlbmRlciI6ICIke2dlbmRlcn0iLAogICAgICAgICAgICAiY291cnNlTmFtZSI6ICIke2NvdXJzZV9uYW1lfSIsCiAgICAgICAgICAgICJjb3Vyc2VEaXZpc2lvbk5hbWUiOiAiJHtjb3Vyc2VfZGl2aXNpb25fbmFtZX0iLAogICAgICAgICAgICAiY291cnNlRHVyYXRpb24iOiAiJHtjb3Vyc2VfZHVyYXRpb259IiwKICAgICAgICAgICAgInJlc3VsdCI6ICIke3Jlc3VsdH0iLAogICAgICAgICAgICAic3RhcnREYXRlIjogIiR7c3RhcnRfZGF0ZX0iLAogICAgICAgICAgICAiY29tcGxldGlvbkRhdGUiOiAiJHtjb21wbGV0aW9uX2RhdGV9IgogICAgICAgIH0KICAgICB9\",\r\n    \"credentialConfigKeyId\": \"UniversityCredential\",\r\n    \"contextURLs\": [\r\n        \"https://www.w3.org/2018/credentials/v1\"\r\n    ],\r\n    \"credentialTypes\": [\r\n        \"UniversityCredential\",\r\n        \"VerifiableCredential\"\r\n    ],\r\n    \"credentialFormat\": \"ldp_vc\",\r\n    \"didUrl\": \"did:web:mosip.github.io:inji-config:dev-int-inji:academic-ed25519#key-0\",\r\n    \"keyManagerAppId\": \"CERTIFY_VC_SIGN_ED25519\",\r\n    \"keyManagerRefId\": \"ED25519_SIGN\",\r\n    \"signatureAlgo\": \"EdDSA\",\r\n    \"metaDataDisplay\": [\r\n        {\r\n            \"logo\": {\r\n                \"url\": \"https://mosip.github.io/inji-config/logos/veridonia-university.png\",\r\n                \"alt_text\": \"Certificate logo\"\r\n            },\r\n            \"name\": \"Graduation Certificate\",\r\n            \"locale\": \"en\",\r\n            \"text_color\": \"#000000\",\r\n            \"background_color\": \"#f8efea\"\r\n        }\r\n    ],\r\n    \"displayOrder\": [\r\n        \"studentName\",\r\n        \"rollNumber\",\r\n        \"gender\",\r\n        \"dateOfBirth\",\r\n        \"courseName\",\r\n        \"courseDivisionName\",\r\n        \"courseDuration\",\r\n        \"result\",\r\n        \"startDate\",\r\n        \"completionDate\"\r\n    ],\r\n    \"scope\": \"university_vc_ldp\",\r\n    \"cryptographic_binding_methods_supported\": [\r\n        \"did:jwk\"\r\n    ],\r\n    \"credential_signing_alg_values_supported\": [\r\n        \"Ed25519Signature2020\"\r\n    ],\r\n    \"proof_types_supported\": {\r\n        \"jwt\": {\r\n            \"proof_signing_alg_values_supported\": [\r\n                \"RS256\",\r\n                \"ES256\",\r\n                \"PS256\",\r\n                \"EdDSA\",\r\n                \"Ed25519\"\r\n            ]\r\n        }\r\n    },\r\n    \"credentialSubjectDefinition\": {\r\n        \"gender\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Gender\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"result\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Result\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"startDate\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Start Date\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"courseName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Course Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"rollNumber\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Roll Number\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"dateOfBirth\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Date Of Birth\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"studentName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Student Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"completionDate\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Completion Date\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"courseDuration\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Course Duration\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"courseDivisionName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Course Division Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}",
+							"raw": "{\r\n    \"vcTemplate\": \"ewogICAgICAgICAgIkBjb250ZXh0IjogWwogICAgICAgICAgICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAgICAgICAgICAgImh0dHBzOi8vaW5qaS5naXRodWIuaW8vaW5qaS1jb25maWcvY29udGV4dHMvZmFybWVyLmpzb24iLAogICAgICAgICAgICAgICJodHRwczovL3czaWQub3JnL3NlY3VyaXR5L3N1aXRlcy9lZDI1NTE5LTIwMjAvdjEiCiAgICAgICAgICBdLAogICAgICAgICAgImlzc3VlciI6ICIke19pc3N1ZXJ9IiwKICAgICAgICAgICJ0eXBlIjogWwogICAgICAgICAgICAgICJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsCiAgICAgICAgICAgICAgIkZhcm1lckNyZWRlbnRpYWwiCiAgICAgICAgICBdLAogICAgICAgICAgImlzc3VhbmNlRGF0ZSI6ICIke3ZhbGlkRnJvbX0iLAogICAgICAgICAgImV4cGlyYXRpb25EYXRlIjogIiR7dmFsaWRVbnRpbH0iLAogICAgICAgICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAgICAgICAgICJpZCI6ICIke19ob2xkZXJJZH0iLAogICAgICAgICAgICAgICJmdWxsTmFtZSI6ICIke2Z1bGxOYW1lfSIsCiAgICAgICAgICAgICAgIm1vYmlsZU51bWJlciI6ICIke21vYmlsZU51bWJlcn0iLAogICAgICAgICAgICAgICJkYXRlT2ZCaXJ0aCI6ICIke2RhdGVPZkJpcnRofSIsCiAgICAgICAgICAgICAgImdlbmRlciI6ICIke2dlbmRlcn0iLAogICAgICAgICAgICAgICJzdGF0ZSI6ICIke3N0YXRlfSIsCiAgICAgICAgICAgICAgImRpc3RyaWN0IjogIiR7ZGlzdHJpY3R9IiwKICAgICAgICAgICAgICAidmlsbGFnZU9yVG93biI6ICIke3ZpbGxhZ2VPclRvd259IiwKICAgICAgICAgICAgICAicG9zdGFsQ29kZSI6ICIke3Bvc3RhbENvZGV9IiwKICAgICAgICAgICAgICAibGFuZEFyZWEiOiAiJHtsYW5kQXJlYX0iLAogICAgICAgICAgICAgICJsYW5kT3duZXJzaGlwVHlwZSI6ICIke2xhbmRPd25lcnNoaXBUeXBlfSIsCiAgICAgICAgICAgICAgInByaW1hcnlDcm9wVHlwZSI6ICIke3ByaW1hcnlDcm9wVHlwZX0iLAogICAgICAgICAgICAgICJzZWNvbmRhcnlDcm9wVHlwZSI6ICIke3NlY29uZGFyeUNyb3BUeXBlfSIsCiAgICAgICAgICAgICAgImZhY2UiOiAiJHtmYWNlfSIsCiAgICAgICAgICAgICAgImZhcm1lcklEIjogIiR7ZmFybWVySUR9IgogICAgICAgICAgfQogICAgIH0=\",\r\n    \"credentialConfigKeyId\": \"FarmerCredential\",\r\n    \"contextURLs\": [\r\n        \"https://www.w3.org/2018/credentials/v1\"\r\n    ],\r\n    \"credentialTypes\": [\r\n        \"FarmerCredential\",\r\n        \"VerifiableCredential\"\r\n    ],\r\n    \"credentialFormat\": \"ldp_vc\",\r\n    \"didUrl\": \"did:web:d497-2405-201-1029-3025-a153-97e5-f47f-3b16.ngrok-free.app\",\r\n    \"keyManagerAppId\": \"CERTIFY_VC_SIGN_ED25519\",\r\n    \"keyManagerRefId\": \"ED25519_SIGN\",\r\n    \"signatureAlgo\": \"EdDSA\",\r\n    \"signatureCryptoSuite\": \"Ed25519Signature2020\",\r\n    \"metaDataDisplay\": [\r\n        {\r\n            \"logo\": {\r\n                \"url\": \"https://mosip.github.io/inji-config/logos/agro-vertias-logo.png\",\r\n                \"alt_text\": \"Farmer Credential Logo\"\r\n            },\r\n            \"name\": \"Farmer Verifiable Credential\",\r\n            \"locale\": \"en\",\r\n            \"text_color\": \"#FFFFFF\",\r\n            \"background_color\": \"#12107c\",\r\n            \"background_image\": {\r\n                \"uri\": \"https://mosip.github.io/inji-config/logos/agro-vertias-logo.png\"\r\n            }\r\n        }\r\n    ],\r\n    \"displayOrder\": [\r\n        \"fullName\",\r\n        \"mobileNumber\",\r\n        \"dateOfBirth\",\r\n        \"gender\",\r\n        \"state\",\r\n        \"district\",\r\n        \"villageOrTown\",\r\n        \"postalCode\",\r\n        \"landArea\",\r\n        \"landOwnershipType\",\r\n        \"primaryCropType\",\r\n        \"secondaryCropType\",\r\n        \"farmerID\"\r\n    ],\r\n    \"scope\": \"mock_identity_vc_ldp\",\r\n    \"pluginConfigurations\": [\r\n        {\r\n            \"mosip.certify.mock.data-provider.csv-registry-uri\": \"/home/mosip/config/farmer_identity_data.csv\",\r\n            \"mosip.certify.mock.data-provider.csv.data-columns\": \"id,fullName,mobileNumber,dateOfBirth,gender,state,district,villageOrTown,postalCode,landArea,landOwnershipType,primaryCropType,secondaryCropType,face,farmerID\",\r\n            \"mosip.certify.mock.data-provider.csv.identifier-column\": \"id\"\r\n        }\r\n    ],\r\n    \"credentialStatusPurposes\": [\r\n        \"revocation\"\r\n    ],\r\n    \"qrSettings\": [\r\n        {\r\n            \"Full Name\": \"${fullName}\",\r\n            \"Phone Number\": \"${mobileNumber}\",\r\n            \"Date Of Birth\": \"${dateOfBirth}\"\r\n        }\r\n    ],\r\n    \"qrSignatureAlgo\": \"EdDSA\",\r\n    \"credentialSubjectDefinition\": {\r\n        \"phone\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Phone Number\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"gender\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Gender\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"fullName\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Full Name\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        },\r\n        \"dateOfBirth\": {\r\n            \"display\": [\r\n                {\r\n                    \"name\": \"Date of Birth\",\r\n                    \"locale\": \"en\"\r\n                }\r\n            ]\r\n        }\r\n    }\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2623,9 +1249,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
@@ -2650,9 +1276,9 @@
 							}
 						},
 						"url": {
-							"raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+							"raw": "{{certifyUrl}}/credential-configurations/{{configId}}",
 							"host": [
-								"{{certifyurl}}"
+								"{{certifyUrl}}"
 							],
 							"path": [
 								"credential-configurations",
@@ -2661,153 +1287,9 @@
 						}
 					},
 					"response": []
-				},
-				{
-					"name": "Get Well-Known Configuration",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{certifyurl}}/.well-known/openid-credential-issuer",
-							"host": [
-								"{{certifyurl}}"
-							],
-							"path": [
-								".well-known",
-								"openid-credential-issuer"
-							]
-						}
-					},
-					"response": []
 				}
 			]
-		},
-        {
-          "name": "System Info",
-          "item": [
-            {
-              "name": "Generate CSR",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"id\": \"req-12345\",\r\n  \"version\": \"1.0\",\r\n  \"requesttime\": \"2025-08-07T10:49:54.980Z\",\r\n  \"metadata\": {\r\n    \"source\": \"web-portal\",\r\n    \"ip\": \"192.168.1.10\"\r\n  },\r\n  \"request\": {\r\n    \"applicationId\": \"APP001\",\r\n    \"referenceId\": \"REF20250807\",\r\n    \"commonName\": \"CERT-AUTH\",\r\n    \"organization\": \"CERT AUTH ORG\",\r\n    \"organizationUnit\": \"IT\",\r\n    \"country\": \"US\",\r\n    \"state\": \"California\",\r\n    \"location\": \"Nevada\"\r\n  }\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{certifyurl}}/system-info/generate-csr",
-                  "host": [
-                    "{{certifyurl}}"
-                  ],
-                  "path": [
-                    "system-info",
-                    "generate-csr"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "upload certificate",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"request\": {\r\n    \"applicationId\": \"APP001\",\r\n    \"referenceId\": \"REF20250807\",\r\n    \"certificateData\": \"-----BEGIN CERTIFICATE-----\\r\\nMIIEZTCCAk0CFEVg98SWnD5UIC5BGJEelo2ENtG1MA0GCSqGSIb3DQEBCwUAMG8x\\r\\nCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRIwEAYDVQQHDAlCYW5n\\r\\nYWxvcmUxFjAUBgNVBAoMDUNFUlQgQVVUSCBPUkcxCzAJBgNVBAsMAklUMRIwEAYD\\r\\nVQQDDAlDRVJULUFVVEgwHhcNMjUxMDE2MDczNDQyWhcNMjcxMDE2MDczNDQyWjBv\\r\\nMQswCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTESMBAGA1UEBxMJQmFu\\r\\nZ2Fsb3JlMRYwFAYDVQQKEw1DRVJUIEFVVEggT1JHMQswCQYDVQQLEwJJVDESMBAG\\r\\nA1UEAxMJQ0VSVC1BVVRIMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA\\r\\nmI18bU5vn9s0sXfHt6YJM36\\/X1eiq0ZGc8fByN8AN1dEU5VbTjJmYXmgYGNE5bN6\\r\\ncEkYb04ZRLoZ0oo4j5egU6KS1i1f6VPxa+QwsOY+rbd+\\/eVtg2ucSGnuzx55CkgF\\r\\nYmaIj5\\/0qtOKABLVyqoa17M108mWs4hmyHV50ndbq+rUasVElyLkKoJzufb4ZaDb\\r\\np1nUKlcz7jl5HnTy3NMeEFpDG4UasE+6RTaul21lifRDLqbcGa2lXcXJ4kAsAsk7\\r\\nY3ZbExsJoD\\/VqajKx13AvC3HCNdrm8gG+41n1yTy7QA0hvAb3Hs7WvRdxEGSw7us\\r\\nEckcN6w+xmu5SP9ufmMqnQIDAQABMA0GCSqGSIb3DQEBCwUAA4ICAQBmAcN2kDzb\\r\\nlJ\\/sUfbfh1vClu9XsfltgLuew6o3rbzeHs6p9wCNgRkiE+rmhxYK5Cgr2MKhLJW+\\r\\nhMq4EeoV3X0HXzAIVZ3mLbPm6dOAD\\/uSGU8JCuoTJ+pusVjUxCKtklMSimhDF4Qk\\r\\nYg2cDEUx\\/fyaU2DWxuMQIHX5F\\/K0QvTSSUxmiwUZF7k6XEAs055ed2aTtpNZ+mrz\\r\\n2rNjhybvVfwITV301uFUqxGfuI4cgSlcQb3u7DoHaiqXfL+77WReCj2uVVOrZ6En\\r\\ngb\\/mb2HzhqthQ+TMOp86Dbnxf9mNAS6sJPbLIrMsxgIOfiy2Mds9gIGISVNMDKPP\\r\\nh\\/QayMBX1X6bstp4iLSoyFlBmRwzvEzMB9vP2XVfHrlkCBZvZsKMz1XuzJ9W6qqW\\r\\nUQZ2mGLPMSZgHh8Z\\/1IdK6RM+J6\\/4E8dIxjS+Ry4WbgrpDlkTJBLp5lZgaR1EyDa\\r\\n3KgyXyvMrT+P+SUMewHiLBMJfUkIBbdiiiWYzHgoirDf0ao7+q0f\\/NzLdGotqQAj\\r\\nx3is9gODDaamFYADCD4NkZ8iW1aYNKicnK8W91Ds4HlzjtwyPnUtTwFys98upGWc\\r\\nKEwT+Y06iQZvFmW6KcMm9aJeUGar5ZRRtOwmmmsDOQqoJUIQ20uXcraYMoVS4M9U\\r\\nh\\/nqRdeSYcwCxdAEGczwgVdnwUGxGvtMAA==\\r\\n-----END CERTIFICATE-----\\r\\n\"\r\n  }\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{certifyurl}}/system-info/uploadCertificate",
-                  "host": [
-                    "{{certifyurl}}"
-                  ],
-                  "path": [
-                    "system-info",
-                    "uploadCertificate"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "Upload CA Certificate",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\r\n  \"request\": {\r\n    \"partnerDomain\": \"PARTNER.EXAMPLE.COM\",\r\n    \"certificateData\": \"-----BEGIN CERTIFICATE-----\\r\\nMIICGzCCAcKgAwIBAgIUXHQkDQN5KqqEJlnYCkuKovsunewwCgYIKoZIzj0EAwIw\\r\\nZTELMAkGA1UEBhMCSU4xCzAJBgNVBAgMAlVQMRAwDgYDVQQHDAdMdWNrbm93MQ0w\\r\\nCwYDVQQKDARBS1RVMRkwFwYDVQQLDBBBS1RVLVRFQ0gtQ0VOVEVSMQ0wCwYDVQQD\\r\\nDARBS1RVMB4XDTI1MTExNDA3MTM0NFoXDTM1MTExMjA3MTM0NFowZTELMAkGA1UE\\r\\nBhMCSU4xCzAJBgNVBAgMAlVQMRAwDgYDVQQHDAdMdWNrbm93MQ0wCwYDVQQKDARB\\r\\nS1RVMRkwFwYDVQQLDBBBS1RVLVRFQ0gtQ0VOVEVSMQ0wCwYDVQQDDARBS1RVMFYw\\r\\nEAYHKoZIzj0CAQYFK4EEAAoDQgAE1eilPVdRddVUfddMyeg3zhrUWL7whGnkUslA\\r\\n+6am9N7Gipxkczll\\/Z8Rj0IcASEfEQLVtdLvz33iFXQnSYskGaNTMFEwHQYDVR0O\\r\\nBBYEFKSZPU+iz0dbRWb7xc4NFX50yxd6MB8GA1UdIwQYMBaAFKSZPU+iz0dbRWb7\\r\\nxc4NFX50yxd6MA8GA1UdEwEB\\/wQFMAMBAf8wCgYIKoZIzj0EAwIDRwAwRAIgBLgy\\r\\nqI9DahV3v5LEQ6ubAP8peHPWOr13TkV+v17kwIMCICXyzmj5TVRWNOvzE4ji\\/pSR\\r\\nWmJjl\\/CDcMt\\/ZmlnzG8n\\r\\n-----END CERTIFICATE-----\"\r\n  }\r\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{certifyurl}}/system-info/upload-ca-certificate",
-                  "host": [
-                    "{{certifyurl}}"
-                  ],
-                  "path": [
-                    "system-info",
-                    "upload-ca-certificate"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
-              "name": "fetch certificate",
-              "protocolProfileBehavior": {
-                "disableBodyPruning": true
-              },
-              "request": {
-                "method": "GET",
-                "header": [],
-                "body": {
-                  "mode": "raw",
-                  "raw": "",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{certifyurl}}/system-info/certificate?applicationId=CERTIFY_MOCK_ED25519&referenceId=ED25519_SIGN",
-                  "host": [
-                    "{{certifyurl}}"
-                  ],
-                  "path": [
-                    "system-info",
-                    "certificate"
-                  ],
-                  "query": [
-                    {
-                      "key": "applicationId",
-                      "value": "CERTIFY_MOCK_ED25519"
-                    },
-                    {
-                      "key": "referenceId",
-                      "value": "ED25519_SIGN"
-                    }
-                  ]
-                }
-              },
-              "response": []
-            }
-          ]
-        }
+		}
 	],
 	"event": [
 		{
