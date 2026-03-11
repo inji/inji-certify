@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
@@ -68,8 +67,6 @@ public class InjiTestRunner {
 	 * @param arg
 	 */
 	public static void main(String[] arg) {
-		
-		
 
 		try {
 			LOGGER.info("** ------------- API Test Rig Run Started --------------------------------------------- **");
@@ -89,10 +86,8 @@ public class InjiTestRunner {
 			GlobalMethods.setModuleNameAndReCompilePattern(InjiCertifyConfigManager.getproperty("moduleNamePattern"));
 			GlobalMethods.reportCaptchaStatus(GlobalConstants.CAPTCHA_ENABLED, false);
 			setLogLevels();
-			
 
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
-
 
 			HealthChecker healthcheck = new HealthChecker();
 			healthcheck.setCurrentRunningModule(BaseTestCase.currentModule);
@@ -150,10 +145,15 @@ public class InjiTestRunner {
 		OTPListener.bTerminate = true;
 
 		HealthChecker.bTerminate = true;
-		
+
+		// Used for generating the test case interdependency JSON file
+
 		if ("yes".equalsIgnoreCase(generateDependency)) {
 			LOGGER.info("Generating test case inter-dependencies");
-			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
+			AdminTestUtil
+					.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
+		} else {
+			LOGGER.info("Skipping dependency generation");
 		}
 
 		System.exit(0);
