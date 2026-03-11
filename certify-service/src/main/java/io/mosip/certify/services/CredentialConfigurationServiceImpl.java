@@ -84,7 +84,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
 
         credentialConfig.setCryptographicBindingMethodsSupported(cryptographicBindingMethodsSupportedMap.get(credentialConfig.getCredentialFormat()));
-        credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
+        credentialConfig.setCredentialSigningAlgValuesSupported(
+                credentialConfig.getSignatureCryptoSuite()!=null
+                        ? Collections.singletonList(credentialConfig.getSignatureCryptoSuite())
+                        : Collections.emptyList());
         credentialConfig.setProofTypesSupported(proofTypesSupported);
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
@@ -107,7 +110,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
 
         credentialConfig.setCryptographicBindingMethodsSupported(cryptographicBindingMethodsSupportedMap.get(credentialConfig.getCredentialFormat()));
-        credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
+        credentialConfig.setCredentialSigningAlgValuesSupported(
+                credentialConfig.getSignatureCryptoSuite()!=null
+                        ? Collections.singletonList(credentialConfig.getSignatureCryptoSuite())
+                        : Collections.emptyList());
+
         credentialConfig.setProofTypesSupported(proofTypesSupported);
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
@@ -363,6 +370,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         validateCredentialConfiguration(credentialConfigMapper.toDto(credentialConfig), false);
 
+        credentialConfig.setCredentialSigningAlgValuesSupported(
+                credentialConfig.getSignatureCryptoSuite()!=null
+                        ? Collections.singletonList(credentialConfig.getSignatureCryptoSuite())
+                        : Collections.emptyList());
+
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
         log.info("Updated credential configuration: {}", savedConfig.getConfigId());
 
@@ -387,6 +399,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigMapper.updateEntityFromDtoV2(credentialConfigurationDTO, credentialConfig);
 
         validateCredentialConfigurationV2(credentialConfigMapper.toDtoV2(credentialConfig), false);
+
+        credentialConfig.setCredentialSigningAlgValuesSupported(
+                credentialConfig.getSignatureCryptoSuite()!=null
+                        ? Collections.singletonList(credentialConfig.getSignatureCryptoSuite())
+                        : Collections.emptyList());
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
         log.info("Updated credential configuration: {}", savedConfig.getConfigId());
