@@ -1,5 +1,6 @@
 package io.mosip.certify.core.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +12,7 @@ public class UpdateCredentialStatusRequest {
     private String credentialId;
 
     @NotNull
+    @Valid
     private CredentialStatusDto credentialStatus;
 
     @NotNull

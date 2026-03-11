@@ -54,10 +54,20 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
         CredentialStatusDetail credentialStatusDetail = ledger.getCredentialStatusDetails().getFirst();
 
+        if (request.getCredentialStatus() != null &&
+                request.getCredentialStatus().getStatusListIndex() != null &&
+                !request.getCredentialStatus().getStatusListIndex()
+                        .equals(credentialStatusDetail.getStatusListIndex())) {
+            throw new CertifyException(
+                    ErrorConstants.STATUS_LIST_INDEX_OUT_OF_RANGE,
+                    "Requested statusListIndex does not match the issued credential."
+            );
+        }
+
         StatusListCredential statusListCredential = statusListCredentialRepository.findById(credentialStatusDetail.getStatusListCredentialId())
                 .orElseThrow(() -> new CertifyException(ErrorConstants.STATUS_LIST_NOT_FOUND, "Status List Credential not found for ID: " + credentialStatusDetail.getStatusListCredentialId()));
 
-        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex(), statusListCredential);
+        validateStatusListIndex(credentialStatusDetail.getStatusListIndex(), statusListCredential);
 
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
         transaction.setCredentialId(ledger.getCredentialId());
@@ -82,10 +92,10 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Override
     public CredentialStatusResponse updateCredentialStatusV2(UpdateCredentialStatusRequestV2 request) {
-        String resolvedPurpose = null;
-        if (request.getCredentialStatus() != null) {
-            resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus().getStatusPurpose());
+        if (request.getCredentialStatus() == null) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "credentialStatus must not be null");
         }
+        String resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus().getStatusPurpose());
 
         String statusListCredentialId = request.getCredentialStatus().getStatusListCredential();
         Long statusListIndex = request.getCredentialStatus().getStatusListIndex();
@@ -119,14 +129,18 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
     }
 
     private String resolveAndValidateStatusPurpose(String rawPurpose) {
-        if(rawPurpose == null || rawPurpose.trim().isEmpty()) {
+        if(rawPurpose == null) {
             return Constants.DEFAULT_STATUS_PURPOSE;
         }
-        String statusPurposeValue = rawPurpose.trim().toLowerCase();
-        if(!Constants.DEFAULT_STATUS_PURPOSE.equalsIgnoreCase(statusPurposeValue)) {
-            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "statusPurpose must be 'revocation'");
+        String statusPurposeValue = rawPurpose.trim();
+        if(statusPurposeValue.isEmpty()) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "statusPurpose must not be empty");
         }
-        return statusPurposeValue;
+        boolean supported = allowedCredentialStatusPurposes != null && allowedCredentialStatusPurposes.stream().anyMatch(p -> p.equalsIgnoreCase(statusPurposeValue));
+        if(!supported) {
+            throw new CertifyException((ErrorConstants.INVALID_STATUS_PURPOSE, "Unsupported statusPurpose: " + statusPurposeValue);
+        }
+        return statusPurposeValue.toLowerCase();
     }
 
     private void validateStatusListIndex(Long statusListIndex, StatusListCredential statusListCredential) {
