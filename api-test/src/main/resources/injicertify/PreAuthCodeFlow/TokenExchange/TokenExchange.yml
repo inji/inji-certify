@@ -19,7 +19,7 @@ TokenExchange:
   InjiCertify_TokenExchange_preauthcode_WithoutTxCode_Smoke_sid:
     endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
     uniqueIdentifier: TC_preauth_TokenExchange_02
-    description: Exchange pre-authorized code with without tx_code
+    description: Exchange pre-authorized code without tx_code
     role: noauth
     restMethod: post
     checkErrorsOnlyInResponse: true
