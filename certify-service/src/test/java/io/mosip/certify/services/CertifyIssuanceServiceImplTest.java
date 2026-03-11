@@ -1,7 +1,6 @@
 package io.mosip.certify.services;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -227,8 +226,13 @@ public class CertifyIssuanceServiceImplTest {
         req.setCredential_definition(requestCredDef);
 
         CredentialProof proof = new CredentialProof();
-        proof.setProof_type("openid4vci-proof+jwt");
+        proof.setProof_type("jwt");
+        proof.setJwt(createValidJWT(TEST_CNONCE));
+        req.setProof(proof);
+        return req;
+    }
 
+    private String createValidJWT(String nonce) {
         RSAKeyGenerator rsaKeyGenerator = new RSAKeyGenerator(2048);
         RSAKey r;
         try {
@@ -241,7 +245,7 @@ public class CertifyIssuanceServiceImplTest {
                 r.toPublicJWK(), null, null, null, null, null, null, null);
         JWTClaimsSet proofJwtBody;
         try {
-            Map<String, Object> pj = Map.of("aud", "fake-aud", "nonce", TEST_CNONCE, "iss", "test-client");
+            Map<String, Object> pj = Map.of("aud", "fake-aud", "nonce", nonce, "iss", "test-client");
             proofJwtBody = JWTClaimsSet.parse(pj);
         } catch (ParseException e) {
             fail("failed to create a JWTClaimsSet");
@@ -254,9 +258,7 @@ public class CertifyIssuanceServiceImplTest {
         } catch (JOSEException e) {
             fail("failed to create a signer");
         }
-        proof.setJwt(requestProofJWT.serialize());
-        req.setProof(proof);
-        return req;
+        return requestProofJWT.serialize();
     }
 
     @Test
@@ -343,6 +345,11 @@ public class CertifyIssuanceServiceImplTest {
     @Test
     public void getCredential_ExpiredNonce_ThrowsInvalidNonceException() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        CredentialProof proof = new CredentialProof();
+        proof.setProof_type("jwt");
+        proof.setJwt(createValidJWT("expired-cnonce"));
+        request.setProof(proof);
+
         VCIssuanceTransaction expiredTransaction = new VCIssuanceTransaction();
         expiredTransaction.setCNonce("expired-cnonce");
         expiredTransaction.setCNonceExpireSeconds(10);
@@ -355,11 +362,13 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.setVCITransaction(eq(TEST_ACCESS_TOKEN_HASH), any(VCIssuanceTransaction.class)))
                 .thenAnswer(invocation -> invocation.getArgument(1));
 
-        assertThrows(InvalidNonceException.class, () -> issuanceService.getCredential(request));
+        InvalidNonceException invalidNonceException = assertThrows(InvalidNonceException.class, () -> issuanceService.getCredential(request));
+        assertEquals("new-generated-cnonce", invalidNonceException.getClientNonce());
+        assertEquals("invalid_proof", invalidNonceException.getErrorCode());
     }
 
     @Test
-    public void getCredential_NullTransactionForCNonceAndNoCNonceInToken_ThrowsInvalidNonceException() {
+    public void getCredential_NonceInProofJwtButNotInAccessToken_ThrowsCertifyException() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         Map<String, Object> claimsWithoutCNonce = new HashMap<>(claimsFromAccessToken);
         claimsWithoutCNonce.remove(Constants.C_NONCE); // Ensure c_nonce isn't in access token claims
@@ -368,12 +377,9 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsWithoutCNonce);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(null);
-        when(securityHelperService.generateSecureRandomString(anyInt())).thenReturn("new-generated-cnonce");
-        when(vciCacheService.setVCITransaction(eq(TEST_ACCESS_TOKEN_HASH), any(VCIssuanceTransaction.class)))
-                .thenAnswer(invocation -> invocation.getArgument(1));
 
-        assertThrows(InvalidNonceException.class, () -> issuanceService.getCredential(request));
+        CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals(VCIErrorConstants.INVALID_PROOF, certifyException.getErrorCode());
     }
 
     @Test

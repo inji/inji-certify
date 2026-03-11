@@ -80,10 +80,12 @@ import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.testrunner.OTPListener;
 import io.mosip.testrig.apirig.utils.AdminTestUtil;
+import io.mosip.testrig.apirig.utils.CryptoCoreUtil;
 import io.mosip.testrig.apirig.utils.GlobalConstants;
 import io.mosip.testrig.apirig.utils.GlobalMethods;
 import io.mosip.testrig.apirig.utils.JWKKeyUtil;
 import io.mosip.testrig.apirig.utils.KeyMgrUtility;
+import io.mosip.testrig.apirig.utils.NotificationListener;
 import io.mosip.testrig.apirig.utils.RestClient;
 import io.mosip.testrig.apirig.utils.SkipTestCaseHandler;
 import io.restassured.response.Response;
@@ -173,7 +175,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 					emailId = removeLeadingPlusSigns(emailId);
 				}
 				logger.info(emailId);
-				otp = OTPListener.getOtp(emailId);
+				otp = NotificationListener.getOtp(emailId);
 				request.put("otp", otp);
 				inputJson = request.toString();
 				return inputJson;
@@ -189,7 +191,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 						emailId = removeLeadingPlusSigns(emailId);
 					}
 					logger.info(emailId);
-					otp = OTPListener.getOtp(emailId);
+					otp = NotificationListener.getOtp(emailId);
 					request.getJSONObject(GlobalConstants.REQUEST).put("otp", otp);
 					inputJson = request.toString();
 					return inputJson;
@@ -212,7 +214,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 								emailId = removeLeadingPlusSigns(emailId);
 							}
 							logger.info(emailId);
-							otp = OTPListener.getOtp(emailId);
+							otp = NotificationListener.getOtp(emailId);
 							request.getJSONObject(GlobalConstants.REQUEST).getJSONArray(GlobalConstants.CHALLENGELIST)
 									.getJSONObject(0).put(GlobalConstants.CHALLENGE, otp);
 							inputJson = request.toString();
@@ -585,7 +587,8 @@ public class InjiCertifyUtil extends AdminTestUtil {
 	protected String signCsrAndGenerateCert(String organization, String csr, String algorithm, String filePrepend)
 			throws OperatorCreationException, CertificateException, IOException, KeyStoreException,
 			NoSuchAlgorithmException, UnrecoverableEntryException {
-		KeyMgrUtility keyMgrUtility = new KeyMgrUtility();
+		CryptoCoreUtil cryptoCoreUtil = new CryptoCoreUtil();
+		KeyMgrUtility keyMgrUtility = new KeyMgrUtility(cryptoCoreUtil);
 
 		String dirPath = keyMgrUtility.getKeysDirPath(null, BaseTestCase.certsForModule,
 				ApplnURI.replace("https://", ""));

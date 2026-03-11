@@ -35,6 +35,4 @@ public interface ProofValidator {
      * @return public key as did:jwk equivalent
      */
     String getKeyMaterial(CredentialProof credentialProof);
-
-    void validateCNonce(String cNonce, int cNonceExpireSeconds, ParsedAccessToken parsedAccessToken, CredentialRequest credentialRequest);
 }

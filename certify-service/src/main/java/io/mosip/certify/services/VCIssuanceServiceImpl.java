@@ -97,7 +97,8 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         }
 
         ProofValidator proofValidator = proofValidatorFactory.getProofValidator(credentialRequest.getProof().getProof_type());
-        String validCNonce = VCIssuanceUtil.getValidClientNonce(vciCacheService, parsedAccessToken, cNonceExpireSeconds, securityHelperService, log);
+        String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, parsedAccessToken,
+                cNonceExpireSeconds, securityHelperService, credentialRequest.getProof(), log);
         if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
                 credentialRequest.getProof(), credentialMetadata.getProofTypesSupported())) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");

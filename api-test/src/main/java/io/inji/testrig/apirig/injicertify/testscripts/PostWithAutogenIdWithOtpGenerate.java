@@ -19,6 +19,7 @@ import org.testng.annotations.Test;
 import org.testng.internal.BaseTestMethod;
 import org.testng.internal.TestResult;
 
+import com.amazonaws.services.budgets.model.Notification;
 import com.github.openjson.JSONObject;
 
 import io.inji.testrig.apirig.injicertify.utils.InjiCertifyConfigManager;
@@ -30,6 +31,7 @@ import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.utils.AdminTestException;
 import io.mosip.testrig.apirig.utils.AuthenticationTestException;
 import io.mosip.testrig.apirig.utils.GlobalConstants;
+import io.mosip.testrig.apirig.utils.NotificationListener;
 import io.mosip.testrig.apirig.utils.OutputValidationUtil;
 import io.mosip.testrig.apirig.utils.ReportUtil;
 import io.mosip.testrig.apirig.utils.SecurityXSSException;
@@ -122,6 +124,7 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 		int currLoopCount = 0;
 		while (currLoopCount < maxLoopCount) {
 			input = inputStringKeyWordHandeler(input, testCaseName);
+			NotificationListener.markRequestStart();
 			if (testCaseName.contains(GlobalConstants.ESIGNET_)) {
 				if (InjiCertifyConfigManager.isInServiceNotDeployedList(GlobalConstants.ESIGNET)) {
 					throw new SkipException("esignet is not deployed hence skipping the testcase");
@@ -230,6 +233,7 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 	@AfterMethod(alwaysRun = true)
 	public void setResultTestName(ITestResult result) {
 		result.setAttribute("TestCaseName", testCaseName);
+		NotificationListener.markRequestRemove();
 	}
 
 	@AfterClass(alwaysRun = true)
