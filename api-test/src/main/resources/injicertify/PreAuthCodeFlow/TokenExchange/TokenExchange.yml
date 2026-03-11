@@ -104,7 +104,7 @@ TokenExchange:
   InjiCertify_TokenExchange_preauthcode_withoutGrantType_Neg:
     endPoint: $INJICERTIFYBASEURL$/v1/certify/oauth/token
     uniqueIdentifier: TC_preauth_TokenExchange_Neg_07
-    description: Token exchange with without grant type
+    description: Token exchange without grant type
     role: noauth
     restMethod: post
     inputTemplate: injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange
