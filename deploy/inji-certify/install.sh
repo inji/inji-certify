@@ -7,13 +7,13 @@ if [ $# -ge 1 ]; then
 fi
 
 SOFTHSM_NS=softhsm
-SOFTHSM_CHART_VERSION=1.3.0-beta.2
+SOFTHSM_CHART_VERSION=1.3.0
 
 echo "Create $SOFTHSM_NS namespace"
 kubectl create ns $SOFTHSM_NS
 
 NS=inji-certify
-CHART_VERSION=0.0.1-develop
+CHART_VERSION=0.14.0-develop
 
 echo "Create $NS namespace"
 kubectl create ns $NS
@@ -21,6 +21,7 @@ kubectl create ns $NS
 echo "Labeling namespace with Istio injection"
 kubectl label ns $SOFTHSM_NS istio-injection=enabled --overwrite
 helm repo add mosip https://mosip.github.io/mosip-helm
+helm repo add inji https://inji.github.io/helm
 helm repo update
 
 echo "Installing Softhsm for certify"
@@ -30,7 +31,6 @@ echo "Installed Softhsm for certify"
 function installing_inji-certify() {
   echo "Copy configmaps"
   COPY_UTIL=../copy_cm_func.sh
-  $COPY_UTIL configmap artifactory-share artifactory $NS
   $COPY_UTIL configmap config-server-share config-server $NS
   $COPY_UTIL configmap softhsm-certify-share softhsm $NS
 
@@ -223,25 +223,10 @@ function installing_inji-certify() {
   echo "Patching configmap 'config-server-share' with active_profile_env = $PROFILE_VALUE"
   kubectl -n $NS patch configmap config-server-share --type merge -p "{\"data\": {\"active_profile_env\": \"$PROFILE_VALUE\"}}"
 
-  echo "Do you have public domain & valid SSL? (Y/n) "
-  echo "Y: if you have public domain & valid ssl certificate"
-  echo "n: If you don't have a public domain and a valid SSL certificate. Note: It is recommended to use this option only in development environments."
-  read -p "" flag
-
-  if [ -z "$flag" ]; then
-    echo "No input provided; exiting."
-    exit 1
-  fi
-
-  ENABLE_INSECURE=""
-  if [ "$flag" = "n" ]; then
-    ENABLE_INSECURE="--set enable_insecure=true"
-  fi
-
   echo "Installing inji-certify service..."
-  helm -n $NS install inji-certify mosip/inji-certify \
+  helm -n $NS install inji-certify inji/inji-certify \
     --set istio.hosts[0]=$INJICERTIFY_HOST \
-    --version $CHART_VERSION $ENABLE_INSECURE
+    --version $CHART_VERSION
 
   kubectl -n $NS get deploy -o name | xargs -n1 -t kubectl -n $NS rollout status
   echo "Installed inji-certify service"
