@@ -14,6 +14,14 @@ modules:
       tag: develop
       pullPolicy: Always
 
+extraEnvVarsCM:
+  - inji-stack-config
+  - s3
+  - keycloak-host
+  - db
+  - apitestrig
+  - config-server-share
+
 apitestrig:
   configmaps:
     s3:
