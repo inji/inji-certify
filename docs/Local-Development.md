@@ -38,7 +38,7 @@ These steps prepare your custom plugin JAR file.
 Get the source code for the plugins.
 
 ```bash
-git clone https://github.com/mosip/digital-credential-plugins
+git clone https://github.com/inji/digital-credential-plugins
 ```
 
 ### 1.2. Using an Existing Plugin
@@ -46,7 +46,7 @@ Currently, certify supports 2 types of plugins in `DataProvider` mode.
 
 ### 1.2.1. Mock CSV Data Provider Plugin
 This plugin reads user data from a CSV file.
-- **Location:** [MockCSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/master/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java)
+- **Location:** [MockCSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/master/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java)
 
 ### Configurations required:
 ```properties
@@ -82,7 +82,7 @@ mosip.certify.mock.data-provider.csv.data-columns=id,name,age
 
 ### 1.2.2. Postgres Data Provider Plugin
 This plugin fetches user data from a PostgreSQL database.
-- **Location:** [PostgresDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/tree/master/postgres-dataprovider-plugin)
+- **Location:** [PostgresDataProviderPlugin](https://github.com/inji/digital-credential-plugins/tree/master/postgres-dataprovider-plugin)
 
 ### Configurations required:
 ```properties
@@ -180,7 +180,7 @@ mosip.certify.oauth.interactive-authorization-endpoint=${mosip.certify.authoriza
 ## Locally setting up CSV Plugin
 
 
-The above README can be used to setup the [CSV Plugin](https://github.com/mosip/digital-credential-plugins/tree/develop/mock-certify-plugin) and it'll help showcase how one can setup a custom authored plugin for local testing.
+The above README can be used to setup the [CSV Plugin](https://github.com/inji/digital-credential-plugins/tree/develop/mock-certify-plugin) and it'll help showcase how one can setup a custom authored plugin for local testing.
 
 Pre-requisites:
 

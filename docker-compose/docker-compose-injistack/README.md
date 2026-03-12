@@ -11,8 +11,8 @@ Expected time to setup: ~10 minutes
 
 You have two options for the certify plugin which gives Verifiable Credentials of different types
 
-1. Farmer Credential: returns an JSON-LD VC and is implemented using the [CSV Plugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
-2. Mobile Driving License Credential: returns an mDL VC and is implemented using the [mock-mdl Plugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+1. Farmer Credential: returns an JSON-LD VC and is implemented using the [CSV Plugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
+2. Mobile Driving License Credential: returns an mDL VC and is implemented using the [mock-mdl Plugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
 
 
 ## Prerequisites
@@ -69,7 +69,7 @@ Plugins available in docker image can still be overridden by following below ste
 - Supported versions: 0.6.0 and above
 - Download the plugin JAR from:
   ```
-  https://repo1.maven.org/maven2/io/mosip/certify/
+  https://repo1.maven.org/maven2/io/inji/certify/
   ```
 - Create `loader_path/certify/` directory under `docker-compose-injistack/` if it doesn't exist.
 - Place the downloaded JAR in `loader_path/certify/`
@@ -96,7 +96,7 @@ public interface VCIssuancePlugin {
 - Place the resultant JAR in `loader_path/certify/`
 - uncomment volume mount for certify-service in `docker-compose.yaml`
 
-Reference Implementation: [CSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
 
 ## Certificate Setup
 
@@ -139,7 +139,7 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 - **Note**: For updating the default vc type in this setup, please refer to the insert query present in the [certify_init.sql](./certify_init.sql) file for `credential_config`.
 
 
-- (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script, please read the [plugin README](https://github.com/mosip/digital-credential-plugins/tree/release-0.5.x/mock-certify-plugin) for the same.
+- (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script, please read the [plugin README](https://github.com/inji/digital-credential-plugins/tree/release-0.5.x/mock-certify-plugin) for the same.
 
 
 ## Other configurations
@@ -237,7 +237,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 - First is `Continue as guest` which does not require any auth setup and works out of the box. This is the recommended option for quick testing.
 - Second is `Sign in with Google` which requires Google OAuth credentials to be setup.
 ## To configure your own Google Auth Credentials:
-- Refer to the steps documented in the `mimoto` for the same. [GOOGLE_AUTH_SETUP](https://github.com/mosip/mimoto/blob/master/docker-compose/README.md#how-to-create-google-client-credentials)
+- Refer to the steps documented in the `mimoto` for the same. [GOOGLE_AUTH_SETUP](https://github.com/inji/mimoto/blob/master/docker-compose/README.md#how-to-create-google-client-credentials)
 - Replace the placeholders under the `mimoto-service` in the `docker-compose.yml` file with the generated credentials:
 
    ```yaml
@@ -248,7 +248,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 ## Using the Postgres Data Provider plugin
 - If you wish to use the Postgres Data Provider plugin instead of the Mock CSV plugin, please refer to the steps mentioned in [Setup-Postgres-Plugin](./Add-New-Usecase-Using-PostgresPlugin.md) to setup a new usecase using the Postgres Data Provider plugin.
-- Also refer to the postgres-data-provider-plugin implementation documentation.[Postgres-Plugin-Document](https://github.com/mosip/digital-credential-plugins/blob/master/postgres-dataprovider-plugin/README.md)
+- Also refer to the postgres-data-provider-plugin implementation documentation.[Postgres-Plugin-Document](https://github.com/inji/digital-credential-plugins/blob/master/postgres-dataprovider-plugin/README.md)
 
 ## Troubleshooting
 
