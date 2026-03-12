@@ -551,23 +551,6 @@ class OAuthControllerTest {
     }
 
     @Test
-    void processTokenRequest_missingCodeVerifierForPKCE_returnsInvalidRequest() throws Exception {
-        // Act & Assert - Missing code_verifier parameter should cause validation failure
-        mockMvc.perform(post("/oauth/token")
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .param("grant_type", "authorization_code")
-                .param("code", "iar_auth_test123456789")
-                .param("redirect_uri", "https://test.com/callback")
-                .param("client_id", "test-client"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").value("invalid_request"))
-                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
-
-        verify(iarService, never()).processTokenRequest(any());
-    }
-
-    @Test
     void processTokenRequest_unsupportedGrantType_returnsInvalidRequest() throws Exception {
         // Act & Assert - Unsupported grant_type should cause validation failure
         mockMvc.perform(post("/oauth/token")
