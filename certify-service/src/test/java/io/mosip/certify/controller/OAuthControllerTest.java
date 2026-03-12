@@ -469,9 +469,9 @@ class OAuthControllerTest {
                 .param("code_verifier", "test-verifier"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code is required"));
 
-        // The service should not be called if validation fails
         verify(iarService, never()).processTokenRequest(any());
     }
 
@@ -486,9 +486,9 @@ class OAuthControllerTest {
                 .param("client_id", "test-client"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
 
-        // The service should not be called if validation fails
         verify(iarService, never()).processTokenRequest(any());
     }
 
@@ -504,9 +504,9 @@ class OAuthControllerTest {
                 .param("code_verifier", "test-verifier"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code is required"));
 
-        // The service should not be called if validation fails
         verify(iarService, never()).processTokenRequest(any());
     }
 
@@ -522,9 +522,9 @@ class OAuthControllerTest {
                 .param("code_verifier", ""))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
 
-        // The service should not be called if validation fails
         verify(iarService, never()).processTokenRequest(any());
     }
 
@@ -561,9 +561,44 @@ class OAuthControllerTest {
                 .param("client_id", "test-client"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.error").exists());
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
 
-        // The service should not be called if validation fails
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_unsupportedGrantType_returnsInvalidRequest() throws Exception {
+        // Act & Assert - Unsupported grant_type should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "unsupported_grant_type")
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("Unsupported or invalid grant_type"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_missingGrantType_returnsInvalidRequest() throws Exception {
+        // Act & Assert - Missing grant_type should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("grant_type is required"));
+
         verify(iarService, never()).processTokenRequest(any());
     }
 

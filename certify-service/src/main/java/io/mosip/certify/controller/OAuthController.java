@@ -124,10 +124,10 @@ public class OAuthController {
                 tokenRequest.setTx_code(params.get("tx_code"));
                 response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
             } else if (IarConstants.GRANT_TYPE_AUTHORIZATION_CODE.equals(grantType)) {
-                if (StringUtils.isEmpty(params.get("code"))) {
+                if (StringUtils.isBlank(params.get("code"))) {
                     throw new CertifyException("invalid_request", "code is required");
                 }
-                if (StringUtils.isEmpty(params.get("code_verifier"))) {
+                if (StringUtils.isBlank(params.get("code_verifier"))) {
                     throw new CertifyException("invalid_request", "code_verifier is required");
                 }
                 // Handle authorization_code grant type via IarService
@@ -138,7 +138,7 @@ public class OAuthController {
                 response = iarService.processTokenRequest(tokenRequest);
             } else {
 
-                throw new CertifyException("invalid_request", "Unsupported grant_type: " + grantType);
+                throw new CertifyException("invalid_request", "Unsupported or invalid grant_type");
             }
 
             log.info("Token issued successfully");
