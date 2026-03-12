@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "e9f6e64a-16b3-42be-abe0-b71bb666e334",
+		"_postman_id": "edd685ae-f66f-425a-8859-ef319d8d5443",
 		"name": "certify- Mock IDA",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "1282483"
@@ -1001,101 +1001,6 @@
 							"path": [
 								"issuance",
 								"vd12",
-								"credential"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get Mdoc Credential",
-					"event": [
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
-									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");",
-									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
-									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
-									"jwkPublicKey[\"alg\"] = \"ES256\";",
-									"jwkPublicKey[\"use\"] = \"sig\";",
-									"",
-									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
-									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
-									"",
-									"// Set headers for JWT",
-									"var header = {\t",
-									"\t\"alg\": \"ES256\",",
-									"    \"typ\" : \"openid4vci-proof+jwt\",",
-									"    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
-									"};",
-									"",
-									"",
-									"console.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));",
-									"",
-									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
-									"    // \"aud\" : 'http://localhost:8090',",
-									"    \"aud\": pm.environment.get(\"audUrl\"),",
-									"\t\"nonce\": pm.environment.get('c_nonce'),",
-									"    \"iss\" : pm.environment.get('clientId'),",
-									"}, header, exp=600, alg = \"ES256\")",
-									"",
-									"console.log(\"modified aud\")",
-									"",
-									"console.log(\"proof - \",signed_jwt)",
-									"",
-									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
-									""
-								],
-								"type": "text/javascript"
-							}
-						},
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Validate c_nonce\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    if(jsonData.c_nonce != null) {",
-									"        pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
-									"        console.log(\"setting c_nonce\");",
-									"    }    ",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{access_token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{certifyUrl}}/issuance/credential",
-							"host": [
-								"{{certifyUrl}}"
-							],
-							"path": [
-								"issuance",
 								"credential"
 							]
 						}

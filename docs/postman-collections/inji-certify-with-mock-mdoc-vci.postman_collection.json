@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "875aac1a-14c7-438c-997f-e903df32a9cd",
+		"_postman_id": "37eb73f6-3f54-4fee-a226-49aa46665379",
 		"name": "Inji Certify Mock MDL VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "1282483"
@@ -181,28 +181,28 @@
 					"response": []
 				},
 				{
-					"name": "Authorization Code",
+					"name": "Authenticate User",
 					"event": [
 						{
 							"listen": "test",
 							"script": {
 								"exec": [
 									"var token = pm.cookies.get(\"XSRF-TOKEN\")",
-									"pm.environment.set(\"csrf_token\", token);",
-									"",
-									"pm.test(\"Validate code\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.code).not.equals(null);",
-									"    pm.collectionVariables.set(\"code\", jsonData.response.code);",
-									"});"
+									"pm.environment.set(\"csrf_token\", token);"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
 								],
 								"type": "text/javascript"
 							}
 						}
 					],
-					"protocolProfileBehavior": {
-						"followRedirects": false
-					},
 					"request": {
 						"method": "POST",
 						"header": [
@@ -224,7 +224,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"acceptedClaims\": [],\n        \"permittedAuthorizeScopes\" : []\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"OTP\",\n                \"challenge\" : \"111111\",\n                \"format\" : \"alpha-numeric\"\n            }\n        ]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -232,13 +232,14 @@
 							}
 						},
 						"url": {
-							"raw": "{{authServerUrl}}/authorization/auth-code",
+							"raw": "{{authServerUrl}}/authorization/v3/authenticate",
 							"host": [
 								"{{authServerUrl}}"
 							],
 							"path": [
 								"authorization",
-								"auth-code"
+								"v3",
+								"authenticate"
 							]
 						}
 					},
