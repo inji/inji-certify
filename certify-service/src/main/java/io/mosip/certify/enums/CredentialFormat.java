@@ -13,13 +13,13 @@ public enum CredentialFormat {
 
     private final String format;
 
-    private CredentialFormat(String inputFormat) {
-        format = inputFormat;
+    CredentialFormat(String inputFormat) {
+        this.format = inputFormat;
     }
 
     public boolean equalsName(String otherFormat) {
         // (otherFormat == null) check is not needed because format.equals(null) returns false 
-        return format.equals(otherFormat);
+        return format.equalsIgnoreCase(otherFormat);
     }
 
     @Override
