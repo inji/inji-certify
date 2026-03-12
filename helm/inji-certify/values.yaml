@@ -11,7 +11,7 @@
 ## Add labels to all the deployed resources
 ##
 commonLabels:
-  app.kubernetes.io/component: mosip
+  app.kubernetes.io/component: inji
 
 ## Add annotations to all the deployed resources
 ##
@@ -52,8 +52,8 @@ service:
 
 image:
   registry: docker.io
-  repository: mosipqa/inji-certify-with-plugins
-  tag: develop
+  repository: injistackqa/inji-certify-with-plugins
+  tag: release-0.14.x
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -138,10 +138,10 @@ additionalResources:
   javaOpts: "-Xms1500M -Xmx1500M"
 
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
-## Clamav container already runs as 'mosip' user, so we may not need to enable this
+## Inji-certify container already runs as 'inji' user, so we may not need to enable this
 containerSecurityContext:
   enabled: false
-  runAsUser: mosip
+  runAsUser: 1001
   runAsNonRoot: true
 
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
@@ -240,7 +240,7 @@ updateStrategy:
 ##   - name: FOO
 ##     value: "bar"
 ##
-extraEnvVars: |
+extraEnvVars:
   - name: DB_DBUSER_PASSWORD
     valueFrom:
       secretKeyRef:
@@ -277,35 +277,7 @@ extraVolumeMounts: []
 ##       - name: portname
 ##         containerPort: 1234
 ##
-initContainers:
-  - command:
-      - /bin/bash
-      - -c
-      - if [ "$ENABLE_INSECURE" = "true" ]; then HOST=$( env | grep "mosip-api-internal-host"
-        |sed "s/mosip-api-internal-host=//g"); if [ -z "$HOST" ]; then echo "HOST
-        $HOST is empty; EXITING"; exit 1; fi; openssl s_client -servername "$HOST"
-        -connect "$HOST":443  > "$HOST.cer" 2>/dev/null & sleep 2 ; sed -i -ne '/-BEGIN
-        CERTIFICATE-/,/-END CERTIFICATE-/p' "$HOST.cer"; cat "$HOST.cer"; /usr/local/openjdk-11/bin/keytool
-        -delete -alias "$HOST" -keystore $JAVA_HOME/lib/security/cacerts  -storepass
-        changeit; /usr/local/openjdk-11/bin/keytool -trustcacerts -keystore "$JAVA_HOME/lib/security/cacerts"
-        -storepass changeit -noprompt -importcert -alias "$HOST" -file "$HOST.cer"
-        ; if [ $? -gt 0 ]; then echo "Failed to add SSL certificate for host $host;
-        EXITING"; exit 1; fi; cp /usr/local/openjdk-11/lib/security/cacerts /cacerts;
-        fi
-    env:
-      - name: ENABLE_INSECURE
-        value: "true"
-    image: docker.io/openjdk:11-jre
-    imagePullPolicy: Always
-    name: cacerts
-    resources: {}
-    securityContext:
-      runAsUser: 0
-    terminationMessagePath: /dev/termination-log
-    terminationMessagePolicy: File
-    volumeMounts:
-      - mountPath: /cacerts
-        name: cacerts
+initContainers: {}
 
 ## Add sidecars to the  pods.
 ## Example:
@@ -340,7 +312,7 @@ persistence:
   # existingClaim: pkcs12-keys.p12
   existingClaim:
   # Dir where config and keys are written inside container
-  mountDir: /home/mosip/config/
+  mountDir: /home/inji/config/
   volume_name: config
   # pvc_claim_name: pkcs12-keys.p12
 
@@ -474,4 +446,4 @@ istio:
       uri: /
       port: 80
 
-installHSMPlugin: "true"
+installHSMPlugin: true

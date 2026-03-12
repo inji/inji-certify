@@ -1,8 +1,8 @@
 apiVersion: v2
 name: inji-certify
-description: A Helm chart for MOSIP inji-certify module
+description: A Helm chart for inji certify service
 type: application
-version: 0.0.1-develop
+version: 0.14.0-develop
 appVersion: ""
 dependencies:
   - name: common
@@ -10,10 +10,11 @@ dependencies:
     tags:
       - bitnami-common
     version: 1.x.x
-home: https://mosip.io
+home: https://inji.io
 keywords:
   - mosip
+  - inji
   - inji-certify
 maintainers:
   - email: info@mosip.io
-    name: MOSIP
+    name: INJI
