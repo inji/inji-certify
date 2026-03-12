@@ -80,7 +80,7 @@ If `mosip.certify.plugin-mode` is set to `DataProvider`, the following new prope
 
 ### Modified Configuration Properties
 
-The following properties have been modified in 0.12.0. Please update their values as per the new requirements. Sample values can be found in the [certify-default.properties](https://github.com/mosip/inji-config/blob/master/certify-default.properties) file. If missing, refer to other use-case specific certify properties files in the [inji-config repository](https://github.com/mosip/inji-config/tree/master).
+The following properties have been modified in 0.12.0. Please update their values as per the new requirements. Sample values can be found in the [certify-default.properties](https://github.com/inji/inji-config/blob/master/certify-default.properties) file. If missing, refer to other use-case specific certify properties files in the [inji-config repository](https://github.com/inji/inji-config/tree/master).
 
 | Property Name                        | Description |
 |--------------------------------------|-------------|
@@ -103,7 +103,7 @@ The following properties have been completely deprecated and can be removed from
 | mosip.certify.data-provider-plugin.issuer-uri       | Remove from config | Property is no longer supported and should be removed. |
 | mosip.certify.supported.jwt-proof-alg               | Remove from config | Property is no longer supported and should be removed. |
 
-> **Note:** For all new and modified properties, refer to the [certify-default.properties](https://github.com/mosip/inji-config/blob/master/certify-default.properties) file for sample values. If a property is missing, check other use-case specific certify properties files in the [inji-config repository](https://github.com/mosip/inji-config/tree/master).
+> **Note:** For all new and modified properties, refer to the [certify-default.properties](https://github.com/inji/inji-config/blob/master/certify-default.properties) file for sample values. If a property is missing, check other use-case specific certify properties files in the [inji-config repository](https://github.com/inji/inji-config/tree/master).
 
 ---
 
