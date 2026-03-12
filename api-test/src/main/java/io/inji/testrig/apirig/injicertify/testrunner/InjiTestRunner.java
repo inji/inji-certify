@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -106,15 +107,9 @@ public class InjiTestRunner {
 			generateDependency = InjiCertifyConfigManager.getproperty("generateDependencyJson");
 
 			if (!"yes".equalsIgnoreCase(generateDependency)) {
-
-				String testCasesToExecute = InjiCertifyConfigManager.getproperty("testCasesToExecute");
-				LOGGER.info("Testcases to execute as per config: " + testCasesToExecute);
-
-				if (testCasesToExecute != null && !testCasesToExecute.isBlank()) {
-					DependencyResolver
-							.loadDependencies(getGlobalResourcePath() + "/config/testCaseInterDependency.json");
-
-					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(testCasesToExecute);
+				if (useCaseToExecute != null && !useCaseToExecute.isBlank()) {
+					DependencyResolver.loadDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
+					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(useCaseToExecute);
 				}
 			}
 
@@ -150,11 +145,13 @@ public class InjiTestRunner {
 		OTPListener.bTerminate = true;
 
 		HealthChecker.bTerminate = true;
-		
+
 		// Used for generating the test case interdependency JSON file
+
 		if ("yes".equalsIgnoreCase(generateDependency)) {
 			LOGGER.info("Generating test case inter-dependencies");
-			AdminTestUtil.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
+			AdminTestUtil
+					.generateTestCaseInterDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
 		} else {
 			LOGGER.info("Skipping dependency generation");
 		}

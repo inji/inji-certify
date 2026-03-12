@@ -13,7 +13,7 @@ AuthenticateUserVCIFormDocMDL:
         "encodedHash": "$ID:ESignet_OAuthDetailsRequest_Formdl_uin_all_Valid_Smoke_sid_encodedResp$",
       	"requestTime": "$TIMESTAMP$",
       	"transactionId": "$ID:ESignet_OAuthDetailsRequest_Formdl_uin_all_Valid_Smoke_sid_transactionId$",
-      	"individualId": "$ID:AddIdentity_For_mdl_Valid_smoke_Pos_UIN$",
+      	"individualId": "$FETCH_ID_FROM_CSV$",
       	"authFactorType" : "OTP",
       	"challenge" : "111111",
         "format": "alpha-numeric",
@@ -21,7 +21,7 @@ AuthenticateUserVCIFormDocMDL:
     "encodedHash": "$ID:ESignet_OAuthDetailsRequest_Formdl_uin_all_Valid_Smoke_sid_encodedResp$",
     "requestTime": "$TIMESTAMP$",
     "transactionId": "$ID:ESignet_OAuthDetailsRequest_Formdl_uin_all_Valid_Smoke_sid_transactionId$",
-	"individualId": "$ID:AddIdentity_For_mdl_Valid_smoke_Pos_UIN$",
+	"individualId": "$FETCH_ID_FROM_CSV$",
     "otpChannels": [{channel: "email"},{channel: "phone"}],
     "sendOtpReqTemplate": "injicertify/SendOtp/SendOtp",
     "sendOtpEndPoint": "$ESIGNETMOCKIDABASEURL$/v1/esignet/authorization/send-otp"
