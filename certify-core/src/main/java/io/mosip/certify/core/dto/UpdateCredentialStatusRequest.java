@@ -26,7 +26,7 @@ public class UpdateCredentialStatusRequest {
         private String type;
         private String statusPurpose;
         @NotNull
-        @Min(value = 0)
+        @Min(value = 0, message = "statusListIndex must be a non-negative integer")
         private Long statusListIndex;
         private String statusListCredential;
     } 
