@@ -26,7 +26,7 @@ import java.util.List;
 @Slf4j
 @Service
 public class CredentialStatusServiceImpl implements CredentialStatusService {
-    public static final int DEFAULT_STATUS_LIST_SIZE = 131072; // 1 million entries
+    public static final int DEFAULT_STATUS_LIST_SIZE = 131072;
 
     @Autowired
     private LedgerRepository ledgerRepository;
@@ -43,6 +43,7 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {
         String resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus() == null ? null : request.getCredentialStatus().getStatusPurpose());
+        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
 
         Ledger ledger = ledgerRepository.findByCredentialId(request.getCredentialId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Credential not found: " + request.getCredentialId()));
@@ -52,7 +53,6 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         }
 
         CredentialStatusDetail credentialStatusDetail = ledger.getCredentialStatusDetails().getFirst();
-        validateStatusListIndex(credentialStatusDetail.getStatusListIndex());
 
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
         transaction.setCredentialId(ledger.getCredentialId());
@@ -81,9 +81,7 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
             throw new CertifyException(ErrorConstants.INVALID_REQUEST, "credentialStatus must not be null");
         }
         String resolvedPurpose = resolveAndValidateStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-
-        Long statusListIndex = request.getCredentialStatus().getStatusListIndex();
-        validateStatusListIndex(statusListIndex);
+        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
 
         String statusListCredentialId = request.getCredentialStatus().getStatusListCredential();
 
@@ -100,7 +98,7 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         transaction.setStatusPurpose(resolvedPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(statusListCredentialId);
-        transaction.setStatusListIndex(statusListIndex);
+        transaction.setStatusListIndex(request.getCredentialStatus().getStatusListIndex());
         CredentialStatusTransaction savedTransaction =credentialStatusTransactionRepository.save(transaction);
 
         CredentialStatusResponse dto = new CredentialStatusResponse();
@@ -115,18 +113,14 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
     }
 
     private String resolveAndValidateStatusPurpose(String rawPurpose) {
-        if(rawPurpose == null) {
+        if(rawPurpose == null || rawPurpose.trim().isEmpty()) {
             return Constants.DEFAULT_STATUS_PURPOSE;
         }
-        String statusPurposeValue = rawPurpose.trim();
-        if(statusPurposeValue.isEmpty()) {
-            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "statusPurpose must not be empty");
+        String statusPurposeValue = rawPurpose.trim().toLowerCase();
+        if(!Constants.DEFAULT_STATUS_PURPOSE.equalsIgnoreCase(statusPurposeValue)) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "statusPurpose must be 'revocation'");
         }
-        boolean supported = allowedCredentialStatusPurposes != null && allowedCredentialStatusPurposes.stream().anyMatch(p -> p.equalsIgnoreCase(statusPurposeValue));
-        if(!supported) {
-            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "Unsupported statusPurpose: " + statusPurposeValue);
-        }
-        return statusPurposeValue.toLowerCase();
+        return statusPurposeValue;
     }
 
     private void validateStatusListIndex(Long statusListIndex) {
