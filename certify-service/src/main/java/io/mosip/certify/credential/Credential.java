@@ -18,7 +18,7 @@ import io.mosip.kernel.signature.dto.JWSSignatureRequestDto;
 import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import io.mosip.kernel.signature.service.SignatureService;
-import io.mosip.kernel.signature.service.impl.CoseSignatureServiceImpl;
+
 import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 

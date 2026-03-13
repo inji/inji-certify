@@ -1,19 +1,21 @@
 package io.mosip.certify.credential;
 
 import java.time.Instant;
-import java.util.*;
-import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.mosip.certify.api.dto.VCResult;
-import io.mosip.certify.core.dto.CertificateResponseDTO;
-import io.mosip.certify.utils.DIDDocumentUtil;
+import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.vcformatters.VCFormatter;
+import io.mosip.kernel.signature.dto.JWSSignatureRequestDto;
+import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
 import io.mosip.kernel.signature.service.SignatureService;
-import io.mosip.kernel.signature.dto.SignRequestDto;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,91 +23,69 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class W3CJwtJson extends Credential {
 
-    private final DIDDocumentUtil didDocumentUtil;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public W3CJwtJson(VCFormatter vcFormatter,
-                      SignatureService signatureService,
-                      DIDDocumentUtil didDocumentUtil) {
+        SignatureService signatureService) {
         super(vcFormatter, signatureService);
-        this.didDocumentUtil = didDocumentUtil;
     }
 
     @Override
     public boolean canHandle(String format) {
-        return "jwt_vc_json".equalsIgnoreCase(format);
+        return VCFormats.JWT_VC_JSON.equalsIgnoreCase(format);
     }
 
     @Override
-    public VCResult<?> addProof(String vcToSign,
-                                String holderId,
-                                String signAlgorithm,
-                                String appID,
-                                String refID,
-                                String didUrl,
-                                String signatureSuite) {
+    public VCResult<?> addProof(
+            String vcToSign,
+            String headers,
+            String signAlgorithm,
+            String appID,
+            String refID,
+            String didUrl,
+            String signatureCryptoSuite) {
 
         try {
 
-            // 1️⃣ Parse VC JSON
             Map<String, Object> vcMap =
                     mapper.readValue(vcToSign,
-                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    new TypeReference<Map<String, Object>>() {});
+            long now = Instant.now().getEpochSecond();
 
-            // 2️⃣ Build JWT Claims
             Map<String, Object> claims = new LinkedHashMap<>();
-            claims.put("iss", didUrl); // issuer DID
-            claims.put("sub", holderId);
-            claims.put("iat", Instant.now().getEpochSecond());
-            claims.put("nbf", Instant.now().getEpochSecond());
+            claims.put("iss", didUrl);
+            claims.put("iat", now);
+            claims.put("nbf", now);
+            claims.put("exp", now + 31536000);
             claims.put("jti", "urn:uuid:" + UUID.randomUUID());
             claims.put("vc", vcMap);
 
-            // 3️⃣ Get certificate details
-            CertificateResponseDTO certificate =
-                    didDocumentUtil.getCertificateDataResponseDto(appID, refID);
+            Object credentialSubjectObj = vcMap.get("credentialSubject");
 
-            // 4️⃣ Build JWT Header
-            Map<String, Object> header = new LinkedHashMap<>();
-            header.put("alg", signAlgorithm);
-            header.put("typ", "JWT");
-
-            // DID key reference
-            header.put("kid", didUrl + "#" + certificate.getKeyId());
-
-            // 5️⃣ Encode header and payload
-            String encodedHeader = Base64.getUrlEncoder()
-                    .withoutPadding()
-                    .encodeToString(mapper.writeValueAsBytes(header));
-
-            String encodedPayload = Base64.getUrlEncoder()
-                    .withoutPadding()
-                    .encodeToString(mapper.writeValueAsBytes(claims));
-
-            String signingInput = encodedHeader + "." + encodedPayload;
-
-            // 6️⃣ Sign using MOSIP Kernel
-            SignRequestDto signRequest = new SignRequestDto();
-            signRequest.setData(signingInput);
-
-            Object signResponse = signatureService.sign(signRequest);
-
-            String signature;
-
-            if (signResponse instanceof byte[]) {
-                signature = Base64.getUrlEncoder()
-                        .withoutPadding()
-                        .encodeToString((byte[]) signResponse);
-            } else {
-                signature = signResponse.toString();
+            if (credentialSubjectObj instanceof Map<?, ?> credentialSubject) {
+                Object subjectId = credentialSubject.get("id");
+                if (subjectId != null) {
+                    claims.put("sub", subjectId);
+                }
             }
+            JWSSignatureRequestDto jwsRequest = new JWSSignatureRequestDto();
+            jwsRequest.setDataToSign(mapper.writeValueAsString(claims));
+            jwsRequest.setApplicationId(appID);
+            jwsRequest.setReferenceId(refID);
+            jwsRequest.setIncludePayload(false);
+            jwsRequest.setIncludeCertificate(false);
+            jwsRequest.setIncludeCertHash(true);
+            jwsRequest.setValidateJson(false);
+            jwsRequest.setB64JWSHeaderParam(false);
+            jwsRequest.setCertificateUrl(didUrl);
+            jwsRequest.setSignAlgorithm(signAlgorithm);
 
-            // 7️⃣ Create compact JWT
-            String compactJwt = signingInput + "." + signature;
+            JWTSignatureResponseDto response =
+                    signatureService.jwsSign(jwsRequest);
 
             VCResult<String> vcResult = new VCResult<>();
-            vcResult.setCredential(compactJwt);
-            vcResult.setFormat("jwt_vc_json");
+            vcResult.setCredential(response.getJwtSignedData());
+            vcResult.setFormat(VCFormats.JWT_VC_JSON);
 
             log.info("JWT VC signed successfully");
 

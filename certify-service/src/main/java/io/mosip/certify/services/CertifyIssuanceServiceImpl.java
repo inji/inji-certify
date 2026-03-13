@@ -204,7 +204,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
             // Handle format-specific setup
             switch (format) {
-                case "ldp_vc":
+                case "ldp_vc": {
                     vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
                     vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
                     vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
@@ -215,12 +215,12 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     List<String> credentialStatusPurposeList = vcFormatter.getCredentialStatusPurpose(templateName);
                     if (credentialStatusPurposeList != null && !credentialStatusPurposeList.isEmpty() && credentialRequest.getCredential_definition().getContext().contains(VCDM2Constants.URL)) {
                         if(!isLedgerEnabled) {
-                            log.warn("Ledger feature is currently disabled. Since revocation is enabled, please note that searching for VCs to revoke within Certify is not available.");
+                            log.warn("Ledger feature is currently disabled.");
                         }
-                        statusListCredentialService.addCredentialStatus(jsonObject, credentialStatusPurposeList.getFirst());
+                        statusListCredentialService.addCredentialStatus(jsonObject, credentialStatusPurposeList.get(0));
                     }
                     break;
-
+                }
                 case "vc+sd-jwt":
                     vcRequestDto.setVct(credentialRequest.getVct());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
@@ -236,17 +236,37 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     templateParams.put("_doctype", vcRequestDto.getDoctype());
                     jsonObject.put(Constants.TYPE, vcRequestDto.getDoctype());
                     break;
-                case "jwt_vc_json":
+                case VCFormats.JWT_VC_JSON: {
                     vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
                     vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
                     vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
+                    validateLdpVcFormatRequest(credentialRequest, credentialMetadata);
 
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
 
                     jsonObject.put(Constants.TYPE,
                             credentialRequest.getCredential_definition().getType());
 
+                    List<String> credentialStatusPurposeList =
+                            vcFormatter.getCredentialStatusPurpose(templateName);
+
+                    if (credentialStatusPurposeList != null &&
+                        !credentialStatusPurposeList.isEmpty() &&
+                        credentialRequest.getCredential_definition()
+                                .getContext().contains(VCDM2Constants.URL)) {
+
+                        if (!isLedgerEnabled) {
+                            log.warn("Ledger feature is disabled but revocation is enabled.");
+                        }
+
+                        statusListCredentialService.addCredentialStatus(
+                                jsonObject,
+                                credentialStatusPurposeList.get(0)
+                        );
+                    }
+
                     break;
+                }
                 default:
                     throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, "Invalid or unsupported VC format requested.");
 
