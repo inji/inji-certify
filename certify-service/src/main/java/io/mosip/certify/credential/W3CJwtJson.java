@@ -105,11 +105,11 @@ public class W3CJwtJson extends Credential {
             jwsRequest.setDataToSign(mapper.writeValueAsString(claims));
             jwsRequest.setApplicationId(appID);
             jwsRequest.setReferenceId(refID);
-            jwsRequest.setIncludePayload(false);
+            jwsRequest.setIncludePayload(true);
             jwsRequest.setIncludeCertificate(false);
             jwsRequest.setIncludeCertHash(true);
             jwsRequest.setValidateJson(false);
-            jwsRequest.setB64JWSHeaderParam(false);
+            jwsRequest.setB64JWSHeaderParam(true);
             jwsRequest.setCertificateUrl(didUrl);
             jwsRequest.setSignAlgorithm(signAlgorithm);
 
