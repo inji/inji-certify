@@ -153,7 +153,6 @@ public class DIDDocumentUtil {
 
         Map<String, Object> verificationMethod = new HashMap<>();
         verificationMethod.put("type", "EcdsaSecp256r1VerificationKey2019");
-        verificationMethod.put("@context", "https://w3id.org/security/suites/ecdsa-2019/v1");
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyMultibase", publicKeyMultibase);
         return verificationMethod;
@@ -183,7 +182,6 @@ public class DIDDocumentUtil {
 
         Map<String, Object> verificationMethod = new HashMap<>();
         verificationMethod.put("type", "Ed25519VerificationKey2020");
-        verificationMethod.put("@context", "https://w3id.org/security/suites/ed25519-2020/v1");
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyMultibase", publicKeyMultibase);
         return verificationMethod;
@@ -200,7 +198,6 @@ public class DIDDocumentUtil {
 
         Map<String, Object> verificationMethod = new HashMap<>();
         verificationMethod.put("type", "RsaVerificationKey2018");
-        verificationMethod.put("@context", "https://w3id.org/security/v1");
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyPem", pemBuilder.toString());
         return verificationMethod;
@@ -215,7 +212,6 @@ public class DIDDocumentUtil {
         Map<String, Object> verificationMethod = new HashMap<>();
         // ref: https://github.com/w3c-ccg/lds-ecdsa-secp256k1-2019/issues/8
         verificationMethod.put("type", "EcdsaSecp256k1VerificationKey2019");
-        verificationMethod.put("@context", "https://w3id.org/security/v1");
         // (improvement): can also add expires key here
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyJwk", nimbusKey.toJSONObject());
