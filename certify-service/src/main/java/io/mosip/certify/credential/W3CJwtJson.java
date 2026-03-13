@@ -93,7 +93,11 @@ public class W3CJwtJson extends Credential {
 
         } catch (Exception e) {
             log.error("Error signing JWT VC", e);
-            throw new RuntimeException("JWT_VC_SIGNING_FAILED", e);
+            throw new CertifyException(
+                    VCIErrorConstants.INVALID_PROOF,
+                    "JWT VC signing failed",
+                    e
+            );
         }
     }
 }
