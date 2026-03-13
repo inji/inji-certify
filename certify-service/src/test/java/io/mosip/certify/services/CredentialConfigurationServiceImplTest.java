@@ -784,4 +784,31 @@ public class CredentialConfigurationServiceImplTest {
         }
     }
 
+    @Test
+    public void resolveAuthorizationServers_MultipleServers_Success() {
+        // Setup multiple servers in authUrl
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth1.com, http://auth2.com ");
+
+        // Setup mappings
+        Map<String, String> authServerMapping = new HashMap<>();
+        authServerMapping.put("Farmer", "http://farmer-as.com");
+        authServerMapping.put("Default", "http://auth1.com"); // Duplicate
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
+
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(3, servers.size());
+        Assert.assertTrue(servers.contains("http://auth1.com"));
+        Assert.assertTrue(servers.contains("http://auth2.com"));
+        Assert.assertTrue(servers.contains("http://farmer-as.com"));
+        // Order should be preserved if LinkedHashSet is used
+        Assert.assertEquals("http://auth1.com", servers.get(0));
+        Assert.assertEquals("http://auth2.com", servers.get(1));
+        Assert.assertEquals("http://farmer-as.com", servers.get(2));
+    }
+
 }
