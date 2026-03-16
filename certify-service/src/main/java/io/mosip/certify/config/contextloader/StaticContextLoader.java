@@ -6,7 +6,6 @@ import com.apicatalog.jsonld.document.Document;
 import com.apicatalog.jsonld.document.JsonDocument;
 import com.apicatalog.jsonld.loader.DocumentLoader;
 import com.apicatalog.jsonld.loader.DocumentLoaderOptions;
-import com.apicatalog.jsonld.loader.HttpLoader;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
@@ -18,8 +17,11 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
@@ -30,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class StaticContextLoader implements DocumentLoader {
 
     private static final Logger log = LoggerFactory.getLogger(StaticContextLoader.class);
+
+    private static final int MAX_REDIRECTS = 5;
 
     private static final class CacheEntry {
         final JsonObject json;
@@ -43,22 +47,20 @@ public final class StaticContextLoader implements DocumentLoader {
         }
     }
 
-    private final JsonLdContextLoaderProperties props;
+    private final JsonLdContextLoaderProperties jsonLdProps;
     private final ResourceLoader resourceLoader;
-    private final DocumentLoader remoteLoader;
+    private final HttpClient httpClient;
 
     private final ConcurrentHashMap<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public StaticContextLoader(JsonLdContextLoaderProperties props, ResourceLoader resourceLoader) {
-        this.props = props;
+    public StaticContextLoader(JsonLdContextLoaderProperties jsonLdProps, ResourceLoader resourceLoader) {
+        this.jsonLdProps = jsonLdProps;
         this.resourceLoader = resourceLoader;
 
-        HttpClient httpClient = HttpClient.newBuilder()
+        this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
-
-        this.remoteLoader = new HttpLoader(httpClient);
 
         preloadConfiguredContexts();
     }
@@ -79,7 +81,7 @@ public final class StaticContextLoader implements DocumentLoader {
         }
 
         // 2) Configured mapping
-        JsonLdContextLoaderProperties.Context configured = props.getContexts().get(iri);
+        JsonLdContextLoaderProperties.Context configured = jsonLdProps.getContexts().get(iri);
         if (configured != null) {
             Document doc = loadFromResource(normalized, configured.getResource(), options);
             cacheDocument(iri, doc, configured.isCache());
@@ -87,23 +89,18 @@ public final class StaticContextLoader implements DocumentLoader {
         }
 
         // 3) Unknown context remote fetch
-        if (!props.getRemote().isEnabled() || !props.getRemote().isAllowUnknown()) {
+        if (!jsonLdProps.getRemote().isEnabled() || !jsonLdProps.getRemote().isAllowUnknown()) {
             throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
                     "No configured mapping for context: " + iri + " and remote unknown contexts are disabled.");
         }
 
-        validateRemoteBasics(normalized);
-        validateRemoteHostAllowed(normalized); // only enforced if enforceAllowedHosts=true
-
-        Document doc = remoteLoader.loadDocument(normalized, options);
-        if (props.getRemote().isCacheUnknown()) {
-            cacheDocument(iri, doc, true);
-        }
+        Document doc = fetchRemoteDocument(normalized);
+        cacheDocument(iri, doc, true);
         return doc;
     }
 
     private void preloadConfiguredContexts() {
-        props.getContexts().forEach((iri, cfg) -> {
+        jsonLdProps.getContexts().forEach((iri, cfg) -> {
             if (!cfg.isPreload()) return;
             try {
                 Document doc = loadFromResource(URI.create(iri), cfg.getResource(), null);
@@ -122,16 +119,12 @@ public final class StaticContextLoader implements DocumentLoader {
 
         // If resourceLocation is remote URL, load using remote policy
         if (isRemoteUrl(resourceLocation)) {
-            if (!props.getRemote().isEnabled()) {
+            if (!jsonLdProps.getRemote().isEnabled()) {
                 throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
                         "Remote loading disabled, but configured context resource is remote: " + resourceLocation);
             }
             URI remoteUri = URI.create(resourceLocation).normalize();
-            validateRemoteBasics(remoteUri);
-            validateRemoteHostAllowed(remoteUri);
-
-            // Use remoteLoader (not Spring URL resource) so policy is consistent
-            return remoteLoader.loadDocument(remoteUri, options);
+            return fetchRemoteDocument(remoteUri);
         }
 
         // Local/classpath/file
@@ -163,9 +156,73 @@ public final class StaticContextLoader implements DocumentLoader {
         }
     }
 
+    /**
+     * Fetches a remote JSON-LD document with manual redirect handling.
+     * Each redirect hop is validated against the allowlist before following.
+     */
+    private Document fetchRemoteDocument(URI uri) throws JsonLdError {
+        URI current = uri;
+        for (int i = 0; i <= MAX_REDIRECTS; i++) {
+            validateRemoteBasics(current);
+            validateRemoteHostAllowed(current);
+
+            HttpResponse<String> response;
+            try {
+                response = httpClient.send(
+                        HttpRequest.newBuilder(current).GET().build(),
+                        HttpResponse.BodyHandlers.ofString());
+            } catch (Exception e) {
+                JsonLdError err = new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                        "Failed to fetch remote context: " + current + " - " + e.getMessage());
+                err.initCause(e);
+                throw err;
+            }
+
+            int status = response.statusCode();
+
+            // Handle redirects (3xx)
+            if (status >= 300 && status < 400) {
+                URI redirectSource = current;
+                String location = response.headers().firstValue("Location")
+                        .orElseThrow(() -> new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                                "Redirect response with no Location header from: " + redirectSource));
+                current = current.resolve(location);
+                continue;
+            }
+
+            if (status != 200) {
+                throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                        "Remote context returned HTTP " + status + " for: " + current);
+            }
+
+            return parseJsonLdResponse(response.body(), uri);
+        }
+
+        throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                "Too many redirects (max " + MAX_REDIRECTS + ") for remote context: " + uri);
+    }
+
+    private Document parseJsonLdResponse(String body, URI originalUri) throws JsonLdError {
+        try (JsonReader reader = Json.createReader(new StringReader(body))) {
+            JsonStructure js = reader.read();
+            if (!(js instanceof JsonObject obj)) {
+                throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                        "Remote context must be a JSON object: " + originalUri);
+            }
+            return JsonDocument.of(obj);
+        } catch (JsonLdError e) {
+            throw e;
+        } catch (Exception e) {
+            JsonLdError err = new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                    "Failed to parse remote context from " + originalUri + ": " + e.getMessage());
+            err.initCause(e);
+            throw err;
+        }
+    }
+
     private boolean isRemoteUrl(String resourceLocation) {
-        String lower = resourceLocation.toLowerCase(Locale.ROOT);
-        return lower.startsWith("http://") || lower.startsWith("https://");
+        String resourceUrl = resourceLocation.toLowerCase(Locale.ROOT);
+        return resourceUrl.startsWith("http://") || resourceUrl.startsWith("https://");
     }
 
     private void validateRemoteBasics(URI uri) throws JsonLdError {
@@ -181,11 +238,11 @@ public final class StaticContextLoader implements DocumentLoader {
      * - remote.enforceAllowedHosts=true AND allowedHosts not empty
      */
     private void validateRemoteHostAllowed(URI uri) throws JsonLdError {
-        if (!props.getRemote().isEnforceAllowedHosts()) {
+        if (!jsonLdProps.getRemote().isEnforceAllowedHosts()) {
             return; // host filtering disabled by config
         }
 
-        Set<String> allowedHosts = props.getRemote().getAllowedHosts();
+        Set<String> allowedHosts = jsonLdProps.getRemote().getAllowedHosts();
         if (allowedHosts == null || allowedHosts.isEmpty()) {
             return; // nothing to enforce
         }
@@ -204,7 +261,7 @@ public final class StaticContextLoader implements DocumentLoader {
     }
 
     private JsonObject fetchCachedContext(String iri) {
-        if (!props.getCache().isEnabled()) return null;
+        if (!jsonLdProps.getCache().isEnabled()) return null;
 
         CacheEntry entry = cache.get(iri);
         if (entry == null) return null;
@@ -218,18 +275,18 @@ public final class StaticContextLoader implements DocumentLoader {
     }
 
     private void cacheDocument(String iri, Document doc, boolean perEntryCache) {
-        if (!props.getCache().isEnabled() || !perEntryCache) return;
+        if (!jsonLdProps.getCache().isEnabled() || !perEntryCache) return;
 
         JsonObject json = extractJsonObject(doc);
         if (json == null) return;
 
-        int maxEntries = props.getCache().getMaxEntries();
+        int maxEntries = jsonLdProps.getCache().getMaxEntries();
         if (maxEntries > 0 && cache.size() >= maxEntries && !cache.containsKey(iri)) {
-            log.debug("Context cache full (maxEntries={}), not caching {}", maxEntries, iri);
+            log.warn("Context cache full (maxEntries={}), not caching {}", maxEntries, iri);
             return;
         }
 
-        Duration ttl = props.getCache().getTtl();
+        Duration ttl = jsonLdProps.getCache().getTtl();
         long expiresAt = 0L;
         if (ttl != null && !ttl.isZero() && !ttl.isNegative()) {
             expiresAt = System.currentTimeMillis() + ttl.toMillis();

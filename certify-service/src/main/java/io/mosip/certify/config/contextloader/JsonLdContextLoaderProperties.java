@@ -73,8 +73,6 @@ public class JsonLdContextLoaderProperties {
         @NotNull
         private Set<String> allowedHosts = new LinkedHashSet<>();
 
-        private boolean cacheUnknown = true;
-
         public void setAllowedHosts(Set<String> allowedHosts) {
             LinkedHashSet<String> norm = new LinkedHashSet<>();
             if (allowedHosts != null) {
@@ -100,6 +98,7 @@ public class JsonLdContextLoaderProperties {
     private static Map<String, Context> defaultContexts() {
         Map<String, Context> m = new LinkedHashMap<>();
         m.put("https://www.w3.org/2018/credentials/v1", ctx("classpath:/contexts/credentials-v1.jsonld"));
+        m.put("https://www.w3.org/ns/credentials/v2", ctx("classpath:/contexts/credentials-v2.jsonld"));
         m.put("https://w3id.org/security/suites/ed25519-2020/v1", ctx("classpath:/contexts/security-v1.jsonld"));
         return m;
     }

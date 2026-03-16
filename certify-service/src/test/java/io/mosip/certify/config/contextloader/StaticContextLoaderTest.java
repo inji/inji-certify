@@ -78,6 +78,34 @@ class StaticContextLoaderTest {
             }
         });
 
+        // Redirect: /redirect-ok → /ctx (same host)
+        server.createContext("/redirect-ok", exchange -> {
+            hits.incrementAndGet();
+            exchange.getResponseHeaders().add("Location", "/ctx");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+        });
+
+        // Redirect: /redirect-external → http://evil.example.org/ctx (blocked host)
+        server.createContext("/redirect-external", exchange -> {
+            hits.incrementAndGet();
+            exchange.getResponseHeaders().add("Location", "http://evil.example.org/ctx");
+            exchange.sendResponseHeaders(302, -1);
+            exchange.close();
+        });
+
+        // Redirect chain: /chain0 → /chain1 → /chain2 → /chain3 → /chain4 → /chain5 → /chain6
+        // This creates 7 redirect hops, exceeding MAX_REDIRECTS (5)
+        for (int hop = 0; hop <= 6; hop++) {
+            final int next = hop + 1;
+            server.createContext("/chain" + hop, exchange -> {
+                hits.incrementAndGet();
+                exchange.getResponseHeaders().add("Location", "/chain" + next);
+                exchange.sendResponseHeaders(302, -1);
+                exchange.close();
+            });
+        }
+
         server.start();
         port = server.getAddress().getPort();
     }
@@ -97,7 +125,6 @@ class StaticContextLoaderTest {
 
         props.getRemote().setEnabled(true);
         props.getRemote().setAllowUnknown(false);
-        props.getRemote().setCacheUnknown(true);
         props.getRemote().setAllowedHosts(new LinkedHashSet<>());
 
         props.setContexts(new LinkedHashMap<>());
@@ -305,10 +332,9 @@ class StaticContextLoaderTest {
     }
 
     @Test
-    void unknownContext_allowUnknownTrue_fetchesRemote_andCachesWhenCacheUnknownTrue() throws Exception {
+    void unknownContext_allowUnknownTrue_fetchesRemote_andCachesResult() throws Exception {
         JsonLdContextLoaderProperties props = baseProps();
         props.getRemote().setAllowUnknown(true);
-        props.getRemote().setCacheUnknown(true);
 
         ResourceLoader rl = mock(ResourceLoader.class);
         StaticContextLoader loader = new StaticContextLoader(props, rl);
@@ -322,23 +348,6 @@ class StaticContextLoaderTest {
         assertTrue(docToJson(d2).containsKey("@context"));
 
         assertEquals(1, hits.get(), "Second call should be served from cache");
-    }
-
-    @Test
-    void unknownContext_allowUnknownTrue_doesNotCacheWhenCacheUnknownFalse() throws Exception {
-        JsonLdContextLoaderProperties props = baseProps();
-        props.getRemote().setAllowUnknown(true);
-        props.getRemote().setCacheUnknown(false);
-
-        ResourceLoader rl = mock(ResourceLoader.class);
-        StaticContextLoader loader = new StaticContextLoader(props, rl);
-
-        String u = "http://localhost:" + port + "/ctx";
-
-        loader.loadDocument(URI.create(u), new DocumentLoaderOptions());
-        loader.loadDocument(URI.create(u), new DocumentLoaderOptions());
-
-        assertEquals(2, hits.get(), "Both calls should hit server because cacheUnknown=false");
     }
 
     @Test
@@ -533,5 +542,55 @@ class StaticContextLoaderTest {
         Document fake = mock(Document.class); // not a JsonDocument
         Object result = m.invoke(loader, fake);
         assertNull(result);
+    }
+
+    // ---------------- redirect tests ----------------
+
+    @Test
+    void redirect_sameAllowedHost_followsAndReturnsDocument() throws Exception {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setEnforceAllowedHosts(true);
+        props.getRemote().setAllowedHosts(Set.of("localhost"));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/redirect-ok";
+        Document doc = loader.loadDocument(URI.create(u), new DocumentLoaderOptions());
+        assertTrue(docToJson(doc).containsKey("@context"));
+    }
+
+    @Test
+    void redirect_toBlockedHost_throws() {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setEnforceAllowedHosts(true);
+        props.getRemote().setAllowedHosts(Set.of("localhost"));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/redirect-external";
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("not allowed"),
+                "Expected host-not-allowed error, got: " + err.getMessage());
+    }
+
+    @Test
+    void redirect_tooManyHops_throws() {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setEnforceAllowedHosts(false);
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/chain0";
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("Too many redirects"),
+                "Expected too-many-redirects error, got: " + err.getMessage());
     }
 }

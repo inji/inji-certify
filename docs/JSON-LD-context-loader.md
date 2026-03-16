@@ -1,6 +1,6 @@
 # JSON-LD Context Loader 
 
-This module provides a Spring Boot–managed JSON-LD `DocumentLoader` used to resolve JSON-LD `@context` IRIs during VC/VP processing. It supports:
+This module provides a Spring Boot–managed JSON-LD `DocumentLoader` used to resolve JSON-LD `@context` IRIs during VC processing. It supports:
 
 - **Configured context registry** (map context IRI → resource)
 - Loading contexts from **classpath / file / http(s)**
@@ -38,7 +38,7 @@ When JSON-LD asks for a context IRI:
 3. Otherwise (**unknown context IRI**):
     - if `remote.enabled=false` OR `remote.allowUnknown=false` → **fail**
     - else load remotely (subject to allowlist policy)
-    - cache if `remote.cacheUnknown=true`
+    - cache if cache is enabled
 
 ---
 
@@ -69,7 +69,6 @@ mosip.certify.jsonld.cache.ttl=24h
 |---|---:|---|
 | `mosip.certify.jsonld.remote.enabled` | `true` | Enable HTTP(S) remote fetching |
 | `mosip.certify.jsonld.remote.allowUnknown` | `false` | Allow unknown context IRIs (not in registry) |
-| `mosip.certify.jsonld.remote.cacheUnknown` | `true` | Cache unknown remote contexts |
 | `mosip.certify.jsonld.remote.enforceAllowedHosts` | `true` | Enable allowlist enforcement. When false, host filtering is disabled. |
 
 ### Host allowlist (recommended for production)
@@ -110,10 +109,10 @@ mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1]
 mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1].preload=true
 mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1].cache=true
 
-# Custom context (remote)
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].resource=https://piyush7034.github.io/my-files/farmer.json
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].preload=false
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].cache=true
+# Custom context (remote, from inji-config)
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].resource=https://inji.github.io/inji-config/contexts/farmer-context.json
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].preload=false
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].cache=true
 ```
 
 ---
@@ -127,7 +126,7 @@ mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json
 ### Caching
 Caching occurs only if:
 - `cache.enabled=true` AND
-- entry has `cache=true` (or unknown remote has `remote.cacheUnknown=true`)
+- entry has `cache=true` (for unknown remote contexts, caching is always enabled when cache is enabled)
 
 Cache TTL behavior:
 - `ttl=0` ⇒ no expiry
@@ -206,7 +205,7 @@ Allowing unknown remote contexts from arbitrary domains can enable:
 
 ### Observability
 - Preload failures log at WARN
-- Cache-full events log at DEBUG
+- Cache-full events log at WARN
 
 ---
 
@@ -241,8 +240,7 @@ mosip.certify.jsonld.remote.enabled=true
 mosip.certify.jsonld.remote.allowUnknown=true
 mosip.certify.jsonld.remote.allowedHosts[0]=www.w3.org
 mosip.certify.jsonld.remote.allowedHosts[1]=w3id.org
-mosip.certify.jsonld.remote.allowedHosts[2]=piyush7034.github.io
-mosip.certify.jsonld.remote.cacheUnknown=true
+mosip.certify.jsonld.remote.allowedHosts[2]=inji.github.io
 
 # Context registry
 mosip.certify.jsonld.contexts[https\://www.w3.org/2018/credentials/v1].resource=classpath:/contexts/credentials-v1.jsonld
@@ -253,7 +251,7 @@ mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1]
 mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1].preload=true
 mosip.certify.jsonld.contexts[https\://w3id.org/security/suites/ed25519-2020/v1].cache=true
 
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].resource=https://piyush7034.github.io/my-files/farmer.json
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].preload=false
-mosip.certify.jsonld.contexts[https\://piyush7034.github.io/my-files/farmer.json].cache=true
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].resource=https://inji.github.io/inji-config/contexts/farmer-context.json
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].preload=false
+mosip.certify.jsonld.contexts[https\://inji.github.io/inji-config/contexts/farmer-context.json].cache=true
 ```
