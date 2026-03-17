@@ -94,9 +94,6 @@ public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
 			throws AuthenticationTestException, AdminTestException, NoSuchAlgorithmException, SecurityXSSException {
 		testCaseName = testCaseDTO.getTestCaseName();
 		testCaseDTO = InjiCertifyUtil.isTestCaseValidForExecution(testCaseDTO);
-		if(testCaseDTO.getUniqueIdentifier().contains("TC_esignetDependent_CreateOidc_PreAuthCode_01")) {
-			System.out.print("Debug");
-		}
 		if (HealthChecker.signalTerminateExecution) {
 			throw new SkipException(
 					GlobalConstants.TARGET_ENV_HEALTH_CHECK_FAILED + HealthChecker.healthCheckFailureMapS);
