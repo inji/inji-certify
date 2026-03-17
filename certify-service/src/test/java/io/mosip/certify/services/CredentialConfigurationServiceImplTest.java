@@ -1472,6 +1472,7 @@ public class CredentialConfigurationServiceImplTest {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
             ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true);
         }
+    }
     
     @Test  
     public void resolveAuthorizationServers_MultipleServers_Success() {
