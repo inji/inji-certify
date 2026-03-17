@@ -458,6 +458,133 @@ class OAuthControllerTest {
         verify(iarService, times(1)).processTokenRequest(any());
     }
 
+    @Test
+    void processTokenRequest_missingCode_returnsBadRequest() throws Exception {
+        // Act & Assert - Missing code parameter should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "authorization_code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code is required"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_missingCodeVerifier_returnsBadRequest() throws Exception {
+        // Act & Assert - Missing code_verifier parameter should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "authorization_code")
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_emptyCode_returnsBadRequest() throws Exception {
+        // Act & Assert - Empty code parameter should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "authorization_code")
+                .param("code", "")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code is required"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_emptyCodeVerifier_returnsBadRequest() throws Exception {
+        // Act & Assert - Empty code_verifier parameter should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "authorization_code")
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("code_verifier is required"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_invalidAuthorizationCode_returnsInvalidGrant() throws Exception {
+        // Arrange - Test with an explicitly invalid/expired authorization code
+        CertifyException certifyException = new CertifyException("invalid_grant", "Authorization code not found or expired");
+        when(iarService.processTokenRequest(any())).thenThrow(certifyException);
+
+        // Act & Assert
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "authorization_code")
+                .param("code", "iar_auth_invalid_or_expired_code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_grant"))
+                .andExpect(jsonPath("$.error_description").value("Authorization code not found or expired"));
+
+        verify(iarService, times(1)).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_unsupportedGrantType_returnsInvalidRequest() throws Exception {
+        // Act & Assert - Unsupported grant_type should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("grant_type", "unsupported_grant_type")
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("Unsupported or invalid grant_type"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
+    @Test
+    void processTokenRequest_missingGrantType_returnsInvalidRequest() throws Exception {
+        // Act & Assert - Missing grant_type should cause validation failure
+        mockMvc.perform(post("/oauth/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .param("code", "test-code")
+                .param("redirect_uri", "https://test.com/callback")
+                .param("client_id", "test-client")
+                .param("code_verifier", "test-verifier"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("grant_type is required"));
+
+        verify(iarService, never()).processTokenRequest(any());
+    }
+
     // ==================== SECOND IAR CALL (VP PRESENTATION) TESTS ====================
 
     @Test
