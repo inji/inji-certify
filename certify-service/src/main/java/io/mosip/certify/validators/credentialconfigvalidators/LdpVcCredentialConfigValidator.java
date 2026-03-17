@@ -26,24 +26,13 @@ public class LdpVcCredentialConfigValidator {
                 && credentialConfig.getMsoMdocClaims() == null && credentialConfig.getSdJwtClaims() == null;
     }
 
-    public static boolean isConfigAlreadyPresent(CredentialConfigurationDTO credentialConfig,
+    public static boolean isConfigAlreadyPresent(String credentialFormat, List<String> credentialType, List <String> context,
                                         CredentialConfigRepository credentialConfigRepository) {
         Optional<CredentialConfig> optional =
                 credentialConfigRepository.findByCredentialFormatAndCredentialTypeAndContext(
-                credentialConfig.getCredentialFormat(),
-                listToCommaSeparatedString(credentialConfig.getCredentialTypes()),
-                listToCommaSeparatedString(credentialConfig.getContextURLs()));
-
-        return optional.isPresent();
-    }
-
-    public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
-                                                 CredentialConfigRepository credentialConfigRepository) {
-        Optional<CredentialConfig> optional =
-                credentialConfigRepository.findByCredentialFormatAndCredentialTypeAndContext(
-                        credentialConfig.getCredentialFormat(),
-                        listToCommaSeparatedString(credentialConfig.getCredentialTypes()),
-                        listToCommaSeparatedString(credentialConfig.getContextURLs()));
+                credentialFormat,
+                listToCommaSeparatedString(credentialType),
+                listToCommaSeparatedString(context));
 
         return optional.isPresent();
     }

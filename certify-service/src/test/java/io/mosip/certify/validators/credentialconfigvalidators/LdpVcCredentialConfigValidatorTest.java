@@ -112,7 +112,7 @@ class LdpVcCredentialConfigValidatorTest {
                 context
         )).thenReturn(Optional.of(new io.mosip.certify.entity.CredentialConfig()));
 
-        boolean result = LdpVcCredentialConfigValidator.isConfigAlreadyPresent(config, repo);
+        boolean result = LdpVcCredentialConfigValidator.isConfigAlreadyPresent(config.getCredentialFormat(),config.getCredentialTypes(),config.getContextURLs(), repo);
         assertTrue(result);
     }
 
@@ -131,7 +131,7 @@ class LdpVcCredentialConfigValidatorTest {
                 context
         )).thenReturn(Optional.empty());
 
-        boolean result = LdpVcCredentialConfigValidator.isConfigAlreadyPresent(config, repo);
+        boolean result = LdpVcCredentialConfigValidator.isConfigAlreadyPresent(config.getCredentialFormat(),config.getCredentialTypes(),config.getContextURLs(), repo);
         assertFalse(result);
     }
 }

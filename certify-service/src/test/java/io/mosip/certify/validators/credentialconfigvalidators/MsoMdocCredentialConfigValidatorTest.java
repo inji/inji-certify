@@ -115,7 +115,7 @@ class MsoMdocCredentialConfigValidatorTest {
         Mockito.when(config.getDocType()).thenReturn("docType");
         Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
                 .thenReturn(Optional.of(new io.mosip.certify.entity.CredentialConfig()));
-        assertTrue(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config, repo));
+        assertTrue(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config.getCredentialFormat(), config.getDocType(), repo));
     }
 
     @Test
@@ -126,6 +126,6 @@ class MsoMdocCredentialConfigValidatorTest {
         Mockito.when(config.getDocType()).thenReturn("docType");
         Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
                 .thenReturn(Optional.empty());
-        assertFalse(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config, repo));
+        assertFalse(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config.getCredentialFormat(), config.getDocType(), repo));
     }
 }

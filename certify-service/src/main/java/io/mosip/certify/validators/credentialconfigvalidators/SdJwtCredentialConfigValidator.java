@@ -5,6 +5,7 @@ import io.mosip.certify.core.dto.CredentialConfigurationDTOV2;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public class SdJwtCredentialConfigValidator {
@@ -24,22 +25,12 @@ public class SdJwtCredentialConfigValidator {
                 credentialConfig.getMsoMdocClaims() == null && credentialConfig.getSignatureCryptoSuite() == null;
     }
 
-    public static boolean isConfigAlreadyPresent(CredentialConfigurationDTO credentialConfig,
+    public static boolean isConfigAlreadyPresent(String credentialFormat, String sdJwtVct,
                                                  CredentialConfigRepository credentialConfigRepository) {
         Optional<CredentialConfig> optional =
                 credentialConfigRepository.findByCredentialFormatAndSdJwtVct(
-                        credentialConfig.getCredentialFormat(),
-                        credentialConfig.getSdJwtVct());
-
-        return optional.isPresent();
-    }
-
-    public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
-                                                 CredentialConfigRepository credentialConfigRepository) {
-        Optional<CredentialConfig> optional =
-                credentialConfigRepository.findByCredentialFormatAndSdJwtVct(
-                        credentialConfig.getCredentialFormat(),
-                        credentialConfig.getSdJwtVct());
+                        credentialFormat,
+                        sdJwtVct);
 
         return optional.isPresent();
     }
