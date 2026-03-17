@@ -25,6 +25,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.util.StringUtils;
 import java.util.*;
 
 @Slf4j
@@ -550,10 +551,23 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     private List<String> resolveAuthorizationServers() {
-        if (authorizationServerMapping == null || authorizationServerMapping.isEmpty()) {
-            return Collections.singletonList(authUrl);
+        Set<String> allServers = new LinkedHashSet<>();
+
+        if (StringUtils.hasText(authUrl)) {
+            Arrays.stream(authUrl.split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .forEach(allServers::add);
         }
-        return authorizationServerMapping.values().stream().distinct().toList();
+
+        if (authorizationServerMapping != null) {
+            authorizationServerMapping.values().stream()
+                    .filter(StringUtils::hasText)
+                    .map(String::trim)
+                    .forEach(allServers::add);
+        }
+
+        return new ArrayList<>(allServers);
     }
 
     private String buildCredentialEndpoint(String version) {
