@@ -704,7 +704,7 @@ public class CredentialConfigurationServiceImplTest {
 
         // Verify no mapping calls
         verify(credentialConfigRepository).findAll();
-        verify(credentialConfigMapper, never()).toDto((CredentialConfig) any());
+        verify(credentialConfigMapper, never()).toDtoV2((CredentialConfig) any());
     }
 
     @Test

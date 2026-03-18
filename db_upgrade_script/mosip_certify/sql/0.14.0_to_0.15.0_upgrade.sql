@@ -1,5 +1,5 @@
 UPDATE certify.credential_config
-SET display = (
+SET display = COALESCE((
     SELECT jsonb_agg(
                    CASE
                        WHEN elem->'logo' IS NOT NULL
@@ -14,5 +14,5 @@ SET display = (
                        END
            )
     FROM jsonb_array_elements(display::jsonb) AS elem
-)
+), '[]'::jsonb)
 WHERE display IS NOT NULL;

@@ -274,10 +274,10 @@ class SdJwtCredentialConfigValidatorTest {
 
     @Test
     void testIsValidCheck_signatureCryptoSuiteNotNullV2_returnsFalse() {
-        CredentialConfigurationDTO config = new CredentialConfigurationDTO();
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
         config.setSdJwtVct("vctValue");
         config.setSignatureAlgo("algoValue");
         config.setSignatureCryptoSuite("suiteValue");
-        assertFalse(SdJwtCredentialConfigValidator.isValidCheck(config));
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
     }
 }
