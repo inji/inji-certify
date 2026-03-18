@@ -341,7 +341,7 @@ jobs:
         if: always()
         run: |
           mkdir -p ci-reports
-          CONTAINER_ID=$(docker ps -a --filter "name=apitest" --format "{{.ID}}" | head -n 1)
+          CONTAINER_ID=$(docker ps -a --filter "name=^apitest-inji-certify$" --format "{{.ID}}" | head -n 1)
           if [ -n "$CONTAINER_ID" ]; then
             docker cp $CONTAINER_ID:/home/inji/testng-report/. ci-reports || echo "No reports found"
           else
