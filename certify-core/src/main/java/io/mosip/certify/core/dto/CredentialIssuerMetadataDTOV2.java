@@ -21,7 +21,7 @@ public class CredentialIssuerMetadataDTOV2 {
     @JsonProperty("credential_endpoint")
     private String credentialEndpoint;
 
-    private List<Map<String, String>> display;
+    private List<Map<String, Object>> display;
 
     @JsonIgnore
     public Map<String, CredentialConfigurationSupportedDTOV2> getCredentialConfigurationSupportedDTOV2() {

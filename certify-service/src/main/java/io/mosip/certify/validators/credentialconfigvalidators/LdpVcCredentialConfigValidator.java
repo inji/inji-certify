@@ -48,17 +48,6 @@ public class LdpVcCredentialConfigValidator {
         return optional.isPresent();
     }
 
-    public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
-                                                 CredentialConfigRepository credentialConfigRepository) {
-        Optional<CredentialConfig> optional =
-                credentialConfigRepository.findByCredentialFormatAndCredentialTypeAndContext(
-                        credentialConfig.getCredentialFormat(),
-                        listToCommaSeparatedString(credentialConfig.getCredentialTypes()),
-                        listToCommaSeparatedString(credentialConfig.getContextURLs()));
-
-        return optional.isPresent();
-    }
-
     private static String listToCommaSeparatedString(List<String> list) {
         if (list == null || list.isEmpty()) {
             return null;
