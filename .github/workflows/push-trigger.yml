@@ -265,7 +265,6 @@ jobs:
       run-apitest-pr:
     if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -295,8 +294,8 @@ jobs:
 
       - name: Build certify jar
         run: |
-          cd certify
-          mvn clean package -DskipTests
+         cd certify-service
+         mvn clean package -DskipTests
 
       - name: Build apitest jar
         run: |
@@ -316,12 +315,12 @@ jobs:
         run: docker build -t apitest-inji-certify:ci -f api-test/Dockerfile .
 
       - name: Start Full Stack
-        run: docker compose -f docker-compose/docker-compose-ci.yaml up -d postgres certify
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml up -d postgres certify
 
       - name: Wait for Service
         run: |
           for i in {1..30}; do
-            if curl -s http://localhost:8091/v1/certify/actuator/health | grep UP; then
+            if curl -s http://localhost:8090/v1/certify/actuator/health | grep UP; then
               echo "Service is UP"
               exit 0
             fi
@@ -333,7 +332,7 @@ jobs:
         id: apitest
         run: |
           set +e
-          docker compose -f docker-compose/docker-compose-ci.yaml up --exit-code-from apitest apitest
+          docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml up --exit-code-from apitest apitest
           EXIT_CODE=$?
           echo "EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
           set -e
@@ -372,11 +371,11 @@ jobs:
 
       - name: Print all service logs
         if: always()
-        run: docker compose -f docker-compose/docker-compose-ci.yaml logs
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml logs
 
       - name: Shutdown
         if: always()
-        run: docker compose -f docker-compose/docker-compose-ci.yaml down
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml down
 
       - name: Fail Job If Tests Failed
         if: env.EXIT_CODE != '0'

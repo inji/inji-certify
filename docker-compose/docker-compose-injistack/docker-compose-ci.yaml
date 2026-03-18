@@ -11,26 +11,23 @@ services:
       - network
     ports:
       - "5433:5432"
-      healthcheck:
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 3s
       retries: 10
       
-      certify:
+    certify:
   container_name: certify
-  image: mosipqa/inji-certify-with-plugins:develop
+  image: inji-certify:ci
   user: root
   ports:
     - "8090:8090"
 
   environment:
-    # --- Core ---
     - active_profile_env=default,csvdp-farmer
     - SPRING_CONFIG_NAME=certify
     - SPRING_CONFIG_LOCATION=/home/mosip/config/
-
-    # --- Database (same pattern as verify-service) ---
     - DATABASE_HOST=postgres
     - DATABASE_PORT=5432
     - DATABASE_NAME=inji_certify
@@ -50,14 +47,11 @@ services:
     - ./config/certify-default.properties:/home/mosip/config/certify-default.properties
     - ./config/certify-csvdp-farmer.properties:/home/mosip/config/certify-csvdp-farmer.properties
     - ./config/certify-mock-mdl.properties:/home/mosip/config/certify-mock-mdl.properties
-
     - ./data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
-
-    # Identity data input (CSV)
     - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
 
   depends_on:
-    postgres:
+    database:
       condition: service_healthy
     redis:
       condition: service_started
@@ -72,7 +66,7 @@ services:
     retries: 30
     start_period: 30s
       
-      apitest:
+    apitest:
     image: apitest-inji-certify:ci
     user: root
     depends_on:
