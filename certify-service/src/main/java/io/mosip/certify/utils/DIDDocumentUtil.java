@@ -87,10 +87,11 @@ public class DIDDocumentUtil {
                                 String kid = certificateData.getKeyId();
                                 Map<String, Object> verificationMethod = generateVerificationMethod(keyParams.get(2), certificateString, didUrl, kid);
                                 String type = (String) verificationMethod.get("type");
-                                keyTypes.add(type);
+
                                 // Add only if the "id" is unique
                                 String verificationId = (String) verificationMethod.get("id");
                                 if (uniqueIds.add(verificationId)) {
+                                    keyTypes.add(type);
                                     return verificationMethod;
                                 }
                                 return null; // Skip duplicates
