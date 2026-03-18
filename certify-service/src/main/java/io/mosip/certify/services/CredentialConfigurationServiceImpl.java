@@ -52,7 +52,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private String pluginMode;
 
     @Value("#{${mosip.certify.credential-config.issuer.display}}")
-    private List<Map<String, String>> issuerDisplay;
+    private List<Map<String, Object>> issuerDisplay;
 
     @Value("#{${mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes:{}}}")
     private List<String> allowedCredentialStatusPurposes;
