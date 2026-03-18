@@ -61,7 +61,7 @@ public class VCIssuanceControllerTest {
         credentialIssuerMetadata.setCredentialIssuer("https://localhost:9090");
         credentialIssuerMetadata.setAuthorizationServers(List.of("https://example.com/auth"));
         credentialIssuerMetadata.setCredentialEndpoint("https://localhost:9090/v1/certify/issuance/credential");
-        Map<String, Object> display = new HashMap<>();
+        Map<String, String> display = new HashMap<>();
         display.put("name", "Test Credential Issuer");
         display.put("locale", "en");
         credentialIssuerMetadata.setDisplay(List.of(display));
@@ -95,7 +95,7 @@ public class VCIssuanceControllerTest {
         credentialIssuerMetadata.setCredentialIssuer("https://localhost:9090");
         credentialIssuerMetadata.setAuthorizationServers(List.of("https://example.com/auth"));
         credentialIssuerMetadata.setCredentialEndpoint("https://localhost:9090/v1/certify/issuance/credential");
-        Map<String, Object> display = new HashMap<>();
+        Map<String, String> display = new HashMap<>();
         display.put("name", "Test Credential Issuer");
         display.put("locale", "en");
         credentialIssuerMetadata.setDisplay(List.of(display));
