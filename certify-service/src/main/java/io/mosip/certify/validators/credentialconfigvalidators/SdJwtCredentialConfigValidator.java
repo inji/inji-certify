@@ -25,12 +25,22 @@ public class SdJwtCredentialConfigValidator {
                 credentialConfig.getMsoMdocClaims() == null && credentialConfig.getSignatureCryptoSuite() == null;
     }
 
-    public static boolean isConfigAlreadyPresent(String credentialFormat, String sdJwtVct,
+    public static boolean isConfigAlreadyPresent(CredentialConfigurationDTO credentialConfig,
                                                  CredentialConfigRepository credentialConfigRepository) {
         Optional<CredentialConfig> optional =
                 credentialConfigRepository.findByCredentialFormatAndSdJwtVct(
-                        credentialFormat,
-                        sdJwtVct);
+                        credentialConfig.getCredentialFormat(),
+                        credentialConfig.getSdJwtVct());
+
+        return optional.isPresent();
+    }
+
+    public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
+                                                   CredentialConfigRepository credentialConfigRepository) {
+        Optional<CredentialConfig> optional =
+                credentialConfigRepository.findByCredentialFormatAndSdJwtVct(
+                        credentialConfig.getCredentialFormat(),
+                        credentialConfig.getSdJwtVct());
 
         return optional.isPresent();
     }

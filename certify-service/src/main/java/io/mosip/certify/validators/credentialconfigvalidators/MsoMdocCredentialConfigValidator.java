@@ -24,12 +24,22 @@ public class MsoMdocCredentialConfigValidator {
                 && credentialConfig.getSdJwtClaims() == null;
     }
 
-    public static boolean isConfigAlreadyPresent(String credentialFormat, String docType,
+    public static boolean isConfigAlreadyPresent(CredentialConfigurationDTO credentialConfig,
                                                  CredentialConfigRepository credentialConfigRepository) {
         Optional<CredentialConfig> optional =
                 credentialConfigRepository.findByCredentialFormatAndDocType(
-                        credentialFormat,
-                        docType);
+                        credentialConfig.getCredentialFormat(),
+                        credentialConfig.getDocType());
+
+        return optional.isPresent();
+    }
+
+    public static boolean isConfigAlreadyPresentV2(CredentialConfigurationDTOV2 credentialConfig,
+                                                   CredentialConfigRepository credentialConfigRepository) {
+        Optional<CredentialConfig> optional =
+                credentialConfigRepository.findByCredentialFormatAndDocType(
+                        credentialConfig.getCredentialFormat(),
+                        credentialConfig.getDocType());
 
         return optional.isPresent();
     }

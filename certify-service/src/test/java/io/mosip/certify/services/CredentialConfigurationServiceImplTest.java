@@ -940,7 +940,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any(), any())).thenReturn(true);
+            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
@@ -955,7 +955,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
-            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any(), any())).thenReturn(true);
+            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresentV2(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
             );
@@ -998,7 +998,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(MsoMdocCredentialConfigValidator.class)) {
             mocked.when(() -> MsoMdocCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            mocked.when(() -> MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any())).thenReturn(true);
+            mocked.when(() -> MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
@@ -1013,7 +1013,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(MsoMdocCredentialConfigValidator.class)) {
             mocked.when(() -> MsoMdocCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
-            mocked.when(() -> MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any())).thenReturn(true);
+            mocked.when(() -> MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
             );
@@ -1056,7 +1056,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(SdJwtCredentialConfigValidator.class)) {
             mocked.when(() -> SdJwtCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            mocked.when(() -> SdJwtCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any())).thenReturn(true);
+            mocked.when(() -> SdJwtCredentialConfigValidator.isConfigAlreadyPresent(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
@@ -1071,7 +1071,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(SdJwtCredentialConfigValidator.class)) {
             mocked.when(() -> SdJwtCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
-            mocked.when(() -> SdJwtCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any())).thenReturn(true);
+            mocked.when(() -> SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(eq(dto), any())).thenReturn(true);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
             );
@@ -1088,7 +1088,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setSignatureAlgo("");
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any(), any())).thenReturn(false);
+            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(eq(dto), any())).thenReturn(false);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
@@ -1105,7 +1105,7 @@ public class CredentialConfigurationServiceImplTest {
         dto.setSignatureAlgo("");
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
-            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresent(any(), any(), any(), any())).thenReturn(false);
+            mocked.when(() -> LdpVcCredentialConfigValidator.isConfigAlreadyPresentV2(eq(dto), any())).thenReturn(false);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
             );

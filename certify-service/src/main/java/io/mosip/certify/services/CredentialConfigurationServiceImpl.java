@@ -118,7 +118,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!LdpVcCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_MANDATORY_FIELDS_MISSING, "Fields context, credentialType, and signatureCryptoSuite are mandatory for the ldp_vc format.");
                 }
-                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getCredentialTypes(),credentialConfig.getContextURLs(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
                 validateKeyAliasMapperConfiguration(credentialConfig);
@@ -127,7 +127,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!MsoMdocCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_MANDATORY_FIELDS_MISSING, "Fields doctype and signatureCryptoSuite are mandatory for the mso_mdoc format.");
                 }
-                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getDocType(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
                 break;
@@ -135,7 +135,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_MANDATORY_FIELDS_MISSING, "Fields vct and signatureAlgo are mandatory for the vc+sd-jwt format.");
                 }
-                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getSdJwtVct(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 break;
@@ -153,7 +153,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!LdpVcCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_MANDATORY_FIELDS_MISSING, "Fields context, credentialType, and signatureCryptoSuite are mandatory for the ldp_vc format.");
                 }
-                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getCredentialTypes(),credentialConfig.getContextURLs(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
                 validateKeyAliasMapperConfigurationV2(credentialConfig);
@@ -162,7 +162,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!MsoMdocCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_MANDATORY_FIELDS_MISSING, "Fields doctype and signatureCryptoSuite are mandatory for the mso_mdoc format.");
                 }
-                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getDocType(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
                 break;
@@ -170,7 +170,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if (!SdJwtCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_MANDATORY_FIELDS_MISSING, "Fields vct and signatureAlgo are mandatory for the vc+sd-jwt format.");
                 }
-                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig.getCredentialFormat(),credentialConfig.getSdJwtVct(), credentialConfigRepository)) {
+                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 break;
