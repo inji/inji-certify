@@ -55,7 +55,8 @@ public class DIDDocumentUtil {
 
     public Map<String, Object> generateDIDDocument(String didUrl) {
         HashMap<String, Object> didDocument = new HashMap<>();
-        didDocument.put("@context", Collections.singletonList("https://www.w3.org/ns/did/v1"));
+        List<String> contextList = new ArrayList<>();
+        contextList.add("https://www.w3.org/ns/did/v1");
         didDocument.put("alsoKnownAs", new ArrayList<>());
         didDocument.put("service", new ArrayList<>());
         didDocument.put("id", didUrl);
@@ -67,6 +68,7 @@ public class DIDDocumentUtil {
 
         // Use a Set to track unique verification methods by their "id"
         Set<String> uniqueIds = new HashSet<>();
+        Set<String> keyTypes = new HashSet<>();
         List<Map<String, Object>> verificationMethods = credentialConfigMap.entrySet().stream()
                 .flatMap(entry -> {
                     List<String> keyParams = entry.getValue();
@@ -84,7 +86,8 @@ public class DIDDocumentUtil {
                                 String certificateString = certificateData.getCertificateData();
                                 String kid = certificateData.getKeyId();
                                 Map<String, Object> verificationMethod = generateVerificationMethod(keyParams.get(2), certificateString, didUrl, kid);
-
+                                String type = (String) verificationMethod.get("type");
+                                keyTypes.add(type);
                                 // Add only if the "id" is unique
                                 String verificationId = (String) verificationMethod.get("id");
                                 if (uniqueIds.add(verificationId)) {
@@ -98,6 +101,18 @@ public class DIDDocumentUtil {
 
         didDocument.put("verificationMethod", verificationMethods);
 
+        if (keyTypes.contains("Ed25519VerificationKey2020")) {
+            contextList.add("https://w3id.org/security/suites/ed25519-2020/v1");
+        }
+
+        if (keyTypes.contains("RsaVerificationKey2018") ||
+                keyTypes.contains("EcdsaSecp256r1VerificationKey2019") ||
+                keyTypes.contains("EcdsaSecp256k1VerificationKey2019")) {
+
+            contextList.add("https://w3id.org/security/v1");
+        }
+
+        didDocument.put("@context", contextList);
         return didDocument;
     }
 
