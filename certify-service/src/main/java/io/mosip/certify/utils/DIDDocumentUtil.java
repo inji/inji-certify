@@ -105,8 +105,12 @@ public class DIDDocumentUtil {
             contextList.add("https://w3id.org/security/suites/ed25519-2020/v1");
         }
 
+
         if (keyTypes.contains("EcdsaSecp256r1VerificationKey2019")) {
             contextList.add("https://w3id.org/security/suites/ecdsa-2019/v1");
+        }
+        if (keyTypes.contains("Ed25519VerificationKey2018")) {
+            contextList.add("https://w3id.org/security/v1");
         }
 
         if (keyTypes.contains("RsaVerificationKey2018") ||
@@ -114,6 +118,7 @@ public class DIDDocumentUtil {
 
             contextList.add("https://w3id.org/security/v1");
         }
+
 
         didDocument.put("@context", contextList);
         return didDocument;
