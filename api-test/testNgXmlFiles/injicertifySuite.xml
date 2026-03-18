@@ -797,7 +797,15 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
-
+	<test name="AddCredentialConfigForMdocMDL">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/AddCredentialConfigurationForMdoc/AddCredentialConfigurationForMdoc.yml" />
+		<parameter name="idKeyName" value="id" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>	
 	<test name="OAuthDetailsRequestVCIFormDocMDL">
 		<parameter name="ymlFile"
 			value="injicertify/mDocMDL/OAuthDetailsRequestFormDoc/OAuthDetailsRequestFormDoc.yml" />
@@ -845,6 +853,13 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="DeleteCredentialConfigForMdocMDL">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/DeleteCredentialConfigurationForMdoc/DeleteCredentialConfigurationForMdoc.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
+		</classes>
+	</test>	
 	<test name="AddCredentialConfig">
 		<parameter name="ymlFile"
 			value="injicertify/CredentialConfig/NewCredentialConfiguration/AddCredentialConfiguration.yml" />
@@ -1387,5 +1402,36 @@
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
-	</test>		
+	</test>
+	<test name="GeneratePreAuthCode">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GeneratePreAuthCode/GeneratePreAuthCode.yml" />
+		<parameter name="idKeyName" value="credential_offer_uri" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="GetCredentialOfferPreAuth">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GetCredentialOffer/GetCredentialOffer.yml" />
+			<parameter name="idKeyName" value="pre-authorized_code" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParamForAutoGenId" />
+		</classes>
+	</test>
+	<test name="TokenExchangePreAuth">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/TokenExchange/TokenExchange.yml" />
+		<parameter name="idKeyName" value="access_token,c_nonce" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GetCredentialPreAuthFlow">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GetCredentialPreAuth/GetCredentialPreAuth.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
+		</classes>
+	</test>
 </suite>

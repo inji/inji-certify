@@ -6,6 +6,7 @@
 package io.mosip.certify.controller;
 
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.IarConstants;
 import io.mosip.certify.core.constants.IarStatus;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
@@ -122,13 +123,22 @@ public class OAuthController {
                 tokenRequest.setPre_authorized_code(params.get("pre-authorized_code"));
                 tokenRequest.setTx_code(params.get("tx_code"));
                 response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
-            } else {
+            } else if (IarConstants.GRANT_TYPE_AUTHORIZATION_CODE.equals(grantType)) {
+                if (StringUtils.isBlank(params.get("code"))) {
+                    throw new CertifyException("invalid_request", "code is required");
+                }
+                if (StringUtils.isBlank(params.get("code_verifier"))) {
+                    throw new CertifyException("invalid_request", "code_verifier is required");
+                }
                 // Handle authorization_code grant type via IarService
                 OAuthTokenRequest tokenRequest = new OAuthTokenRequest();
                 tokenRequest.setGrant_type(grantType);
                 tokenRequest.setCode(params.get("code"));
                 tokenRequest.setCode_verifier(params.get("code_verifier"));
                 response = iarService.processTokenRequest(tokenRequest);
+            } else {
+
+                throw new CertifyException("invalid_request", "Unsupported or invalid grant_type");
             }
 
             log.info("Token issued successfully");

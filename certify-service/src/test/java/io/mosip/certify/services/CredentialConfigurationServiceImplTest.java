@@ -784,4 +784,106 @@ public class CredentialConfigurationServiceImplTest {
         }
     }
 
+    @Test
+    public void resolveAuthorizationServers_MultipleServers_Success() {
+        // Setup multiple servers in authUrl
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth1.com, http://auth2.com ");
+
+        // Setup mappings
+        Map<String, String> authServerMapping = new HashMap<>();
+        authServerMapping.put("Farmer", "http://farmer-as.com");
+        authServerMapping.put("Default", "http://auth1.com"); // Duplicate
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
+
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(3, servers.size());
+        Assert.assertTrue(servers.contains("http://auth1.com"));
+        Assert.assertTrue(servers.contains("http://auth2.com"));
+        Assert.assertTrue(servers.contains("http://farmer-as.com"));
+        // Order should be preserved if LinkedHashSet is used
+        Assert.assertEquals("http://auth1.com", servers.get(0));
+        Assert.assertEquals("http://auth2.com", servers.get(1));
+        Assert.assertEquals("http://farmer-as.com", servers.get(2));
+    }
+
+    @Test
+    public void resolveAuthorizationServers_AuthUrlIsNull_ReturnsOnlyMappingServers() {
+        // authUrl is null
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", null);
+    
+        Map<String, String> authServerMapping = new HashMap<>();
+        authServerMapping.put("default", "http://mapping-server.com");
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
+    
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+    
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+    
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(1, servers.size());
+        Assert.assertTrue(servers.contains("http://mapping-server.com"));
+    }
+    
+    @Test
+    public void resolveAuthorizationServers_SingleAuthUrl_NoSplitRequired_ReturnsAllServers() {
+        // authUrl has only 1 value — comma-split won't produce multiple entries
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://single-auth.com");
+    
+        Map<String, String> authServerMapping = new HashMap<>();
+        authServerMapping.put("extra", "http://extra-server.com");
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
+    
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+    
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+    
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(2, servers.size());
+        Assert.assertTrue(servers.contains("http://single-auth.com"));
+        Assert.assertTrue(servers.contains("http://extra-server.com"));
+        Assert.assertEquals("http://single-auth.com", servers.get(0));
+        Assert.assertEquals("http://extra-server.com", servers.get(1));
+    }
+    
+    @Test
+    public void resolveAuthorizationServers_MappingIsNull_ReturnsOnlyAuthUrlServers() {
+        // authorizationServerMapping is null
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth1.com, http://auth2.com");
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", null);
+    
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+    
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+    
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(2, servers.size());
+        Assert.assertEquals("http://auth1.com", servers.get(0));
+        Assert.assertEquals("http://auth2.com", servers.get(1));
+    }
+    
+    @Test
+    public void resolveAuthorizationServers_MappingIsEmpty_ReturnsOnlyAuthUrlServers() {
+        // authorizationServerMapping is an empty map
+        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth1.com, http://auth2.com");
+        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", new HashMap<>());
+    
+        when(credentialConfigRepository.findAll()).thenReturn(Collections.emptyList());
+    
+        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+    
+        List<String> servers = result.getAuthorizationServers();
+        Assert.assertNotNull(servers);
+        Assert.assertEquals(2, servers.size());
+        Assert.assertEquals("http://auth1.com", servers.get(0));
+        Assert.assertEquals("http://auth2.com", servers.get(1));
+    }
+
 }
