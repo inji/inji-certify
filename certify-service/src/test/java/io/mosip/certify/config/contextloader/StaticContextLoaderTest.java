@@ -332,6 +332,44 @@ class StaticContextLoaderTest {
     }
 
     @Test
+    void allowUnknownFalse_hostInAllowedHosts_fetchesRemote() throws Exception {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(false);
+        props.getRemote().setAllowedHosts(Set.of("localhost"));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/ctx";
+
+        Document d1 = loader.loadDocument(URI.create(u), new DocumentLoaderOptions());
+        assertTrue(docToJson(d1).containsKey("@context"));
+
+        // second call should be served from cache
+        Document d2 = loader.loadDocument(URI.create(u), new DocumentLoaderOptions());
+        assertTrue(docToJson(d2).containsKey("@context"));
+        assertEquals(1, hits.get(), "Second call should be served from cache");
+    }
+
+    @Test
+    void allowUnknownFalse_hostNotInAllowedHosts_throws() {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(false);
+        props.getRemote().setAllowedHosts(Set.of("other.example.org"));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/ctx";
+
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("not in the allowed hosts list"),
+                "Expected allowed-hosts error, got: " + err.getMessage());
+        assertEquals(0, hits.get(), "Should not hit remote server");
+    }
+
+    @Test
     void unknownContext_allowUnknownTrue_fetchesRemote_andCachesResult() throws Exception {
         JsonLdContextLoaderProperties props = baseProps();
         props.getRemote().setAllowUnknown(true);
@@ -550,7 +588,6 @@ class StaticContextLoaderTest {
     void redirect_sameAllowedHost_followsAndReturnsDocument() throws Exception {
         JsonLdContextLoaderProperties props = baseProps();
         props.getRemote().setAllowUnknown(true);
-        props.getRemote().setEnforceAllowedHosts(true);
         props.getRemote().setAllowedHosts(Set.of("localhost"));
 
         ResourceLoader rl = mock(ResourceLoader.class);
@@ -564,8 +601,7 @@ class StaticContextLoaderTest {
     @Test
     void redirect_toBlockedHost_throws() {
         JsonLdContextLoaderProperties props = baseProps();
-        props.getRemote().setAllowUnknown(true);
-        props.getRemote().setEnforceAllowedHosts(true);
+        props.getRemote().setAllowUnknown(false);
         props.getRemote().setAllowedHosts(Set.of("localhost"));
 
         ResourceLoader rl = mock(ResourceLoader.class);
@@ -582,12 +618,70 @@ class StaticContextLoaderTest {
     void redirect_tooManyHops_throws() {
         JsonLdContextLoaderProperties props = baseProps();
         props.getRemote().setAllowUnknown(true);
-        props.getRemote().setEnforceAllowedHosts(false);
 
         ResourceLoader rl = mock(ResourceLoader.class);
         StaticContextLoader loader = new StaticContextLoader(props, rl);
 
         String u = "http://localhost:" + port + "/chain0";
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("Too many redirects"),
+                "Expected too-many-redirects error, got: " + err.getMessage());
+    }
+
+    @Test
+    void redirect_allowUnknownTrue_redirectToUnlistedHost_throws() {
+        // allowUnknown=true allows the initial URL from any host,
+        // but redirect hops must still land on an allowedHost when the list is non-empty
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setAllowedHosts(Set.of("localhost"));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        // /redirect-external redirects to http://evil.example.org/ctx
+        String u = "http://localhost:" + port + "/redirect-external";
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("not allowed"),
+                "Expected redirect-host-not-allowed error, got: " + err.getMessage());
+    }
+
+    @Test
+    void maxRedirects_configurable_respectsLimit() {
+        // The chain endpoint creates 7 hops (/chain0 → /chain1 → ... → /chain6).
+        // Default maxRedirects=5 triggers "Too many redirects".
+        // Setting maxRedirects=2 should also trigger the error (but at hop 2).
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setMaxRedirects(2);
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/chain0";
+        JsonLdError err = assertThrows(JsonLdError.class, () ->
+                loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
+        assertTrue(err.getMessage().contains("Too many redirects"),
+                "Expected too-many-redirects error, got: " + err.getMessage());
+        assertTrue(err.getMessage().contains("max 2"),
+                "Expected max 2 in error message, got: " + err.getMessage());
+    }
+
+    @Test
+    void maxRedirects_zero_noRedirectsAllowed() {
+        // maxRedirects=0 means no redirects are followed at all.
+        // /redirect-ok returns 302, which should trigger the error immediately.
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getRemote().setAllowUnknown(true);
+        props.getRemote().setAllowedHosts(Set.of("localhost"));
+        props.getRemote().setMaxRedirects(0);
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        String u = "http://localhost:" + port + "/redirect-ok";
         JsonLdError err = assertThrows(JsonLdError.class, () ->
                 loader.loadDocument(URI.create(u), new DocumentLoaderOptions()));
         assertTrue(err.getMessage().contains("Too many redirects"),

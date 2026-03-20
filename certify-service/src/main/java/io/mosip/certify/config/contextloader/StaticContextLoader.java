@@ -33,8 +33,6 @@ public final class StaticContextLoader implements DocumentLoader {
 
     private static final Logger log = LoggerFactory.getLogger(StaticContextLoader.class);
 
-    private static final int MAX_REDIRECTS = 5;
-
     private static final class CacheEntry {
         final JsonObject json;
         final long expiresAtMillis; // 0 = never expires
@@ -88,10 +86,17 @@ public final class StaticContextLoader implements DocumentLoader {
             return doc;
         }
 
-        // 3) Unknown context remote fetch
-        if (!jsonLdProps.getRemote().isEnabled() || !jsonLdProps.getRemote().isAllowUnknown()) {
+        // 3) Remote fetch for unmapped contexts
+        if (!jsonLdProps.getRemote().isEnabled()) {
             throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
-                    "No configured mapping for context: " + iri + " and remote unknown contexts are disabled.");
+                    "No configured mapping for context: " + iri + " and remote loading is disabled.");
+        }
+
+        // Allow if host is explicitly in allowedHosts, OR if allowUnknown is true
+        if (!isHostAllowed(normalized) && !jsonLdProps.getRemote().isAllowUnknown()) {
+            throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                    "No configured mapping for context: " + iri
+                            + " and its host is not in the allowed hosts list.");
         }
 
         Document doc = fetchRemoteDocument(normalized);
@@ -158,13 +163,21 @@ public final class StaticContextLoader implements DocumentLoader {
 
     /**
      * Fetches a remote JSON-LD document with manual redirect handling.
-     * Each redirect hop is validated against the allowlist before following.
+     * The initial request (i=0) is validated with {@link #validateRemoteHostAllowed},
+     * which respects the {@code allowUnknown} setting.
+     * Redirect hops (i>0) are validated with {@link #validateRedirectHostAllowed},
+     * which always enforces {@code allowedHosts} regardless of {@code allowUnknown}.
      */
     private Document fetchRemoteDocument(URI uri) throws JsonLdError {
         URI current = uri;
-        for (int i = 0; i <= MAX_REDIRECTS; i++) {
+        int maxRedirects = jsonLdProps.getRemote().getMaxRedirects();
+        for (int i = 0; i <= maxRedirects; i++) {
             validateRemoteBasics(current);
-            validateRemoteHostAllowed(current);
+            if (i == 0) {
+                validateRemoteHostAllowed(current);
+            } else {
+                validateRedirectHostAllowed(current);
+            }
 
             HttpResponse<String> response;
             try {
@@ -199,7 +212,7 @@ public final class StaticContextLoader implements DocumentLoader {
         }
 
         throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
-                "Too many redirects (max " + MAX_REDIRECTS + ") for remote context: " + uri);
+                "Too many redirects (max " + maxRedirects + ") for remote context: " + uri);
     }
 
     private Document parseJsonLdResponse(String body, URI originalUri) throws JsonLdError {
@@ -234,17 +247,34 @@ public final class StaticContextLoader implements DocumentLoader {
     }
 
     /**
-     * Enforces allowlist ONLY when user explicitly wants it:
-     * - remote.enforceAllowedHosts=true AND allowedHosts not empty
+     * Checks whether the URI's host is explicitly listed in the allowedHosts set.
+     * Returns false if allowedHosts is empty (no positive trust signal).
+     */
+    private boolean isHostAllowed(URI uri) {
+        Set<String> allowedHosts = jsonLdProps.getRemote().getAllowedHosts();
+        if (allowedHosts == null || allowedHosts.isEmpty()) {
+            return false;
+        }
+        String host = uri.getHost();
+        if (host == null) return false;
+        return allowedHosts.contains(host.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Enforces host allowlist for the initial remote fetch request.
+     * Skipped entirely when {@code allowUnknown=true} (open mode trusts all hosts
+     * for the initial request).
+     * When {@code allowUnknown=false}: if allowedHosts is non-empty, only listed hosts
+     * are permitted; if allowedHosts is empty, no host restriction is applied.
      */
     private void validateRemoteHostAllowed(URI uri) throws JsonLdError {
-        if (!jsonLdProps.getRemote().isEnforceAllowedHosts()) {
-            return; // host filtering disabled by config
+        if (jsonLdProps.getRemote().isAllowUnknown()) {
+            return; // open mode — all hosts trusted for initial request
         }
 
         Set<String> allowedHosts = jsonLdProps.getRemote().getAllowedHosts();
         if (allowedHosts == null || allowedHosts.isEmpty()) {
-            return; // nothing to enforce
+            return; // no restriction — allowedHosts not configured
         }
 
         String host = uri.getHost();
@@ -257,6 +287,31 @@ public final class StaticContextLoader implements DocumentLoader {
         if (!allowedHosts.contains(normalizedHost)) {
             throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
                     "Remote context host not allowed: " + host + " (uri=" + uri + ")");
+        }
+    }
+
+    /**
+     * Enforces host allowlist on redirect hops. Unlike {@link #validateRemoteHostAllowed},
+     * this is NOT bypassed by {@code allowUnknown=true}. Redirect targets must always
+     * land on an allowed host when {@code allowedHosts} is configured (non-empty).
+     * If {@code allowedHosts} is empty, no restriction is applied.
+     */
+    private void validateRedirectHostAllowed(URI uri) throws JsonLdError {
+        Set<String> allowedHosts = jsonLdProps.getRemote().getAllowedHosts();
+        if (allowedHosts == null || allowedHosts.isEmpty()) {
+            return; // no restriction — allowedHosts not configured
+        }
+
+        String host = uri.getHost();
+        if (host == null) {
+            throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                    "Redirect target has no host: " + uri);
+        }
+
+        String normalizedHost = host.toLowerCase(Locale.ROOT);
+        if (!allowedHosts.contains(normalizedHost)) {
+            throw new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
+                    "Redirect target host not allowed: " + host + " (uri=" + uri + ")");
         }
     }
 

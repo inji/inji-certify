@@ -60,15 +60,12 @@ public class JsonLdContextLoaderProperties {
 
         private boolean enabled = true;
 
-        /** allow remote fetch for contexts not listed in `contexts` */
+        /** allow remote fetch for contexts whose host is not in {@code allowedHosts} */
         private boolean allowUnknown = false;
 
-        /**
-         * Enforce allowedHosts filtering for remote fetches.
-         * - true  => only hosts in allowedHosts allowed (if list not empty)
-         * - false => allow any host (host filter disabled)
-         */
-        private boolean enforceAllowedHosts = true;
+        /** maximum number of HTTP redirects to follow when fetching a remote context */
+        @Min(0)
+        private int maxRedirects = 5;
 
         @NotNull
         private Set<String> allowedHosts = new LinkedHashSet<>();
