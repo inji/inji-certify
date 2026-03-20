@@ -25,9 +25,7 @@ import io.mosip.kernel.keymanagerservice.dto.CertificateDataResponseDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-
 import com.nimbusds.jose.jwk.RSAKey;
-
 import io.ipfs.multibase.Multibase;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.SignatureAlg;
@@ -55,7 +53,7 @@ public class DIDDocumentUtil {
 
     public Map<String, Object> generateDIDDocument(String didUrl) {
         HashMap<String, Object> didDocument = new HashMap<>();
-        List<String> contextList = new ArrayList<>();
+        Set<String> contextList = new LinkedHashSet<>();
         contextList.add("https://www.w3.org/ns/did/v1");
         didDocument.put("alsoKnownAs", new ArrayList<>());
         didDocument.put("service", new ArrayList<>());
@@ -85,7 +83,13 @@ public class DIDDocumentUtil {
                             .map(certificateData -> {
                                 String certificateString = certificateData.getCertificateData();
                                 String kid = certificateData.getKeyId();
-                                Map<String, Object> verificationMethod = generateVerificationMethod(keyParams.get(2), certificateString, didUrl, kid);
+                                Map<String, Object> verificationMethod = generateVerificationMethod(
+                                        keyParams.get(2),
+                                        keyParams.get(3),
+                                        certificateString,
+                                        didUrl,
+                                        kid
+                                );
                                 String type = (String) verificationMethod.get("type");
 
                                 // Add only if the "id" is unique
@@ -105,8 +109,6 @@ public class DIDDocumentUtil {
         if (keyTypes.contains("Ed25519VerificationKey2020")) {
             contextList.add("https://w3id.org/security/suites/ed25519-2020/v1");
         }
-
-
         if (keyTypes.contains("EcdsaSecp256r1VerificationKey2019")) {
             contextList.add("https://w3id.org/security/suites/ecdsa-2019/v1");
         }
@@ -120,12 +122,16 @@ public class DIDDocumentUtil {
             contextList.add("https://w3id.org/security/v1");
         }
 
-
-        didDocument.put("@context", contextList);
+        didDocument.put("@context", new ArrayList<>(contextList));
         return didDocument;
     }
 
     private static Map<String, Object> generateVerificationMethod(String signatureAlgo, String certificateString, String didUrl, String kid) {
+        return generateVerificationMethod(signatureAlgo, null, certificateString, didUrl, kid);
+    }
+
+    private static Map<String, Object> generateVerificationMethod(String signatureAlgo, String signatureCryptoSuite,
+                                                                  String certificateString, String didUrl, String kid) {
         PublicKey publicKey = loadPublicKeyFromCertificate(certificateString);
         Map<String, Object> verificationMethod = null;
 
@@ -135,7 +141,7 @@ public class DIDDocumentUtil {
                     verificationMethod = generateECK1VerificationMethod(publicKey, didUrl);
                     break;
                 case JWSAlgorithm.EdDSA:
-                    verificationMethod = generateEd25519VerificationMethod(publicKey, didUrl);
+                    verificationMethod = generateEd25519VerificationMethod(publicKey, didUrl, signatureCryptoSuite);
                     break;
                 case JWSAlgorithm.RS256:
                     verificationMethod = generateRSAVerificationMethod(publicKey, didUrl);
@@ -147,7 +153,7 @@ public class DIDDocumentUtil {
                     log.error("Unsupported signature algorithm provided :" + signatureAlgo);
                     throw new CertifyException(ErrorConstants.UNSUPPORTED_ALGORITHM, "Unsupported signature algorithm: " + signatureAlgo);
             }
-        } catch(CertifyException e) {
+        } catch (CertifyException e) {
             throw e;
         } catch (Exception e) {
             log.error("Exception occurred while generating verification method for given signature algorithm: " + signatureAlgo, e.getMessage(), e);
@@ -194,7 +200,8 @@ public class DIDDocumentUtil {
         }
     }
 
-    private static Map<String, Object> generateEd25519VerificationMethod(PublicKey publicKey, String didUrl) throws Exception {
+    private static Map<String, Object> generateEd25519VerificationMethod(PublicKey publicKey, String didUrl,
+                                                                         String signatureCryptoSuite) throws Exception {
 
         BCEdDSAPublicKey edKey = (BCEdDSAPublicKey) publicKey;
         byte[] rawBytes = edKey.getPointEncoding();
@@ -205,7 +212,10 @@ public class DIDDocumentUtil {
         String publicKeyMultibase = Multibase.encode(Multibase.Base.Base58BTC, finalBytes);
 
         Map<String, Object> verificationMethod = new HashMap<>();
-        verificationMethod.put("type", "Ed25519VerificationKey2020");
+        String verificationKeyType = SignatureAlg.ED25519_SIGNATURE_SUITE_2018.equals(signatureCryptoSuite)
+                ? "Ed25519VerificationKey2018"
+                : "Ed25519VerificationKey2020";
+        verificationMethod.put("type", verificationKeyType);
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyMultibase", publicKeyMultibase);
         return verificationMethod;
@@ -282,17 +292,18 @@ public class DIDDocumentUtil {
             String appId = config.getKeyManagerAppId();
             String refId = config.getKeyManagerRefId();
 
-            if(appId != null) {
+            if (appId != null) {
                 String uniqueKey = appId + "-" + (refId != null ? refId : "");
                 List<String> configDetails = new ArrayList<>();
                 configDetails.add(appId);
                 configDetails.add(refId);
+                String signatureCryptoSuite = config.getSignatureCryptoSuite();
                 if (config.getSignatureAlgo() == null) {
-                    String signatureCryptoSuite = config.getSignatureCryptoSuite();
                     configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
                 } else {
                     configDetails.add(config.getSignatureAlgo());
                 }
+                configDetails.add(signatureCryptoSuite);
 
                 signatureCryptoSuiteMap.put(uniqueKey, configDetails);
             }
