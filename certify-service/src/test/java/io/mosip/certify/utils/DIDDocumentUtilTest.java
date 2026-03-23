@@ -30,6 +30,9 @@ class DIDDocumentUtilTest {
     @Mock
     KeymanagerService keymanagerService;
 
+    @Mock
+    CredentialConfigRepository credentialConfigRepository;
+
     @InjectMocks
     DIDDocumentUtil didDocumentUtil;
 
@@ -37,6 +40,10 @@ class DIDDocumentUtilTest {
     void setUp() {
         // Initialize mocks before each test
         MockitoAnnotations.openMocks(this);
+        LinkedHashMap<String, List<String>> signingMap = new LinkedHashMap<>();
+        signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2018, List.of(JWSAlgorithm.EdDSA));
+        signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2020, List.of(JWSAlgorithm.EdDSA));
+        ReflectionTestUtils.setField(didDocumentUtil, "credentialSigningAlgValuesSupportedMap", signingMap);
     }
 
     @Test
@@ -55,7 +62,25 @@ class DIDDocumentUtilTest {
         assertEquals(didUrl, verificationMethod.get("controller"));
         assertEquals(issuerPublicKeyURI, verificationMethod.get("id"));
         assertEquals("Ed25519VerificationKey2020", verificationMethod.get("type"));
-        assertEquals("https://w3id.org/security/suites/ed25519-2020/v1", verificationMethod.get("@context"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGenerateVerificationMethodEd25519Signature2018ViaReflection() {
+        String signatureAlgo = JWSAlgorithm.EdDSA;
+        String signatureCryptoSuite = SignatureAlg.ED25519_SIGNATURE_SUITE_2018;
+        String certificateString = "-----BEGIN CERTIFICATE-----\nMIIC2jCCAcKgAwIBAgIInbzaZeSXQqEwDQYJKoZIhvcNAQELBQAwgYsxCzAJBgNV\nBAYTAklOMQswCQYDVQQIDAJLQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQK\nDAVJSUlUQjEXMBUGA1UECwwORVhBTVBMRS1DRU5URVIxMjAwBgNVBAMMKXd3dy5l\neGFtcGxlLmNvbSAoQ0VSVElGWV9WQ19TSUdOX0VEMjU1MTkpMB4XDTI0MTIyOTA4\nNDY1OFoXDTI3MTIyOTA4NDY1OFowgYYxCzAJBgNVBAQTAklOMQswCQYDVQQIDAJL\nQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQKDAVJSUlUQjEXMBUGA1UECwwO\nRVhBTVBMRS1DRU5URVIxLTArBgNVBAMMJENFUlRJRllfVkNfU0lHTl9FRDI1NTE5\nLUVEMjU1MTlfU0lHTjAqMAUGAytlcAMhAOX8AiOEEHfyJRKJsjshaJps736mS4zS\ncZVcdUpZpEbxoz8wPTAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBSVZaEpMbDVgrAy\nZP0ZlwMMXzhS9jAOBgNVHQ8BAf8EBAMCBSAwDQYJKoZIhvcNAQELBQADggEBAAJ4\nPZb+6A5Q5Z2X18B3PLNLs5It2UTu+qL8PhQyoVpEoq44Efl+10qaAiBp7l66sYcf\nsYVhREnJaBACqsEy5cFTZ7j+7Q0GhuepnkYTS9n8DwlOgZgPU0tBBwthbixwFyME\ne2VdtuhyuVnGK8+W6VWMg+lQGyQwPgrzAf6L81bADn+cW6tIVoYd4uuNfoXeM0pL\nTtKMGEyRVdx3Q+wcLEGZXCTYPkUgf+mq8kqf9dCDdDgblPU891msZpg0KGRkLD28\nPF7FPhK0Hq4DzwfhdpiQMe7W19FyH/IXRprJi8LKx4V9Y/rBAvR2loLR0PwVl+VB\nB55c6EluZ6hn9xuwr9w=\n-----END CERTIFICATE-----\n";
+        String kid = "test-kid-ed25519-2018";
+        String didUrl = "did:example:123";
+        String issuerPublicKeyURI = didUrl + "#" + kid;
+
+        Map<String, Object> verificationMethod = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+                didDocumentUtil, "generateVerificationMethod", signatureAlgo, signatureCryptoSuite, certificateString, didUrl, kid);
+
+        assertEquals("z6Mkuw2HXTbK7fXoVbiuriHdm3NDDcVRYWxRymfzdTE6ZWgQ", verificationMethod.get("publicKeyMultibase"));
+        assertEquals(didUrl, verificationMethod.get("controller"));
+        assertEquals(issuerPublicKeyURI, verificationMethod.get("id"));
+        assertEquals("Ed25519VerificationKey2018", verificationMethod.get("type"));
     }
 
     @Test
@@ -78,7 +103,6 @@ class DIDDocumentUtilTest {
         assertEquals(didUrl, verificationMethod.get("controller"));
         assertEquals(issuerPublicKeyURI, verificationMethod.get("id"));
         assertEquals("RsaVerificationKey2018", verificationMethod.get("type"));
-        assertEquals("https://w3id.org/security/v1", verificationMethod.get("@context"));
     }
 
     @Test
@@ -103,7 +127,6 @@ class DIDDocumentUtilTest {
         assertEquals(didUrl, verificationMethod.get("controller"));
         assertEquals(issuerPublicKeyURI, verificationMethod.get("id"));
         assertEquals("EcdsaSecp256k1VerificationKey2019", verificationMethod.get("type"));
-        assertEquals("https://w3id.org/security/v1", verificationMethod.get("@context"));
     }
     @Test
     @SuppressWarnings("unchecked")
@@ -121,7 +144,6 @@ class DIDDocumentUtilTest {
         assertEquals("zDnaeXPbtiMpLqxAH31Q9iJgsX7VKtf4z7GQPj5FEGJfBDBGR", verificationMethod.get("publicKeyMultibase"));
         assertEquals(issuerPublicKeyURI, verificationMethod.get("id"));
         assertEquals("EcdsaSecp256r1VerificationKey2019", verificationMethod.get("type"));
-        assertEquals("https://w3id.org/security/suites/ecdsa-2019/v1", verificationMethod.get("@context"));
     }
 
     @Test
@@ -150,6 +172,69 @@ class DIDDocumentUtilTest {
         });
 
         assertEquals(ErrorConstants.INVALID_CERTIFICATE, exception.getErrorCode());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGenerateDIDDocumentAddsEd25519_2020ContextAtTopLevel() {
+        CredentialConfig config = new CredentialConfig();
+        config.setKeyManagerAppId("test-app");
+        config.setKeyManagerRefId("test-ref");
+        config.setSignatureCryptoSuite(SignatureAlg.ED25519_SIGNATURE_SUITE_2020);
+
+        CertificateDataResponseDto cert = new CertificateDataResponseDto();
+        cert.setCertificateData("-----BEGIN CERTIFICATE-----\nMIIC2jCCAcKgAwIBAgIInbzaZeSXQqEwDQYJKoZIhvcNAQELBQAwgYsxCzAJBgNV\nBAYTAklOMQswCQYDVQQIDAJLQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQK\nDAVJSUlUQjEXMBUGA1UECwwORVhBTVBMRS1DRU5URVIxMjAwBgNVBAMMKXd3dy5l\neGFtcGxlLmNvbSAoQ0VSVElGWV9WQ19TSUdOX0VEMjU1MTkpMB4XDTI0MTIyOTA4\nNDY1OFoXDTI3MTIyOTA4NDY1OFowgYYxCzAJBgNVBAQTAklOMQswCQYDVQQIDAJL\nQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQKDAVJSUlUQjEXMBUGA1UECwwO\nRVhBTVBMRS1DRU5URVIxLTArBgNVBAMMJENFUlRJRllfVkNfU0lHTl9FRDI1NTE5\nLUVEMjU1MTlfU0lHTjAqMAUGAytlcAMhAOX8AiOEEHfyJRKJsjshaJps736mS4zS\ncZVcdUpZpEbxoz8wPTAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBSVZaEpMbDVgrAy\nZP0ZlwMMXzhS9jAOBgNVHQ8BAf8EBAMCBSAwDQYJKoZIhvcNAQELBQADggEBAAJ4\nPZb+6A5Q5Z2X18B3PLNLs5It2UTu+qL8PhQyoVpEoq44Efl+10qaAiBp7l66sYcf\nsYVhREnJaBACqsEy5cFTZ7j+7Q0GhuepnkYTS9n8DwlOgZgPU0tBBwthbixwFyME\ne2VdtuhyuVnGK8+W6VWMg+lQGyQwPgrzAf6L81bADn+cW6tIVoYd4uuNfoXeM0pL\nTtKMGEyRVdx3Q+wcLEGZXCTYPkUgf+mq8kqf9dCDdDgblPU891msZpg0KGRkLD28\nPF7FPhK0Hq4DzwfhdpiQMe7W19FyH/IXRprJi8LKx4V9Y/rBAvR2loLR0PwVl+VB\nB55c6EluZ6hn9xuwr9w=\n-----END CERTIFICATE-----\n");
+        cert.setKeyId("ed-key");
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
+        when(keymanagerService.getAllCertificates("test-app", Optional.of("test-ref")))
+                .thenReturn(new AllCertificatesDataResponseDto(new CertificateDataResponseDto[]{cert}));
+
+        Map<String, Object> didDocument = didDocumentUtil.generateDIDDocument("did:example:123");
+
+        List<String> contexts = (List<String>) didDocument.get("@context");
+        List<Map<String, Object>> methods = (List<Map<String, Object>>) didDocument.get("verificationMethod");
+
+        assertEquals(List.of("https://www.w3.org/ns/did/v1", "https://w3id.org/security/suites/ed25519-2020/v1"), contexts);
+        assertEquals("Ed25519VerificationKey2020", methods.getFirst().get("type"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGenerateDIDDocumentDeduplicatesSecurityV1ForRsaAndEd25519_2018() {
+        CredentialConfig edConfig = new CredentialConfig();
+        edConfig.setKeyManagerAppId("ed-app");
+        edConfig.setKeyManagerRefId("ed-ref");
+        edConfig.setSignatureCryptoSuite(SignatureAlg.ED25519_SIGNATURE_SUITE_2018);
+
+        CredentialConfig rsaConfig = new CredentialConfig();
+        rsaConfig.setKeyManagerAppId("rsa-app");
+        rsaConfig.setKeyManagerRefId("rsa-ref");
+        rsaConfig.setSignatureAlgo(JWSAlgorithm.RS256);
+
+        CertificateDataResponseDto edCert = new CertificateDataResponseDto();
+        edCert.setCertificateData("-----BEGIN CERTIFICATE-----\nMIIC2jCCAcKgAwIBAgIInbzaZeSXQqEwDQYJKoZIhvcNAQELBQAwgYsxCzAJBgNV\nBAYTAklOMQswCQYDVQQIDAJLQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQKDAVJSUlUQjEXMBUGA1UECwwORVhBTVBMRS1DRU5URVIxMjAwBgNVBAMMKXd3dy5l\neGFtcGxlLmNvbSAoQ0VSVElGWV9WQ19TSUdOX0VEMjU1MTkpMB4XDTI0MTIyOTA4\nNDY1OFoXDTI3MTIyOTA4NDY1OFowgYYxCzAJBgNVBAQTAklOMQswCQYDVQQIDAJL\nQTESMBAGA1UEBwwJQkFOR0FMT1JFMQ4wDAYDVQQKDAVJSUlUQjEXMBUGA1UECwwO\nRVhBTVBMRS1DRU5URVIxLTArBgNVBAMMJENFUlRJRllfVkNfU0lHTl9FRDI1NTE5\nLUVEMjU1MTlfU0lHTjAqMAUGAytlcAMhAOX8AiOEEHfyJRKJsjshaJps736mS4zS\ncZVcdUpZpEbxoz8wPTAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBSVZaEpMbDVgrAy\nZP0ZlwMMXzhS9jAOBgNVHQ8BAf8EBAMCBSAwDQYJKoZIhvcNAQELBQADggEBAAJ4\nPZb+6A5Q5Z2X18B3PLNLs5It2UTu+qL8PhQyoVpEoq44Efl+10qaAiBp7l66sYcf\nsYVhREnJaBACqsEy5cFTZ7j+7Q0GhuepnkYTS9n8DwlOgZgPU0tBBwthbixwFyME\ne2VdtuhyuVnGK8+W6VWMg+lQGyQwPgrzAf6L81bADn+cW6tIVoYd4uuNfoXeM0pL\nTtKMGEyRVdx3Q+wcLEGZXCTYPkUgf+mq8kqf9dCDdDgblPU891msZpg0KGRkLD28\nPF7FPhK0Hq4DzwfhdpiQMe7W19FyH/IXRprJi8LKx4V9Y/rBAvR2loLR0PwVl+VB\nB55c6EluZ6hn9xuwr9w=\n-----END CERTIFICATE-----\n");
+        edCert.setKeyId("shared-security-context-ed");
+
+        CertificateDataResponseDto rsaCert = new CertificateDataResponseDto();
+        rsaCert.setCertificateData("-----BEGIN CERTIFICATE-----\nMIIDxzCCAq+gAwIBAgIIgusG+rdZJWgwDQYJKoZIhvcNAQELBQAweDELMAkGA1UE\nBhMCSU4xCzAJBgNVBAgMAktBMRIwEAYDVQQHDAlCQU5HQUxPUkUxDjAMBgNVBAoM\nBUlJSVRCMRcwFQYDVQQLDA5FWEFNUExFLUNFTlRFUjEfMB0GA1UEAwwWd3d3LmV4\nYW1wbGUuY29tIChST09UKTAeFw0yNDEyMjkxMDQ4NDRaFw0yNzEyMjkxMDQ4NDRa\nMIGHMQswCQYDVQQGEwJJTjELMAkGA1UECAwCS0ExEjAQBgNVBAcMCUJBTkdBTE9S\nRTEOMAwGA1UECgwFSUlJVEIxFzAVBgNVBAsMDkVYQU1QTEUtQ0VOVEVSMS4wLAYD\nVQQDDCV3d3cuZXhhbXBsZS5jb20gKENFUlRJRllfVkNfU0lHTl9SU0ApMIIBIjAN\nBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlkO3CPWJ6Jqu9hzm4Eew7EJSbYCX\n7YGBxYAjRHcLuVgsttyRWUZ3DiRYEoN7bG/jCh7E0Gvv4M5ux4VSw3RJlM+9Tfje\nDUkHdZQ0g5A/r69uyy7+zE8MIM2fXcgwEgIZabm/Zb6+T/K6mSsdPQAHnBe1zXoq\ngTuyTT6pVsHbR0+5ULkhN3BuJyhJ7zw8vC1aiFYA2b05nU7H1Rn+axes8+v80mQS\nGR9iJTrGeYtvz8a+gRhvXmK+h8nhUAJaPHJBacCRMErKvgddWkWBtknJZQmnX0RN\n2IC5+egbE8thCVg8BGBcxOoUBHjHYmus0CZNbTMJQIObL62p7caJHnYtHwIDAQAB\no0UwQzASBgNVHRMBAf8ECDAGAQH/AgEBMB0GA1UdDgQWBBSOi5/6I4vvp8eshKNs\nSwr/BtWM/zAOBgNVHQ8BAf8EBAMCAoQwDQYJKoZIhvcNAQELBQADggEBAKHiZu+1\nPjKqvlesbAj4QJkQlpdstz0PgEOnT6+flpcnmyMJj2QvWQbfX8niVWGMIc0HnO+H\ntzc/2oKmO9eQpmdnL4DN7NtuXxbTwTzsGDI934jRZGqHmeCh90j+T7QqSbk+GanC\nOMGFth7aV9j5cDSr7gCIom6N0TEUw/5a3O1+vJCwtQtN29H/+ksro+RYyN4/nbrR\ngix5XRR9VTcsLbM8J8dOxqZxsP+Bgebqp+fqv8QEea4cVYtStEMY6/4M6kKWyL7Q\nsmgwsJ5Vr5w/Y1hOIKaQe9WwWm/T8+byElVgZ/vT5tCYhLxHyBa1vfTgq1FQe5gb\nc6CDSimUO4tcosI=\n-----END CERTIFICATE-----\n");
+        rsaCert.setKeyId("shared-security-context-rsa");
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(edConfig, rsaConfig));
+        when(keymanagerService.getAllCertificates("ed-app", Optional.of("ed-ref")))
+                .thenReturn(new AllCertificatesDataResponseDto(new CertificateDataResponseDto[]{edCert}));
+        when(keymanagerService.getAllCertificates("rsa-app", Optional.of("rsa-ref")))
+                .thenReturn(new AllCertificatesDataResponseDto(new CertificateDataResponseDto[]{rsaCert}));
+
+        Map<String, Object> didDocument = didDocumentUtil.generateDIDDocument("did:example:123");
+
+        List<String> contexts = (List<String>) didDocument.get("@context");
+        List<Map<String, Object>> methods = (List<Map<String, Object>>) didDocument.get("verificationMethod");
+
+        assertEquals(List.of("https://www.w3.org/ns/did/v1", "https://w3id.org/security/v1"), contexts);
+        assertEquals(2, methods.size());
+        assertTrue(methods.stream().anyMatch(method -> "Ed25519VerificationKey2018".equals(method.get("type"))));
+        assertTrue(methods.stream().anyMatch(method -> "RsaVerificationKey2018".equals(method.get("type"))));
     }
 
     @Test
