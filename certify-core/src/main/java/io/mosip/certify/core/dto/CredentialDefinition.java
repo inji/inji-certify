@@ -5,7 +5,7 @@
  */
 package io.mosip.certify.core.dto;
 
-
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
@@ -17,9 +17,11 @@ import java.util.List;
 import java.util.Map;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)   
 public class CredentialDefinition {
 
     @JsonProperty("@context")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<@NotBlank(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST) String> context;
 
     @NotEmpty(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST)
@@ -27,4 +29,6 @@ public class CredentialDefinition {
 
     private Map<String, Object> credentialSubject;
 
+    // OpenID4VCI (jwt_vc_json) / VC profiles: order is defined inside credential_definition.
+    private List<String> order;
 }

@@ -29,6 +29,7 @@ import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.credential.Credential;
 import io.mosip.certify.credential.CredentialFactory;
+import io.mosip.certify.credential.JWTVCJson;
 import io.mosip.certify.core.dto.CredentialStatusDetail;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
@@ -70,6 +71,8 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
     @Autowired
     private ParsedAccessToken parsedAccessToken;
+    @Autowired
+    private JWTVCJson jwtVcJson;
 
     @Autowired
     private VCFormatter vcFormatter;
@@ -236,7 +239,69 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     templateParams.put("_doctype", vcRequestDto.getDoctype());
                     jsonObject.put(Constants.TYPE, vcRequestDto.getDoctype());
                     break;
+case "jwt_vc_json": {
 
+    vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
+    vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
+    vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
+
+    templateName = CredentialUtils.getTemplateName(vcRequestDto);
+
+    templateParams.put(Constants.TEMPLATE_NAME, templateName);
+    templateParams.put(Constants.DID_URL, didUrl);
+
+    if (!StringUtils.isEmpty(renderTemplateId)) {
+        templateParams.put(Constants.RENDERING_TEMPLATE_ID, renderTemplateId);
+    }
+
+    jsonObject.put("_holderId", holderId);
+    templateParams.putAll(jsonObject.toMap());
+
+    if (!StringUtils.isEmpty(idPrefix)) {
+        templateParams.put(VCDMConstants.CREDENTIAL_ID, idPrefix + UUID.randomUUID());
+    }
+
+    ZonedDateTime nowZ = ZonedDateTime.now(ZoneOffset.UTC);
+
+    templateParams.put("issuanceDate", nowZ.format(DateTimeFormatter.ISO_INSTANT));
+    templateParams.put("expirationDate", nowZ.plus(Duration.parse(defaultExpiryDuration))
+    .format(DateTimeFormatter.ISO_INSTANT));
+    Map<String, Object> updatedTemplateParamsJwt = toJsonMap(templateParams);
+    updatedTemplateParamsJwt.put("rootContext", new HashMap<>(templateParams));
+    updatedTemplateParamsJwt.put("envConfigs", velocityEnvConfig.getEnvConfigs());
+
+    // STEP 1: Create VC JSON
+    String unsignedVcJson = jwtVcJson.createCredential(updatedTemplateParamsJwt, templateName);
+
+    // STEP 2: Convert to Map
+    Map<String, Object> vcMap = new JSONObject(unsignedVcJson).toMap();
+
+    // STEP 3: Signing config
+    String signAlgorithm = vcFormatter.getProofAlgorithm(templateName);
+
+    List<List<String>> signerKeysList = keyAliasMapper.get(signAlgorithm);
+    if (signerKeysList == null || signerKeysList.isEmpty()) {
+        throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND,
+                "No key config for algorithm: " + signAlgorithm);
+    }
+
+    List<String> signerKeys = signerKeysList.get(0);
+    String appID = signerKeys.get(0);
+    String refID = signerKeys.get(signerKeys.size() - 1);
+
+    String signatureCryptoSuite = vcFormatter.getSignatureCryptoSuite(templateName);
+
+    // STEP 4: Sign VC
+    return jwtVcJson.addProof(
+            vcMap,
+            new HashMap<>(),
+            signAlgorithm,
+            appID,
+            refID,
+            vcFormatter.getDidUrl(templateName),
+            signatureCryptoSuite
+    );
+}
                 default:
                     throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, "Invalid or unsupported VC format requested.");
 

@@ -21,6 +21,16 @@ public class CredentialIssuerMetadataDTO {
     @JsonProperty("credential_endpoint")
     private String credentialEndpoint;
 
+    @JsonProperty("batch_credential_endpoint")
+    private String batchCredentialEndpoint;
+
+    @JsonProperty("deferred_credential_endpoint")
+    private String deferredCredentialEndpoint;
+
+    @JsonProperty("credential_response_encryption")
+    private Map<String,Object> credentialResponseEncryption;
+
+
     private List<Map<String, String>> display;
 
     @JsonIgnore
