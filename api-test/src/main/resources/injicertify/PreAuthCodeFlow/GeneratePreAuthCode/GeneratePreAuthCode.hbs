@@ -1,0 +1,10 @@
+{
+  "credential_configuration_id": "{{credential_configuration_id}}",
+  "claims": {
+    {{#each claims}}
+    "{{@key}}": "{{this}}"{{#unless @last}},{{/unless}}
+    {{/each}}
+  },
+  "expires_in": {{expires_in}},
+  "tx_code": "{{tx_code}}"
+}

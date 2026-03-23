@@ -3,7 +3,7 @@ commonLabels:
 
 containerSecurityContext:
   enabled: false
-  runAsUser: 1001
+  runAsUser: inji
   runAsNonRoot: true
 
 modules:
@@ -13,23 +13,14 @@ modules:
       repository: injistackdev/apitest-inji-certify
       tag: develop
       pullPolicy: Always
-  prereg:
-    enabled: false
-    masterdata:
-      enabled: false
-    idrepo:
-      enabled: false
-    partner:
-      enabled: false
-    pms:
-    resident:
-      enabled: false
-    auth:
-      enabled: false
-    esignet:
-      enabled: false
-    mimoto:
-      enabled: false
+
+extraEnvVarsCM:
+  - inji-stack-config
+  - s3
+  - keycloak-host
+  - db
+  - apitestrig
+  - config-server-share
 
 apitestrig:
   configmaps:
