@@ -94,8 +94,8 @@ public class CredentialStatusServiceImplTest {
         existingTransaction.setStatusListIndex(87823L);
 
         when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(statusListCredentialRepository.findById(statusListCredential))
-                .thenReturn(Optional.of(statusListCredentialEntity)); // ADD THIS
+//        when(statusListCredentialRepository.findById(statusListCredential))
+//                .thenReturn(Optional.of(statusListCredentialEntity)); // ADD THIS
         when(credentialStatusTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         CredentialStatusResponse result = credentialStatusService.updateCredentialStatus(request);
@@ -122,16 +122,9 @@ public class CredentialStatusServiceImplTest {
         detail.setCreatedTimes(System.currentTimeMillis());
         ledger.getCredentialStatusDetails().add(detail);
 
-        // ADD StatusListCredential mock
-        StatusListCredential statusListCredentialEntity = new StatusListCredential();
-        statusListCredentialEntity.setId(statusListCredential);
-        statusListCredentialEntity.setCapacityInKB(16L); // Large enough for index 87823
-
         CredentialStatusTransaction savedTransaction = createSavedTransaction(credentialId, statusListCredential);
 
         when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(statusListCredentialRepository.findById(statusListCredential))
-                .thenReturn(Optional.of(statusListCredentialEntity)); // ADD THIS
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
                 .thenReturn(savedTransaction);
 
@@ -146,10 +139,8 @@ public class CredentialStatusServiceImplTest {
         assertNotNull(result.getStatusTimestamp());
 
         verify(ledgerRepository).findByCredentialId(credentialId);
-        verify(statusListCredentialRepository).findById(statusListCredential); // ADD THIS
         verify(credentialStatusTransactionRepository).save(any(CredentialStatusTransaction.class));
     }
-
 
     @Test
     public void updateCredentialStatus_NullStatusPurpose_AllowsUpdate() {
@@ -173,8 +164,8 @@ public class CredentialStatusServiceImplTest {
         statusListCredentialEntity.setCapacityInKB(16L);
 
         when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(statusListCredentialRepository.findById(statusListCredential))
-                .thenReturn(Optional.of(statusListCredentialEntity)); // ADD THIS
+//        when(statusListCredentialRepository.findById(statusListCredential))
+//                .thenReturn(Optional.of(statusListCredentialEntity)); // ADD THIS
         when(credentialStatusTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
@@ -231,8 +222,10 @@ public class CredentialStatusServiceImplTest {
         UpdateCredentialStatusRequest.CredentialStatusDto statusDto =
                 new UpdateCredentialStatusRequest.CredentialStatusDto();
         statusDto.setStatusPurpose("revocation");
-        statusDto.setStatusListIndex(5L); // ADD THIS - was missing
-        statusDto.setStatusListCredential(statusListCredentialId); // ADD THIS
+        statusDto.setStatusListIndex(5L);
+        statusDto.setStatusListCredential(statusListCredentialId);
+        statusDto.setId(statusListCredentialId + "#5");
+        statusDto.setType("BitstringStatusListEntry");
 
         UpdateCredentialStatusRequest request = new UpdateCredentialStatusRequest();
         request.setCredentialId(credentialId);
@@ -249,10 +242,6 @@ public class CredentialStatusServiceImplTest {
         detail.setCreatedTimes(System.currentTimeMillis());
         ledger.getCredentialStatusDetails().add(detail);
 
-        StatusListCredential statusListCredential = new StatusListCredential();
-        statusListCredential.setId(statusListCredentialId);
-        statusListCredential.setCapacityInKB(1L);
-
         CredentialStatusTransaction savedTransaction = new CredentialStatusTransaction();
         savedTransaction.setCredentialId(credentialId);
         savedTransaction.setStatusPurpose("revocation");
@@ -262,8 +251,6 @@ public class CredentialStatusServiceImplTest {
         savedTransaction.setCreatedDtimes(LocalDateTime.parse("2025-06-11T12:00:00.000"));
 
         when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(statusListCredentialRepository.findById(statusListCredentialId))
-                .thenReturn(Optional.of(statusListCredential));
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
                 .thenReturn(savedTransaction);
 
@@ -281,18 +268,21 @@ public class CredentialStatusServiceImplTest {
         assertEquals(savedTransaction.getCreatedDtimes(), response.getStatusTimestamp());
 
         verify(ledgerRepository).findByCredentialId(credentialId);
-        verify(statusListCredentialRepository).findById(statusListCredentialId);
         verify(credentialStatusTransactionRepository).save(any(CredentialStatusTransaction.class));
     }
-
 
     @Test
     public void updateCredentialStatus_MissingCredentialStatusDetails_ThrowsCertifyException() {
         String credentialId = "9f4a4c50-2e6c-4e72-9fd3-8a9e67f1f6c";
+        String statusListCredentialId = "status-list-missing";
 
         UpdateCredentialStatusRequest.CredentialStatusDto statusDto =
                 new UpdateCredentialStatusRequest.CredentialStatusDto();
         statusDto.setStatusPurpose("revocation");
+        statusDto.setStatusListIndex(5L);
+        statusDto.setStatusListCredential(statusListCredentialId);
+        statusDto.setId(statusListCredentialId + "#5");
+        statusDto.setType("BitstringStatusListEntry");
 
         UpdateCredentialStatusRequest request = new UpdateCredentialStatusRequest();
         request.setCredentialId(credentialId);
@@ -300,8 +290,15 @@ public class CredentialStatusServiceImplTest {
         request.setStatus(true);
 
         Ledger ledger = createLedger(credentialId);
+        // No credential status details added - empty list
+
+        StatusListCredential statusListCredential = new StatusListCredential();
+        statusListCredential.setId(statusListCredentialId);
+        statusListCredential.setCapacityInKB(1L);
 
         when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
+//        when(statusListCredentialRepository.findById(statusListCredentialId))
+//                .thenReturn(Optional.of(statusListCredential));
 
         CertifyException ex = assertThrows(
                 CertifyException.class,
@@ -374,26 +371,18 @@ public class CredentialStatusServiceImplTest {
         request.setCredentialStatus(statusDto);
         request.setStatus(true);
 
-        StatusListCredential statusListCredential = new StatusListCredential();
-        statusListCredential.setId(statusListCredentialId);
-        statusListCredential.setCapacityInKB(1L);
-
-        when(statusListCredentialRepository.findById(statusListCredentialId))
-                .thenReturn(Optional.of(statusListCredential));
-
         CertifyException ex = assertThrows(
                 CertifyException.class,
                 () -> credentialStatusService.updateCredentialStatusV2(request)
         );
 
         assertEquals(ErrorConstants.INVALID_STATUS_LIST_INDEX, ex.getErrorCode());
-        verify(statusListCredentialRepository).findById(statusListCredentialId);
     }
 
     @Test
     public void updateCredentialStatusV2_IndexOutOfRange_ThrowsCertifyException() {
         String statusListCredentialId = "status-list-out-of-range";
-        Long statusListIndex = 9000L;
+        Long statusListIndex = 200000L; // Exceeds DEFAULT_STATUS_LIST_SIZE (131072)
 
         UpdateCredentialStatusRequestV2.CredentialStatusDtoV2 statusDto =
                 new UpdateCredentialStatusRequestV2.CredentialStatusDtoV2();
@@ -406,20 +395,12 @@ public class CredentialStatusServiceImplTest {
         request.setCredentialStatus(statusDto);
         request.setStatus(true);
 
-        StatusListCredential statusListCredential = new StatusListCredential();
-        statusListCredential.setId(statusListCredentialId);
-        statusListCredential.setCapacityInKB(1L); // list size = 1 * 1024 * 8 = 8192 (indices 0-8191)
-
-        when(statusListCredentialRepository.findById(statusListCredentialId))
-                .thenReturn(Optional.of(statusListCredential));
-
         CertifyException ex = assertThrows(
                 CertifyException.class,
                 () -> credentialStatusService.updateCredentialStatusV2(request)
         );
 
         assertEquals(ErrorConstants.STATUS_LIST_INDEX_OUT_OF_RANGE, ex.getErrorCode());
-        verify(statusListCredentialRepository).findById(statusListCredentialId);
     }
 
 }
