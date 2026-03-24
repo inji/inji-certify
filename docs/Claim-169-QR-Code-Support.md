@@ -70,7 +70,7 @@ To enable QR code support in your credential configurations, you need to include
 {
         "@context": [
             "https://www.w3.org/2018/credentials/v1",
-            "https://piyush7034.github.io/my-files/farmer.json"
+            "https://inji.github.io/inji-config/contexts/farmer.json"
         ],
         "issuer": "${_issuer}",
         "type": [

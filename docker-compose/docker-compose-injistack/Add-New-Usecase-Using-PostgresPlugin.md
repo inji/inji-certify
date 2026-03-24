@@ -130,7 +130,7 @@ Current usecases include:
     "signatureAlgo": "EdDSA",
     "context": [
         "https://www.w3.org/2018/credentials/v1",
-        "https://mosip.github.io/inji-config/contexts/landregistry-registration-receipt-context.json"
+        "https://inji.github.io/inji-config/contexts/landregistry-registration-receipt-context.json"
     ],
     "credentialType": [
         "VerifiableCredential",
@@ -142,10 +142,10 @@ Current usecases include:
         "name": "REGISTRATION RECEIPT OF THE RURAL PROPERTY IN CAR",
         "locale": "en",
         "logo": {
-        "url": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png",
+        "url": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png",
         "alt_text": "Registration Receipt Credential logo"
         },
-        "background_image": { "uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png" },
+        "background_image": { "uri": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png" },
         "background_color": "#ebfaff",
         "text_color": "#000000"
     }],
@@ -198,7 +198,7 @@ Current usecases include:
             {
             "name": "Landregistry Department",
             "logo": {
-            "url": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png",
+            "url": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png",
             "alt_text": "landregistry-logo"
             },
             "title": "Landregistry Department",
