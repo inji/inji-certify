@@ -85,18 +85,28 @@ public class JWTVCJson extends Credential {
 
             Map<String, Object> claims = new LinkedHashMap<>();
             Object issuer = vcMap.get("issuer");
-            claims.put("iss", issuer != null ? issuer : didUrl);
+            if (issuer instanceof Map<?, ?> map) {
+                Object id = map.get("id");
+                claims.put("iss", id != null ? id.toString() : didUrl);
+            } else if (issuer != null) {
+                claims.put("iss", issuer.toString());
+            } else {
+                claims.put("iss", didUrl);
+            }
             claims.put("jti", "urn:uuid:" + UUID.randomUUID());
 
-            // Parse issuanceDate → iat/nbf
+            // issuanceDate / validFrom → iat/nbf
             Object issuanceDateObj = vcMap.get("issuanceDate");
+            if (issuanceDateObj == null) {
+                issuanceDateObj = vcMap.get("validFrom");
+            }
             if (issuanceDateObj instanceof String) {
                 try {
                     Instant issuanceInstant = Instant.parse((String) issuanceDateObj);
                     claims.put("iat", issuanceInstant.getEpochSecond());
                     claims.put("nbf", issuanceInstant.getEpochSecond());
                 } catch (Exception ex) {
-                    log.warn("Invalid issuanceDate format; fallback to now", ex);
+                    log.warn("Invalid issuanceDate/validFrom format; fallback to now", ex);
                     claims.put("iat", now);
                     claims.put("nbf", now);
                 }
@@ -105,14 +115,17 @@ public class JWTVCJson extends Credential {
                 claims.put("nbf", now);
             }
 
-            // exp handling
-            Object validUntilObj = vcMap.get("expirationDate");
-            if (validUntilObj instanceof String) {
+            // expirationDate / validUntil → exp
+            Object expObj = vcMap.get("expirationDate");
+            if (expObj == null) {
+                expObj = vcMap.get("validUntil");
+            }
+            if (expObj instanceof String) {
                 try {
-                    Instant expInstant = Instant.parse((String) validUntilObj);
+                    Instant expInstant = Instant.parse((String) expObj);
                     claims.put("exp", expInstant.getEpochSecond());
                 } catch (Exception ex) {
-                    log.warn("Invalid validUntil format; fallback expiry used", ex);
+                    log.warn("Invalid expirationDate/validUntil format; fallback expiry used", ex);
                     claims.put("exp", now + fallbackExpirySeconds);
                 }
             } else {

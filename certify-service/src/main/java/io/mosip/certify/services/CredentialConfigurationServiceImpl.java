@@ -171,9 +171,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 }
                 break;
             case VCFormats.JWT_VC_JSON:
-                if (credentialConfig.getCredentialTypes() == null || credentialConfig.getContextURLs() == null) {
+                if (credentialConfig.getCredentialTypes() == null || credentialConfig.getCredentialTypes().isEmpty()
+                        || credentialConfig.getContextURLs() == null || credentialConfig.getContextURLs().isEmpty()) {
                     throw new CertifyException(ErrorConstants.JWT_VC_JSON_MANDATORY_FIELDS_MISSING,
-                                            "Fields type and context are mandatory for the jwt_vc_json format.");
+                        "Fields type and @context must be non-empty for the jwt_vc_json format.");
                 }
                 validateKeyAliasMapperConfiguration(credentialConfig);
                 break;
