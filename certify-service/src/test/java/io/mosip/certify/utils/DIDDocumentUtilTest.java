@@ -12,9 +12,10 @@ import io.mosip.kernel.keymanagerservice.dto.CertificateDataResponseDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class DIDDocumentUtilTest {
 
     @Mock
@@ -46,7 +48,6 @@ class DIDDocumentUtilTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         LinkedHashMap<String, List<String>> signingMap = new LinkedHashMap<>();
         signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2018, List.of(JWSAlgorithm.EdDSA));
         signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2020, List.of(JWSAlgorithm.EdDSA));
@@ -54,9 +55,8 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void generateVerificationMethod_forEd25519_2020_setsExpectedType() {
-        Map<String, Object> verificationMethod = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+    void testGenerateVerificationMethodEd25519Signature2020ViaReflection() {
+        Map<String, Object> verificationMethod = ReflectionTestUtils.invokeMethod(
                 didDocumentUtil,
                 "generateVerificationMethod",
                 JWSAlgorithm.EdDSA,
@@ -73,9 +73,8 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void generateVerificationMethod_forEd25519_2018_setsExpectedType() {
-        Map<String, Object> verificationMethod = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+    void testGenerateVerificationMethodEd25519Signature2018ViaReflection() {
+        Map<String, Object> verificationMethod = ReflectionTestUtils.invokeMethod(
                 didDocumentUtil,
                 "generateVerificationMethod",
                 JWSAlgorithm.EdDSA,
@@ -92,9 +91,8 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void generateVerificationMethod_forRsa_setsExpectedType() {
-        Map<String, Object> verificationMethod = (Map<String, Object>) ReflectionTestUtils.invokeMethod(
+    void testGenerateVerificationMethodRSASignature2018ViaReflection() {
+        Map<String, Object> verificationMethod = ReflectionTestUtils.invokeMethod(
                 didDocumentUtil,
                 "generateVerificationMethod",
                 JWSAlgorithm.RS256,
@@ -111,25 +109,29 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    void generateVerificationMethod_forUnsupportedAlgo_throwsException() {
-        CertifyException exception = assertThrows(CertifyException.class, () ->
-                ReflectionTestUtils.invokeMethod(
-                        didDocumentUtil,
-                        "generateVerificationMethod",
-                        "UnsupportedAlgorithm",
-                        null,
-                        ED25519_CERTIFICATE,
-                        DID_URL,
-                        "kid-invalid"
-                )
-        );
+    void testGenerateVerificationMethodUnsupportedAlgorithmViaReflection() {
+        CredentialConfig config = new CredentialConfig();
+        config.setKeyManagerAppId("unsupported-app");
+        config.setKeyManagerRefId("unsupported-ref");
+        config.setSignatureAlgo("UnsupportedAlgorithm");
+
+        CertificateDataResponseDto certificate = new CertificateDataResponseDto();
+        certificate.setCertificateData(ED25519_CERTIFICATE);
+        certificate.setKeyId("kid-invalid");
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
+        when(keymanagerService.getAllCertificates("unsupported-app", Optional.of("unsupported-ref")))
+                .thenReturn(new AllCertificatesDataResponseDto(new CertificateDataResponseDto[]{certificate}));
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> didDocumentUtil.generateDIDDocument(DID_URL));
 
         assertEquals(ErrorConstants.UNSUPPORTED_ALGORITHM, exception.getErrorCode());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void generateDIDDocument_forEd25519_2020_addsTopLevelContexts() {
+    void testGenerateDIDDocumentAddsEd25519Context() {
         CredentialConfig config = new CredentialConfig();
         config.setKeyManagerAppId("ed-app");
         config.setKeyManagerRefId("ed-ref");
@@ -152,12 +154,12 @@ class DIDDocumentUtilTest {
                 "https://w3id.org/security/suites/ed25519-2020/v1"
         ), contexts);
         assertEquals(1, verificationMethods.size());
-        assertEquals("Ed25519VerificationKey2020", verificationMethods.get(0).get("type"));
+        assertEquals("Ed25519VerificationKey2020", verificationMethods.getFirst().get("type"));
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void generateDIDDocument_deduplicatesSecurityV1Context() {
+    void testGenerateDIDDocumentDeduplicatesSecurityContext() {
         CredentialConfig edConfig = new CredentialConfig();
         edConfig.setKeyManagerAppId("ed-app");
         edConfig.setKeyManagerRefId("ed-ref");
@@ -192,7 +194,7 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    void getCertificateDataResponseDto_returnsLatestValidCertificate() {
+    void testGetCertificateDataResponseDtoSuccess() {
         String appId = "app";
         String refId = "ref";
 
@@ -215,7 +217,7 @@ class DIDDocumentUtilTest {
     }
 
     @Test
-    void getCertificateDataResponseDto_whenNoCertificates_throwsException() {
+    void testGetCertificateDataResponseDtoNoCertificatesFound() {
         String appId = "app";
         String refId = "ref";
         when(keymanagerService.getAllCertificates(appId, Optional.of(refId)))

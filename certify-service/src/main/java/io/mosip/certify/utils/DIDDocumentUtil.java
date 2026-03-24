@@ -284,7 +284,6 @@ public class DIDDocumentUtil {
             if (appId == null) {
                 continue;
             }
-
             String refId = config.getKeyManagerRefId();
             String uniqueKey = appId + "-" + (refId != null ? refId : "");
 
