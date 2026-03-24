@@ -24,6 +24,7 @@ import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import org.bouncycastle.jcajce.provider.asymmetric.edec.BCEdDSAPublicKey;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import io.ipfs.multibase.Multibase;
+import org.springframework.beans.factory.annotation.Value;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.SignatureAlg;
 import io.mosip.certify.core.exception.CertifyException;
@@ -38,6 +39,9 @@ public class DIDDocumentUtil {
 
     private final KeymanagerService keymanagerService;
     private final CredentialConfigRepository credentialConfigRepository;
+
+    @Value("#{${mosip.certify.credential-config.credential-signing-alg-values-supported}}")
+    private LinkedHashMap<String, List<String>> credentialSigningAlgValuesSupportedMap;
 
     private static final String MULTICODEC_PREFIX = "ed01";
     private static final String DID_CONTEXT = "https://www.w3.org/ns/did/v1";
@@ -133,11 +137,10 @@ public class DIDDocumentUtil {
                 kid
         );
 
-        String type = (String) verificationMethod.get("type");
-        addContextForKeyType(contextList, type);
-
         String verificationId = (String) verificationMethod.get("id");
         if (uniqueIds.add(verificationId)) {
+            String type = (String) verificationMethod.get("type");
+            addContextForKeyType(contextList, type);
             return verificationMethod;
         }
         return null;
@@ -284,20 +287,21 @@ public class DIDDocumentUtil {
 
             String refId = config.getKeyManagerRefId();
             String uniqueKey = appId + "-" + (refId != null ? refId : "");
+
             List<String> configDetails = new ArrayList<>();
             configDetails.add(appId);
             configDetails.add(refId);
-            configDetails.add(config.getSignatureAlgo() != null ? config.getSignatureAlgo() :
-                    getDefaultSignatureAlgo(config.getSignatureCryptoSuite()));
+            if (config.getSignatureAlgo() == null) {
+                String signatureCryptoSuite = config.getSignatureCryptoSuite();
+                configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
+            } else {
+                configDetails.add(config.getSignatureAlgo());
+            }
             configDetails.add(config.getSignatureCryptoSuite());
 
             signatureCryptoSuiteMap.put(uniqueKey, configDetails);
         }
 
         return signatureCryptoSuiteMap;
-    }
-
-    private String getDefaultSignatureAlgo(String signatureCryptoSuite) {
-        return signatureCryptoSuite;
     }
 }
