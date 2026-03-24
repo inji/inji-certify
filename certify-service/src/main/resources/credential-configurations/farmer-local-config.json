@@ -23,7 +23,7 @@
       "alt_text": "Farmer Logo"
     },
     "background_color": "#12107c",
-    "background_image": { "uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png" },
+    "background_image": { "uri": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png" },
     "text_color": "#FFFFFF"
   }],
   "displayOrder": [
