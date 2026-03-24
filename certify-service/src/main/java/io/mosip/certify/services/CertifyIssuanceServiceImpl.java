@@ -279,9 +279,20 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             log.info("QR data JSON generated successfully");
 
             if (qrDataJson != null) {
-                List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
-                updatedTemplateParams.put("claim_169_values", claim169Values);
-                log.info("Claim 169 values signed successfully for template");
+                try {
+                    List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
+                    updatedTemplateParams.put("claim_169_values", claim169Values);
+                    log.info("Claim 169 values signed successfully for template");
+                } catch (JsonProcessingException e) {
+                    log.error(e.getMessage(), e);
+                    throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
+                } catch (CertifyException e) {
+                    log.error(e.getMessage(), e);
+                    throw e;
+                } catch (Exception e) {
+                    log.error("Error during signing qr data: {}", e.getMessage());
+                    throw new CertifyException(ErrorConstants.ERROR_SIGNING_QR_DATA, e.getMessage());
+                }
             } else {
                 log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
             }
@@ -306,12 +317,12 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
         } catch (DataProviderExchangeException e) {
             throw new CertifyException(e.getErrorCode());
-        } catch (JSONException | JsonProcessingException e) {
+        } catch (JSONException e) {
             log.error(e.getMessage(), e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
         } catch (CertifyException e) {
-            log.error("Error during signing qr data: {}", e.getMessage());
-            throw new CertifyException("ERROR_SIGNING_QR_DATA", e.getMessage());
+            log.error("CertifyException during credential generation: {}", e.getMessage());
+            throw e;
         }
     }
 
