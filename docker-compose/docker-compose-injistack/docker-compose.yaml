@@ -16,7 +16,7 @@ services:
       - "5433:5432"
 
   certify:
-    image: injistackqa/inji-certify-with-plugins:release-0.14.x
+    image: injistack/inji-certify-with-plugins:0.14.0
     user: root
     ports:
       - 8090:8090
@@ -61,7 +61,7 @@ services:
 
   mimoto-service:
     container_name: 'mimoto-service'
-    image: injistackqa/mimoto:0.21.x
+    image: injistack/mimoto:0.21.0
     user: root
     ports:
       - '8099:8099'
@@ -91,7 +91,7 @@ services:
 
   inji-web:
     container_name: 'inji-web'
-    image: injistackqa/inji-web:0.16.x
+    image: injistack/inji-web:0.16.0
     ports:
       - '3004:3004'
     environment:

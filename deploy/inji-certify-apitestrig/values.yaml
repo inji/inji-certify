@@ -10,8 +10,8 @@ modules:
   injicertify:
     enabled: true
     image:
-      repository: injistackqa/apitest-inji-certify
-      tag: release-0.14.x
+      repository: injistack/apitest-inji-certify
+      tag: 0.14.0
       pullPolicy: Always
 
 extraEnvVarsCM:
