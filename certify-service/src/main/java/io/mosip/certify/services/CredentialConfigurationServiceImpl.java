@@ -389,9 +389,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     .filter(StringUtils::hasText)
                     .toList());
     }
-    enc.put("encryption_required", encryptionRequired);
 
     if (!enc.isEmpty()) {
+        enc.put("encryption_required", encryptionRequired);
         metadata.setCredentialResponseEncryption(enc);
     }
     }
