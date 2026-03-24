@@ -91,5 +91,6 @@ public class ErrorConstants {
     public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
-
+    public static final String INVALID_SD_JWT_CLAIMS = "invalid_sd_jwt_claims";
+    public static final String INVALID_VC_TEMPLATE = "invalid_vc_template";
 }
