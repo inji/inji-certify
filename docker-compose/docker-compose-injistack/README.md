@@ -11,8 +11,8 @@ Expected time to setup: ~10 minutes
 
 You have two options for the certify plugin which gives Verifiable Credentials of different types
 
-1. Farmer Credential: returns an JSON-LD VC and is implemented using the [CSV Plugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
-2. Mobile Driving License Credential: returns an mDL VC and is implemented using the [mock-mdl Plugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+1. Farmer Credential: returns an JSON-LD VC and is implemented using the [CSV Plugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
+2. Mobile Driving License Credential: returns an mDL VC and is implemented using the [mock-mdl Plugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
 
 
 ## Prerequisites
@@ -22,7 +22,15 @@ You have two options for the certify plugin which gives Verifiable Credentials o
 - Basic understanding of Docker and container operations
 - Relevant Postman collections available from [here](../../docs/postman-collections/), please add the `mock` ones and install the [pmlib library](https://joolfe.github.io/postman-util-lib/) as per the steps given under the heading `Postman Collection` to the Postman setup
 - Network Connectivity to access the AuthZ Service, in this example MOSIP Collab setup has been used
-- (optional, required if Farmer Credential configured) GitHub Pages or similar service required to host a DID/public key
+  - We can set up AuthZ server locally as well or use the one deployed in any other environment. If we do so, we need to update following values in environment variable of [postman collection](../../docs/postman-collections/inji-certify-with-mock-identity.postman_environment.json)
+    - authServerUrl - host of auth server. If it's esignet running locally then value will be http://localhost:8088/v1/esignet
+    - aud - token audience. If it's esignet running locally then value will be http://localhost:8088/v1/esignet/oauth/v2/token
+    - Create OIDC client if supporting `private_key_jwt` client authentication. While doing this, update following values
+      - clientId - client id of the created client.
+      - privateKey_jwk - private key of the created client as JWK.
+      - publicKey_jwk - public key of the created client as JWK.
+- DID/public key setup if Farmer Credential is configured
+  - Expose certify-nginx through a public URL using services like ngrok
 
 ## Directory Structure Setup
 
@@ -50,23 +58,27 @@ docker-compose-injistack/
 
 
 
-## Choosing a VCI plugin for issuance
+## Choosing plugin for issuance
 
 
-### Recommended: Use one of the Existing Mock Plugin
+### Recommended: Use one of the Existing Plugin
 
-- Supported versions: 0.5.0 and above
-- Download the latest JAR from:
+Docker setup uses `inji-certify-with-plugins` image for certify which includes all the plugins supported by Inji Certify.
+Plugins available in docker image can still be overridden by following below steps:
+
+- Supported versions: 0.6.0 and above
+- Download the plugin JAR from:
   ```
-  https://repo1.maven.org/maven2/io/mosip/certify/mock-certify-plugin/0.5.0/
+  https://repo1.maven.org/maven2/io/inji/certify/
   ```
+- Create `loader_path/certify/` directory under `docker-compose-injistack/` if it doesn't exist.
 - Place the downloaded JAR in `loader_path/certify/`
+- uncomment volume mount for certify-service in `docker-compose.yaml`
+
 
 ### For Advanced Users: Create Custom Plugin
 
-You can create your own plugin by implementing the following interface and place the resultant jar in `loader_path`:
-
-Reference Implementation: [CSVDataProviderPlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/mosip/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+- You can create your own plugin by implementing the one of the following interfaces:
 
 ```java
 public interface DataProviderPlugin {
@@ -74,13 +86,17 @@ public interface DataProviderPlugin {
 }
 ```
 
-or, if you chose the VCIssuancePlugin implement the below interface. The above two examples
-
 ```java
 public interface VCIssuancePlugin {
     // Implement your custom logic here
 }
 ```
+
+- Create `loader_path/certify/` directory under `docker-compose-injistack/` if it doesn't exist.
+- Place the resultant JAR in `loader_path/certify/`
+- uncomment volume mount for certify-service in `docker-compose.yaml`
+
+Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-0.5.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
 
 ## Certificate Setup
 
@@ -102,21 +118,18 @@ public interface VCIssuancePlugin {
 
 | Use Case                      | active_profile_env    | config file                              | 
 |-------------------------------|-----------------------|------------------------------------------|
-| Farmer credential   (default) | `default, csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
-| Mobile driving license        | `default, mock-mdl`     | ./config/certify-mock-mdl.properties     |
+| Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
+| Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
 
 
 ### Recommended
 
-- If you are going ahead with the Farmer usecase, configure the below values in [here](config/certify-csvdp-farmer.properties) to refer to the web location where you'd host the DID.
-
+- If you are proceeding with the Farmer use case, configure the value in [certify-csvdp-farmer.properties](config/certify-csvdp-farmer.properties) to refer to the DID exposed by Certify.
+- Example (replace with your own public hostname after exposing certify-nginx on port 8091):
+- 
 ```properties
-mosip.certify.data-provider-plugin.did-url=did:web:someuser.github.io:somerepo:somedirectory
+mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 ```
-
-- (required for Farmer setup) Certify will automatically generate the DID document for your usecase at [this endpoint](http://localhost:8090/v1/certify/.well-known/did.json), please copy the contents of the HTTP response and host it appropriately in the same location.
-    - A did with the ID `did:web:someuser.github.io:somerepo:somedirectory` will have be accessible at `https://someuser.github.io/somerepo/somedirectory/did.json`, i.e. if GitHub Pages is used to host the file, the contents should go in https://github.com/someuser/somerepo/blob/gh-pages/somedirectory/did.json assuming `gh-pages` is the branch for publishing GitHub Pages as per repository settings.
-    - To verify if everything is working you can try to resolve the DID via public DID resolvers such as [Uniresolver](https://dev.uniresolver.io/).
 
 **Important**: Difference between `didUrl` in `credential_config` and `mosip.certify.data-provider-plugin.did-url`
 - The `didUrl` in the `credential_config` table identifies the DID to be associated with a specific Verifiable Credential (VC) type. Different credential types can have different `didUrl` values as needed.
@@ -126,7 +139,7 @@ mosip.certify.data-provider-plugin.did-url=did:web:someuser.github.io:somerepo:s
 - **Note**: For updating the default vc type in this setup, please refer to the insert query present in the [certify_init.sql](./certify_init.sql) file for `credential_config`.
 
 
-- (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script, please read the [plugin README](https://github.com/mosip/digital-credential-plugins/tree/release-0.5.x/mock-certify-plugin) for the same.
+- (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script, please read the [plugin README](https://github.com/inji/digital-credential-plugins/tree/release-0.5.x/mock-certify-plugin) for the same.
 
 
 ## Other configurations
@@ -171,14 +184,16 @@ The following services will be available:
 
 - Database (PostgreSQL): `localhost:5433`
 - Certify Service: `localhost:8090`
+- Certify Nginx: `localhost:8091`
 - Mimoto Service: `localhost:8099`
-- Inji Web: `localhost:3001`
+- Inji Web: `localhost:3004`
+- Inji Verify: `localhost:8095`
 
 ## Using the Application
 
 ### Recommended: Accessing the Web Interface
 
-1. Open your browser and navigate to `http://localhost:3001`
+1. Open your browser and navigate to `http://localhost:3004`
 2. You can:
     - Download credentials
     - View credential status at a Standards Compliant VC Verfier such as [Inji Verify](https://injiverify.collab.mosip.net).
@@ -216,13 +231,13 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 2. Deploying Inji Certify over a public URL, _using ngrok to demonstrate this_
 
-- change the value of the `mosipbox_public_url` to point to the public URL in ./docker-compose.yaml where Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8090`, which is the port for Certify and access the Inji Web at http://localhost:3001, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
+- change the value of the `mosipbox_public_url` to point to the public URL in ./docker-compose.yaml where Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8090`, which is the port for Certify and access the Inji Web at http://localhost:3004, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
 
 3. While downloading credentials with `inji-web`, there are 2 modes supported. 
 - First is `Continue as guest` which does not require any auth setup and works out of the box. This is the recommended option for quick testing.
 - Second is `Sign in with Google` which requires Google OAuth credentials to be setup.
 ## To configure your own Google Auth Credentials:
-- Refer to the steps documented in the `mimoto` for the same. [GOOGLE_AUTH_SETUP](https://github.com/mosip/mimoto/blob/master/docker-compose/README.md#how-to-create-google-client-credentials)
+- Refer to the steps documented in the `mimoto` for the same. [GOOGLE_AUTH_SETUP](https://github.com/inji/mimoto/blob/master/docker-compose/README.md#how-to-create-google-client-credentials)
 - Replace the placeholders under the `mimoto-service` in the `docker-compose.yml` file with the generated credentials:
 
    ```yaml
@@ -233,7 +248,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 ## Using the Postgres Data Provider plugin
 - If you wish to use the Postgres Data Provider plugin instead of the Mock CSV plugin, please refer to the steps mentioned in [Setup-Postgres-Plugin](./Add-New-Usecase-Using-PostgresPlugin.md) to setup a new usecase using the Postgres Data Provider plugin.
-- Also refer to the postgres-data-provider-plugin implementation documentation.[Postgres-Plugin-Document](https://github.com/mosip/digital-credential-plugins/blob/master/postgres-dataprovider-plugin/README.md)
+- Also refer to the postgres-data-provider-plugin implementation documentation.[Postgres-Plugin-Document](https://github.com/inji/digital-credential-plugins/blob/master/postgres-dataprovider-plugin/README.md)
 
 ## Troubleshooting
 
@@ -263,7 +278,6 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 7. VC download is failing with Mimoto error logs stating that VC Verification is failing.
     - Check if the DID is updated & resolvable. The Multibase hash changes on each restart, please update it whenever a newer instance of Certify is setup.
     - Check if the hosted DID matches with the [DID endpoint](http://localhost:8090/v1/certify/.well-known/did.json)
-    - As of now, Mimoto/Inji Web only supports downloads for Ed25519Signature2020 signed VerifiableCredential due to a limitation of the integrated VC-Verification module.
 
 8. While running `docker compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
    ```bash
@@ -288,7 +302,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 ## location /.well-known/did.json 
 *This block handles requests to the DID document endpoint, which is part of decentralized identity standards.*
-- It proxies the request to http://certify:8090/v1/certify/issuance/.well-known/did.json.
+- It proxies the request to http://certify:8090/v1/certify/.well-known/did.json.
 - CORS headers and preflight handling are included.
 
 
@@ -342,9 +356,9 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 ```
 
 ## Test Endpoints:
-1. curl http://localhost/v1/certify/actuator/health
-2. curl http://localhost/.well-known/did.json
-3. curl http://localhost/.well-known/openid-credential-issuer
+1. curl http://localhost:8090/v1/certify/actuator/health
+2. curl http://localhost:8091/.well-known/did.json
+3. curl http://localhost:8091/.well-known/openid-credential-issuer
 
 
 ### Health Checks

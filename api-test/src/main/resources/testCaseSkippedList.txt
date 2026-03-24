@@ -1,5 +1,8 @@
 ##### JIRA number;testcase 
 #MOSIP-12456------Mimoto_AddIdentity_Binding_smoke_Pos
+INJICERT-1319------InjiCertify_OAuthToken_mdocvp_invalid_grantType_neg
+INJICERT-1319------InjiCertify_OAuthToken_mdocvp_without_CodeVerifier_neg
+INJICERT-1319------InjiCertify_OAuthToken_mdocvp_without_Code_neg
 INJICERT-1290------InjiCertify_UploadCACertificate_ForLandRegistry_all_Valid_Smoke_RSASign_sid
 INJICERT-1290------InjiCertify_UploadCACertificate_ForLandRegistry_for_all_Valid_Smoke_ECCR1Sign_sid
 INJICERT-1290------InjiCertify_UploadCACertificate_ForLandRegistry_for_all_Valid_Smoke_Ed25519Sign_sid
@@ -12,3 +15,5 @@ INJICERT-1290------InjiCertify_UploadCertificate_ForLandRegistry_invalid_applica
 INJICERT-1290------InjiCertify_UploadCertificate_ForLandRegistry_invalid_referenceId_neg
 INJICERT-1290------InjiCertify_UploadCertificate_ForLandRegistry_without_applicationId_neg
 INJICERT-1290------InjiCertify_UploadCertificate_ForLandRegistry_without_referenceId_value_neg
+INJICERT-1260------InjiCertify_UpdateCredentialStatusV2_ForLandRegistry_Revocation_invalid_statuspurpose_Neg
+INJICERT-1320------InjiCertify_GetCredentialFormdl_IdpAccessToken_Unsupported_JWT_Algo

@@ -4,6 +4,7 @@ import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.ClaimsDisplayFieldsConfigDTO;
 import io.mosip.certify.core.dto.CredentialConfigurationDTO;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.certify.core.dto.CredentialConfigurationDTOV2;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import org.junit.jupiter.api.Test;
@@ -339,4 +340,136 @@ class SdJwtCredentialConfigValidatorTest {
         assertTrue(ex.getMessage().contains("nonExistentField"));
     }
 
+}
+    void testIsValidCheckV2_validConfig_returnsTrue() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setCredentialTypes(null);
+        config.setContextURLs(null);
+        config.setDocType(null);
+        config.setCredentialSubjectDefinition(null);
+        assertTrue(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_msoMdocClaimsPreset_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setCredentialTypes(null);
+        config.setContextURLs(null);
+        config.setDocType(null);
+        config.setCredentialSubjectDefinition(null);
+        config.setMsoMdocClaims(new HashMap<>());
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_missingSdJwtVct_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct(null);
+        config.setSignatureAlgo("algoValue");
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_emptySdJwtVct_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("");
+        config.setSignatureAlgo("algoValue");
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_missingSignatureAlgo_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo(null);
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_emptySignatureAlgo_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("");
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_credentialTypeNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setCredentialTypes(java.util.Collections.singletonList("type"));
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_contextNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setContextURLs(java.util.Collections.singletonList("someContextURL.com"));
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_docTypeNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setDocType("docType");
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_credentialSubjectNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setCredentialSubjectDefinition(new HashMap<>());
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsConfigAlreadyPresentV2_present_returnsTrue() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setCredentialFormat("format");
+        config.setSdJwtVct("vctValue");
+        CredentialConfigRepository repo = Mockito.mock(CredentialConfigRepository.class);
+        Mockito.when(repo.findByCredentialFormatAndSdJwtVct("format", "vctValue"))
+                .thenReturn(Optional.of(new CredentialConfig()));
+        assertTrue(SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(config, repo));
+    }
+
+    @Test
+    void testIsConfigAlreadyPresentV2_notPresent_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setCredentialFormat("format");
+        config.setSdJwtVct("vctValue");
+        CredentialConfigRepository repo = Mockito.mock(CredentialConfigRepository.class);
+        Mockito.when(repo.findByCredentialFormatAndSdJwtVct("format", "vctValue"))
+                .thenReturn(Optional.empty());
+        assertFalse(SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(config, repo));
+    }
+
+    @Test
+    void testIsValidCheckV2_msoMdocClaimsNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setMsoMdocClaims(new HashMap<>());
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheck_signatureCryptoSuiteNotNullV2_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setSdJwtVct("vctValue");
+        config.setSignatureAlgo("algoValue");
+        config.setSignatureCryptoSuite("suiteValue");
+        assertFalse(SdJwtCredentialConfigValidator.isValidCheckV2(config));
+    }
 }

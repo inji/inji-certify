@@ -107,9 +107,10 @@ public class InjiTestRunner {
 			generateDependency = InjiCertifyConfigManager.getproperty("generateDependencyJson");
 
 			if (!"yes".equalsIgnoreCase(generateDependency)) {
-				if (useCaseToExecute != null && !useCaseToExecute.isBlank()) {
+				String testCasesToExecute = InjiCertifyConfigManager.getproperty("testCasesToExecute");
+				if (testCasesToExecute != null && !testCasesToExecute.isBlank()) {
 					DependencyResolver.loadDependencies(BaseTestCase.getTestCaseInterDependencyPath(useCaseToExecute));
-					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies(useCaseToExecute);
+					InjiCertifyUtil.testCasesInRunScope = DependencyResolver.getDependencies("testCasesToExecute");
 				}
 			}
 
