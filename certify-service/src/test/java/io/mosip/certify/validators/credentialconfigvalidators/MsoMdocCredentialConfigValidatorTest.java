@@ -1,6 +1,7 @@
 package io.mosip.certify.validators.credentialconfigvalidators;
 
 import io.mosip.certify.core.dto.CredentialConfigurationDTO;
+import io.mosip.certify.core.dto.CredentialConfigurationDTOV2;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -127,5 +128,120 @@ class MsoMdocCredentialConfigValidatorTest {
         Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
                 .thenReturn(Optional.empty());
         assertFalse(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config, repo));
+    }
+
+    @Test
+    void testIsValidCheckV2_validConfig_returnsTrue() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setCredentialTypes(null);
+        config.setContextURLs(null);
+        config.setSdJwtVct(null);
+        config.setCredentialSubjectDefinition(null);
+        assertTrue(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_sdJwtClaimsPresent_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setCredentialTypes(null);
+        config.setContextURLs(null);
+        config.setSdJwtVct(null);
+        config.setCredentialSubjectDefinition(null);
+        config.setSdJwtClaims(new HashMap<>());
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_missingDocType_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType(null);
+        config.setSignatureCryptoSuite("suite");
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_emptyDocType_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("");
+        config.setSignatureCryptoSuite("suite");
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_missingSignatureCryptoSuite_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite(null);
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_emptySignatureCryptoSuite_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("");
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_credentialTypeNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setCredentialTypes(List.of("type"));
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_contextNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setContextURLs(List.of("someContext URL"));
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_sdJwtVctNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setSdJwtVct("sdJwtVct");
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsValidCheckV2_credentialSubjectNotNull_returnsFalse() {
+        CredentialConfigurationDTOV2 config = new CredentialConfigurationDTOV2();
+        config.setDocType("docType");
+        config.setSignatureCryptoSuite("suite");
+        config.setCredentialSubjectDefinition(new HashMap<>());
+        assertFalse(MsoMdocCredentialConfigValidator.isValidCheckV2(config));
+    }
+
+    @Test
+    void testIsConfigAlreadyPresentV2_present_returnsTrue() {
+        CredentialConfigurationDTOV2 config = Mockito.mock(CredentialConfigurationDTOV2.class);
+        CredentialConfigRepository repo = Mockito.mock(CredentialConfigRepository.class);
+        Mockito.when(config.getCredentialFormat()).thenReturn("format");
+        Mockito.when(config.getDocType()).thenReturn("docType");
+        Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
+                .thenReturn(Optional.of(new io.mosip.certify.entity.CredentialConfig()));
+        assertTrue(MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(config, repo));
+    }
+
+    @Test
+    void testIsConfigAlreadyPresentV2_notPresent_returnsFalse() {
+        CredentialConfigurationDTOV2 config = Mockito.mock(CredentialConfigurationDTOV2.class);
+        CredentialConfigRepository repo = Mockito.mock(CredentialConfigRepository.class);
+        Mockito.when(config.getCredentialFormat()).thenReturn("format");
+        Mockito.when(config.getDocType()).thenReturn("docType");
+        Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
+                .thenReturn(Optional.empty());
+        assertFalse(MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(config, repo));
     }
 }

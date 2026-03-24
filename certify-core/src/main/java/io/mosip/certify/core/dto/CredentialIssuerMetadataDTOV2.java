@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class CredentialIssuerMetadataDTO {
+public class CredentialIssuerMetadataDTOV2 {
 
     @JsonProperty("credential_issuer")
     private String credentialIssuer;
@@ -24,7 +24,7 @@ public class CredentialIssuerMetadataDTO {
     private List<Map<String, Object>> display;
 
     @JsonIgnore
-    public Map<String, CredentialConfigurationSupportedDTO> getCredentialConfigurationSupportedDTO() {
+    public Map<String, CredentialConfigurationSupportedDTOV2> getCredentialConfigurationSupportedDTOV2() {
         throw new UnsupportedOperationException("This method must be overridden in child classes.");
     }
 }

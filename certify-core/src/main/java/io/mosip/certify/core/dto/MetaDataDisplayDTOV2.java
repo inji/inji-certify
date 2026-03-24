@@ -1,16 +1,11 @@
-package io.mosip.certify.entity.attributes;
+package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class MetaDataDisplay implements Serializable {
+public class MetaDataDisplayDTOV2 {
     private Logo logo;
     private String name;
     private String locale;
@@ -25,9 +20,7 @@ public class MetaDataDisplay implements Serializable {
     private BackgroundImage backgroundImage;
 
     @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Logo implements Serializable {
+    public static class Logo {
         private String uri;
 
         @JsonProperty("alt_text")
@@ -35,8 +28,6 @@ public class MetaDataDisplay implements Serializable {
     }
 
     @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
     public static class BackgroundImage {
         private String uri;
     }
