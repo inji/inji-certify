@@ -196,6 +196,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         parsedAccessToken.getClaims().put("accessTokenHash", parsedAccessToken.getAccessTokenHash());
         VCRequestDto vcRequestDto = new VCRequestDto();
         vcRequestDto.setFormat(credentialRequest.getFormat());
+        VCResult<?> vcResult = null;
 
         try {
             // Fetch data once, as it's common to all formats
@@ -239,69 +240,70 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     templateParams.put("_doctype", vcRequestDto.getDoctype());
                     jsonObject.put(Constants.TYPE, vcRequestDto.getDoctype());
                     break;
-case "jwt_vc_json": {
+                case "jwt_vc_json": {
 
-    vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
-    vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
-    vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
+                    vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
+                    vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
+                    vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
 
-    templateName = CredentialUtils.getTemplateName(vcRequestDto);
+                    templateName = CredentialUtils.getTemplateName(vcRequestDto);
 
-    templateParams.put(Constants.TEMPLATE_NAME, templateName);
-    templateParams.put(Constants.DID_URL, didUrl);
+                    templateParams.put(Constants.TEMPLATE_NAME, templateName);
+                    templateParams.put(Constants.DID_URL, didUrl);
 
-    if (!StringUtils.isEmpty(renderTemplateId)) {
-        templateParams.put(Constants.RENDERING_TEMPLATE_ID, renderTemplateId);
-    }
+                    if (!StringUtils.isEmpty(renderTemplateId)) {
+                        templateParams.put(Constants.RENDERING_TEMPLATE_ID, renderTemplateId);
+                    }
 
-    jsonObject.put("_holderId", holderId);
-    templateParams.putAll(jsonObject.toMap());
+                    jsonObject.put("_holderId", holderId);
+                    templateParams.putAll(jsonObject.toMap());
 
-    if (!StringUtils.isEmpty(idPrefix)) {
-        templateParams.put(VCDMConstants.CREDENTIAL_ID, idPrefix + UUID.randomUUID());
-    }
+                    if (!StringUtils.isEmpty(idPrefix)) {
+                        templateParams.put(VCDMConstants.CREDENTIAL_ID, idPrefix + UUID.randomUUID());
+                    }
 
-    ZonedDateTime nowZ = ZonedDateTime.now(ZoneOffset.UTC);
+                    ZonedDateTime nowZ = ZonedDateTime.now(ZoneOffset.UTC);
 
-    templateParams.put("issuanceDate", nowZ.format(DateTimeFormatter.ISO_INSTANT));
-    templateParams.put("expirationDate", nowZ.plus(Duration.parse(defaultExpiryDuration))
-    .format(DateTimeFormatter.ISO_INSTANT));
-    Map<String, Object> updatedTemplateParamsJwt = toJsonMap(templateParams);
-    updatedTemplateParamsJwt.put("rootContext", new HashMap<>(templateParams));
-    updatedTemplateParamsJwt.put("envConfigs", velocityEnvConfig.getEnvConfigs());
+                    templateParams.put("issuanceDate", nowZ.format(DateTimeFormatter.ISO_INSTANT));
+                    templateParams.put("expirationDate", nowZ.plus(Duration.parse(defaultExpiryDuration))
+                    .format(DateTimeFormatter.ISO_INSTANT));
+                    Map<String, Object> updatedTemplateParamsJwt = toJsonMap(templateParams);
+                    updatedTemplateParamsJwt.put("rootContext", new HashMap<>(templateParams));
+                    updatedTemplateParamsJwt.put("envConfigs", velocityEnvConfig.getEnvConfigs());
 
-    // STEP 1: Create VC JSON
-    String unsignedVcJson = jwtVcJson.createCredential(updatedTemplateParamsJwt, templateName);
+                    // STEP 1: Create VC JSON
+                    String unsignedVcJson = jwtVcJson.createCredential(updatedTemplateParamsJwt, templateName);
 
-    // STEP 2: Convert to Map
-    Map<String, Object> vcMap = new JSONObject(unsignedVcJson).toMap();
+                    // STEP 2: Convert to Map
+                    Map<String, Object> vcMap = new JSONObject(unsignedVcJson).toMap();
 
-    // STEP 3: Signing config
-    String signAlgorithm = vcFormatter.getProofAlgorithm(templateName);
+                    // STEP 3: Signing config
+                    String signAlgorithm = vcFormatter.getProofAlgorithm(templateName);
 
-    List<List<String>> signerKeysList = keyAliasMapper.get(signAlgorithm);
-    if (signerKeysList == null || signerKeysList.isEmpty()) {
-        throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND,
-                "No key config for algorithm: " + signAlgorithm);
-    }
+                    List<List<String>> signerKeysList = keyAliasMapper.get(signAlgorithm);
+                    if (signerKeysList == null || signerKeysList.isEmpty()) {
+                        throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND,
+                                "No key config for algorithm: " + signAlgorithm);
+                    }
 
-    List<String> signerKeys = signerKeysList.get(0);
-    String appID = signerKeys.get(0);
-    String refID = signerKeys.get(signerKeys.size() - 1);
+                    List<String> signerKeys = signerKeysList.get(0);
+                    String appID = signerKeys.get(0);
+                    String refID = signerKeys.get(signerKeys.size() - 1);
 
-    String signatureCryptoSuite = vcFormatter.getSignatureCryptoSuite(templateName);
+                    String signatureCryptoSuite = vcFormatter.getSignatureCryptoSuite(templateName);
 
-    // STEP 4: Sign VC
-    return jwtVcJson.addProof(
-            vcMap,
-            new HashMap<>(),
-            signAlgorithm,
-            appID,
-            refID,
-            vcFormatter.getDidUrl(templateName),
-            signatureCryptoSuite
-    );
-}
+                    // STEP 4: Sign VC
+                vcResult = jwtVcJson.addProof(
+                        vcMap,
+                        new HashMap<>(),
+                        signAlgorithm,
+                        appID,
+                        refID,
+                        vcFormatter.getDidUrl(templateName),
+                        signatureCryptoSuite
+                );
+                break;
+                }
                 default:
                     throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, "Invalid or unsupported VC format requested.");
 
@@ -359,10 +361,22 @@ case "jwt_vc_json": {
                 credentialLedgerService.storeLedgerEntry(credentialId, didUrl, credentialType, credentialStatusDetail, indexedAttributes, issuanceDate);
                 log.info("Successfully stored the credential issuance data in ledger with credentialType: {}", credentialType);
             }
-            VCResult<?> result = cred.addProof(unsignedCredential, "", vcFormatter.getProofAlgorithm(templateName), vcFormatter.getAppID(templateName), vcFormatter.getRefID(templateName), vcFormatter.getDidUrl(templateName), vcFormatter.getSignatureCryptoSuite(templateName));
+            VCResult<?> result = cred.addProof(
+        unsignedCredential,
+        "",
+        vcFormatter.getProofAlgorithm(templateName),
+        vcFormatter.getAppID(templateName),
+        vcFormatter.getRefID(templateName),
+        vcFormatter.getDidUrl(templateName),
+        vcFormatter.getSignatureCryptoSuite(templateName)
+);
 
-            jsonObject.remove(VCDM2Constants.CREDENTIAL_STATUS);
-            return result;
+jsonObject.remove(VCDM2Constants.CREDENTIAL_STATUS);
+
+if (vcResult != null) {
+    return vcResult;
+}
+return result;      
 
         } catch (DataProviderExchangeException e) {
             throw new CertifyException(e.getErrorCode());

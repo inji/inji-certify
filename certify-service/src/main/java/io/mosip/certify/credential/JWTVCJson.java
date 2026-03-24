@@ -30,6 +30,7 @@ import io.mosip.kernel.signature.service.SignatureService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -41,6 +42,9 @@ public class JWTVCJson extends Credential {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Value("${mosip.certify.credential-config.jwt-vc.fallback-expiry-seconds:31536000}")
+    private long fallbackExpirySeconds; // configurable fallback expiry
 
     @Autowired
     public JWTVCJson(VCFormatter vcFormatter, SignatureService signatureService) {
@@ -109,10 +113,10 @@ public class JWTVCJson extends Credential {
                     claims.put("exp", expInstant.getEpochSecond());
                 } catch (Exception ex) {
                     log.warn("Invalid validUntil format; fallback expiry used", ex);
-                    claims.put("exp", now + fallbackExpirySeconds());
+                    claims.put("exp", now + fallbackExpirySeconds);
                 }
             } else {
-                claims.put("exp", now + fallbackExpirySeconds());
+                claims.put("exp", now + fallbackExpirySeconds);
             }
 
             // sub extraction
@@ -182,13 +186,13 @@ public class JWTVCJson extends Credential {
         } catch (JsonProcessingException e) {
             log.error("JSON processing error while creating JWT VC", e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR,
-                    "Failed to process VC JSON");
+                    "Failed to process VC JSON", e);
         } catch (CertifyException ce) {
             throw ce;
         } catch (Exception ex) {
-            log.error("Error while signing JWT VC", ex);
-            throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR,
-                    "JWT VC signing failed");
+            log.error("Signing error while creating JWT VC", ex);
+            throw new CertifyException(ErrorConstants.VC_SIGNING_ERROR,
+            "JWT VC signing failed", ex);
         }
     }
 
@@ -207,9 +211,5 @@ public class JWTVCJson extends Credential {
 
     private boolean isAlgAllowed(String alg) {
         return DEFAULT_ALLOWED_ALGS.contains(alg);
-    }
-
-    private long fallbackExpirySeconds() {
-        return 31536000L; // 1 year
     }
 }

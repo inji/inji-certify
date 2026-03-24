@@ -170,6 +170,13 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 break;
+            case VCFormats.JWT_VC_JSON:
+                if (credentialConfig.getCredentialTypes() == null || credentialConfig.getContextURLs() == null) {
+                    throw new CertifyException(ErrorConstants.JWT_VC_JSON_MANDATORY_FIELDS_MISSING,
+                                            "Fields type and context are mandatory for the jwt_vc_json format.");
+                }
+                validateKeyAliasMapperConfiguration(credentialConfig);
+                break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
         }
@@ -359,16 +366,33 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         metadata.setAuthorizationServers(resolveAuthorizationServers());
         metadata.setCredentialEndpoint(buildCredentialEndpoint(version));
         metadata.setDisplay(issuerDisplay);
+            if (StringUtils.hasText(batchCredentialEndpoint)) {
         metadata.setBatchCredentialEndpoint(batchCredentialEndpoint);
+    }
+    if (StringUtils.hasText(deferredCredentialEndpoint)) {
         metadata.setDeferredCredentialEndpoint(deferredCredentialEndpoint);
-        metadata.setCredentialResponseEncryption(credentialResponseEncryption);
+    }
 
         Map<String,Object> enc = new HashMap<>();
-    enc.put("alg_values_supported", List.of(algValuesSupported));
-    enc.put("enc_values_supported", List.of(encValuesSupported));
+    if (StringUtils.hasText(algValuesSupported)) {
+        enc.put("alg_values_supported",
+                Arrays.stream(algValuesSupported.split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .toList());
+    }
+    if (StringUtils.hasText(encValuesSupported)) {
+        enc.put("enc_values_supported",
+                Arrays.stream(encValuesSupported.split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .toList());
+    }
     enc.put("encryption_required", encryptionRequired);
 
-    metadata.setCredentialResponseEncryption(enc);
+    if (!enc.isEmpty()) {
+        metadata.setCredentialResponseEncryption(enc);
+    }
     }
 
     private List<String> resolveAuthorizationServers() {
