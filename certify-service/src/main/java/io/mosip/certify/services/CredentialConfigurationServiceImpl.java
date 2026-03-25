@@ -452,7 +452,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             }
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
         }
-        else if ("jwt_vc_json".equals(credentialConfig.getCredentialFormat())) {
+        else if (VCFormats.JWT_VC_JSON.equals(credentialConfig.getCredentialFormat())) {
 
             CredentialDefinition credentialDefinition = new CredentialDefinition();
             credentialDefinition.setType(credentialConfigurationDTO.getCredentialTypes());
@@ -473,7 +473,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                         .toList();
                 credentialDefinition.setOrder(filteredOrder.isEmpty() ? null : filteredOrder);
             } else {
-                credentialDefinition.setOrder(displayOrder);
+                credentialDefinition.setOrder(null);
             }
             // Keep existing root-level order behavior for other formats only.
             credentialConfigurationSupported.setOrder(null);
