@@ -252,7 +252,6 @@ extraEnvVars:
 extraEnvVarsCM:
   - inji-stack-config
   - config-server-share
-  - artifactory-share
   - softhsm-certify-share
 
 ## Secret with extra environment variables

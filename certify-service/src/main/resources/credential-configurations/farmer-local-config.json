@@ -1,0 +1,79 @@
+{
+  "credentialConfigKeyId": "FarmerCredential",
+  "vcTemplate": "ew0KICAgICAgICAiQGNvbnRleHQiOiBbDQogICAgICAgICAgICAiaHR0cHM6Ly93d3cudzMub3JnLzIwMTgvY3JlZGVudGlhbHMvdjEiLA0KICAgICAgICAgICAgImh0dHBzOi8vaW5qaS5naXRodWIuaW8vaW5qaS1jb25maWcvY29udGV4dHMvZmFybWVyLmpzb24iLA0KICAgICAgICAgICAgImh0dHBzOi8vdzNpZC5vcmcvc2VjdXJpdHkvc3VpdGVzL2VkMjU1MTktMjAyMC92MSINCiAgICAgICAgXSwNCiAgICAgICAgImlzc3VlciI6ICIke19pc3N1ZXJ9IiwNCiAgICAgICAgInR5cGUiOiBbDQogICAgICAgICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLA0KICAgICAgICAgICAgIkZhcm1lckNyZWRlbnRpYWwiDQogICAgICAgIF0sDQogICAgICAgICJpc3N1YW5jZURhdGUiOiAiJHt2YWxpZEZyb219IiwNCiAgICAgICAgImV4cGlyYXRpb25EYXRlIjogIiR7dmFsaWRVbnRpbH0iLA0KICAgICAgICAiY3JlZGVudGlhbFN1YmplY3QiOiB7DQogICAgICAgICAgICAiaWQiOiAiJHtfaG9sZGVySWR9IiwNCiAgICAgICAgICAgICJmdWxsTmFtZSI6ICIke2Z1bGxOYW1lfSIsDQogICAgICAgICAgICAibW9iaWxlTnVtYmVyIjogIiR7bW9iaWxlTnVtYmVyfSIsDQogICAgICAgICAgICAiZGF0ZU9mQmlydGgiOiAiJHtkYXRlT2ZCaXJ0aH0iLA0KICAgICAgICAgICAgImdlbmRlciI6ICIke2dlbmRlcn0iLA0KICAgICAgICAgICAgInN0YXRlIjogIiR7c3RhdGV9IiwNCiAgICAgICAgICAgICJkaXN0cmljdCI6ICIke2Rpc3RyaWN0fSIsDQogICAgICAgICAgICAidmlsbGFnZU9yVG93biI6ICIke3ZpbGxhZ2VPclRvd259IiwNCiAgICAgICAgICAgICJwb3N0YWxDb2RlIjogIiR7cG9zdGFsQ29kZX0iLA0KICAgICAgICAgICAgImxhbmRBcmVhIjogIiR7bGFuZEFyZWF9IiwNCiAgICAgICAgICAgICJsYW5kT3duZXJzaGlwVHlwZSI6ICIke2xhbmRPd25lcnNoaXBUeXBlfSIsDQogICAgICAgICAgICAicHJpbWFyeUNyb3BUeXBlIjogIiR7cHJpbWFyeUNyb3BUeXBlfSIsDQogICAgICAgICAgICAic2Vjb25kYXJ5Q3JvcFR5cGUiOiAiJHtzZWNvbmRhcnlDcm9wVHlwZX0iLA0KICAgICAgICAgICAgImZhY2UiOiAiJHtmYWNlfSIsDQogICAgICAgICAgICAiZmFybWVySUQiOiAiJHtmYXJtZXJJRH0iDQogICAgICAgIH0NCiAgICB9",
+  "keyManagerAppId": "CERTIFY_VC_SIGN_ED25519",
+  "keyManagerRefId": "ED25519_SIGN",
+  "signatureAlgo": "EdDSA",
+  "signatureCryptoSuite": "Ed25519Signature2020",
+  "contextURLs": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://inji.github.io/inji-config/contexts/farmer.json"
+  ],
+  "credentialTypes": [
+    "VerifiableCredential",
+    "FarmerCredential"
+  ],
+  "credentialFormat": "ldp_vc",
+  "didUrl": "did:web:inji.github.io:inji-config:local:farmer",
+  "metaDataDisplay": [{
+    "name": "Farmer Credential",
+    "locale": "en",
+    "logo": {
+      "url": "https://example.com/logo.png",
+      "alt_text": "Farmer Logo"
+    },
+    "background_color": "#12107c",
+    "background_image": { "uri": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png" },
+    "text_color": "#FFFFFF"
+  }],
+  "displayOrder": [
+    "fullName",
+    "mobileNumber",
+    "dateOfBirth",
+    "gender",
+    "state",
+    "district",
+    "villageOrTown",
+    "postalCode",
+    "landArea",
+    "landOwnershipType",
+    "primaryCropType",
+    "secondaryCropType",
+    "farmerID"
+  ],
+  "scope": "sample_vc_ldp",
+  "credentialSubjectDefinition": {
+    "fullName": {
+      "display": [
+        {
+          "name": "Full Name",
+          "locale": "en"
+        }
+      ]
+    },
+    "mobileNumber": {
+      "display": [
+        {
+          "name": "Mobile Number",
+          "locale": "en"
+        }
+      ]
+    },
+    "dateOfBirth": {
+      "display": [
+        {
+          "name": "Date of Birth",
+          "locale": "en"
+        }
+      ]
+    },
+    "gender": {
+      "display": [
+        {
+          "name": "Gender",
+          "locale": "en"
+        }
+      ]
+    }
+  }
+}
