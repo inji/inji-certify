@@ -7,7 +7,7 @@ import lombok.Data;
 import java.util.Map;
 
 @Data
-@JsonInclude
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CredentialIssuerMetadataVD12DTO extends CredentialIssuerMetadataDTO {
     @JsonProperty("credentials_supported")
     private Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedDTO;

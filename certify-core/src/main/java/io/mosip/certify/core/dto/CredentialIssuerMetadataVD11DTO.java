@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Data
-@JsonInclude
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class CredentialIssuerMetadataVD11DTO extends CredentialIssuerMetadataDTO {
     @JsonProperty("credentials_supported")
     private List<CredentialConfigurationSupportedDTO> credentialConfigurationSupportedDTO;
