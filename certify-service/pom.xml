@@ -236,11 +236,6 @@
             <artifactId>kernel-biometrics-api</artifactId>
             <version>1.3.0</version>
         </dependency>
-        <dependency>
-            <groupId>io.mosip.certify</groupId>
-            <artifactId>mock-certify-plugin</artifactId>
-            <version>0.6.0-SNAPSHOT</version>
-        </dependency>
     </dependencies>
 
 

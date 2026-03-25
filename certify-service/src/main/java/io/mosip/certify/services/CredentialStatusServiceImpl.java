@@ -43,7 +43,12 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {
         String statusPurpose = validateAndGetStatusPurpose(request.getCredentialStatus() == null ? null : request.getCredentialStatus().getStatusPurpose());
-        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
+        if(request.getCredentialStatus() != null) {
+            validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
+        }
+        else {
+            statusPurpose = null;
+        }
 
         Ledger ledger = ledgerRepository.findByCredentialId(request.getCredentialId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Credential not found: " + request.getCredentialId()));
