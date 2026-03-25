@@ -132,7 +132,7 @@ Current usecases include:
             {
             "name": "Landregistry Department",
             "logo": {
-            "url": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png",
+            "url": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png",
             "alt_text": "landregistry-logo"
             },
             "title": "Landregistry Department",

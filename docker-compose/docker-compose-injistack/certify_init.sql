@@ -185,7 +185,7 @@ VALUES (
     'https://www.w3.org/2018/credentials/v1',  -- context as comma-separated string
     'FarmerCredential,VerifiableCredential',  -- credential_type as comma-separated string
     'ldp_vc',  -- credential_format
-    'did:web:mosip.github.io:inji-config:vc-local-ed25519',  -- did_url
+    'did:web:8398-2405-201-1029-3025-e142-9ad3-e1f2-f543.ngrok-free.app',  -- did_url
     'CERTIFY_VC_SIGN_ED25519',  -- key_manager_app_id
     'ED25519_SIGN',  -- key_manager_ref_id (optional)
     'EdDSA',  -- signature_algo (optional)

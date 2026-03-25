@@ -1,6 +1,7 @@
 package io.mosip.certify.controller;
 
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
+import io.mosip.certify.core.dto.CredentialIssuerMetadataDTOV2;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.core.spi.VCIssuanceService;
@@ -32,6 +33,12 @@ public class WellKnownController {
     public CredentialIssuerMetadataDTO getCredentialIssuerMetadata(
             @RequestParam(name = "version", required = false, defaultValue = "latest") String version) {
         return credentialConfigurationService.fetchCredentialIssuerMetadata(version);
+    }
+
+    @GetMapping(value = "/v2/.well-known/openid-credential-issuer", produces = "application/json")
+    public CredentialIssuerMetadataDTOV2 getCredentialIssuerMetadataV2(
+            @RequestParam(name = "version", required = false, defaultValue = "latest") String version) {
+        return credentialConfigurationService.fetchCredentialIssuerMetadataV2(version);
     }
 
     @GetMapping(value = "/.well-known/did.json", produces = "application/json")

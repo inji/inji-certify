@@ -201,6 +201,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         try {
             // Fetch data once, as it's common to all formats
             JSONObject jsonObject = dataProviderPlugin.fetchData(parsedAccessToken.getClaims());
+            log.info("Data fetched successfully from Data Provider Plugin");
 
             String templateName;
             Map<String, Object> templateParams = new HashMap<>();
@@ -339,11 +340,26 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             updatedTemplateParams.put("rootContext", rootContext);
             updatedTemplateParams.put("envConfigs", velocityEnvConfig.getEnvConfigs());
 
+            log.info("Template parameters updated with root context");
+
             JSONArray qrDataJson = cred.createQRData(updatedTemplateParams, templateName);
+            log.info("QR data JSON generated successfully");
 
             if (qrDataJson != null) {
-                List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
-                updatedTemplateParams.put("claim_169_values", claim169Values);
+                try {
+                    List<String> claim169Values = signQrEntries(cred, qrDataJson, templateName);
+                    updatedTemplateParams.put("claim_169_values", claim169Values);
+                    log.info("Claim 169 values signed successfully for template");
+                } catch (JsonProcessingException e) {
+                    log.error(e.getMessage(), e);
+                    throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
+                } catch (CertifyException e) {
+                    log.error(e.getMessage(), e);
+                    throw e;
+                } catch (Exception e) {
+                    log.error("Error during signing qr data: {}", e.getMessage());
+                    throw new CertifyException(ErrorConstants.ERROR_SIGNING_QR_DATA, e.getMessage());
+                }
             } else {
                 log.warn("QR code not configured for template: {}. To enable qr code support, update the respective credential configuration.", templateName);
             }
@@ -380,21 +396,28 @@ return result;
 
         } catch (DataProviderExchangeException e) {
             throw new CertifyException(e.getErrorCode());
-        } catch (JSONException | JsonProcessingException e) {
+        } catch (JSONException e) {
             log.error(e.getMessage(), e);
             throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Invalid JSON data encountered during credential generation. Please check the data provider response and template configurations.");
+        } catch (CertifyException e) {
+            log.error("CertifyException during credential generation: {}", e.getMessage());
+            throw e;
         }
     }
 
     private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
         List<String> signedQrCodes = new ArrayList<>();
         if (qrDataJson == null || qrDataJson.isEmpty()) {
+            log.info("No QR data entries found to sign");
             return signedQrCodes;
         }
         Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
+        log.info("Claim 169 key mapper initialized successfully");
         Map<String, Map<Object, Integer>> claim169ValueMapper = ConstantsKt.getCLAIM_169_VALUE_MAPPER();
+        log.info("Claim 169 value mapping completed");
         for (int i = 0; i < qrDataJson.length(); i++) {
             Object qrObj = qrDataJson.get(i);
+            log.info("Processing QR entry index {}", i);
             String claim169MappedData;
             if (qrObj instanceof JSONObject) {
                 claim169MappedData = pixelPass
@@ -404,6 +427,8 @@ return result;
                 log.error("Invalid QR Data json found. The qrSettings needs to be fixed.");
                 throw new CertifyException(ErrorConstants.JSON_PROCESSING_ERROR, "Unsupported QR entry type: " + qrObj.getClass().getName());
             }
+
+            log.info("Claim 169 mapped data for QR entry index {}", i);
 
             // Default QR Signer Configuration
             String qrSignatureAlgo = vcFormatter.getQRSignatureAlgo(templateName);
@@ -434,9 +459,12 @@ return result;
                         qrSignRefId,
                         domainUrl
                 );
+                log.info("Signed QR data for entry index {}", i);
                 if (qrSignedResult != null && !qrSignedResult.isEmpty()) {
                     try {
+                        log.info("Generating QR code for signed QR entry index {}.", i);
                         signedQrCodes.add(pixelPass.generateQRData(qrSignedResult, ""));
+                        log.info("QR code generation successful for entry {}", i);
                     } catch (Exception e) {
                         log.error("Failed to generate QR code for signed QR entry index {}: {}", i, e.getMessage());
                         throw new CertifyException(ErrorConstants.QR_CBOR_ENCODING_ERROR, e.getMessage());
@@ -450,6 +478,7 @@ return result;
                 throw new CertifyException(ErrorConstants.ERROR_SIGNING_QR_ENTRY, e.getMessage());
             }
         }
+        log.info("Signed QR codes generated successfully for template");
         return signedQrCodes;
     }
 }

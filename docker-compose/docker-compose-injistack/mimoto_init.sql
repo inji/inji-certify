@@ -135,6 +135,25 @@ CREATE TABLE IF NOT EXISTS proof_signing_key (
     CONSTRAINT fk_wallet_id FOREIGN KEY (wallet_id) REFERENCES wallet (id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS trusted_verifiers (
+    id character varying(36) PRIMARY KEY,  -- Primary key for the table
+    wallet_id character varying(36) NOT NULL,  -- Foreign key referring to the wallet table (wallet.id)
+    verifier_id character varying(255) NOT NULL,  -- Stores the unique identifier (client_id) of the trusted verifier
+    created_at TIMESTAMP DEFAULT now()  -- Timestamp of record creation (defaults to current time)
+    );
+
+CREATE TABLE IF NOT EXISTS verifiable_presentations (
+    id character varying(36) PRIMARY KEY,
+    wallet_id character varying(36) NOT NULL,
+    auth_request JSONB NOT NULL,
+    presentation_data JSONB NOT NULL,
+    verifier_id character varying(255),
+    status character varying(32) NOT NULL,
+    requested_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT now(),
+    consent BOOLEAN NOT NULL DEFAULT TRUE
+    );
+
 INSERT INTO mimoto.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('ROOT', 2920, 1125, 'NA', true, 'mosipadmin', now());
 INSERT INTO mimoto.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('BASE', 1095, 60, 'NA', true, 'mosipadmin', now());
 INSERT INTO mimoto.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('MIMOTO', 1095, 60, 'NA', true, 'mosipadmin', now());

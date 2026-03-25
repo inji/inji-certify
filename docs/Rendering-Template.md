@@ -42,7 +42,7 @@ In the Velocity template used for credential issuance, include the `renderMethod
     {
       "@context": [
         "https://www.w3.org/ns/credentials/v2",
-        "https://mosip.github.io/inji-config/contexts/farmer-context.json"
+        "https://inji.github.io/inji-config/contexts/farmer-context.json"
       ],
       "issuer": "${_issuer}",
       "type": [
