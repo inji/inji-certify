@@ -21,7 +21,6 @@ import io.mosip.kernel.signature.service.SignatureService;
 import io.mosip.kernel.signature.service.impl.CoseSignatureServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
 
 
@@ -77,7 +76,7 @@ public abstract class Credential{
      * @param templateName   The actual template
      * @return JSON Array representing the QR data
      */
-    public JSONArray createQRData(Map<String, Object> updatedTemplateParams, String templateName) throws JSONException {
+    public JSONArray createQRData(Map<String, Object> updatedTemplateParams, String templateName) {
         updatedTemplateParams.put(Constants.TEMPLATE_NAME, templateName);
         return vcFormatter.formatQRData(updatedTemplateParams);
     }

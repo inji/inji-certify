@@ -37,7 +37,6 @@ import io.mosip.certify.validators.CredentialRequestValidator;
 import io.mosip.certify.vcformatters.VCFormatter;
 import io.mosip.pixelpass.PixelPass;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
@@ -263,7 +262,7 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_WithValidTransaction_Success() throws DataProviderExchangeException, JSONException {
+    public void getCredential_LDP_WithValidTransaction_Success() throws DataProviderExchangeException {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
 
         when(parsedAccessToken.isActive()).thenReturn(true);

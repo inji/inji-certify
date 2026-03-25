@@ -14,7 +14,6 @@ import io.mosip.certify.core.dto.CredentialStatusDetail;
 import io.mosip.certify.repository.LedgerRepository;
 import io.mosip.certify.repository.StatusListAvailableIndicesRepository;
 import io.mosip.certify.repository.StatusListCredentialRepository;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.*;
 import org.junit.runner.RunWith;
@@ -260,7 +259,7 @@ public class StatusListCredentialServiceTest {
     }
 
     @Test
-    public void addCredentialStatus_AssignsIndexAndSetsDetail() throws JSONException {
+    public void addCredentialStatus_AssignsIndexAndSetsDetail() {
         StatusListCredential slc = new StatusListCredential();
         slc.setId("slid");
         slc.setStatusPurpose("revocation");
@@ -272,7 +271,7 @@ public class StatusListCredentialServiceTest {
     }
 
     @Test
-    public void addCredentialStatus_ListFull_CreatesNew() throws JSONException {
+    public void addCredentialStatus_ListFull_CreatesNew() {
         StatusListCredential slc = new StatusListCredential();
         slc.setId("slid");
         slc.setStatusPurpose("revocation");
@@ -327,8 +326,6 @@ public class StatusListCredentialServiceTest {
             fail("Expected CertifyException");
         } catch (CertifyException ex) {
             // expected
-        } catch (JSONException e) {
-
         }
     }
 }

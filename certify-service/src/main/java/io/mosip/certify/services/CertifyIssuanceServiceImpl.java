@@ -249,11 +249,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 templateParams.put(Constants.RENDERING_TEMPLATE_ID, renderTemplateId);
             }
             jsonObject.put("_holderId", holderId);
-            Iterator<String> keys = jsonObject.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                templateParams.put(key, jsonObject.get(key));
-            }
+            templateParams.putAll(jsonObject.toMap());
             if(!StringUtils.isEmpty(idPrefix)) {
                 templateParams.put(VCDMConstants.CREDENTIAL_ID, idPrefix + UUID.randomUUID());
             }
@@ -330,9 +326,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
     }
 
-    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException, JSONException {
+    private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
         List<String> signedQrCodes = new ArrayList<>();
-        if (qrDataJson == null || qrDataJson.length() == 0) {
+        if (qrDataJson == null || qrDataJson.isEmpty()) {
             return signedQrCodes;
         }
         Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();

@@ -5,7 +5,6 @@ import java.util.Map;
 
 import io.mosip.certify.api.spi.DataProviderPlugin;
 import org.json.JSONArray;
-import org.json.JSONException;
 
 /**
  * VCDataModelFormatter is a templating engine which takes @param templateInput and returns a templated VC.
@@ -26,7 +25,7 @@ public interface VCFormatter {
      * @param updatedTemplateParams
      * @return
      */
-    JSONArray formatQRData(Map<String, Object> updatedTemplateParams) throws JSONException;
+    JSONArray formatQRData(Map<String, Object> updatedTemplateParams);
     /**
      * returns the proof algorithm associated with the template name. As defined in rfc7518
      * @param templateName

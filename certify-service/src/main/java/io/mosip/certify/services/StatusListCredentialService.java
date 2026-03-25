@@ -280,7 +280,7 @@ public class StatusListCredentialService {
     }
 
     @Transactional
-    public void addCredentialStatus(JSONObject jsonObject, String statusPurpose) throws CertifyException, JSONException {
+    public void addCredentialStatus(JSONObject jsonObject, String statusPurpose) throws CertifyException {
         log.info("Adding credential status for status list integration");
 
         // Assign next available index using database approach

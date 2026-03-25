@@ -18,7 +18,6 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.tools.generic.DateTool;
 import org.apache.velocity.tools.generic.EscapeTool;
-import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -264,7 +263,7 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
      * @return templated QR data as a JSONArray
      */
     @Override
-    public JSONArray formatQRData(Map<String, Object> updatedTemplateParams) throws JSONException {
+    public JSONArray formatQRData(Map<String, Object> updatedTemplateParams) {
         String templateName = updatedTemplateParams.get(TEMPLATE_NAME).toString();
         List<Map<String, Object>> qrSettings = getQRSettings(templateName);
         if(qrSettings == null || qrSettings.isEmpty()) {

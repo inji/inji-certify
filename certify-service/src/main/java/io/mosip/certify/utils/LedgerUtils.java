@@ -7,7 +7,6 @@ import io.mosip.certify.config.IndexedAttributesConfig;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.CredentialStatusDetail;
 import lombok.extern.slf4j.Slf4j;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -123,7 +122,7 @@ public class LedgerUtils {
         return extractedValue;
     }
 
-    public CredentialStatusDetail extractCredentialStatusDetails(JSONObject jsonObject) throws JSONException {
+    public CredentialStatusDetail extractCredentialStatusDetails(JSONObject jsonObject) {
         JSONObject credentialStatus = jsonObject.optJSONObject("credentialStatus");
         if(credentialStatus == null) {
             return null;
