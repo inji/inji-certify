@@ -28,7 +28,7 @@ public class CredentialIssuerMetadataDTO {
     private String deferredCredentialEndpoint;
 
     @JsonProperty("credential_response_encryption")
-    private Map<String,Object> credentialResponseEncryption;
+    private Map<String, Object> credentialResponseEncryption;
 
 
     private List<Map<String, String>> display;
