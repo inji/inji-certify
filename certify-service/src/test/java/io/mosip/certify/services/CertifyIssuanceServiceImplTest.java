@@ -325,7 +325,7 @@ public class CertifyIssuanceServiceImplTest {
         when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.empty());
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
-        assertEquals(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, ex.getErrorCode());
+        assertEquals("unsupported_credential_format", ex.getErrorCode());
     }
 
     @Test
@@ -770,6 +770,35 @@ public class CertifyIssuanceServiceImplTest {
         verify(mockW3CJsonLD).createCredential(templateParamsCaptor.capture(), anyString());
         Map<String, Object> usedParams = templateParamsCaptor.getValue();
         assertFalse(usedParams.containsKey("claim_169_values"));
+    }
+
+    @Test
+    public void getCredential_ErrorSigningQRData_ThrowsCertifyException() throws Exception {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn("");
+        when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class), any())).thenReturn(true);
+        when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
+
+        // Mock credential and QR data
+        W3CJsonLD mockW3CJsonLD = mock(W3CJsonLD.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.of(mockW3CJsonLD));
+
+        // Prepare a non-empty QR data array
+        JSONArray qrData = new JSONArray();
+        JSONObject qrData1 = new JSONObject().put("qr", "data1");
+        qrData.put(qrData1);
+        when(mockW3CJsonLD.createQRData(anyMap(), anyString())).thenReturn(qrData);
+
+        when(pixelPass.getMappedData(eq(qrData1), anyMap(), anyMap(), eq(true))).thenThrow(new RuntimeException("Error during signing QR data"));
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("error_signing_qr_data", ex.getErrorCode());
+        assertEquals("Error during signing QR data", ex.getMessage());
     }
 
 }
