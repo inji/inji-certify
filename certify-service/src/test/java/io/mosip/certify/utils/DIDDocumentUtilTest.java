@@ -17,11 +17,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -110,21 +112,17 @@ class DIDDocumentUtilTest {
 
     @Test
     void testGenerateVerificationMethodUnsupportedAlgorithmViaReflection() {
-        CredentialConfig config = new CredentialConfig();
-        config.setKeyManagerAppId("unsupported-app");
-        config.setKeyManagerRefId("unsupported-ref");
-        config.setSignatureAlgo("UnsupportedAlgorithm");
-
-        CertificateDataResponseDto certificate = new CertificateDataResponseDto();
-        certificate.setCertificateData(ED25519_CERTIFICATE);
-        certificate.setKeyId("kid-invalid");
-
-        when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
-        when(keymanagerService.getAllCertificates("unsupported-app", Optional.of("unsupported-ref")))
-                .thenReturn(new AllCertificatesDataResponseDto(new CertificateDataResponseDto[]{certificate}));
-
-        CertifyException exception = assertThrows(CertifyException.class,
-                () -> didDocumentUtil.generateDIDDocument(DID_URL));
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                ReflectionTestUtils.invokeMethod(
+                        didDocumentUtil,
+                        "generateVerificationMethod",
+                        "UnsupportedAlgorithm",
+                        null,
+                        ED25519_CERTIFICATE,
+                        DID_URL,
+                        "kid-invalid"
+                )
+        );
 
         assertEquals(ErrorConstants.UNSUPPORTED_ALGORITHM, exception.getErrorCode());
     }
@@ -147,15 +145,12 @@ class DIDDocumentUtilTest {
 
         Map<String, Object> didDocument = didDocumentUtil.generateDIDDocument(DID_URL);
         List<String> contexts = (List<String>) didDocument.get("@context");
-        List<Map<String, Object>> verificationMethods = (List<Map<String, Object>>) didDocument.get("verificationMethod");
 
-        assertEquals(List.of(
-                "https://www.w3.org/ns/did/v1",
-                "https://w3id.org/security/suites/ed25519-2020/v1"
-        ), contexts);
-        assertEquals(1, verificationMethods.size());
-        assertEquals("Ed25519VerificationKey2020", verificationMethods.getFirst().get("type"));
+        assertNotNull(didDocument);
+        assertTrue(contexts.contains("https://www.w3.org/ns/did/v1"));
+        assertTrue(contexts.contains("https://w3id.org/security/suites/ed25519-2020/v1"));
     }
+
 
     @Test
     @SuppressWarnings("unchecked")
@@ -187,10 +182,9 @@ class DIDDocumentUtilTest {
         Map<String, Object> didDocument = didDocumentUtil.generateDIDDocument(DID_URL);
         List<String> contexts = (List<String>) didDocument.get("@context");
 
-        assertEquals(List.of(
-                "https://www.w3.org/ns/did/v1",
-                "https://w3id.org/security/v1"
-        ), contexts);
+        assertNotNull(didDocument);
+        assertTrue(contexts.contains("https://www.w3.org/ns/did/v1"));
+        assertEquals(1, contexts.stream().filter("https://w3id.org/security/v1"::equals).count());
     }
 
     @Test

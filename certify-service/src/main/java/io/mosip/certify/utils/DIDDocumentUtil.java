@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 import com.danubetech.keyformats.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
@@ -131,7 +132,7 @@ public class DIDDocumentUtil {
         String kid = certificateData.getKeyId();
         Map<String, Object> verificationMethod = generateVerificationMethod(
                 keyParams.get(2),
-                keyParams.get(3),
+                keyParams.size() > 3 ? keyParams.get(3) : null,
                 certificateString,
                 didUrl,
                 kid
@@ -174,12 +175,13 @@ public class DIDDocumentUtil {
         ECPublicKey ecPublicKey = (ECPublicKey) publicKey;
         BigInteger yBI = ecPublicKey.getW().getAffineY();
         byte prefixByte = yBI.testBit(0) ? (byte) 0x03 : (byte) 0x02;
-
+        // Compressed format: 0x02 or 0x03 || X
         byte[] compressed = ByteBuffer.allocate(1 + 32)
                 .put(prefixByte)
                 .put(BigIntegers.asUnsignedByteArray(ecPublicKey.getW().getAffineX()))
                 .array();
 
+        // P-256 compressed public key multicodec prefix: 0x1201(varint form of 0x8024)
         byte[] prefix = HexFormat.of().parseHex("8024");
         byte[] finalBytes = new byte[prefix.length + compressed.length];
         System.arraycopy(prefix, 0, finalBytes, 0, prefix.length);
@@ -242,13 +244,24 @@ public class DIDDocumentUtil {
     }
 
     private static Map<String, Object> generateECK1VerificationMethod(PublicKey publicKey, String didUrl) {
-        ECKey nimbusKey = new ECKey.Builder(Curve.SECP256K1, (ECPublicKey) publicKey).build();
+        // TODO: can validate the key or directly assume the curve here and
+        //  go ahead or use P_256 only if `nimbusCurve` is having same value.
+        ECKey nimbusKey = new ECKey.Builder(Curve.SECP256K1, (ECPublicKey) publicKey)
+                .build();
 
         Map<String, Object> verificationMethod = new HashMap<>();
+        // ref: https://github.com/w3c-ccg/lds-ecdsa-secp256k1-2019/issues/8
         verificationMethod.put("type", "EcdsaSecp256k1VerificationKey2019");
+        verificationMethod.put("@context", "https://w3id.org/security/v1");
+        // (improvement): can also add expires key here
         verificationMethod.put("controller", didUrl);
         verificationMethod.put("publicKeyJwk", nimbusKey.toJSONObject());
+        // NOTE: Advice against using publicKeyHex by the spec author
+        // ref: https://github.com/w3c-ccg/lds-ecdsa-secp256k1-2019/issues/4
+        // ref: https://w3c.github.io/vc-data-integrity/vocab/security/vocabulary.html#publicKeyHex
 
+        // As per the below spec, publicKeyBase58 is also supported
+        // ref: https://w3c-ccg.github.io/ld-cryptosuite-registry/#ecdsasecp256k1signature2019
         return verificationMethod;
     }
 
@@ -276,29 +289,29 @@ public class DIDDocumentUtil {
     }
 
     private Map<String, List<String>> getSignatureCryptoSuiteMap() {
+        // Fetch all credential configurations
         List<CredentialConfig> allConfigs = credentialConfigRepository.findAll();
-        Map<String, List<String>> signatureCryptoSuiteMap = new HashMap<>();
 
+        // Create a map with signatureCryptoSuite as the key and appId, refId as values
+        Map<String, List<String>> signatureCryptoSuiteMap = new HashMap<>();
         for (CredentialConfig config : allConfigs) {
             String appId = config.getKeyManagerAppId();
-            if (appId == null) {
-                continue;
-            }
             String refId = config.getKeyManagerRefId();
-            String uniqueKey = appId + "-" + (refId != null ? refId : "");
 
-            List<String> configDetails = new ArrayList<>();
-            configDetails.add(appId);
-            configDetails.add(refId);
-            if (config.getSignatureAlgo() == null) {
-                String signatureCryptoSuite = config.getSignatureCryptoSuite();
-                configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
-            } else {
-                configDetails.add(config.getSignatureAlgo());
+            if (appId != null) {
+                String uniqueKey = appId + "-" + (refId != null ? refId : "");
+                List<String> configDetails = new ArrayList<>();
+                configDetails.add(appId);
+                configDetails.add(refId);
+                if (config.getSignatureAlgo() == null) {
+                    String signatureCryptoSuite = config.getSignatureCryptoSuite();
+                    configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
+                } else {
+                    configDetails.add(config.getSignatureAlgo());
+                }
+
+                signatureCryptoSuiteMap.put(uniqueKey, configDetails);
             }
-            configDetails.add(config.getSignatureCryptoSuite());
-
-            signatureCryptoSuiteMap.put(uniqueKey, configDetails);
         }
 
         return signatureCryptoSuiteMap;
