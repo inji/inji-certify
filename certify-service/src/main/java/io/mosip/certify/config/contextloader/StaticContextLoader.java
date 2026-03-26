@@ -182,7 +182,9 @@ public final class StaticContextLoader implements DocumentLoader {
             HttpResponse<String> response;
             try {
                 response = httpClient.send(
-                        HttpRequest.newBuilder(current).GET().build(),
+                        HttpRequest.newBuilder(current).GET()
+                                .timeout(Duration.ofSeconds(10))
+                                .build(),
                         HttpResponse.BodyHandlers.ofString());
             } catch (Exception e) {
                 JsonLdError err = new JsonLdError(JsonLdErrorCode.LOADING_DOCUMENT_FAILED,
@@ -329,6 +331,15 @@ public final class StaticContextLoader implements DocumentLoader {
         return entry.json;
     }
 
+    private void purgeExpiredEntries() {
+        long now = System.currentTimeMillis();
+        cache.forEach((key, entry) -> {
+            if (entry.isExpired(now)) {
+                cache.remove(key, entry);
+            }
+        });
+    }
+
     private void cacheDocument(String iri, Document doc, boolean perEntryCache) {
         if (!jsonLdProps.getCache().isEnabled() || !perEntryCache) return;
 
@@ -337,8 +348,11 @@ public final class StaticContextLoader implements DocumentLoader {
 
         int maxEntries = jsonLdProps.getCache().getMaxEntries();
         if (maxEntries > 0 && cache.size() >= maxEntries && !cache.containsKey(iri)) {
-            log.warn("Context cache full (maxEntries={}), not caching {}", maxEntries, iri);
-            return;
+            purgeExpiredEntries();
+            if (cache.size() >= maxEntries && !cache.containsKey(iri)) {
+                log.warn("Context cache full (maxEntries={}), not caching {}", maxEntries, iri);
+                return;
+            }
         }
 
         Duration ttl = jsonLdProps.getCache().getTtl();

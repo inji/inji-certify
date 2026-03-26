@@ -112,6 +112,7 @@ class StaticContextLoaderTest {
 
     @AfterEach
     void stopServer() {
+        if (server != null) server.stop(0);
         if (executor != null) executor.shutdownNow();
     }
 
@@ -316,6 +317,39 @@ class StaticContextLoaderTest {
 
         verify(rl, times(1)).getResource("classpath:/a.json");
         verify(rl, times(2)).getResource("classpath:/b.json");
+    }
+
+    @Test
+    void maxEntries_full_expiredEntriesPurged_allowsNewInsert() throws Exception {
+        JsonLdContextLoaderProperties props = baseProps();
+        props.getCache().setMaxEntries(1);
+        props.getCache().setTtl(Duration.ofMillis(1));
+
+        String iri1 = "https://example.org/a";
+        String iri2 = "https://example.org/b";
+
+        props.getContexts().put(iri1, ctx("classpath:/a.json", false, true));
+        props.getContexts().put(iri2, ctx("classpath:/b.json", false, true));
+
+        ResourceLoader rl = mock(ResourceLoader.class);
+        when(rl.getResource("classpath:/a.json")).thenReturn(existingJson("{\"@context\":{}}"));
+        when(rl.getResource("classpath:/b.json")).thenReturn(existingJson("{\"@context\":{}}"));
+
+        StaticContextLoader loader = new StaticContextLoader(props, rl);
+
+        // fills cache with iri1
+        loader.loadDocument(URI.create(iri1), new DocumentLoaderOptions());
+
+        // wait for iri1 to expire
+        Thread.sleep(5);
+
+        // cache is full but iri1 is expired => purge should free capacity for iri2
+        loader.loadDocument(URI.create(iri2), new DocumentLoaderOptions());
+        // second load of iri2 should come from cache (resource loaded only once)
+        loader.loadDocument(URI.create(iri2), new DocumentLoaderOptions());
+
+        verify(rl, times(1)).getResource("classpath:/a.json");
+        verify(rl, times(1)).getResource("classpath:/b.json");
     }
 
     @Test
