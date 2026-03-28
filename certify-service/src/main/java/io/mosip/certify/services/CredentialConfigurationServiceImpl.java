@@ -138,6 +138,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
+                if(credentialConfig.getSdJwtClaims() != null && !credentialConfig.getSdJwtClaims().isEmpty() && credentialConfig.getVcTemplate() != null && !credentialConfig.getVcTemplate().isEmpty()) {
+                    SdJwtCredentialConfigValidator.validateSdJwtClaimsAgainstTemplate(credentialConfig);
+                }
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
