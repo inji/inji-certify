@@ -1,5 +1,6 @@
 package io.mosip.certify.services;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialStatusResponse;
 import io.mosip.certify.core.dto.UpdateCredentialStatusRequest;
@@ -25,6 +26,8 @@ import java.util.List;
 @Slf4j
 @Service
 public class CredentialStatusServiceImpl implements CredentialStatusService {
+    public static final int DEFAULT_STATUS_LIST_SIZE = 131072;
+
     @Autowired
     private LedgerRepository ledgerRepository;
 
@@ -39,6 +42,14 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {
+        String statusPurpose = validateAndGetStatusPurpose(request.getCredentialStatus() == null ? null : request.getCredentialStatus().getStatusPurpose());
+        if(request.getCredentialStatus() != null) {
+            validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
+        }
+        else {
+            statusPurpose = null;
+        }
+
         Ledger ledger = ledgerRepository.findByCredentialId(request.getCredentialId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Credential not found: " + request.getCredentialId()));
 
@@ -47,13 +58,10 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         }
 
         CredentialStatusDetail credentialStatusDetail = ledger.getCredentialStatusDetails().getFirst();
+
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
         transaction.setCredentialId(ledger.getCredentialId());
-        if(request.getCredentialStatus().getStatusPurpose() != null) {
-            transaction.setStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-        } else {
-            transaction.setStatusPurpose(credentialStatusDetail.getStatusPurpose());
-        }
+        transaction.setStatusPurpose(statusPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(credentialStatusDetail.getStatusListCredentialId());
         transaction.setStatusListIndex(credentialStatusDetail.getStatusListIndex());
@@ -74,8 +82,14 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Override
     public CredentialStatusResponse updateCredentialStatusV2(UpdateCredentialStatusRequestV2 request) {
+        if (request.getCredentialStatus() == null) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "credentialStatus must not be null");
+        }
+        String statusPurpose = validateAndGetStatusPurpose(request.getCredentialStatus().getStatusPurpose());
+        validateStatusListIndex(request.getCredentialStatus().getStatusListIndex());
+
         String statusListCredentialId = request.getCredentialStatus().getStatusListCredential();
-        Long statusListIndex = request.getCredentialStatus().getStatusListIndex();
+
         String id = request.getCredentialStatus().getId();
 
         if(id != null && !id.equals(statusListCredentialId)) {
@@ -84,15 +98,12 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         StatusListCredential statusListCredential = statusListCredentialRepository.findById(statusListCredentialId)
                 .orElseThrow(() -> new CertifyException(ErrorConstants.STATUS_LIST_NOT_FOUND, "Status List Credential not found for ID: " + statusListCredentialId));
 
+
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
-        if(request.getCredentialStatus().getStatusPurpose() == null) {
-            transaction.setStatusPurpose(statusListCredential.getStatusPurpose());
-        } else {
-            transaction.setStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-        }
+        transaction.setStatusPurpose(statusPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(statusListCredentialId);
-        transaction.setStatusListIndex(statusListIndex);
+        transaction.setStatusListIndex(request.getCredentialStatus().getStatusListIndex());
         CredentialStatusTransaction savedTransaction =credentialStatusTransactionRepository.save(transaction);
 
         CredentialStatusResponse dto = new CredentialStatusResponse();
@@ -105,4 +116,35 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         }
         return dto;
     }
+
+    private String validateAndGetStatusPurpose(String statusPurpose) {
+        if(statusPurpose == null || statusPurpose.trim().isEmpty()) {
+            return allowedCredentialStatusPurposes.get(0);
+        }
+        String statusPurposeValue = statusPurpose.trim().toLowerCase();
+        if(allowedCredentialStatusPurposes == null || allowedCredentialStatusPurposes.isEmpty()) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE, "No allowed status purposes configured.");
+        }
+        boolean isAllowed = allowedCredentialStatusPurposes.stream()
+                .anyMatch(allowed -> allowed.equalsIgnoreCase(statusPurposeValue));
+        if (!isAllowed) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
+                    "statusPurpose must be one of: " + allowedCredentialStatusPurposes);
+        }
+        return statusPurposeValue;
+    }
+
+    private void validateStatusListIndex(Long statusListIndex) {
+        if (statusListIndex == null) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_LIST_INDEX, "statusListIndex must not be null");
+        }
+        if(statusListIndex < 0) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_LIST_INDEX, "statusListIndex must be a non-negative integer");
+        }
+        if(statusListIndex >= DEFAULT_STATUS_LIST_SIZE) {
+            String errorMsg = String.format("statusListIndex must be between 0 and %d", DEFAULT_STATUS_LIST_SIZE - 1);
+            throw new CertifyException(ErrorConstants.STATUS_LIST_INDEX_OUT_OF_RANGE, errorMsg);
+        }
+    }
+
 }

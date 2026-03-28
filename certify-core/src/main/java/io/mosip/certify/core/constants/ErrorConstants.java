@@ -92,5 +92,6 @@ public class ErrorConstants {
     public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
-
+    public static final String INVALID_STATUS_LIST_INDEX = "invalid_status_list_index";
+    public static final String STATUS_LIST_INDEX_OUT_OF_RANGE = "status_list_index_out_of_range";
 }
