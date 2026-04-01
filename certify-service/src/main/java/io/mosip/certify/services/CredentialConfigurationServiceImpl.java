@@ -5,6 +5,8 @@
  */
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
@@ -27,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.util.StringUtils;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
@@ -74,6 +78,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
 
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
+
+    private static final Pattern VELOCITY_VAR_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
 
     @Override
     public CredentialConfigResponse addCredentialConfiguration(CredentialConfigurationDTO credentialConfigurationDTO) {
@@ -156,6 +165,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
+                validateQrSettingsFromVcTemplate(credentialConfig.getQrSettings(), credentialConfig.getVcTemplate());
                 validateKeyAliasMapperConfigurationV2(credentialConfig);
                 break;
             case VCFormats.MSO_MDOC:
@@ -165,6 +175,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
+                rejectQrSettingsIfPresent(credentialConfig.getQrSettings(), credentialConfig.getCredentialFormat());
                 break;
             case VCFormats.VC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
@@ -173,6 +184,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
+                rejectQrSettingsIfPresent(credentialConfig.getQrSettings(), credentialConfig.getCredentialFormat());
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
@@ -204,6 +216,72 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         } else {
             if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && !keyAliasMapper.containsKey(qrSignatureAlgo)) {
                 throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, "The algorithm " + qrSignatureAlgo + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
+            }
+        }
+    }
+
+    private void rejectQrSettingsIfPresent(List<Map<String, Object>> qrSettings, String credentialFormat) {
+        if (qrSettings != null && !qrSettings.isEmpty()) {
+            throw new CertifyException(ErrorConstants.QR_SETTINGS_NOT_SUPPORTED,
+                    "qrSettings is not supported for " + credentialFormat + " format.");
+        }
+    }
+
+    private void validateQrSettingsFromVcTemplate(List<Map<String, Object>> qrSettings, String vcTemplate) {
+        if (qrSettings == null || qrSettings.isEmpty() || vcTemplate == null || vcTemplate.isEmpty()) {
+            return;
+        }
+        Set<String> referencedVars = extractVelocityVariables(qrSettings);
+        if (referencedVars.isEmpty()) {
+            return;
+        }
+        Set<String> validFields = extractFieldNamesFromVcTemplate(vcTemplate);
+        Set<String> invalidRefs = new HashSet<>(referencedVars);
+        invalidRefs.removeAll(validFields);
+        if (!invalidRefs.isEmpty()) {
+            throw new CertifyException(ErrorConstants.QR_INVALID_FIELD_REFERENCE,
+                    "qrSettings references fields not present in the VC schema: " + invalidRefs);
+        }
+    }
+
+    private Set<String> extractFieldNamesFromVcTemplate(String vcTemplateBase64) {
+        try {
+            String decoded = new String(Base64.getDecoder().decode(vcTemplateBase64));
+            JsonNode root = objectMapper.readTree(decoded);
+
+            JsonNode credentialSubject = root.get("credentialSubject");
+            if (credentialSubject == null || !credentialSubject.isObject()) {
+                throw new CertifyException(ErrorConstants.INVALID_REQUEST, "vcTemplate must contain a credentialSubject object.");
+            }
+            Set<String> fields = new HashSet<>();
+            credentialSubject.fieldNames().forEachRemaining(fields::add);
+            fields.remove("id");
+            return fields;
+        } catch (CertifyException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Failed to decode or parse vcTemplate: " + e.getMessage());
+        }
+    }
+
+    private Set<String> extractVelocityVariables(List<Map<String, Object>> qrSettings) {
+        Set<String> variables = new HashSet<>();
+        for (Map<String, Object> block : qrSettings) {
+            extractVariablesFromMap(block, variables);
+        }
+        return variables;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void extractVariablesFromMap(Map<String, Object> map, Set<String> variables) {
+        for (Object value : map.values()) {
+            if (value instanceof String) {
+                Matcher matcher = VELOCITY_VAR_PATTERN.matcher((String) value);
+                while (matcher.find()) {
+                    variables.add(matcher.group(1));
+                }
+            } else if (value instanceof Map) {
+                extractVariablesFromMap((Map<String, Object>) value, variables);
             }
         }
     }

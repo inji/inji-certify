@@ -93,14 +93,18 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     public ResponseEntity handleExceptions(Exception ex, WebRequest request) {
         log.error("Unhandled exception encountered in handler advice", ex);
         HttpServletRequest servletRequest = ((ServletWebRequest) request).getRequest();
-        String path = servletRequest.getRequestURI();
-        if (path != null && path.contains("/oauth/")) {
-            return handleOAuthControllerExceptions(ex);
+        String servletPath = servletRequest.getServletPath();
+
+        if (servletPath == null || servletPath.isEmpty()) {
+            servletPath = servletRequest.getRequestURI();
         }
-        if (path != null && path.contains("/issuance/")) {
+        if (servletPath != null && servletPath.contains("/issuance/")) {
             return handleVCIControllerExceptions(ex);
         }
-
+        String grantTypeParam = servletRequest.getParameter("grant_type");
+        if ((servletPath != null && servletPath.contains("/oauth/")) || grantTypeParam != null) {
+            return handleOAuthControllerExceptions(ex);
+        }
         return handleInternalControllerException(ex);
     }
 
@@ -120,6 +124,22 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
                 errors.add(new Error(INVALID_REQUEST,cv.getPropertyPath().toString() + ": " + cv.getMessage()));
             }
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.OK);
+        }
+        if (ex instanceof HttpMessageNotReadableException) {
+            Throwable cause = ex.getCause();
+            // Check nested causes for CertifyException (from QrSettingsDeserializer)
+            while (cause != null) {
+                if (cause instanceof CertifyException) {
+                    String errorCode = ((CertifyException) cause).getErrorCode();
+                    return new ResponseEntity<>(
+                            getResponseWrapper(errorCode, cause.getMessage()),
+                            HttpStatus.BAD_REQUEST);
+                }
+                cause = cause.getCause();
+            }
+            return new ResponseEntity<>(
+                    getResponseWrapper(INVALID_REQUEST, "Invalid JSON request"),
+                    HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof MissingServletRequestParameterException) {
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
