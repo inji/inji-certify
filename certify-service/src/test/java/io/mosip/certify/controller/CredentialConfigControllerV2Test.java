@@ -133,6 +133,7 @@ public class CredentialConfigControllerV2Test {
         mockMvc.perform(post("/v2/credential-configurations")
                         .content(jsonWithDuplicateQrFields)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].errorCode").value("qr_duplicate_labels"));
     }
 }
