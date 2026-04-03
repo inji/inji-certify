@@ -100,7 +100,6 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         if (path != null && path.contains("/issuance/")) {
             return handleVCIControllerExceptions(ex);
         }
-
         return handleInternalControllerException(ex);
     }
 
@@ -120,6 +119,22 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
                 errors.add(new Error(INVALID_REQUEST,cv.getPropertyPath().toString() + ": " + cv.getMessage()));
             }
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.OK);
+        }
+        if (ex instanceof HttpMessageNotReadableException) {
+            Throwable cause = ex.getCause();
+            // Check nested causes for CertifyException (from QrSettingsDeserializer)
+            while (cause != null) {
+                if (cause instanceof CertifyException) {
+                    String errorCode = ((CertifyException) cause).getErrorCode();
+                    return new ResponseEntity<>(
+                            getResponseWrapper(errorCode, cause.getMessage()),
+                            HttpStatus.BAD_REQUEST);
+                }
+                cause = cause.getCause();
+            }
+            return new ResponseEntity<>(
+                    getResponseWrapper(INVALID_REQUEST, "Invalid JSON request"),
+                    HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof MissingServletRequestParameterException) {
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),

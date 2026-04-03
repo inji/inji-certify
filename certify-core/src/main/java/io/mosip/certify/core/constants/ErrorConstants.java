@@ -92,5 +92,8 @@ public class ErrorConstants {
     public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
+    public static final String QR_INVALID_FIELD_REFERENCE = "qr_invalid_field_reference";
+    public static final String QR_DUPLICATE_LABELS = "qr_duplicate_labels";
+    public static final String QR_SETTINGS_NOT_SUPPORTED = "qr_settings_not_supported";
 
 }
