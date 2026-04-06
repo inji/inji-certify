@@ -90,7 +90,7 @@ public class InjiTestRunner {
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
 
 			HealthChecker healthcheck = new HealthChecker();
-			healthcheck.setCurrentRunningModule(BaseTestCase.currentModule);
+			healthcheck.setCurrentRunningModule(GlobalConstants.INJICERTIFY);
 			Thread trigger = new Thread(healthcheck);
 			trigger.start();
 
