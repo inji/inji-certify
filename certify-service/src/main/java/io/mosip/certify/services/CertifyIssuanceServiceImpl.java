@@ -329,6 +329,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     private List<String> signQrEntries(Credential cred, JSONArray qrDataJson, String templateName) throws JsonProcessingException {
         List<String> signedQrCodes = new ArrayList<>();
         if (qrDataJson == null || qrDataJson.isEmpty()) {
+            log.info("No QR data entries found to sign");
             return signedQrCodes;
         }
         Map<String, Integer> claim169KeyMapper = ConstantsKt.getCLAIM_169_KEY_MAPPER();
