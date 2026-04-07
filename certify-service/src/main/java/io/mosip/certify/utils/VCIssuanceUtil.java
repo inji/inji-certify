@@ -2,10 +2,7 @@ package io.mosip.certify.utils;
 
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
-import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.constants.VCFormats;
-import io.mosip.certify.core.constants.VCIErrorConstants;
+import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
@@ -156,26 +153,29 @@ public class VCIssuanceUtil {
                                                    CredentialProof credentialProof, Logger log) {
         String proofJwtNonce = null;
         boolean proofJwtHasNonceClaim = false;
-        if (StringUtils.isNotBlank(credentialProof.getJwt())) {
-            try {
-                SignedJWT proofJwt = SignedJWT.parse(credentialProof.getJwt());
-                Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-                proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
-                if (proofJwtHasNonceClaim) {
-                    proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
-                    if (StringUtils.isBlank(proofJwtNonce)) {
-                        log.error("Nonce claim is present in proof JWT but is blank");
-                        throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
-                    }
+        if (credentialProof == null || StringUtils.isBlank(credentialProof.getJwt())) {
+            log.error("Credential proof JWT is required but was blank or missing");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Proof JWT is required.");
+       }
+        try {
+            SignedJWT proofJwt = SignedJWT.parse(credentialProof.getJwt());
+            Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
+            proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            if (proofJwtHasNonceClaim) {
+                proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
+                if (StringUtils.isBlank(proofJwtNonce)) {
+                    log.error("Nonce claim is present in proof JWT but is blank");
+                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
                 }
-                else {
-                    log.error("Nonce claim is not present in proof JWT");
-                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must be present in proof JWT.");
-                }
-            } catch (ParseException e) {
-                // check iff specific error exists for invalid holderKey
-                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
             }
+            else {
+                log.error("Nonce claim is not present in proof JWT");
+                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must be present in proof JWT.");
+            }
+        }
+        catch (ParseException e) {
+            // check iff specific error exists for invalid holderKey
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
         NonceTransaction transaction = nonceCacheService.getNonceTransaction(proofJwtNonce);
@@ -197,10 +197,10 @@ public class VCIssuanceUtil {
                         (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
         if (nonceExpired) {
-            throw new CertifyException(VCIErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
+            throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
         }
 
-        if (cachedNonce.equals(proofJwtNonce)) {
+        if (Objects.equals(cachedNonce, proofJwtNonce)) {
             return cachedNonce;
         } else {
             throw new InvalidNonceException(cachedNonce, cNonceExpire);

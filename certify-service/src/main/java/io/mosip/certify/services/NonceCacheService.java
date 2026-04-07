@@ -1,6 +1,9 @@
 package io.mosip.certify.services;
 
+import io.mosip.certify.core.constants.NonceErrorConstants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.NonceTransaction;
+import io.mosip.certify.core.exception.CertifyException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,7 +51,8 @@ public class NonceCacheService {
         Cache cache = cacheManager.getCache(NONCE_CACHE);
         if (cache == null) {
             log.error("Cache {} not available. Please verify cache configuration.", NONCE_CACHE);
-            return null;
+            throw new CertifyException(NonceErrorConstants.CACHE_NOT_AVAILABLE,
+                    "Nonce cache is not configured. Please verify cache configuration.");
         }
         return cache.get("txn:" + cNonce, NonceTransaction.class);
     }
