@@ -231,6 +231,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
 		</classes>
 	</test>
+	<test name="AddCredentialConfigForMosipid">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipID/AddCredentialConfigMosipId/AddCredentialConfiguration.yml" />
+		<parameter name="idKeyName" value="id" />
+		<parameter name="prerequisite" value="Yes" />			
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>	
 	<test name="OAuthDetailsRequestVCIMosipID">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMosipID/OAuthDetailsRequestVCI/OAuthDetailsRequestVCI.yml" />
@@ -276,6 +286,13 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
+		</classes>
+	</test>
+		<test name="DeleteCredentialConfigForMosipid">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipID/DeleteCredentialConfigurationForMosipid/DeleteCredentialConfigurationForMosipid.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
 		</classes>
 	</test>
 	<test name="OAuthDetailsRequestVCIMosipIDForVd11">
@@ -418,7 +435,7 @@
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
-	</test>	
+	</test>
 	<test name="OAuthDetailsRequestVCIForMockIDA">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMockIDA/OAuthDetailsRequestForMockIDA/OAuthDetailsRequestForMockIDA.yml" />
