@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcType;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 
@@ -37,7 +35,6 @@ public class StatusListCredential {
 
     @Column(name = "credential_status")
     @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
     private CredentialStatus credentialStatus;
 
     @Column(name = "cr_dtimes", nullable = false, updatable = false)

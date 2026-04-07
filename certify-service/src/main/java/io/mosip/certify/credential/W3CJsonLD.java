@@ -19,6 +19,7 @@ import com.danubetech.dataintegrity.signer.LdSigner;
 import com.danubetech.dataintegrity.signer.LdSignerRegistry;
 import com.danubetech.dataintegrity.suites.DataIntegrityProofDataIntegritySuite;
 import com.danubetech.dataintegrity.suites.DataIntegritySuites;
+import io.mosip.certify.config.contextloader.StaticContextLoader;
 import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.CertificateResponseDTO;
 import io.mosip.certify.proofgenerators.ProofGeneratorFactory;
@@ -55,6 +56,9 @@ public class W3CJsonLD extends Credential{
     @Value("#{${mosip.certify.signature-algo.key-alias-mapper}}")
     private Map<String, List<List<String>>> keyAliasMapper;
 
+    @Autowired
+    private StaticContextLoader staticContextLoader;
+
 
     /**
      * Constructor for credentials
@@ -89,7 +93,7 @@ public class W3CJsonLD extends Credential{
         VCResult<JsonLDObject> vcResult = new VCResult<>();
         Map<String,String> keyReferenceDetails = Map.of(Constants.APPLICATION_ID, appID, Constants.REFERENCE_ID, refID);
         JsonLDObject jsonLDObject = JsonLDObject.fromJson(vcToSign);
-        jsonLDObject.setDocumentLoader(null);
+        jsonLDObject.setDocumentLoader(staticContextLoader);
         // NOTE: other aspects can be configured via keyMgrInput map
         String validFrom;
         if (jsonLDObject.getJsonObject().containsKey(VCDM1Constants.ISSUANCE_DATE)) {
