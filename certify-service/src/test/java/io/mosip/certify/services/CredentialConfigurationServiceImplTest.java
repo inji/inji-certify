@@ -1475,6 +1475,25 @@ public class CredentialConfigurationServiceImplTest {
     }
 
     @Test
+    public void validateCredentialConfigurationV2_QrSignatureAlgoWithoutSignatureAlgo_ThrowsException() {
+        CredentialConfigurationDTOV2 dto = new CredentialConfigurationDTOV2();
+        dto.setCredentialFormat("ldp_vc");
+        dto.setVcTemplate("test_template");
+        dto.setQrSettings(List.of(Map.of("key", "value")));
+        dto.setQrSignatureAlgo("EdDSA");
+        // signatureAlgo is NOT set
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
+        try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
+            mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
+            CertifyException ex = assertThrows(CertifyException.class, () ->
+                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
+            );
+            assertEquals("qr_signature_algo_requires_signature_algo", ex.getErrorCode());
+        }
+    }
+
+    @Test
     public void resolveAuthorizationServers_MultipleServers_Success() {
         // Setup multiple servers in authUrl
         ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth1.com, http://auth2.com ");
