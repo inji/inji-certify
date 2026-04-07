@@ -88,11 +88,6 @@ public class JwtProofValidator implements ProofValidator {
                 throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
             }
 
-            if (StringUtils.isEmpty(cNonce) && jwt.getJWTClaimsSet().getClaim("nonce") != null) {
-                log.error("Nonce claim is present in proof JWT but no c_nonce is expected");
-                return false;
-            }
-
             JWTClaimsSet.Builder proofJwtClaimsBuilder = new JWTClaimsSet.Builder()
                     .audience(credentialIdentifier);
             if (!StringUtils.isEmpty(cNonce)) {

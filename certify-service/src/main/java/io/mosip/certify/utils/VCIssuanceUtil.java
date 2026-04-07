@@ -11,6 +11,7 @@ import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.exception.InvalidNonceException;
+import io.mosip.certify.services.NonceCacheService;
 import io.mosip.certify.services.VCICacheService;
 import io.mosip.certify.api.dto.VCResult;
 
@@ -150,26 +151,12 @@ public class VCIssuanceUtil {
         return transformedConfig;
     }
 
-    public static String validateAndGetClientNonce(VCICacheService vciCacheService, ParsedAccessToken parsedAccessToken,
-                                             int configuredCNonceExpireSeconds, SecurityHelperService securityHelperService,
+    public static String validateAndGetClientNonce(NonceCacheService nonceCacheService,
+                                                   int configuredCNonceExpireSeconds,
                                                    CredentialProof credentialProof, Logger log) {
-        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        VCIssuanceTransaction transaction = vciCacheService.getVCITransaction(accessTokenHash);
-        String authZServerNonce = (transaction == null) ?
-                Optional.ofNullable(parsedAccessToken.getClaims().get(Constants.C_NONCE)).map(Object::toString).orElse("") :
-                transaction.getCNonce();
-
-        int cNonceExpire;
-        if (transaction == null) {
-            int tokenExpiry = determineCNonceExpiry(parsedAccessToken.getClaims().get(Constants.C_NONCE_EXPIRES_IN));
-            cNonceExpire = tokenExpiry > 0 ? tokenExpiry : configuredCNonceExpireSeconds;
-        } else {
-            cNonceExpire = transaction.getCNonceExpireSeconds();
-        }
-
         String proofJwtNonce = null;
         boolean proofJwtHasNonceClaim = false;
-        if (credentialProof.getJwt() != null && !credentialProof.getJwt().isBlank()) {
+        if (StringUtils.isNotBlank(credentialProof.getJwt())) {
             try {
                 SignedJWT proofJwt = SignedJWT.parse(credentialProof.getJwt());
                 Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
@@ -181,60 +168,42 @@ public class VCIssuanceUtil {
                         throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
                     }
                 }
+                else {
+                    log.error("Nonce claim is not present in proof JWT");
+                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must be present in proof JWT.");
+                }
             } catch (ParseException e) {
                 // check iff specific error exists for invalid holderKey
                 throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
             }
-        } else if (!StringUtils.isEmpty(authZServerNonce)) {
-            // Access token has nonce but no JWT provided to extract proof nonce from
-            log.error("JWT proof is required but not provided in credential proof");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "JWT proof is required when nonce is present in access token.");
         }
 
-        if (StringUtils.isEmpty(authZServerNonce) && !proofJwtHasNonceClaim) {
-            return null;
-        }
+        NonceTransaction transaction = nonceCacheService.getNonceTransaction(proofJwtNonce);
 
-        if (StringUtils.isEmpty(authZServerNonce) && proofJwtHasNonceClaim) {
-            log.error("Nonce present in proof JWT but missing in access token");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce must not be present in the proof JWT.");
-        }
+        int cNonceExpire;
 
-        long issuedEpoch;
         if (transaction == null) {
-            Object iatClaimValue = parsedAccessToken.getClaims().get(JwtClaimNames.IAT);
-            issuedEpoch = switch (iatClaimValue) {
-                case null -> Instant.MIN.getEpochSecond();
-                case Instant instant -> instant.getEpochSecond();
-                case Number number -> number.longValue();
-                default ->
-                        throw new IllegalStateException("IAT claim is of an unexpected type: " + iatClaimValue.getClass().getName());
-            };
+            log.error("Nonce Transaction could not be found");
+            throw new InvalidNonceException(proofJwtNonce, configuredCNonceExpireSeconds);
         } else {
-            issuedEpoch = transaction.getCNonceIssuedEpoch();
+            cNonceExpire = transaction.cNonceExpireSeconds();
         }
 
-        boolean nonceExpired = !StringUtils.isEmpty(authZServerNonce) &&
-                (cNonceExpire <= 0 ||
+        String cachedNonce = transaction.cNonce();
+
+        long issuedEpoch = transaction.cNonceIssuedEpoch();
+
+        boolean nonceExpired = (cNonceExpire <= 0 ||
                         (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
         if (nonceExpired) {
-            log.error("Client Nonce expired in the access token, generate new authZServerNonce for accessTokenHash: {}",
-                    accessTokenHash != null ? accessTokenHash.substring(0, Math.min(accessTokenHash.length(), 10)) + "..." : "null");
-            VCIssuanceTransaction newTransaction = createOrUpdateVCITransaction(
-                    securityHelperService, configuredCNonceExpireSeconds, vciCacheService, accessTokenHash, transaction);
-            authZServerNonce = newTransaction.getCNonce();
-            cNonceExpire = newTransaction.getCNonceExpireSeconds();
-        }
-        if (!StringUtils.isEmpty(authZServerNonce) && StringUtils.isEmpty(proofJwtNonce)) {
-            log.error("Nonce missing in the proof JWT but present in access token");
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
+            throw new CertifyException(VCIErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
         }
 
-        if (authZServerNonce.equals(proofJwtNonce)) {
-            return authZServerNonce;
+        if (cachedNonce.equals(proofJwtNonce)) {
+            return cachedNonce;
         } else {
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
+            throw new InvalidNonceException(cachedNonce, cNonceExpire);
         }
     }
 

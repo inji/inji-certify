@@ -93,6 +93,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     private VCICacheService vciCacheService;
 
     @Autowired
+    private NonceCacheService nonceCacheService;
+
+    @Autowired
     private SecurityHelperService securityHelperService;
 
     @Autowired
@@ -167,8 +170,8 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
         // 3. Proof Validation
         ProofValidator proofValidator = proofValidatorFactory.getProofValidator(credentialRequest.getProof().getProof_type());
-        String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, parsedAccessToken,
-                cNonceExpireSeconds, securityHelperService, credentialRequest.getProof(), log);
+        String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService,
+                cNonceExpireSeconds, credentialRequest.getProof(), log);
         if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
                 credentialRequest.getProof(), credentialMetadata.getProofTypesSupported())) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");

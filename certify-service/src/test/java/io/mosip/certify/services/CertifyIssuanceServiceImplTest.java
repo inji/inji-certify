@@ -73,6 +73,8 @@ public class CertifyIssuanceServiceImplTest {
     @Mock
     private VCICacheService vciCacheService;
     @Mock
+    private NonceCacheService nonceCacheService;
+    @Mock
     private SecurityHelperService securityHelperService;
     @Mock
     private AuditPlugin auditWrapper;
@@ -109,6 +111,7 @@ public class CertifyIssuanceServiceImplTest {
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken; // Renamed for clarity
     VCIssuanceTransaction transaction;
+    NonceTransaction nonceTransaction;
     CredentialIssuerMetadataVD13DTO mockGlobalCredentialIssuerMetadataDTO;
 
 
@@ -153,6 +156,7 @@ public class CertifyIssuanceServiceImplTest {
         transaction.setCNonceExpireSeconds(300);
         transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
+        nonceTransaction = new NonceTransaction(TEST_CNONCE,  LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC), 300);
 
         mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataVD13DTO();
         mockGlobalCredentialIssuerMetadataDTO.setCredentialIssuer("https://test.issuer.com");
@@ -267,7 +271,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         // Stub getKeyMaterial, its result is used in templateParams for createCredential
@@ -317,7 +321,7 @@ public class CertifyIssuanceServiceImplTest {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class),any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(anyMap())).thenReturn(new JSONObject());
@@ -332,7 +336,7 @@ public class CertifyIssuanceServiceImplTest {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class),any())).thenReturn(true);
         DataProviderExchangeException e = new DataProviderExchangeException("DP_FETCH_FAILED", "Failed to fetch data");
@@ -350,21 +354,15 @@ public class CertifyIssuanceServiceImplTest {
         proof.setJwt(createValidJWT("expired-cnonce"));
         request.setProof(proof);
 
-        VCIssuanceTransaction expiredTransaction = new VCIssuanceTransaction();
-        expiredTransaction.setCNonce("expired-cnonce");
-        expiredTransaction.setCNonceExpireSeconds(10);
-        expiredTransaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).minusSeconds(20).toEpochSecond(ZoneOffset.UTC));
+        NonceTransaction expiredTransaction = new NonceTransaction("expired-cnonce",LocalDateTime.now(ZoneOffset.UTC).minusSeconds(20).toEpochSecond(ZoneOffset.UTC), 10);
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(expiredTransaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(expiredTransaction);
         when(securityHelperService.generateSecureRandomString(anyInt())).thenReturn("new-generated-cnonce");
-        when(vciCacheService.setVCITransaction(eq(TEST_ACCESS_TOKEN_HASH), any(VCIssuanceTransaction.class)))
-                .thenAnswer(invocation -> invocation.getArgument(1));
 
-        InvalidNonceException invalidNonceException = assertThrows(InvalidNonceException.class, () -> issuanceService.getCredential(request));
-        assertEquals("new-generated-cnonce", invalidNonceException.getClientNonce());
-        assertEquals("invalid_proof", invalidNonceException.getErrorCode());
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("nonce_expired", ex.getErrorCode());
     }
 
     @Test
@@ -410,7 +408,7 @@ public class CertifyIssuanceServiceImplTest {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class),any())).thenReturn(false);
 
@@ -431,7 +429,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         // Crucial: Stub getKeyMaterial to return "" to match the addProof mock
@@ -488,7 +486,7 @@ public class CertifyIssuanceServiceImplTest {
         // Mock credentialFactory and W3CJsonLD
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         // Stub getKeyMaterial, its result is used in templateParams for createCredential
@@ -550,7 +548,7 @@ public class CertifyIssuanceServiceImplTest {
         // Mock credentialFactory and W3CJsonLD
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         // Stub getKeyMaterial, its result is used in templateParams for createCredential
@@ -616,7 +614,7 @@ public class CertifyIssuanceServiceImplTest {
 
             when(parsedAccessToken.isActive()).thenReturn(true);
             when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-            when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+            when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
             when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
             // Stub getKeyMaterial to return ""
@@ -667,7 +665,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn("");
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class), any())).thenReturn(true);
@@ -734,7 +732,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn("");
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class), any())).thenReturn(true);
@@ -777,7 +775,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getVCITransaction(TEST_ACCESS_TOKEN_HASH)).thenReturn(transaction);
+        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(nonceTransaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn("");
         when(proofValidator.validate(anyString(), anyString(), any(CredentialProof.class), any())).thenReturn(true);
