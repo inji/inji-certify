@@ -359,7 +359,6 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(expiredTransaction);
-        when(securityHelperService.generateSecureRandomString(anyInt())).thenReturn("new-generated-cnonce");
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals("nonce_expired", ex.getErrorCode());
