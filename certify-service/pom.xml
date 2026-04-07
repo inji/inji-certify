@@ -175,11 +175,6 @@
             <version>1.5.5.Final</version>
         </dependency>
         <dependency>
-            <groupId>io.hypersistence</groupId>
-            <artifactId>hypersistence-utils-hibernate-63</artifactId>
-            <version>3.9.9</version>
-        </dependency>
-        <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
         </dependency>
