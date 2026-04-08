@@ -2,6 +2,7 @@ package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.Valid;
@@ -66,6 +67,7 @@ public class CredentialConfigurationDTOV2 {
 
     private List<String> credentialStatusPurposes;
 
+    @JsonDeserialize(using = QrSettingsDeserializer.class)
     private List<Map<String, Object>> qrSettings;
 
     private String qrSignatureAlgo;
