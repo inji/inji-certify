@@ -165,6 +165,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.authlete</groupId>
             <artifactId>sd-jwt</artifactId>
             <version>1.5</version>
