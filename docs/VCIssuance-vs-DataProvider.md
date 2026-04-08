@@ -63,7 +63,7 @@ sequenceDiagram
 
 - VC issuance currently supports Ed25519 signing only.
 - The signature_crypto_suite from credential_config is not applied in this flow.
-- VC types added via Credential Config API may still require corresponding updates in Sunbird-supported VC type properties for template/type mapping.
+- VC types added via Credential Config API may still require corresponding updates in Sunbird-supported VC type properties for credentialType mapping.
 
 # Doubts?
 
