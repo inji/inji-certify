@@ -39,6 +39,24 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     @Autowired
     private CredentialConfigMapper credentialConfigMapper;
 
+    @Value("${mosip.certify.metadata.batch_credential_endpoint:}")
+    private String batchCredentialEndpoint;
+
+    @Value("${mosip.certify.metadata.deferred_credential_endpoint:}")
+    private String deferredCredentialEndpoint;
+
+    @Value("#{${mosip.certify.metadata.credential_response_encryption:{}}}")
+    private Map<String,Object> credentialResponseEncryption;
+
+    @Value("${mosip.certify.metadata.credential_response_encryption.alg_values_supported:}")
+    private String algValuesSupported;
+
+    @Value("${mosip.certify.metadata.credential_response_encryption.enc_values_supported:}")
+    private String encValuesSupported;
+
+    @Value("${mosip.certify.metadata.credential_response_encryption.encryption_required:false}")
+    private boolean encryptionRequired;
+
     @Value("${mosip.certify.domain.url}")
     private String credentialIssuer;
 
@@ -138,6 +156,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
+                break;
+            case VCFormats.JWT_VC_JSON:
+                if (credentialConfig.getCredentialTypes() == null || credentialConfig.getCredentialTypes().isEmpty()
+                        || credentialConfig.getContextURLs() == null || credentialConfig.getContextURLs().isEmpty()) {
+                    throw new CertifyException(ErrorConstants.JWT_VC_JSON_MANDATORY_FIELDS_MISSING,
+                        "Fields type and @context must be non-empty for the jwt_vc_json format.");
+                }
+                validateKeyAliasMapperConfiguration(credentialConfig);
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
@@ -541,6 +567,33 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         metadata.setAuthorizationServers(resolveAuthorizationServers());
         metadata.setCredentialEndpoint(buildCredentialEndpoint(version));
         metadata.setDisplay(issuerDisplay);
+            if (StringUtils.hasText(batchCredentialEndpoint)) {
+        metadata.setBatchCredentialEndpoint(batchCredentialEndpoint);
+    }
+    if (StringUtils.hasText(deferredCredentialEndpoint)) {
+        metadata.setDeferredCredentialEndpoint(deferredCredentialEndpoint);
+    }
+
+        Map<String,Object> enc = new HashMap<>();
+    if (StringUtils.hasText(algValuesSupported)) {
+        enc.put("alg_values_supported",
+                Arrays.stream(algValuesSupported.split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .toList());
+    }
+    if (StringUtils.hasText(encValuesSupported)) {
+        enc.put("enc_values_supported",
+                Arrays.stream(encValuesSupported.split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .toList());
+    }
+
+    if (!enc.isEmpty()) {
+        enc.put("encryption_required", encryptionRequired);
+        metadata.setCredentialResponseEncryption(enc);
+    }
     }
 
     private void populateCommonMetadataFields(CredentialIssuerMetadataDTOV2 metadata, String version) {
@@ -605,6 +658,34 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 credentialConfigurationSupported.setClaims(new HashMap<>(credentialConfig.getSdJwtClaims()));
             }
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
+        }
+        else if (VCFormats.JWT_VC_JSON.equals(credentialConfig.getCredentialFormat())) {
+
+            CredentialDefinition credentialDefinition = new CredentialDefinition();
+            credentialDefinition.setType(credentialConfigurationDTO.getCredentialTypes());
+            credentialDefinition.setContext(credentialConfigurationDTO.getContextURLs());
+            if (credentialConfig.getCredentialSubject() != null) {
+                credentialDefinition.setCredentialSubject(
+                        new HashMap<>(credentialConfig.getCredentialSubject())
+                );
+            }
+
+           
+            List<String> displayOrder = credentialConfigurationDTO.getDisplayOrder();
+            if (displayOrder != null && !displayOrder.isEmpty()
+                    && credentialDefinition.getCredentialSubject() != null) {
+                Set<String> offeredClaims = credentialDefinition.getCredentialSubject().keySet();
+                List<String> filteredOrder = displayOrder.stream()
+                        .filter(offeredClaims::contains)
+                        .toList();
+                credentialDefinition.setOrder(filteredOrder.isEmpty() ? null : filteredOrder);
+            } else {
+                credentialDefinition.setOrder(null);
+            }
+            // Keep existing root-level order behavior for other formats only.
+            credentialConfigurationSupported.setOrder(null);
+
+            credentialConfigurationSupported.setCredentialDefinition(credentialDefinition);
         }
 
         return credentialConfigurationSupported;

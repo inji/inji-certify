@@ -207,6 +207,116 @@ VALUES (
     NULL  -- upd_dtimes (optional)
 );
 
+INSERT INTO certify.credential_config (
+    credential_config_key_id,
+    config_id,
+    status,
+    vc_template,
+    context,
+    credential_type,
+    credential_format,
+    did_url,
+    key_manager_app_id,
+    key_manager_ref_id,
+    signature_algo,
+    signature_crypto_suite,
+    display,
+    display_order,
+    scope,
+    cryptographic_binding_methods_supported,
+    credential_signing_alg_values_supported,
+    proof_types_supported,
+    credential_subject,
+    plugin_configurations,
+    credential_status_purpose,
+    qr_settings,
+    qr_signature_algo,
+    cr_dtimes
+)
+VALUES (
+    'FarmerCredentialJwt',
+    gen_random_uuid()::VARCHAR(255),
+    'active',
+
+    -- VC Template with issuanceDate/expirationDate
+    'ewogICJAY29udGV4dCI6IFsKICAgICJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsCiAgICAiaHR0cHM6Ly93d3cudzMub3JnL25zL2NyZWRlbnRpYWxzL3YyIiwKICAgICJodHRwczovL3BpeXVzaDcwMzQuZ2l0aHViLmlvL215LWZpbGVzL2Zhcm1lci5qc29uIgogIF0sCiAgImlkIjogIiR7Y3JlZGVudGlhbElkfSIsCiAgInR5cGUiOiBbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiRmFybWVyQ3JlZGVudGlhbCJdLAogICJpc3N1ZXIiOiAiJHtpc3N1ZXJ9IiwKICAiaXNzdWFuY2VEYXRlIjogIiR7aXNzdWFuY2VEYXRlfSIsCiAgImV4cGlyYXRpb25EYXRlIjogIiR7ZXhwaXJhdGlvbkRhdGV9IiwKICAiY3JlZGVudGlhbFN1YmplY3QiOiB7CiAgICAiaWQiOiAiJHtob2xkZXJJZH0iLAogICAgImZ1bGxOYW1lIjogIiR7ZnVsbE5hbWV9IiwKICAgICJtb2JpbGVOdW1iZXIiOiAiJHttb2JpbGVOdW1iZXJ9IiwKICAgICJkYXRlT2ZCaXJ0aCI6ICIke2RhdGVPZkJpcnRofSIsCiAgICAiZ2VuZGVyIjogIiR7Z2VuZGVyfSIsCiAgICAic3RhdGUiOiAiJHtzdGF0ZX0iLAogICAgImRpc3RyaWN0IjogIiR7ZGlzdHJpY3R9IiwKICAgICJ2aWxsYWdlT3JUb3duIjogIiR7dmlsbGFnZU9yVG93bn0iLAogICAgInBvc3RhbENvZGUiOiAiJHtwb3N0YWxDb2RlfSIsCiAgICAibGFuZEFyZWEiOiAiJHtsYW5kQXJlYX0iLAogICAgImxhbmRPd25lcnNoaXBUeXBlIjogIiR7bGFuZE93bmVyc2hpcFR5cGV9IiwKICAgICJwcmltYXJ5Q3JvcFR5cGUiOiAiJHtwcmltYXJ5Q3JvcFR5cGV9IiwKICAgICJzZWNvbmRhcnlDcm9wVHlwZSI6ICIke3NlY29uZGFyeUNyb3BUeXBlfSIsCiAgICAiZmFybWVySUQiOiAiJHtmYXJtZXJJRH0iCiAgfQp9',
+
+    'https://www.w3.org/2018/credentials/v1,https://www.w3.org/ns/credentials/v2',
+    'VerifiableCredential,FarmerCredential',
+    'jwt_vc_json',
+
+    'did:web:sanehema9.github.io:vc:did',
+
+    'CERTIFY_VC_SIGN_ED25519',
+    'ED25519_SIGN',
+
+    'EdDSA',
+    NULL,
+
+    -- Rich display metadata
+    '[
+      {
+        "name":"Farmer Credential (JWT VC)",
+        "locale":"en",
+        "logo":{"url":"https://example.com/public/farmer-logo.png","alt_text":"Farmer Credential Logo"},
+        "background_color":"#006400",
+        "text_color":"#FFFFFF"
+      }
+    ]'::JSONB,
+
+    ARRAY[
+        'fullName','mobileNumber','dateOfBirth','gender',
+        'state','district','villageOrTown','postalCode',
+        'landArea','landOwnershipType','primaryCropType',
+        'secondaryCropType','farmerID'
+    ],
+
+    'mock_identity_jwt_vc',  --  scope
+
+    ARRAY['did:jwk'],
+    ARRAY['EdDSA'],
+
+    --  Proof types supported
+    '{
+      "jwt": {
+        "proof_signing_alg_values_supported": ["EdDSA","RS256","ES256","PS256"]
+      }
+    }'::JSONB,
+
+    --  Credential subject display metadata
+    '{
+      "fullName": {"display":[{"name":"Full Name","locale":"en"}]},
+      "mobileNumber": {"display":[{"name":"Mobile Number","locale":"en"}]},
+      "dateOfBirth": {"display":[{"name":"Date of Birth","locale":"en"}]},
+      "gender": {"display":[{"name":"Gender","locale":"en"}]},
+      "state": {"display":[{"name":"State","locale":"en"}]},
+      "district": {"display":[{"name":"District","locale":"en"}]},
+      "villageOrTown": {"display":[{"name":"Village/Town","locale":"en"}]},
+      "postalCode": {"display":[{"name":"Postal Code","locale":"en"}]},
+      "landArea": {"display":[{"name":"Land Area","locale":"en"}]},
+      "landOwnershipType": {"display":[{"name":"Land Ownership Type","locale":"en"}]},
+      "primaryCropType": {"display":[{"name":"Primary Crop Type","locale":"en"}]},
+      "secondaryCropType": {"display":[{"name":"Secondary Crop Type","locale":"en"}]},
+      "farmerID": {"display":[{"name":"Farmer ID","locale":"en"}]}
+    }'::JSONB,
+
+    --  Plugin configurations for mock CSV provider
+    '[
+      {
+        "mosip.certify.mock.data-provider.csv.identifier-column": "id",
+        "mosip.certify.mock.data-provider.csv.data-columns": "id,fullName,mobileNumber,dateOfBirth,gender,state,district,villageOrTown,postalCode,landArea,landOwnershipType,primaryCropType,secondaryCropType,farmerID",
+        "mosip.certify.mock.data-provider.csv-registry-uri": "/home/mosip/config/farmer_identity_data.csv"
+      }
+    ]'::JSONB,
+
+    ARRAY['revocation'],
+
+    '[{"Full Name":"${fullName}","Mobile":"${mobileNumber}"}]'::JSONB,
+    'EdDSA',
+
+    NOW()
+);
+
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('ROOT', 2920, 1125, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_SERVICE', 1095, 60, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_PARTNER', 1095, 60, 'NA', true, 'mosipadmin', now());
