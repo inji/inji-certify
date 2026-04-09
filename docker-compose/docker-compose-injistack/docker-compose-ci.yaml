@@ -1,0 +1,92 @@
+services:
+  database:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./certify_init.sql:/docker-entrypoint-initdb.d/certify_init.sql
+      - ./mimoto_init.sql:/docker-entrypoint-initdb.d/mimoto_init.sql
+    networks:
+      - network
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      
+    certify:
+  container_name: certify
+  image: inji-certify:ci
+  user: root
+  ports:
+    - "8090:8090"
+
+  environment:
+    - active_profile_env=default,csvdp-farmer
+    - SPRING_CONFIG_NAME=certify
+    - SPRING_CONFIG_LOCATION=/home/mosip/config/
+    - DATABASE_HOST=postgres
+    - DATABASE_PORT=5432
+    - DATABASE_NAME=inji_certify
+    - DATABASE_SCHEMA=certify
+    - DATABASE_USERNAME=postgres
+    - DATABASE_PASSWORD=postgres
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - mosip_certify_domain_url=http://certify-nginx:80
+    - INJI_ISSUANCE_BASE_URL=http://certify:8090
+    - INJI_ISSUANCE_REDIRECT_URI=http://certify:8090
+    - INJI_KEYSTORE_FILE_PASS=mosip
+    - enable_certify_artifactory=false
+    - download_hsm_client=false
+
+  volumes:
+    - ./config/certify-default.properties:/home/mosip/config/certify-default.properties
+    - ./config/certify-csvdp-farmer.properties:/home/mosip/config/certify-csvdp-farmer.properties
+    - ./config/certify-mock-mdl.properties:/home/mosip/config/certify-mock-mdl.properties
+    - ./data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
+    - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
+
+  depends_on:
+    database:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+  networks:
+    - network
+
+  healthcheck:
+    test: ["CMD-SHELL", "wget -q --spider http://localhost:8090/actuator/health || exit 1"]
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 30s
+      
+    apitest:
+    image: apitest-inji-certify:ci
+    user: root
+    depends_on:
+      certify:
+        condition: service_healthy
+    environment:
+      ENV_ENDPOINT: http://localhost:8090
+      ENV_TESTLEVEL: smokeAndRegression
+      ENV_USER: certify:8090
+      CI: "true"
+      injicertifyBaseUrl: http://localhost:8090
+
+
+networks:
+  network:
+    name: mosip_network
+    external: true
+
+volumes:
+  cache:
+    driver: local
+  postgres-data:
+  redis-data:

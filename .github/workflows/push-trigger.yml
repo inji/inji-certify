@@ -261,4 +261,123 @@ jobs:
       ACTOR_DOCKER_HUB: ${{ secrets.ACTOR_DOCKER_HUB }}
       RELEASE_DOCKER_HUB: ${{ secrets.RELEASE_DOCKER_HUB }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+      
+      run-apitest-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 21
+
+      # - name: Install WireGuard
+      #   run: sudo apt-get install -y wireguard
+
+      # - name: Configure WireGuard
+      #   run: |
+      #     echo "${{ secrets.CLUSTER_WIREGUARD_WG0 }}" | sudo tee /etc/wireguard/wg0.conf
+
+      # - name: Start WireGuard
+      #   run: |
+      #     sudo chmod 600 /etc/wireguard/wg0.conf
+      #     sudo chmod 700 /etc/wireguard/
+      #     sudo chmod 644 /lib/systemd/system/wg-quick@.service
+      #     sudo systemctl daemon-reload
+      #     sudo wg-quick up wg0
+      #     sudo wg show wg0
+
+      - name: Setup the settings file for ossrh server
+        run: echo "<settings> <servers>  <server>  <id>ossrh</id>    <username>${{secrets.ossrh_user}}</username> <password>${{secrets.ossrh_secret}}</password> </server> </servers> <profiles> <profile>     <id>ossrh</id> <activation> <activeByDefault>true</activeByDefault> </activation>  <properties> <gpg.executable>gpg2</gpg.executable> <gpg.passphrase>${{secrets.gpg_secret}}</gpg.passphrase> </properties> </profile> <profile> <id>allow-snapshots</id>       <activation><activeByDefault>true</activeByDefault></activation> <repositories> <repository>        <id>snapshots-repo</id> <url>https://oss.sonatype.org/content/repositories/snapshots</url> <releases><enabled>false</enabled></releases> <snapshots><enabled>true</enabled></snapshots> </repository>  <repository>         <id>releases-repo</id>  <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>         <releases><enabled>true</enabled></releases>         <snapshots><enabled>false</enabled></snapshots> </repository> </repositories>  </profile> <profile> <id>sonar</id> <properties>  <sonar.sources>.</sonar.sources> <sonar.host.url>https://sonarcloud.io</sonar.host.url>  </properties> <activation> <activeByDefault>false</activeByDefault> </activation> </profile> </profiles> </settings>" > $GITHUB_WORKSPACE/settings.xml
+
+      - name: Build certify jar
+        run: |
+         cd certify-service
+         mvn clean package -DskipTests
+
+      - name: Build apitest jar
+        run: |
+          cd api-test
+          mvn clean package
+
+      - name: Build certify image
+        run: docker build -t inji-certify:ci ./certify-service
+
+      - name: Prepare apitest build context
+        run: |
+          cp api-test/entrypoint.sh .
+          cp -r api-test/testNgXmlFiles api-test/target/testNgXmlFiles
+          cp -r api-test/target/classes/config api-test/target/config
+
+      - name: Build apitest image
+        run: docker build -t apitest-inji-certify:ci -f api-test/Dockerfile .
+
+      - name: Start Full Stack
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml up -d postgres certify
+
+      - name: Wait for Service
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8090/v1/certify/actuator/health | grep UP; then
+              echo "Service is UP"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Run API Tests
+        id: apitest
+        run: |
+          set +e
+          docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml up --exit-code-from apitest apitest
+          EXIT_CODE=$?
+          echo "EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
+          set -e
+
+      - name: Copy reports from container
+        if: always()
+        run: |
+          mkdir -p ci-reports
+          CONTAINER_ID=$(docker ps -a --filter "name=^apitest-inji-certify$" --format "{{.ID}}" | head -n 1)
+          if [ -n "$CONTAINER_ID" ]; then
+            docker cp $CONTAINER_ID:/home/inji/testng-report/. ci-reports || echo "No reports found"
+          else
+            echo "Apitest container not found"
+          fi
+          ls -R ci-reports || true
+
+      - name: Sanitize report filenames
+        if: always()
+        run: |
+          find ci-reports -depth -name "*:*" -exec bash -c '
+            for f; do
+              mv "$f" "${f//:/_}"
+            done
+          ' _ {} +
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inji-certify-test-report
+          path: ci-reports/
+
+      - name: Print certify logs
+        if: always()
+        run: docker logs certify
+
+      - name: Print all service logs
+        if: always()
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml logs
+
+      - name: Shutdown
+        if: always()
+        run: docker compose -f docker-compose/docker-compose-injistack/docker-compose-ci.yaml down
+
+      - name: Fail Job If Tests Failed
+        if: env.EXIT_CODE != '0'
+        run: exit 1
 
