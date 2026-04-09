@@ -167,11 +167,11 @@ public class IarVpRequestService {
         if (!StringUtils.hasText(responseMode)) {
             throw new CertifyException("unknown_error", "Response mode is required");
         }
-        
+
         // Map verifier response_mode to OpenID4VCI 1.1 IAE modes.
-        if ("direct_post".equals(responseMode)) {
+        if ("direct_post".equals(responseMode) || "direct-post".equals(responseMode)) {
             responseMode = iaePostResponseMode;
-        } else if ("direct_post.jwt".equals(responseMode)) {
+        } else if ("direct_post.jwt".equals(responseMode) || "direct-post.jwt".equals(responseMode)) {
             responseMode = iaePostJwtResponseMode;
         }
         openId4VpRequest.put("response_mode", responseMode);
