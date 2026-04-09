@@ -44,7 +44,7 @@ public class IarRequest {
     private String code_challenge_method;
 
     /**
-     * Supported interaction types - e.g., "openid4vp_presentation"
+     * Supported interaction types - e.g., "urn:openid:dcp:iae:openid4vp_presentation"
      */
     private String interaction_types_supported;
 
