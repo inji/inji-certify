@@ -1621,7 +1621,7 @@ paths:
       description: |
         Interactive Authorization Request endpoint - authorization request
         which supports different interaction types.
-        openid4vp_presentation - interaction type for presentation during issuance
+        urn:openid:dcp:iae:openid4vp_presentation - interaction type for presentation during issuance
         redirect_to_web - interaction type for redirecting user to browser to get authenticated.
       operationId: handleIarRequest
       requestBody:
@@ -2872,7 +2872,7 @@ components:
         interaction_types_supported:
           type: string
           description: Comma separated list of Interaction Types supported by Wallet
-          example: "openid4vp_presentation,redirect_to_web"
+          example: "urn:openid:dcp:iae:openid4vp_presentation,redirect_to_web"
         authorization_details:
           type: array
           items:
@@ -2902,8 +2902,8 @@ components:
             - "error": Authorization failed
         type:
           type: string
-          enum: ["openid4vp_presentation", "redirect_to_web"]
-          description: openid4vp_presentation sent in response to initial request which notifies wallet to initiate presentation flow. redirect_to_web is not supported
+          enum: ["urn:openid:dcp:iae:openid4vp_presentation", "redirect_to_web"]
+          description: urn:openid:dcp:iae:openid4vp_presentation sent in response to initial request which notifies wallet to initiate presentation flow. redirect_to_web is not supported
         auth_session:
           type: string
           description: random string to identify session for auth flow, sent in response to initial request

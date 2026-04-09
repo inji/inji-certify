@@ -109,14 +109,14 @@ class OAuthControllerTest {
                 .param("code_challenge", "test-challenge")
                 .param("code_challenge_method", "S256")
                 .param("redirect_uri", "https://test.com/callback")
-                .param("interaction_types_supported", "openid4vp_presentation"))
+                .param("interaction_types_supported", "urn:openid:dcp:iae:openid4vp_presentation"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value("require_interaction"))
-                .andExpect(jsonPath("$.type").value("openid4vp_presentation"))
+                .andExpect(jsonPath("$.type").value("urn:openid:dcp:iae:openid4vp_presentation"))
                 .andExpect(jsonPath("$.auth_session").value("test-session"))
                 .andExpect(jsonPath("$.openid4vp_request.response_type").value("vp_token"))
-                .andExpect(jsonPath("$.openid4vp_request.response_mode").value("iar-post.jwt"));
+                .andExpect(jsonPath("$.openid4vp_request.response_mode").value("iae-post.jwt"));
 
         verify(iarService, times(1)).handleIarRequest(any(IarRequest.class));
     }
@@ -179,7 +179,7 @@ class OAuthControllerTest {
                 .param("code_challenge", "test-challenge")
                 .param("code_challenge_method", "S256")
                 .param("redirect_uri", "https://test.com/callback")
-                .param("interaction_types_supported", "openid4vp_presentation"))
+                .param("interaction_types_supported", "urn:openid:dcp:iae:openid4vp_presentation"))
                 .andExpect(status().isOk());
 
         verify(iarService, times(1)).handleIarRequest(any(IarRequest.class));
@@ -343,11 +343,11 @@ class OAuthControllerTest {
                 .param("code_challenge", "test-challenge")
                 .param("code_challenge_method", "S256")
                 .param("redirect_uri", "https://test.com/callback")
-                .param("interaction_types_supported", "openid4vp_presentation"))
+                .param("interaction_types_supported", "urn:openid:dcp:iae:openid4vp_presentation"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status").value("require_interaction"))
-                .andExpect(jsonPath("$.type").value("openid4vp_presentation"))
+                .andExpect(jsonPath("$.type").value("urn:openid:dcp:iae:openid4vp_presentation"))
                 .andExpect(jsonPath("$.auth_session").value("test-session"));
 
         verify(iarService, times(1)).handleIarRequest(any(IarRequest.class));
@@ -777,7 +777,7 @@ class OAuthControllerTest {
             
             Map<String, Object> openId4VpRequest = new HashMap<>();
             openId4VpRequest.put("response_type", "vp_token");
-            openId4VpRequest.put("response_mode", "iar-post.jwt");
+            openId4VpRequest.put("response_mode", "iae-post.jwt");
             openId4VpRequest.put("client_id", "test-client");
             
             PresentationDefinition presentationDefinition = new PresentationDefinition();
