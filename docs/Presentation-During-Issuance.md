@@ -56,9 +56,9 @@ sequenceDiagram
     W->>W: 10. Display and select credential(s) which satisfies presentation request criteria
     W->>U: 11. User consent
     U-->>W: 12. Approve
-    W->>IC: 13. POST Content-Type: application/x-www-form-urlencoded /iar<br/>{auth_session=...&openid4vp_presentation=...}
+    W->>IC: 13. POST Content-Type: application/x-www-form-urlencoded /iar<br/>{auth_session=...&openid4vp_response=...}
     IC->>IC: 14. Validate auth_session
-    IC->>IVP: 15. POST /oid4vp/response<br/>forward openid4vp_presentation response to verify VP
+    IC->>IVP: 15. POST /oid4vp/response<br/>forward openid4vp_response payload to verify VP
     IVP->>IVP: 16. verify the VP response
     IVP->>IC: 17. VP verification result (e.g., valid/invalid)
     
@@ -106,9 +106,9 @@ The Wallet interacts with the VP Verifier
 2. **Wallet to User**: Prompts User for consent.
 3. **User to Wallet**: User approves.
 4. **Wallet to Inji Certify**: Send VP response
-    - POST Content-Type: application/x-www-form-urlencoded /iar<br/>{auth_session=...&openid4vp_presentation=...}
-    - if response_mode is `iae-post` then openid4vp_presentation is unencrypted, {"vp_token": "...", "presentation_submission": {...}}
-    - if response_mode is `iae-post.jwt` then openid4vp_presentation is encrypted, {response='...'}
+    - POST Content-Type: application/x-www-form-urlencoded /iar<br/>{auth_session=...&openid4vp_response=...}
+    - if response_mode is `iae-post` then openid4vp_response is unencrypted, {"vp_token": "...", "presentation_submission": {...}}
+    - if response_mode is `iae-post.jwt` then openid4vp_response is encrypted, {response='...'}
 5. **Inji Certify**: Validates `auth_session`
 6. **Inji Certify to VP Verifier**: Forward vp response to the VP Verifier for verification on response_uri shared in `openid4vp_request`
 7. **VP Verifier**: Verifies the VP response

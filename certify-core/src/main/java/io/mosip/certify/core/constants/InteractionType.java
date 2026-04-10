@@ -21,7 +21,7 @@ public enum InteractionType {
     /**
      * Redirect to web interaction type (not supported)
      */
-    REDIRECT_TO_WEB("redirect_to_web");
+    REDIRECT_TO_WEB("urn:openid:dcp:iae:redirect_to_web");
     
     private final String value;
     
