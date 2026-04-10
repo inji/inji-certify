@@ -335,7 +335,7 @@
 								"type": "text/javascript",
 								"exec": [
 									"var response = pm.response.json();",
-									"pm.environment.set(\"c_nonce\", response.c_nonce);"
+									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
 								]
 							}
 						}

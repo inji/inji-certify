@@ -364,7 +364,7 @@
 							"script": {
 								"exec": [
 									"var response = pm.response.json();",
-									"pm.environment.set(\"c_nonce\", response.c_nonce);"
+									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
 								],
 								"type": "text/javascript"
 							}
@@ -374,9 +374,9 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "{{certifyUrl}}/issuance/nonce",
+							"raw": "{{certifyurl}}/issuance/nonce",
 							"host": [
-								"{{certifyUrl}}"
+								"{{certifyurl}}"
 							],
 							"path": [
 								"issuance",
