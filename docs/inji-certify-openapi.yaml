@@ -454,7 +454,29 @@ paths:
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
-
+  /issuance/nonce:
+    post:
+      tags:
+        - 'Nonce Controller'
+      summary: Generate Nonce
+      description: 'Generates a c_nonce value to be used in credential issuance flow as per OpenID4VCI specification.'
+      operationId: getNonce
+      responses:
+        '200':
+          description: Nonce generated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NonceResponse'
+              examples:
+                Example 1:
+                  value:
+                    c_nonce: "abc123xyz"
+        '500':
+          description: Internal server error while generating nonce.
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
   /issuance/vd12/credential:
     post:
       tags:
@@ -3110,3 +3132,12 @@ components:
           type: string
         issuer_state:
           type: string
+    NonceResponse:
+      type: object
+      properties:
+        c_nonce:
+          type: string
+          description: One-time nonce value used for proof validation
+          example: "abc123xyz"
+      required:
+        - c_nonce
