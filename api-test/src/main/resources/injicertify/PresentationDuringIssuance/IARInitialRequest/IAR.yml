@@ -14,7 +14,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -34,7 +34,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"		
 }'
       output: '{
@@ -56,7 +56,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -76,7 +76,7 @@ IARInitialRequest:
 		"code_challenge": "$REMOVE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -97,7 +97,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "abcdef",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -118,7 +118,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "$REMOVE$",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -139,7 +139,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"authorization_details": "$REMOVE$"
 }'
       output: '{
@@ -160,7 +160,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "DrivingLicenseCredential"
 }'
       output: '{
@@ -181,7 +181,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation"
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation"
 }'
       output: '{
 		"error": "invalid_request"
@@ -201,7 +201,7 @@ IARInitialRequest:
 		"code_challenge": "$CODECHALLENGE$",
 		"code_challenge_method": "S256",
 		"redirect_uri": "$IDPREDIRECTURI$",
-		"interaction_types_supported": "openid4vp_presentation",
+		"interaction_types_supported": "urn:openid:dcp:iae:openid4vp_presentation",
 		"credential_configuration_id": "abscef"
 }'
       output: '{

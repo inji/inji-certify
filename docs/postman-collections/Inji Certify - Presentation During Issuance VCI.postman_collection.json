@@ -122,7 +122,7 @@
 									"pm.test('Requires interaction for employee credential', function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.status).to.eql('require_interaction');",
-									"    pm.expect(jsonData.type).to.eql('openid4vp_presentation');",
+									"    pm.expect(jsonData.type).to.eql('urn:openid:dcp:iae:openid4vp_presentation');",
 									"    pm.expect(jsonData).to.have.property('auth_session');",
 									"    pm.expect(jsonData).to.have.property('openid4vp_request');",
 									"    ",
@@ -163,7 +163,7 @@
 								},
 								{
 									"key": "interaction_types_supported",
-									"value": "openid4vp_presentation"
+									"value": "urn:openid:dcp:iae:openid4vp_presentation"
 								},
 								{
 									"key": "authorization_details",
@@ -187,7 +187,7 @@
 			"name": "3. IAR Request with VP",
 			"item": [
 				{
-					"name": "3.1 Auth Request with VP (iar-post)",
+					"name": "3.1 Auth Request with VP (iae-post)",
 					"event": [
 						{
 							"listen": "test",

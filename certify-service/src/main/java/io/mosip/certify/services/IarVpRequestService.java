@@ -49,8 +49,11 @@ public class IarVpRequestService {
     @Value("${mosip.certify.verify.service.verifier-client-id:}")
     private String verifierClientId;
 
-    @Value("${mosip.certify.iar.response-mode.iar-post:iar-post}")
-    private String iarPostResponseMode;
+    @Value("${mosip.certify.iae.response-mode.post:iae-post}")
+    private String iaePostResponseMode;
+
+    @Value("${mosip.certify.iae.response-mode.post-jwt:iae-post.jwt}")
+    private String iaePostJwtResponseMode;
 
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
     private String certifyIarEndpoint;
@@ -164,12 +167,12 @@ public class IarVpRequestService {
         if (!StringUtils.hasText(responseMode)) {
             throw new CertifyException("unknown_error", "Response mode is required");
         }
-        
-        // Simple mapping
-        if ("direct_post".equals(responseMode)) {
-            responseMode = iarPostResponseMode;
-        } else if ("direct_post.jwt".equals(responseMode)) {
-            responseMode = "iar-post.jwt";
+
+        // Map verifier response_mode to OpenID4VCI 1.1 IAE modes.
+        if ("direct_post".equals(responseMode) || "direct-post".equals(responseMode)) {
+            responseMode = iaePostResponseMode;
+        } else if ("direct_post.jwt".equals(responseMode) || "direct-post.jwt".equals(responseMode)) {
+            responseMode = iaePostJwtResponseMode;
         }
         openId4VpRequest.put("response_mode", responseMode);
         
