@@ -2,6 +2,7 @@ package io.mosip.certify.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.dto.NonceResponse;
+import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.spi.NonceService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,6 +32,8 @@ public class NonceControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockBean
+    ParsedAccessToken parsedAccessToken;
     @Test
     public void testGetNonce_success() throws Exception {
 
@@ -44,6 +47,6 @@ public class NonceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
-                .andExpect(jsonPath("$.nonce").value("test-nonce-123"));
+                .andExpect(jsonPath("$.c_nonce").value("test-nonce-123"));
     }
 }
