@@ -272,10 +272,6 @@
 									"    pm.collectionVariables.set('access_token', accessToken);",
 									"    // pm.environment.set('access_token', accessToken);",
 									"    console.log(\"✅ Access token saved successfully\");",
-									"    const cNonce = jsonData.c_nonce;",
-									"    const cNonceExpiresIn = jsonData.c_nonce_expires_in;",
-									"    pm.collectionVariables.set('c_nonce', cNonce);",
-									"    pm.collectionVariables.set('c_nonce_expires_in', cNonceExpiresIn);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -328,10 +324,41 @@
 			]
 		},
 		{
-			"name": "5. Credential download",
+			"name": "5. Nonce endpoint",
 			"item": [
 				{
-					"name": "5.1 Get Credential",
+					"name": "5.1 Get Nonce",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var response = pm.response.json();",
+									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{nonce_endpoint}}",
+							"host": [
+								"{{nonce_endpoint}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Credential download",
+			"item": [
+				{
+					"name": "6.1 Get Credential",
 					"event": [
 						{
 							"listen": "prerequest",

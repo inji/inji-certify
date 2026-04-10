@@ -743,7 +743,6 @@
 									"",
 									"    var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
 									"    var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
-									"    pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
 									"});"
 								],
 								"type": "text/javascript",
@@ -803,6 +802,36 @@
 								"oauth",
 								"v2",
 								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nonce Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var response = pm.response.json();",
+									"pm.environment.set(\"c_nonce\", response.c_nonce);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{certifyServiceUrll}}/issuance/nonce",
+							"host": [
+								"{{certifyServiceUrl}}"
+							],
+							"path": [
+								"issuance",
+								"nonce"
 							]
 						}
 					},
