@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 import javax.ws.rs.core.MediaType;
@@ -130,10 +131,23 @@ public class InjiCertifyUtil extends AdminTestUtil {
 	}
 	
 	public static String extractAndEncodeVcTemplate(String requestJsonStr) {
-		JSONObject vcTemplate = new JSONObject(requestJsonStr).getJSONObject("vcTemplate");
-		String vcTemplateStr = unwrapRawPlaceholders(vcTemplate.toString());
-		return new JSONObject(requestJsonStr).put("vcTemplate", AdminTestUtil.encodeBase64(vcTemplateStr))
-				.toString();
+		JSONObject requestJson = new JSONObject(requestJsonStr);
+		Object vcTemplateObj = requestJson.opt("vcTemplate");
+		if (vcTemplateObj == null) {
+			return requestJsonStr;
+		}
+
+		final String vcTemplateStr;
+		if (vcTemplateObj instanceof JSONObject) {
+			vcTemplateStr = unwrapRawPlaceholders(((JSONObject) vcTemplateObj).toString());
+		} else if (vcTemplateObj instanceof String) {
+			// Velocity templates contain directives (#set/#if) and are not JSON; they are stored as raw strings.
+			vcTemplateStr = unwrapRawPlaceholders((String) vcTemplateObj);
+		} else {
+			vcTemplateStr = unwrapRawPlaceholders(String.valueOf(vcTemplateObj));
+		}
+
+		return requestJson.put("vcTemplate", AdminTestUtil.encodeBase64(vcTemplateStr)).toString();
 	}
 	public static void dBCleanup() {
 		DBManager.executeDBQueries(InjiCertifyConfigManager.getKMDbUrl(), InjiCertifyConfigManager.getKMDbUser(),
@@ -355,6 +369,13 @@ public class InjiCertifyUtil extends AdminTestUtil {
 		if (jsonString.contains("$VCICONTEXTURL_2.0$")) {
 			jsonString = replaceKeywordWithValue(jsonString, "$VCICONTEXTURL_2.0$",
 					properties.getProperty("vciContextURL2"));
+		}
+
+		if (jsonString.contains("$KYCEXCHANGE_LOCALES$")) {
+			String key = getValueFromCertifyActuator(
+		            InjiCertifyConfigManager.getproperty("certifyActuatorPropertySection"),
+		            "mosip.certify.ida.kyc-exchange.accepted-locales");
+			jsonString = replaceKeywordValue(jsonString, "$KYCEXCHANGE_LOCALES$", key);
 		}
 
 		if (jsonString.contains("$POLICYNUMBERFORSUNBIRDRC$")) {
@@ -617,7 +638,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 
 		return jsonString;
 	}
-	
+
 	private static final String CA_P12_FILE_NAME = "-ca.p12"; 
 	private static int rpPartnerCertExpiryYears = 5;
 	protected String signCsrAndGenerateCert(String organization, String csr, String algorithm, String filePrepend)

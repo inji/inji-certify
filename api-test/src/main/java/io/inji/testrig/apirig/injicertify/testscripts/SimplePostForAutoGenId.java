@@ -109,11 +109,12 @@ public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
 		String inputJson = "";
 
 		inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
+		inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 		JSONObject requestJson = new JSONObject(inputJson);
-		// Check and encode vcTemplate
-		if (requestJson.has("vcTemplate") && requestJson.get("vcTemplate") instanceof JSONObject) {
-
+		// Base64-encode vcTemplate for API (JSONObject templates from non-Velocity HBS, or String from Velocity HBS)
+		if (requestJson.has("vcTemplate")) {
 			inputJson = extractAndEncodeVcTemplate(requestJson.toString());
+			requestJson = new JSONObject(inputJson);
 		}
 		
 		
@@ -153,7 +154,6 @@ public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
 					throw new AdminTestException("Failed at output validation");
 			}
 		} else {
-			inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 			if (testCaseName.contains("ESignet_")) {
 				if (InjiCertifyConfigManager.isInServiceNotDeployedList(GlobalConstants.ESIGNET)) {
 					throw new SkipException("esignet is not deployed hence skipping the testcase");
