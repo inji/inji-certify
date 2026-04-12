@@ -49,9 +49,47 @@ AuthorizationCodeVCI:
       inputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCI
       outputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCIResult
       input: '{
-        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_calim169_sid_encodedResp$",
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_encodedResp$",
       	"requestTime": "$TIMESTAMP$",
-      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_calim169_sid_transactionId$"
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_transactionId$"
+}'
+      output: '{
+}'
+
+   InjiCertify_ESignet_AuthorizationCode_VCI_MOSIPID_uin_claim169_ed25519_sid:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/auth-code
+      uniqueIdentifier: TC_esignetDependent_AuthorizationCode_claim169_02  
+      description: Authorization Code for claim169 with ed25519 key
+      role: resident
+      restMethod: post
+      additionalDependencies: TC_esignetDependent_AuthenticateUser_claim169_02
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCI
+      outputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_transactionId$"
+}'
+      output: '{
+}'
+
+   InjiCertify_ESignet_AuthorizationCode_VCI_MOSIPID_uin_claim169_eccr1_sid:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/auth-code
+      uniqueIdentifier: TC_esignetDependent_AuthorizationCode_claim169_03     
+      description: Authorization Code for claim169 with eccr1 key
+      role: resident
+      restMethod: post
+      additionalDependencies: TC_esignetDependent_AuthenticateUser_claim169_03
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCI
+      outputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_transactionId$"
 }'
       output: '{
 }'

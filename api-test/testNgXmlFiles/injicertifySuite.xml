@@ -240,7 +240,7 @@
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
-	</test>	
+	</test>
 	<test name="OAuthDetailsRequestVCIMosipID">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMosipID/OAuthDetailsRequestVCI/OAuthDetailsRequestVCI.yml" />
@@ -287,13 +287,28 @@
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
+	</test>	
+	<test name="GetCredentialConfigForMosipid">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipID/GetCredentialConfigurationMosipid/GetCredentialConfiguration.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
+		</classes>
 	</test>
-		<test name="DeleteCredentialConfigForMosipid">
+	<test name="UpdateCredentialConfigForMosipid">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipID/UpdateCredentialConfigurationMosipid/UpdateCredentialConfiguration.yml" />
+		<parameter name="pathParams" value="configurationId" />			
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.PutWithPathParamsAndBody" />
+		</classes>
+	</test>		
+	<test name="DeleteCredentialConfigForMosipid">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMosipID/DeleteCredentialConfigurationForMosipid/DeleteCredentialConfigurationForMosipid.yml" />
 		<classes>
 			<class name="io.inji.testrig.apirig.injicertify.testscripts.DeleteWithParam" />
-		</classes>
+	</classes>
 	</test>
 	<test name="OAuthDetailsRequestVCIMosipIDForVd11">
 		<parameter name="ymlFile"
