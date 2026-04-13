@@ -59,6 +59,11 @@ sequenceDiagram
 - There may be a case, where an integrator might want Certify to deal with fewer aspects of VCIssuance or have a pre-existing VC Issuance stack and may just want a Certify as a OpenID4VCI proxy, in this case the implementors can choose to implement VCIssuancePlugin interface which is supposed to give out a valid VC on it's own or with an external stack.
 - If an integrator doesn't have an existing VCIssuance stack pre-deployed, they can choose to let Certify do all the heavy lifting with a DataProviderPlugin. They can choose to use any of the sample plugins present in [this repo](https://github.com/inji/digital-credential-plugins/) or choose to implement their own.
 
+## Known Limitation (Sunbird VCI Plugin Mode)
+
+- VC issuance currently supports Ed25519 signing only.
+- The signature_crypto_suite from credential_config is not applied in this flow.
+- VC types added via Credential Config API may still require corresponding updates in Sunbird-supported VC type properties for credentialType mapping.
 
 # Doubts?
 
