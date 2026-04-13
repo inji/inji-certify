@@ -135,7 +135,7 @@ AuthenticateUserVCI:
    InjiCertify_ESignet_AuthenticateUserVCI_MOSIPID_uin_eccr1_Claim169_Smoke:
       endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/authenticate
       uniqueIdentifier: TC_esignetDependent_AuthenticateUser_claim169_03 
-      description: Authenticate User  for claim169 eccr1 signature
+      description: Authenticate User  for claim169 with eccr1 signature
       role: resident
       restMethod: post
       checkErrorsOnlyInResponse: true

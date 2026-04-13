@@ -111,7 +111,6 @@ public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
 		inputJson = getJsonFromTemplate(testCaseDTO.getInput(), testCaseDTO.getInputTemplate());
 		inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 		JSONObject requestJson = new JSONObject(inputJson);
-		// Base64-encode vcTemplate for API (JSONObject templates from non-Velocity HBS, or String from Velocity HBS)
 		if (requestJson.has("vcTemplate")) {
 			inputJson = extractAndEncodeVcTemplate(requestJson.toString());
 			requestJson = new JSONObject(inputJson);
