@@ -3,7 +3,6 @@ package io.mosip.certify.services;
 import io.mosip.certify.core.dto.NonceResponse;
 import io.mosip.certify.core.dto.VCIssuanceTransaction;
 import io.mosip.certify.core.exception.CertifyException;
-import io.mosip.certify.utils.AccessTokenJwtUtil;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,9 +16,6 @@ import static org.mockito.Mockito.*;
 public class NonceServiceImplTest {
 
     @Mock
-    private AccessTokenJwtUtil accessTokenJwtUtil;
-
-    @Mock
     private NonceCacheService nonceCacheService;
 
     private NonceServiceImpl nonceService;
@@ -27,7 +23,7 @@ public class NonceServiceImplTest {
     @Before
     public void setup() throws Exception {
 
-        nonceService = new NonceServiceImpl(accessTokenJwtUtil, nonceCacheService);
+        nonceService = new NonceServiceImpl(nonceCacheService);
         // Inject @Value field manually
         Field field = NonceServiceImpl.class.getDeclaredField("cNonceExpiresInSeconds");
         field.setAccessible(true);
@@ -36,33 +32,18 @@ public class NonceServiceImplTest {
 
     @Test
     public void testGenerateNonce_success() {
-
-        String mockNonce = "test-cnonce-123";
-
-        when(accessTokenJwtUtil.generateCNonce()).thenReturn(mockNonce);
-
-
-        when(accessTokenJwtUtil.generateCNonce()).thenReturn(mockNonce);
-
-
         NonceResponse response = nonceService.generateNonce();
 
-
         assertNotNull(response);
-        assertEquals(mockNonce, response.cNonce());
+        assertNotNull(response.cNonce());
 
-        verify(accessTokenJwtUtil, times(1)).generateCNonce();
         verify(nonceCacheService, times(1))
-                .setNonceTransaction(eq(mockNonce), any(VCIssuanceTransaction.class));
+                .setNonceTransaction(eq(response.cNonce()), any(VCIssuanceTransaction.class));
     }
 
 
     @Test
     public void testGenerateNonce_whenCacheFails_shouldThrowException() {
-
-        String mockNonce = "test-nonce-123";
-
-        when(accessTokenJwtUtil.generateCNonce()).thenReturn(mockNonce);
         when(nonceCacheService.setNonceTransaction(anyString(), any(VCIssuanceTransaction.class)))
                 .thenThrow(new CertifyException("CACHE_ERROR", "Cache failure"));
 

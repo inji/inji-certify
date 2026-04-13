@@ -825,7 +825,7 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "{{certifyServiceUrll}}/nonce",
+							"raw": "{{certifyServiceUrl}}/nonce",
 							"host": [
 								"{{certifyServiceUrl}}"
 							],
