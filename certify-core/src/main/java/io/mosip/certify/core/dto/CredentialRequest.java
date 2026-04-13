@@ -31,7 +31,7 @@ public class CredentialRequest {
      */
     @Valid
     @NotNull(message = VCIErrorConstants.INVALID_PROOF)
-    private CredentialProof proof;
+    private Map<String,List<String>> proof;
 
     /**
      * "format": jwt_vc_json | jwt_vc_json-ld | ldp_vc

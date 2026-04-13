@@ -93,6 +93,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     private VCICacheService vciCacheService;
 
     @Autowired
+    private NonceCacheService nonceCacheService;
+
+    @Autowired
     private SecurityHelperService securityHelperService;
 
     @Autowired
@@ -142,6 +145,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     @Override
     public CredentialResponse getCredential(CredentialRequest credentialRequest) {
         // 1. Credential Request validation
+         List<VCResult<?>> vcResults = new ArrayList<>();
         boolean isValidCredentialRequest = CredentialRequestValidator.isValid(credentialRequest);
         if(!isValidCredentialRequest) {
             throw new InvalidRequestException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST);
@@ -166,21 +170,34 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
 
         // 3. Proof Validation
-        ProofValidator proofValidator = proofValidatorFactory.getProofValidator(credentialRequest.getProof().getProof_type());
-        String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, parsedAccessToken,
-                cNonceExpireSeconds, securityHelperService, credentialRequest.getProof(), log);
-        if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
-                credentialRequest.getProof(), credentialMetadata.getProofTypesSupported())) {
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+        String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
+        Map<String, Object> supportedProofTypes = credentialMetadata.getProofTypesSupported();
+        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
+        Map<String, List<String>> proofs = credentialRequest.getProof();
+        if(proofs.isEmpty()) {
+            throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "proofs cannot be empty.");
         }
+        for (Map.Entry<String,List<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey();
+            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
 
-        // 4. Get VC from configured plugin implementation
-        VCResult<?> vcResult = getVerifiableCredential(credentialRequest, credentialMetadata,
-                proofValidator.getKeyMaterial(credentialRequest.getProof()));
+            for (String proofValue : entry.getValue()) {
+                String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log);
+                boolean isValid = proofValidator.validate(clientId, validCNonce,
+                        proofValue, supportedProofTypes);
 
+                if(!isValid) {
+                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+                }
+
+                VCResult<?> vcResult = getVerifiableCredential(credentialRequest, credentialMetadata,
+                        proofValidator.getKeyMaterial(proofValue));
+                vcResults.add(vcResult);
+            }
+        }
         auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
-                AuditHelper.buildAuditDto(parsedAccessToken.getAccessTokenHash(), "accessTokenHash"), null);
-        return VCIssuanceUtil.getCredentialResponse(credentialRequest.getFormat(), vcResult);
+                AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
+        return VCIssuanceUtil.getCredentialResponse(credentialRequest.getFormat(), vcResults);
     }
 
     @Override

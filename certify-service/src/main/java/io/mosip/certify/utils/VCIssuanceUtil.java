@@ -2,24 +2,20 @@ package io.mosip.certify.utils;
 
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
-import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.constants.VCFormats;
-import io.mosip.certify.core.constants.VCIErrorConstants;
+import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.exception.InvalidNonceException;
+import io.mosip.certify.services.NonceCacheService;
 import io.mosip.certify.services.VCICacheService;
 import io.mosip.certify.api.dto.VCResult;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
 
 import java.text.ParseException;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -150,91 +146,61 @@ public class VCIssuanceUtil {
         return transformedConfig;
     }
 
-    public static String validateAndGetClientNonce(VCICacheService vciCacheService, ParsedAccessToken parsedAccessToken,
-                                             int configuredCNonceExpireSeconds, SecurityHelperService securityHelperService,
-                                                   CredentialProof credentialProof, Logger log) {
-        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        VCIssuanceTransaction transaction = vciCacheService.getVCITransaction(accessTokenHash);
-        String authZServerNonce = (transaction == null) ?
-                Optional.ofNullable(parsedAccessToken.getClaims().get(Constants.C_NONCE)).map(Object::toString).orElse("") :
-                transaction.getCNonce();
-
-        int cNonceExpire;
-        if (transaction == null) {
-            int tokenExpiry = determineCNonceExpiry(parsedAccessToken.getClaims().get(Constants.C_NONCE_EXPIRES_IN));
-            cNonceExpire = tokenExpiry > 0 ? tokenExpiry : configuredCNonceExpireSeconds;
-        } else {
-            cNonceExpire = transaction.getCNonceExpireSeconds();
-        }
-
+    public static String validateAndGetClientNonce(NonceCacheService nonceCacheService,
+                                                   String proof, Logger log) {
         String proofJwtNonce = null;
         boolean proofJwtHasNonceClaim = false;
-        if (credentialProof.getJwt() != null && !credentialProof.getJwt().isBlank()) {
-            try {
-                SignedJWT proofJwt = SignedJWT.parse(credentialProof.getJwt());
-                Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-                proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
-                if (proofJwtHasNonceClaim) {
-                    proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
-                    if (StringUtils.isBlank(proofJwtNonce)) {
-                        log.error("Nonce claim is present in proof JWT but is blank");
-                        throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
-                    }
+        if (proof == null || StringUtils.isBlank(proof)) {
+            log.error("Credential proof JWT is required but was blank or missing");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Proof JWT is required.");
+        }
+        try {
+            SignedJWT proofJwt = SignedJWT.parse(proof);
+            Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
+            proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            if (proofJwtHasNonceClaim) {
+                proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
+                if (StringUtils.isBlank(proofJwtNonce)) {
+                    log.error("Nonce claim is present in proof JWT but is blank");
+                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
                 }
-            } catch (ParseException e) {
-                // check iff specific error exists for invalid holderKey
-                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
             }
-        } else if (!StringUtils.isEmpty(authZServerNonce)) {
-            // Access token has nonce but no JWT provided to extract proof nonce from
-            log.error("JWT proof is required but not provided in credential proof");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "JWT proof is required when nonce is present in access token.");
+            else {
+                log.error("Nonce claim is not present in proof JWT");
+                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must be present in proof JWT.");
+            }
+        }
+        catch (ParseException e) {
+            // check iff specific error exists for invalid holderKey
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
-        if (StringUtils.isEmpty(authZServerNonce) && !proofJwtHasNonceClaim) {
-            return null;
-        }
+        NonceTransaction transaction = nonceCacheService.getNonceTransaction(proofJwtNonce);
 
-        if (StringUtils.isEmpty(authZServerNonce) && proofJwtHasNonceClaim) {
-            log.error("Nonce present in proof JWT but missing in access token");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce must not be present in the proof JWT.");
-        }
+        int cNonceExpire;
 
-        long issuedEpoch;
         if (transaction == null) {
-            Object iatClaimValue = parsedAccessToken.getClaims().get(JwtClaimNames.IAT);
-            issuedEpoch = switch (iatClaimValue) {
-                case null -> Instant.MIN.getEpochSecond();
-                case Instant instant -> instant.getEpochSecond();
-                case Number number -> number.longValue();
-                default ->
-                        throw new IllegalStateException("IAT claim is of an unexpected type: " + iatClaimValue.getClass().getName());
-            };
+            log.error("Nonce Transaction could not be found");
+            throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "Nonce Transaction could not be found.");
         } else {
-            issuedEpoch = transaction.getCNonceIssuedEpoch();
+            cNonceExpire = transaction.cNonceExpireSeconds();
         }
 
-        boolean nonceExpired = !StringUtils.isEmpty(authZServerNonce) &&
-                (cNonceExpire <= 0 ||
-                        (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
+        String cachedNonce = transaction.cNonce();
+
+        long issuedEpoch = transaction.cNonceIssuedEpoch();
+
+        boolean nonceExpired = (cNonceExpire <= 0 ||
+                (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
         if (nonceExpired) {
-            log.error("Client Nonce expired in the access token, generate new authZServerNonce for accessTokenHash: {}",
-                    accessTokenHash != null ? accessTokenHash.substring(0, Math.min(accessTokenHash.length(), 10)) + "..." : "null");
-            VCIssuanceTransaction newTransaction = createOrUpdateVCITransaction(
-                    securityHelperService, configuredCNonceExpireSeconds, vciCacheService, accessTokenHash, transaction);
-            authZServerNonce = newTransaction.getCNonce();
-            cNonceExpire = newTransaction.getCNonceExpireSeconds();
-        }
-        if (!StringUtils.isEmpty(authZServerNonce) && StringUtils.isEmpty(proofJwtNonce)) {
-            log.error("Nonce missing in the proof JWT but present in access token");
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
+            throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
         }
 
-        if (authZServerNonce.equals(proofJwtNonce)) {
-            return authZServerNonce;
+        if (Objects.equals(cachedNonce, proofJwtNonce)) {
+            return cachedNonce;
         } else {
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
+            throw new InvalidNonceException(cachedNonce, cNonceExpire);
         }
     }
 
@@ -257,11 +223,17 @@ public class VCIssuanceUtil {
     }
 
     @SuppressWarnings("unchecked")
-    public static CredentialResponse<?> getCredentialResponse(String format, VCResult<?> vcResult) {
+    public static CredentialResponse<?> getCredentialResponse(String format, List<VCResult<?>> vcResults) {
         switch (format) {
             case VCFormats.LDP_VC:
                 CredentialResponse<JsonLDObject> ldpVcResponse = new CredentialResponse<>();
-                ldpVcResponse.setCredential((JsonLDObject) vcResult.getCredential());
+                List<CredentialWrapper<JsonLDObject>> ldpVcCredentials = new ArrayList<>();
+                for (VCResult<?> vcResult : vcResults) {
+                    CredentialWrapper<JsonLDObject> credentialWrapper = new CredentialWrapper<>();
+                    credentialWrapper.setCredential((JsonLDObject) vcResult.getCredential());
+                    ldpVcCredentials.add(credentialWrapper);
+                }
+                ldpVcResponse.setCredentials(ldpVcCredentials);
                 return ldpVcResponse;
 
             case VCFormats.VC_SD_JWT:
@@ -269,7 +241,13 @@ public class VCIssuanceUtil {
             case VCFormats.JWT_VC_JSON_LD:
             case VCFormats.MSO_MDOC:
                 CredentialResponse<String> stringResponse = new CredentialResponse<>();
-                stringResponse.setCredential((String) vcResult.getCredential());
+                List<CredentialWrapper<String>> mDocCredentials = new ArrayList<>();
+                for (VCResult<?> vcResult : vcResults) {
+                    CredentialWrapper<String> credentialWrapper = new CredentialWrapper<>();
+                    credentialWrapper.setCredential((String) vcResult.getCredential());
+                    mDocCredentials.add(credentialWrapper);
+                }
+                stringResponse.setCredentials(mDocCredentials);
                 return stringResponse;
 
             default:
