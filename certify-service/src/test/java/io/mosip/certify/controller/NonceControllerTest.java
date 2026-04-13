@@ -9,6 +9,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -29,6 +30,9 @@ public class NonceControllerTest {
     @MockBean
     private NonceService nonceService;
 
+    @MockBean
+    ParsedAccessToken parsedAccessToken;
+
     @Test
     public void testGetNonce_success() throws Exception {
 
@@ -38,7 +42,7 @@ public class NonceControllerTest {
         Mockito.when(nonceService.generateNonce()).thenReturn(mockResponse);
 
         // Act & Assert
-        mockMvc.perform(post("/issuance/nonce")
+        mockMvc.perform(post("/nonce")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
