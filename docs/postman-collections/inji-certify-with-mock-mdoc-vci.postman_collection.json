@@ -433,12 +433,11 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "{{certifyUrl}}/issuance/nonce",
+							"raw": "{{certifyUrl}}/nonce",
 							"host": [
 								"{{certifyUrl}}"
 							],
 							"path": [
-								"issuance",
 								"nonce"
 							]
 						}

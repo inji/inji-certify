@@ -29,11 +29,6 @@ public class NonceControllerTest {
     @MockBean
     private NonceService nonceService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    @MockBean
-    ParsedAccessToken parsedAccessToken;
     @Test
     public void testGetNonce_success() throws Exception {
 

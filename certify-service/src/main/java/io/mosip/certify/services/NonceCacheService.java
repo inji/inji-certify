@@ -1,11 +1,10 @@
 package io.mosip.certify.services;
 
 import io.mosip.certify.core.constants.NonceErrorConstants;
-import io.mosip.certify.core.dto.NonceTransaction;
+import io.mosip.certify.core.dto.VCIssuanceTransaction;
 import io.mosip.certify.core.exception.CertifyException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -16,13 +15,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class NonceCacheService {
 
-    @Autowired
     private CacheManager cacheManager;
 
     @Value("${spring.cache.type:simple}")
     private String cacheType;
 
     private static final String NONCE_CACHE = "nonce";
+
+    public NonceCacheService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
     
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -42,18 +44,18 @@ public class NonceCacheService {
     }
 
     @CachePut(value = NONCE_CACHE, key = "'txn:' + #cNonce")
-    public NonceTransaction setNonceTransaction(String cNonce,  NonceTransaction nonceTransaction) {
-        return nonceTransaction;
+    public VCIssuanceTransaction setNonceTransaction(String cNonce, VCIssuanceTransaction transaction) {
+        return transaction;
     }
 
-    public NonceTransaction getNonceTransaction(String cNonce) {
+    public VCIssuanceTransaction getNonceTransaction(String cNonce) {
         Cache cache = cacheManager.getCache(NONCE_CACHE);
         if (cache == null) {
             log.error("Cache {} not available. Please verify cache configuration.", NONCE_CACHE);
             throw new CertifyException(NonceErrorConstants.CACHE_NOT_AVAILABLE,
                     "Nonce cache is not configured. Please verify cache configuration.");
         }
-        return cache.get("txn:" + cNonce, NonceTransaction.class);
+        return cache.get("txn:" + cNonce, VCIssuanceTransaction.class);
     }
     
 }

@@ -464,6 +464,12 @@ paths:
       responses:
         '200':
           description: Nonce generated successfully.
+          headers:
+            Cache-Control:
+              description: Prevents caching of nonce responses.
+              schema:
+                type: string
+                example: no-store
           content:
             application/json:
               schema:

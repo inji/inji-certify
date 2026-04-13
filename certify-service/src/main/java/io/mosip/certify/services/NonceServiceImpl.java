@@ -1,16 +1,16 @@
 package io.mosip.certify.services;
 
 import io.mosip.certify.core.dto.NonceResponse;
-import io.mosip.certify.core.dto.NonceTransaction;
+import io.mosip.certify.core.dto.VCIssuanceTransaction;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.NonceService;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
-import java.time.Instant;
-
-@Component
+@Service
 public class NonceServiceImpl implements NonceService {
 
     private final AccessTokenJwtUtil accessTokenJwtUtil;
@@ -29,15 +29,18 @@ public class NonceServiceImpl implements NonceService {
     @Override
     public NonceResponse generateNonce() {
         String cNonce = accessTokenJwtUtil.generateCNonce();
-        NonceTransaction nonceTransaction = createNonceTransaction(cNonce);
+        VCIssuanceTransaction transaction = createNonceTransaction(cNonce);
         return new NonceResponse(cNonce);
     }
 
-    private NonceTransaction createNonceTransaction(String cNonce) {
+    private VCIssuanceTransaction createNonceTransaction(String cNonce) {
         try {
-            Instant now = Instant.now();
-            NonceTransaction nonceTransaction = new NonceTransaction(cNonce, now.getEpochSecond(), cNonceExpiresInSeconds);
-            return nonceCacheService.setNonceTransaction(cNonce,nonceTransaction);
+            Long cNonceIssuedTime = LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC);
+            VCIssuanceTransaction transaction = new VCIssuanceTransaction();
+            transaction.setCNonce(cNonce);
+            transaction.setCNonceIssuedEpoch(cNonceIssuedTime);
+            transaction.setCNonceExpireSeconds(cNonceExpiresInSeconds);
+            return nonceCacheService.setNonceTransaction(cNonce, transaction);
         } catch (CertifyException e) {
             throw e;
         }

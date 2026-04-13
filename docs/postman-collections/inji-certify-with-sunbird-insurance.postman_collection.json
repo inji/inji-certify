@@ -825,12 +825,11 @@
 						"method": "POST",
 						"header": [],
 						"url": {
-							"raw": "{{certifyServiceUrll}}/issuance/nonce",
+							"raw": "{{certifyServiceUrll}}/nonce",
 							"host": [
 								"{{certifyServiceUrl}}"
 							],
 							"path": [
-								"issuance",
 								"nonce"
 							]
 						}
