@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotBlank;
 
 /**
  * Interactive Authorization Request DTO for OpenID4VCI
- * Used for POST /iar endpoint to submit Verifiable Presentation response
+ * Used for POST /iae endpoint to submit Verifiable Presentation response
  */
 @Data
 @NoArgsConstructor
@@ -28,7 +28,7 @@ public class IarAuthorizationRequest {
     /**
      * OpenID4VP presentation response (unencrypted or encrypted JWT)
      */
-    @NotBlank(message = "openid4vp_presentation is required")
+    @NotBlank(message = "openid4vp response is required")
     @JsonProperty("openid4vp_presentation")
     private String openid4vpPresentation;
 }

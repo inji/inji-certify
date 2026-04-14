@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * Interactive Authorization Request DTO for OpenID4VCI
  * Combines fields from both InteractiveAuthorizationRequest and IarAuthorizationRequest
- * Used for the unified /iar endpoint to handle both initial requests and VP presentation responses
+ * Used for the unified /iae endpoint to handle both initial requests and VP presentation responses
  */
 @Data
 @NoArgsConstructor

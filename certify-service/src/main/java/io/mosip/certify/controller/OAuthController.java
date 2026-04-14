@@ -53,7 +53,7 @@ public class OAuthController {
 
     /**
      * Interactive Authorization Request (IAR) endpoint
-     * POST /oauth/iar
+     * POST /oauth/iae
      * 
      * Handles both initial authorization requests and VP presentation responses.
      * Determines the request type based on the presence of auth_session and openid4vp_response.
@@ -65,7 +65,7 @@ public class OAuthController {
      * @return ResponseEntity with IarResponse or IarAuthorizationResponse
      * @throws CertifyException if request processing fails
      */
-    @PostMapping(value = "/oauth/iar",
+    @PostMapping(value = "/oauth/iae",
              consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE,
              produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<IarResponse> handleIarRequest(@Valid @ModelAttribute IarRequest iarRequest)
