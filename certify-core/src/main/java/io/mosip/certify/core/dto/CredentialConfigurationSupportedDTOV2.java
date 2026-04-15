@@ -3,12 +3,14 @@ package io.mosip.certify.core.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import lombok.ToString;
 
 import java.util.List;
 import java.util.Map;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@ToString
 public class CredentialConfigurationSupportedDTOV2 {
 
     private String format;
@@ -32,14 +34,10 @@ public class CredentialConfigurationSupportedDTOV2 {
     @JsonProperty("proof_types_supported")
     private Map<String, Object> proofTypesSupported;
 
-    @JsonProperty("credential_definition")
-    private CredentialDefinition credentialDefinition;
-
-    private Map<String, Object> claims;
-
-    private List<MetaDataDisplayDTOV2> display;
-
     private List<String> order;
 
     private String vct;
+
+    @JsonProperty("credential_metadata")
+    private CredentialMetadataV2 credentialMetadata;
 }
