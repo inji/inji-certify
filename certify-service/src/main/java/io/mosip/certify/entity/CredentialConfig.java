@@ -3,7 +3,6 @@ package io.mosip.certify.entity;
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
-import io.mosip.certify.entity.attributes.CredentialSubjectParameters;
 import io.mosip.certify.entity.attributes.MetaDataDisplay;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
