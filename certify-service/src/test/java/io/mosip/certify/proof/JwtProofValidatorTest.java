@@ -33,9 +33,6 @@ import static org.mockito.Mockito.*;
 class JwtProofValidatorTest {
 
     private JwtProofValidator jwtProofValidator;
-
-    @Mock
-    private CredentialProof credentialProof;
     
     Map<String, Object> proofConfiguration;
 
@@ -51,10 +48,10 @@ class JwtProofValidatorTest {
     @Test
     void testValidateWithNullJwt() {
 
-        when(credentialProof.getJwt()).thenReturn(null);
+        String proofValue = null;
 
 
-        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, proofConfiguration);
+        boolean result = jwtProofValidator.validate("client-id", "nonce", proofValue, proofConfiguration);
 
 
         assertFalse(result, "Expected validation to fail for null JWT");
@@ -63,10 +60,10 @@ class JwtProofValidatorTest {
     @Test
     void testValidateWithBlankJwt() {
 
-        when(credentialProof.getJwt()).thenReturn("");
+        String proofValue = "";
 
 
-        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, proofConfiguration);
+        boolean result = jwtProofValidator.validate("client-id", "nonce",proofValue, proofConfiguration);
 
 
         assertFalse(result, "Expected validation to fail for blank JWT");
@@ -81,19 +78,17 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidate_ValidJWT() throws Exception {
-        String jwt = createValidJWT();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String proofValue = createValidJWT();
+        
 
-        boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
+        boolean result = jwtProofValidator.validate("test-client", "test-nonce", proofValue, proofConfiguration);
 
         assertTrue(result, "JWT should be valid");
     }
 
     @Test
     void testValidate_InvalidJWT() {
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt("invalid.jwt.token");
+        String credentialProof ="invalid.jwt.token";
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -102,9 +97,7 @@ class JwtProofValidatorTest {
 
     @Test
     void testGetKeyMaterial_ValidJWT() throws Exception {
-        String jwt = createValidJWT();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof  = createValidJWT();
 
         String keyMaterial = jwtProofValidator.getKeyMaterial(credentialProof);
         assertNotNull(keyMaterial);
@@ -113,8 +106,8 @@ class JwtProofValidatorTest {
 
     @Test
     void testGetKeyMaterial_InvalidJWT() {
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt("invalid.jwt.token");
+
+        String credentialProof = "invalid.jwt.token";
 
         assertThrows(InvalidRequestException.class, () -> jwtProofValidator.getKeyMaterial(credentialProof));
     }
@@ -196,9 +189,7 @@ class JwtProofValidatorTest {
 
     @Test
     public  void testValidate_DIDJWK_ValidJWT_WithClientID_and_Expiry() throws Exception {
-        String jwt = createValidJWTWithDid("test-client", 60000L, true);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWTWithDid("test-client", 60000L, true);
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -207,9 +198,7 @@ class JwtProofValidatorTest {
 
     @Test
     public  void testValidate_DIDJWK_ValidJWT_NoClientID_and_Expiry() throws Exception {
-        String jwt = createValidJWTWithDid(null, 60000L, true);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWTWithDid(null, 60000L, true);
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -218,9 +207,7 @@ class JwtProofValidatorTest {
 
     @Test
     public  void testValidate_DIDJWK_ValidJWT_NoClientID_and_No_Expiry() throws Exception {
-        String jwt = createValidJWTWithDid(null, null, true);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWTWithDid(null, null, true);
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -228,10 +215,7 @@ class JwtProofValidatorTest {
     }
     @Test
     public  void testValidate_DIDJWK_ValidJWT_WrongClientID() throws Exception {
-        String jwt = createValidJWTWithDid("client-id-1", 600000L, true);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
-
+        String credentialProof = createValidJWTWithDid("client-id-1", 600000L, true);
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
         assertFalse(result, "Client id should match");
@@ -239,14 +223,12 @@ class JwtProofValidatorTest {
 
     @Test
     public void testValidate_InvalidDID_JWK()  {
-        String jwt = null;
+        String credentialProof = null;
         try {
-            jwt = createValidJWTWithDid("test-client", 60000L, false);
+            credentialProof = createValidJWTWithDid("test-client", 60000L, false);
         } catch (Exception e) {
             //do nothing here
         }
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
         //exception are handled by the validator logic presently
         assertFalse( jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration));
 
@@ -278,9 +260,7 @@ class JwtProofValidatorTest {
         JWSSigner signer = new RSASSASigner(rsaJWK);
         jwt.sign(signer);
 
-        String jwtStr = jwt.serialize();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwtStr);
+        String credentialProof = jwt.serialize();
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
         assertFalse(result, "Missing iat from jwt claims");
     }
@@ -317,11 +297,7 @@ class JwtProofValidatorTest {
         signedJWT.sign(signer);
 
         // Serialize JWT
-        String jwt = signedJWT.serialize();
-
-        // Prepare CredentialProof object
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = signedJWT.serialize();
 
         // Validate JWT
         boolean result = jwtProofValidator.validate("clientId", "someNonce", credentialProof, proofConfiguration);
@@ -361,11 +337,7 @@ class JwtProofValidatorTest {
         signedJWT.sign(signer);
 
         // Serialize JWT
-        String jwt = signedJWT.serialize();
-
-        // Prepare CredentialProof object
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = signedJWT.serialize();
 
         // Validate JWT
         boolean result = jwtProofValidator.validate("clientId", "someNonce", credentialProof, proofConfiguration);
@@ -403,11 +375,7 @@ class JwtProofValidatorTest {
         signedJWT.sign(signer);
 
         // Serialize JWT
-        String jwt = signedJWT.serialize();
-
-        // Prepare CredentialProof object
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = signedJWT.serialize();
 
         // Validate JWT
         boolean result = jwtProofValidator.validate("clientId", "someNonce", credentialProof, proofConfiguration);
@@ -448,11 +416,8 @@ class JwtProofValidatorTest {
         signedJWT.sign(signer);
 
         // Serialize JWT
-        String jwt = signedJWT.serialize();
+        String credentialProof = signedJWT.serialize();
 
-        // Prepare CredentialProof object
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
 
         // Validate JWT
         boolean result = jwtProofValidator.validate("clientId", "someNonce", credentialProof, proofConfiguration);
@@ -463,10 +428,7 @@ class JwtProofValidatorTest {
     @Test
     void testValidate_ValidEd25519JWT() throws Exception {
         String keyId = "did:jwk:";
-        String jwt = createValidEd25519JWT(keyId);
-
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidEd25519JWT(keyId);
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -504,10 +466,7 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidate_Ed25519JWT_IllegalArgumentException() throws Exception {
-        String signedJwt = createValidEd25519JWT("did:jwk: ");
-
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(signedJwt);
+        String credentialProof = createValidEd25519JWT("did:jwk: ");
 
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfiguration);
 
@@ -516,23 +475,21 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidateV2_NullJwt() {
-        when(credentialProof.getJwt()).thenReturn(null);
+        String credentialProof = null;
         boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256"))));
         assertFalse(result, "Expected validation to fail for null JWT in validateV2");
     }
 
     @Test
     void testValidateV2_BlankJwt() {
-        when(credentialProof.getJwt()).thenReturn("");
+        String credentialProof = "";
         boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256"))));
         assertFalse(result, "Expected validation to fail for blank JWT in validateV2");
     }
 
     @Test
     void testValidateV2_UnsupportedAlgorithm() throws Exception {
-        String jwt = createValidJWT();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWT();
         // proofConfiguration with unsupported algorithm
         Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("ES384")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
@@ -562,9 +519,7 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidateV2_ValidJWT_RS256() throws Exception {
-        String jwt = createValidJWT();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWT();
         Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertTrue(result, "Expected validation to succeed for valid RS256 JWT");
@@ -573,9 +528,7 @@ class JwtProofValidatorTest {
     @Test
     void testValidateV2_ValidJWT_Ed25519() throws Exception {
         String keyId = "did:jwk:";
-        String jwt = createValidEd25519JWT(keyId);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidEd25519JWT(keyId);
         Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("Ed25519")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertTrue(result, "Expected validation to succeed for valid Ed25519 JWT");
@@ -583,8 +536,7 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidateV2_InvalidJWT() {
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt("invalid.jwt.token");
+        String credentialProof = "invalid.jwt.token";
         Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertFalse(result, "Expected validation to fail for invalid JWT in validateV2");
@@ -592,9 +544,7 @@ class JwtProofValidatorTest {
 
     @Test
     void testValidateV2_MissingJwtConfig() throws Exception {
-        String jwt = createValidJWT();
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setJwt(jwt);
+        String credentialProof = createValidJWT();
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, Map.of());
         assertFalse(result, "Expected validation to fail for missing jwt config in validateV2");
     }

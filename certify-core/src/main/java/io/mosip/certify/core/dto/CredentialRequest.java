@@ -8,6 +8,7 @@ package io.mosip.certify.core.dto;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -30,8 +31,8 @@ public class CredentialRequest {
      * JSON object containing proof of possession of the key material the issued Credential shall be bound to.
      */
     @Valid
-    @NotNull(message = VCIErrorConstants.INVALID_PROOF)
-    private CredentialProof proof;
+    @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
+    private Map<@NotBlank String, @NotEmpty List<@NotBlank String>> proof;
 
     /**
      * "format": jwt_vc_json | jwt_vc_json-ld | ldp_vc

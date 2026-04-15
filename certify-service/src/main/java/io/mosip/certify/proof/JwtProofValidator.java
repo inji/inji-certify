@@ -26,7 +26,6 @@ import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.dto.CredentialProof;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -64,14 +63,14 @@ public class JwtProofValidator implements ProofValidator {
     }
 
     @Override
-    public boolean validate(String clientId, String cNonce, CredentialProof credentialProof, Map<String, Object> proofConfiguration) {
-        if(credentialProof.getJwt() == null || credentialProof.getJwt().isBlank()) {
+    public boolean validate(String clientId, String cNonce, String proof, Map<String, Object> proofConfiguration) {
+        if(proof == null || proof.isBlank()) {
             log.error("Found invalid jwt in the credential proof");
             return false;
         }
 
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(credentialProof.getJwt());
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proof);
             Map<String, Object> jwtConfiguration;
             if(proofConfiguration.get("jwt") != null) {
              jwtConfiguration =(Map<String, Object>) proofConfiguration.get("jwt");
@@ -134,7 +133,7 @@ public class JwtProofValidator implements ProofValidator {
                 jwtProcessor.setJWSKeySelector(keySelector);
                 jwtProcessor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier(new JOSEObjectType(HEADER_TYP)));
                 jwtProcessor.setJWTClaimsSetVerifier(claimsSetVerifier);
-                jwtProcessor.process(credentialProof.getJwt(), null);
+                jwtProcessor.process(proof, null);
                 return true;
             }
         } catch (InvalidRequestException e) {
@@ -149,13 +148,13 @@ public class JwtProofValidator implements ProofValidator {
 
 
     /**
-     * @param credentialProof proof from the credential request.
+     * @param proof from the credential request.
      * @return the key material from the proof in a did:jwk or did:key format
      */
     @Override
-    public String getKeyMaterial(CredentialProof credentialProof) {
+    public String getKeyMaterial(String proof) {
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(credentialProof.getJwt());
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proof);
             JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
             return jpkm.getDID(jwt.getHeader()).get();
         } catch (ParseException e) {
