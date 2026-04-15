@@ -103,7 +103,11 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         }
 
         // 3. Proof Validation
-        Map<String, List<String>> proofs = credentialRequest.getProof();
+        String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
+        Map<String, Object> supportedProofTypes = credentialMetadata.getProofTypesSupported();
+        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
+        Map<String, List<String>> proofs = credentialRequest.getProofs();
+        List<String> holderIds = new ArrayList<>();
 
         for (Map.Entry<String,List<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey();
@@ -112,19 +116,20 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
 
             for (String proofValue : proof) {
                 String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log);
-                if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
-                        proofValue, credentialMetadata.getProofTypesSupported())) {
+                if(!proofValidator.validate(clientId, validCNonce,
+                        proofValue, supportedProofTypes)) {
                     throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
                 }
                 // 4. Get VC from configured plugin implementation
-                VCResult<?> vcResult = getVerifiableCredential(credentialRequest, credentialMetadata,
-                        proofValidator.getKeyMaterial(proofValue));
-                auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
-                        AuditHelper.buildAuditDto(parsedAccessToken.getAccessTokenHash(), "accessTokenHash"), null);
-                vcResults.add(vcResult);
+                holderIds.add(proofValidator.getKeyMaterial(proofValue));
             }
         }
+        for (String holderId : holderIds) {
+            vcResults.add(getVerifiableCredential(credentialRequest, credentialMetadata, holderId));
+        }
 
+        auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
+                AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
         return VCIssuanceUtil.getCredentialResponse(credentialRequest.getFormat(), vcResults);
     }
 

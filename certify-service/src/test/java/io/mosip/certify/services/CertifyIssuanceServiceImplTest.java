@@ -227,7 +227,7 @@ public class CertifyIssuanceServiceImplTest {
         requestCredDef.setCredentialSubject(new HashMap<>());
         req.setCredential_definition(requestCredDef);
 
-        req.setProof(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE))));
+        req.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE))));
         return req;
     }
 
@@ -314,7 +314,7 @@ public class CertifyIssuanceServiceImplTest {
     @Test
     public void getCredential_LDP_WithValidTransaction_With_TwoProofs_Success() throws DataProviderExchangeException {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
-        request.setProof(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE), createValidJWT(TEST_CNONCE))));
+        request.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE), createValidJWT(TEST_CNONCE))));
 
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
@@ -401,7 +401,7 @@ public class CertifyIssuanceServiceImplTest {
         CredentialProof proof = new CredentialProof();
         proof.setProof_type("jwt");
         proof.setJwt(createValidJWT("expired-cnonce"));
-        request.setProof(Map.of("jwt",List.of(createValidJWT("expired-cnonce"))));
+        request.setProofs(Map.of("jwt",List.of(createValidJWT("expired-cnonce"))));
 
         VCIssuanceTransaction expiredTransaction = new VCIssuanceTransaction();
         expiredTransaction.setCNonce("expired-cnonce");
@@ -525,7 +525,7 @@ public class CertifyIssuanceServiceImplTest {
     @Test
     public void getCredential_SDJWT_With_TWO_PROOFS_Success() throws Exception {
         request = createValidCredentialRequest(DEFAULT_FORMAT_SDJWT);
-        request.setProof(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE), createValidJWT(TEST_CNONCE))));
+        request.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE), createValidJWT(TEST_CNONCE))));
 
 
         when(parsedAccessToken.isActive()).thenReturn(true);

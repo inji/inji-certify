@@ -32,8 +32,12 @@ public class CredentialRequest {
      */
     @Valid
     @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
-    private Map<@NotBlank String, @NotEmpty List<@NotBlank String>> proof;
-
+    private Map<
+            @NotBlank(message = ErrorConstants.UNSUPPORTED_PROOF_TYPE) String,
+            @NotEmpty(message = VCIErrorConstants.INVALID_PROOF) List<
+                    @NotBlank(message = VCIErrorConstants.INVALID_PROOF) String
+                    >
+            > proofs;
     /**
      * "format": jwt_vc_json | jwt_vc_json-ld | ldp_vc
      * REQUIRED
