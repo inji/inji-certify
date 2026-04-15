@@ -259,7 +259,7 @@ public class VCIssuanceServiceImplTest {
         CredentialResponse<?> response = issuanceService.getCredential(request);
         assertEquals(2,response.getCredentials().size());
         assertNotNull(response);
-        verify(auditWrapper, times(2)).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
+        verify(auditWrapper).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
     }
 
     @Test
@@ -408,7 +408,7 @@ public class VCIssuanceServiceImplTest {
         assertNotNull(response);
         assertEquals("test_mso_mdoc_credential_string", response.getCredentials().getFirst().getCredential());
         assertEquals("test_mso_mdoc_credential_string", response.getCredentials().getLast().getCredential());
-        verify(auditWrapper, times(2)).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
+        verify(auditWrapper).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
     }
 
     @Test
