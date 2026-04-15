@@ -13,6 +13,7 @@ import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.CredentialConfigException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.entity.CredentialConfig;
+import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.validators.credentialconfigvalidators.LdpVcCredentialConfigValidator;
@@ -24,9 +25,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
 import org.springframework.util.StringUtils;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -421,11 +422,35 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 .toList();
 
         return switch (version) {
-            case "latest" -> buildMetadataVD13V2(credentialConfigList, version);
+            case "latest" -> buildMetadata(credentialConfigList, version);
+            case "vd13"   -> buildMetadataVD13V2(credentialConfigList, version);
             case "vd12"   -> buildMetadataVD12V2(credentialConfigList, version);
             case "vd11"   -> buildMetadataVD11V2(credentialConfigList, version);
             default       -> throw new CertifyException("UNSUPPORTED_METADATA_VERSION", "Unsupported version: " + version);
         };
+    }
+
+    private CredentialIssuerMetadataVD13DTOV2 buildMetadata(List<CredentialConfig> credentialConfigList, String version) {
+        CredentialIssuerMetadataVD13DTOV2 credentialIssuerMetadata = new CredentialIssuerMetadataVD13DTOV2();
+        Map<String, CredentialConfigurationSupportedDTOV2> credentialConfigurationSupportedMap = new HashMap<>();
+
+        credentialConfigList.forEach(credentialConfig -> {
+            CredentialConfigurationSupportedDTOV2 dto = mapToSupportedDTOV2(credentialConfig);
+            if (credentialConfig.getSignatureCryptoSuite() != null) {
+                dto.setCredentialSigningAlgValuesSupported(
+                        credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite())
+                );
+            } else {
+                dto.setCredentialSigningAlgValuesSupported(
+                        Collections.singletonList(credentialConfig.getSignatureAlgo())
+                );
+            }
+            credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
+        });
+
+        credentialIssuerMetadata.setCredentialConfigurationSupportedDTOV2(credentialConfigurationSupportedMap);
+        populateCommonMetadataFieldsV2(credentialIssuerMetadata, version);
+        return credentialIssuerMetadata;
     }
 
     private CredentialIssuerMetadataVD13DTO buildMetadataVD13(List<CredentialConfig> credentialConfigList, String version) {
@@ -501,7 +526,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         });
 
         credentialIssuerMetadata.setCredentialConfigurationSupportedDTOV2(credentialConfigurationSupportedMap);
-        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        populateCommonMetadataFieldsV2(credentialIssuerMetadata, version);
         return credentialIssuerMetadata;
     }
 
@@ -516,7 +541,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         });
 
         credentialIssuerMetadata.setCredentialConfigurationSupportedDTOV2(credentialConfigurationSupportedMap);
-        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        populateCommonMetadataFieldsV2(credentialIssuerMetadata, version);
         return credentialIssuerMetadata;
     }
 
@@ -532,7 +557,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         });
 
         credentialIssuerMetadata.setCredentialConfigurationSupportedDTOV2(credentialConfigurationSupportedList);
-        populateCommonMetadataFields(credentialIssuerMetadata, version);
+        populateCommonMetadataFieldsV2(credentialIssuerMetadata, version);
         return credentialIssuerMetadata;
     }
 
@@ -543,11 +568,16 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         metadata.setDisplay(issuerDisplay);
     }
 
-    private void populateCommonMetadataFields(CredentialIssuerMetadataDTOV2 metadata, String version) {
+    private void populateCommonMetadataFieldsV2(CredentialIssuerMetadataDTOV2 metadata, String version) {
         metadata.setCredentialIssuer(credentialIssuer);
         metadata.setAuthorizationServers(resolveAuthorizationServers());
         metadata.setCredentialEndpoint(buildCredentialEndpoint(version));
         metadata.setDisplay(issuerDisplay);
+        metadata.setNonceEndpoint(buildNonceEndpoint());
+    }
+
+    private String buildNonceEndpoint() {
+        return credentialIssuer + servletPath + "/issuance/nonce";
     }
 
     private List<String> resolveAuthorizationServers() {
@@ -617,29 +647,49 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigurationSupported.setScope(credentialConfigurationDTO.getScope());
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
-        credentialConfigurationSupported.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         credentialConfigurationSupported.setOrder(credentialConfigurationDTO.getDisplayOrder());
 
+        CredentialMetadataV2 credentialMetadata = new CredentialMetadataV2();
+        credentialMetadata.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
-            CredentialDefinition credentialDefinition = new CredentialDefinition();
-            credentialDefinition.setType(credentialConfigurationDTO.getCredentialTypes());
-            credentialDefinition.setContext(credentialConfigurationDTO.getContextURLs());
-            if (credentialConfig.getCredentialSubject() != null) {
-                credentialDefinition.setCredentialSubject(new HashMap<>(credentialConfig.getCredentialSubject()));
-            }
-            credentialConfigurationSupported.setCredentialDefinition(credentialDefinition);
+            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
-            if (credentialConfig.getMsoMdocClaims() != null) {
-                credentialConfigurationSupported.setClaims(new HashMap<>(new HashMap<>(credentialConfig.getMsoMdocClaims())));
-            }
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
+            credentialMetadata.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
         } else if (VCFormats.VC_SD_JWT.equals(credentialConfig.getCredentialFormat())) {
-            if (credentialConfig.getSdJwtClaims() != null) {
-                credentialConfigurationSupported.setClaims(new HashMap<>(credentialConfig.getSdJwtClaims()));
-            }
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
+            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getSdJwtClaims()));
         }
+        credentialConfigurationSupported.setCredentialMetadata(credentialMetadata);
 
         return credentialConfigurationSupported;
+    }
+
+    private List<CredentialMetadataV2.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
+        if (claims == null) return Collections.emptyList();
+        return claims.entrySet().stream()
+                .map(entry -> buildClaimObject(Collections.singletonList(entry.getKey()), entry.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    private List<CredentialMetadataV2.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
+        if (mDocClaims == null) return Collections.emptyList();
+        return mDocClaims.entrySet().stream()
+                .flatMap(namespace -> namespace.getValue().entrySet().stream()
+                        .map(entry -> buildClaimObject(Arrays.asList(namespace.getKey(), entry.getKey()), entry.getValue())))
+                .collect(Collectors.toList());
+    }
+
+    private CredentialMetadataV2.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
+        CredentialMetadataV2.Claims claim = new CredentialMetadataV2.Claims();
+        claim.setPath(path);
+
+        if (value != null && value.getDisplay() != null) {
+            List<ClaimsDisplayFieldsConfigDTO.Display> displayList = value.getDisplay().stream()
+                    .map(d -> new ClaimsDisplayFieldsConfigDTO.Display(d.getName(), d.getLocale()))
+                    .collect(Collectors.toList());
+            claim.setDisplay(displayList);
+        }
+        return claim;
     }
 }
