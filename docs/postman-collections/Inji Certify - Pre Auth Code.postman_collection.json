@@ -303,18 +303,12 @@
 									"    pm.expect(jsonData).to.have.property('access_token');",
 									"    pm.expect(jsonData).to.have.property('token_type');",
 									"    pm.expect(jsonData).to.have.property('expires_in');",
-									"    pm.expect(jsonData).to.have.property('c_nonce');",
-									"    pm.expect(jsonData).to.have.property('c_nonce_expires_in');",
 									"",
 									"    const accessToken = jsonData.access_token;",
 									"    // Store access token",
 									"    console.log(\"access_token:\", accessToken);",
 									"    pm.collectionVariables.set('access_token', accessToken);",
-									"    console.log(\"✅ Access token saved successfully\");",
-									"    const cNonce = jsonData.c_nonce;",
-									"    const cNonceExpiresIn = jsonData.c_nonce_expires_in;",
-									"    pm.collectionVariables.set('c_nonce', cNonce);",
-									"    pm.collectionVariables.set('c_nonce_expires_in', cNonceExpiresIn);",
+									"    console.log(\"✅ Access token saved successfully\");"
 									"});"
 								],
 								"type": "text/javascript"
@@ -363,7 +357,36 @@
 					"response": []
 				},
 				{
-					"name": "4. Get Credential with Pre-Auth Token",
+					"name": "4. Nonce Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var response = pm.response.json();",
+									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{certifyurl}}/nonce",
+							"host": [
+								"{{certifyurl}}"
+							],
+							"path": [
+								"nonce"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Get Credential with Pre-Auth Token",
 					"event": [
 						{
 							"listen": "test",

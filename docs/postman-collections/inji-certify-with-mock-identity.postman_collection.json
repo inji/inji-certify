@@ -1,7 +1,7 @@
 {
 	"info": {
 		"_postman_id": "edd685ae-f66f-425a-8859-ef319d8d5443",
-		"name": "certify- Mock IDA",
+		"name": "certify- Mock IDA - 2",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "1282483"
 	},
@@ -667,11 +667,6 @@
 									"    pm.expect(jsonData.access_token).not.equals(null);",
 									"    pm.environment.set(\"access_token\", jsonData.access_token);",
 									"",
-									"    pm.expect(jsonData.c_nonce).not.equals(null);",
-									"    pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
-									"    // var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature",
-									"    // var jwt_payload = JSON.parse(atob(jwt_parts[1]));",
-									"    // pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -730,6 +725,35 @@
 								"oauth",
 								"v2",
 								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Nonce Endpoint",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var response = pm.response.json();",
+									"pm.environment.set(\"c_nonce\", response.c_nonce);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{certifyUrl}}/nonce",
+							"host": [
+								"{{certifyUrl}}"
+							],
+							"path": [
+								"nonce"
 							]
 						}
 					},
