@@ -173,7 +173,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
         Map<String, Object> supportedProofTypes = credentialMetadata.getProofTypesSupported();
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        Map<String, List<String>> proofs = credentialRequest.getProof();
+        Map<String, List<String>> proofs = credentialRequest.getProofs();
         List<String> holderIds = new ArrayList<>();
         if(proofs.isEmpty()) {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "proofs cannot be empty.");
