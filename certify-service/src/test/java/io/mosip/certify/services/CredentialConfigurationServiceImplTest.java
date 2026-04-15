@@ -1576,4 +1576,80 @@ public class CredentialConfigurationServiceImplTest {
         Assert.assertEquals("http://auth2.com", servers.get(1));
     }
 
+    @Test
+    public void validateCredentialConfigurationV2_QrSettingsWithInvalidFieldReference_ThrowsException() {
+        String vcTemplateJson = "{\"credentialSubject\":{\"FullName\":\"${full_name}\",\"Phone\":\"${phone}\",\"id\":\"${_holderId}\"},\"@context\":[\"https://www.w3.org/ns/credentials/v2\"],\"type\":[\"VerifiableCredential\"],\"issuer\":\"${_issuer}\"}";
+        String vcTemplateBase64 = Base64.getEncoder().encodeToString(vcTemplateJson.getBytes());
+        CredentialConfigurationDTOV2 dto = new CredentialConfigurationDTOV2();
+        dto.setCredentialFormat("ldp_vc");
+        dto.setVcTemplate(vcTemplateBase64);
+        dto.setQrSettings(List.of(Map.of("Full Name", "${FullName}", "Unknown Field", "${nonExistentField}")));
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
+        try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
+            mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
+            CertifyException ex = assertThrows(CertifyException.class, () ->
+                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
+            );
+            assertEquals("qr_invalid_field_reference", ex.getErrorCode());
+        }
+    }
+
+    @Test
+    public void validateCredentialConfigurationV2_QrSettingsWithValidFieldReferences_NoException() {
+        String vcTemplateJson = "{\"credentialSubject\":{\"FullName\":\"${full_name}\",\"Phone\":\"${phone}\",\"id\":\"${_holderId}\"},\"@context\":[\"https://www.w3.org/ns/credentials/v2\"],\"type\":[\"VerifiableCredential\"],\"issuer\":\"${_issuer}\"}";
+        String vcTemplateBase64 = Base64.getEncoder().encodeToString(vcTemplateJson.getBytes());
+        CredentialConfigurationDTOV2 dto = new CredentialConfigurationDTOV2();
+        dto.setCredentialFormat("ldp_vc");
+        dto.setVcTemplate(vcTemplateBase64);
+        dto.setQrSettings(List.of(Map.of("Full Name", "${FullName}", "Phone", "${Phone}")));
+        dto.setSignatureAlgo("EdDSA");
+        dto.setKeyManagerAppId("TEST2019");
+        dto.setKeyManagerRefId("TEST2019-REF");
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
+        try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
+            mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
+            ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true);
+        }
+    }
+
+    @Test
+    public void validateCredentialConfigurationV2_SdJwt_QrSettingsPresent_ThrowsException() {
+        CredentialConfigurationDTOV2 dto = new CredentialConfigurationDTOV2();
+        dto.setCredentialFormat("vc+sd-jwt");
+        dto.setSdJwtVct("test_vct");
+        dto.setSignatureAlgo("EdDSA");
+        dto.setVcTemplate(Base64.getEncoder().encodeToString("{}".getBytes()));
+        dto.setQrSettings(List.of(Map.of("Student", "${StudentName}")));
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
+        try (var mocked = org.mockito.Mockito.mockStatic(SdJwtCredentialConfigValidator.class)) {
+            mocked.when(() -> SdJwtCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
+            CertifyException ex = assertThrows(CertifyException.class, () ->
+                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
+            );
+            assertEquals("qr_settings_not_supported", ex.getErrorCode());
+        }
+    }
+
+    @Test
+    public void validateCredentialConfigurationV2_MsoMdoc_QrSettingsPresent_ThrowsException() {
+        CredentialConfigurationDTOV2 dto = new CredentialConfigurationDTOV2();
+        dto.setCredentialFormat("mso_mdoc");
+        dto.setDocType("org.iso.18013.5.1.mDL");
+        dto.setSignatureCryptoSuite("EcdsaSecp256r1Signature2019");
+        dto.setVcTemplate(Base64.getEncoder().encodeToString("{}".getBytes()));
+        dto.setQrSettings(List.of(Map.of("Name", "${family_name}")));
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
+        try (var mocked = org.mockito.Mockito.mockStatic(MsoMdocCredentialConfigValidator.class)) {
+            mocked.when(() -> MsoMdocCredentialConfigValidator.isValidCheckV2(dto)).thenReturn(true);
+            CertifyException ex = assertThrows(CertifyException.class, () ->
+                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfigurationV2", dto, true)
+            );
+            assertEquals("qr_settings_not_supported", ex.getErrorCode());
+        }
+    }
+
 }

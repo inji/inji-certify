@@ -116,4 +116,24 @@ public class CredentialConfigControllerV2Test {
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deleted configuration with id: 1"));
     }
+
+    @Test
+    public void addCredentialConfig_withDuplicateFieldsInQrSettings_shouldReject() throws Exception {
+        String jsonWithDuplicateQrFields = "{" +
+                "\"credentialFormat\": \"ldp_vc\"," +
+                "\"scope\": \"test_vc_ldp\"," +
+                "\"metaDataDisplay\": []," +
+                "\"qrSettings\": [{" +
+                "  \"Phone Number\": \"${phone}\"," +
+                "  \"Phone Number\": \"${phone}\"," +
+                "  \"Date of Birth\": \"${dateOfBirth}\"" +
+                "}]" +
+                "}";
+
+        mockMvc.perform(post("/v2/credential-configurations")
+                        .content(jsonWithDuplicateQrFields)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].errorCode").value("qr_duplicate_labels"));
+    }
 }
