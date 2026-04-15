@@ -94,7 +94,7 @@ public class CredentialConfig {
     @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "credential_subject", columnDefinition = "jsonb")
-    private Map<String, CredentialSubjectParameters> credentialSubject;
+    private Map<String, ClaimsDisplayFieldsConfigs> credentialSubject;
 
     @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
