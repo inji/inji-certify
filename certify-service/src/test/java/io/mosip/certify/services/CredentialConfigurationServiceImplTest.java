@@ -5,7 +5,6 @@ import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.CredentialConfigException;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
-import io.mosip.certify.entity.attributes.CredentialSubjectParameters;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.validators.credentialconfigvalidators.LdpVcCredentialConfigValidator;
@@ -92,7 +91,7 @@ public class CredentialConfigurationServiceImplTest {
         credentialConfig.setScope("test_vc_ldp");
         credentialConfig.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         credentialConfig.setCredentialSigningAlgValuesSupported(List.of("Ed25519Signature2020"));
-        credentialConfig.setCredentialSubject(Map.of("name", new CredentialSubjectParameters(List.of(new CredentialSubjectParameters.Display("Full Name", "en")))));
+        credentialConfig.setCredentialSubject(Map.of("name", new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Full Name", "en")))));
         credentialConfig.setKeyManagerAppId("TEST2019");
         credentialConfig.setKeyManagerRefId("TEST2019-REF");
         credentialConfig.setSignatureCryptoSuite("Ed25519Signature2020");
@@ -704,7 +703,7 @@ public class CredentialConfigurationServiceImplTest {
 
         // Verify no mapping calls
         verify(credentialConfigRepository).findAll();
-        verify(credentialConfigMapper, never()).toDtoV2((CredentialConfig) any());
+        verify(credentialConfigMapper, never()).toDtoV2(any());
     }
 
     @Test
@@ -779,14 +778,14 @@ public class CredentialConfigurationServiceImplTest {
         // Verify MSO_MDOC configuration
         Assert.assertNotNull(result.getCredentialConfigurationSupportedDTOV2());
         Assert.assertEquals(1, result.getCredentialConfigurationSupportedDTOV2().size());
-        Assert.assertEquals(Map.of("firstName", Map.of( "First Name", new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Test","en"))))), result.getCredentialConfigurationSupportedDTOV2().get("mdoc-credential").getClaims());
 
         CredentialConfigurationSupportedDTOV2 supportedDTO = result.getCredentialConfigurationSupportedDTOV2().get("mdoc-credential");
         Assert.assertNotNull(supportedDTO);
         Assert.assertEquals("mso_mdoc", supportedDTO.getFormat());
-        Assert.assertNotNull(supportedDTO.getClaims());
+        Assert.assertNotNull(supportedDTO.getCredentialMetadata());
+        Assert.assertNotNull(supportedDTO.getCredentialMetadata().getClaims());
+        Assert.assertEquals(1, supportedDTO.getCredentialMetadata().getClaims().size());
         Assert.assertEquals("docType1", supportedDTO.getDocType());
-        Assert.assertNull(supportedDTO.getCredentialDefinition());
     }
 
     // Add these methods to CredentialConfigurationServiceImplTest
