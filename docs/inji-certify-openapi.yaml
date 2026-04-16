@@ -2787,7 +2787,8 @@ components:
           description: The language or regional setting for the display information.
         logo:
           $ref: '#/components/schemas/Logo'
-          description: Logo information for the credential.
+        background_image:
+          $ref: '#/components/schemas/BackgroundImage'
         background_color:
           type: string
           description: Background color code for credential display (e.g., #12107c).
