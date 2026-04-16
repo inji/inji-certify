@@ -32,8 +32,6 @@ public class CredentialConfigurationSupportedDTOV2 {
     @JsonProperty("proof_types_supported")
     private Map<String, Object> proofTypesSupported;
 
-    private List<String> order;
-
     private String vct;
 
     @JsonProperty("credential_metadata")

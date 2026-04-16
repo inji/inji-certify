@@ -647,7 +647,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigurationSupported.setScope(credentialConfigurationDTO.getScope());
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
-        credentialConfigurationSupported.setOrder(credentialConfigurationDTO.getDisplayOrder());
 
         CredentialMetadataV2 credentialMetadata = new CredentialMetadataV2();
         credentialMetadata.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
