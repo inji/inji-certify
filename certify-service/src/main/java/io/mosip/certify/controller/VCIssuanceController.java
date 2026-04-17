@@ -44,7 +44,6 @@ public class VCIssuanceController {
      */
     @PostMapping(value = "/credential",produces = "application/json")
     public CredentialResponse getCredential(@Valid @RequestBody CredentialRequest credentialRequest) throws CertifyException {
-        log.info("Get credential request received for format: {}", credentialRequest.getFormat());
         return vcIssuanceService.getCredential(credentialRequest);
     }
 
@@ -57,7 +56,6 @@ public class VCIssuanceController {
     @PostMapping(value = "/vd12/credential",produces = "application/json")
     public CredentialResponse getCredentialV12Draft(@Valid @RequestBody CredentialRequest credentialRequest) throws CertifyException {
         CredentialResponse credentialResponse = vcIssuanceService.getCredential(credentialRequest);
-        credentialResponse.setFormat(credentialRequest.getFormat());
         return credentialResponse;
     }
 
@@ -71,7 +69,6 @@ public class VCIssuanceController {
     @PostMapping(value = "/vd11/credential",produces = "application/json")
     public CredentialResponse getCredentialV11Draft(@Valid @RequestBody CredentialRequest credentialRequest) throws CertifyException {
         CredentialResponse credentialResponse = vcIssuanceService.getCredential(credentialRequest);
-        credentialResponse.setFormat(credentialRequest.getFormat());
         return credentialResponse;
     }
     /**

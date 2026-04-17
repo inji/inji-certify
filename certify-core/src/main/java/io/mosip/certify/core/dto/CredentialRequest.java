@@ -20,11 +20,9 @@ import java.util.Map;
 @Data
 public class CredentialRequest {
 
-    /**
-     * REQUIRED. Format of the Credential to be issued.
-     */
-    @NotBlank(message = ErrorConstants.INVALID_VC_FORMAT)
-    private String format;
+    @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID)
+    @JsonProperty("credential_configuration_id")
+    private String credentialConfigId;
 
     /**
      * OPTIONAL.
@@ -38,25 +36,4 @@ public class CredentialRequest {
                     @NotBlank(message = VCIErrorConstants.INVALID_PROOF) String
                     >
             > proofs;
-    /**
-     * "format": jwt_vc_json | jwt_vc_json-ld | ldp_vc
-     * REQUIRED
-     * JSON object containing (and isolating) the detailed description of the credential type.
-     * This object MUST be processed using full JSON-LD processing.
-     * It consists of the following sub claims:
-     * @context: REQUIRED. JSON array
-     * types: REQUIRED. JSON array. This claim contains the type values the Wallet shall request
-     * in the subsequent Credential Request.
-     */
-    @Valid
-    private CredentialDefinition credential_definition;
-
-    private String doctype;
-
-    /**
-     * The claims that are asserted in this credential.
-     */
-    private Map<String,Object> claims;
-
-    String vct;
 }

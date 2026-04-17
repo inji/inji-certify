@@ -131,13 +131,9 @@ public class VCIssuanceControllerTest {
 
     @Test
     public void getVerifiableCredential_withValidDetails_thenPass() throws Exception {
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
         credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
         CredentialWrapper credentialWrapper = new CredentialWrapper<JsonLDObject>();
@@ -153,35 +149,29 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
-    public void getVerifiableCredential_withInvalidFormat_thenFail() throws Exception {
+    public void getVerifiableCredential_withInvalid_CredentialConfigId_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat(null);
+        credentialRequest.setCredentialConfigId(null);
         credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialRequest.setCredential_definition(credentialDefinition);
 
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_VC_FORMAT));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
 
-        credentialRequest.setFormat("  ");
+        credentialRequest.setCredentialConfigId("  ");
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_VC_FORMAT));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
     }
 
     @Test
     public void getVerifiableCredential_withInvalidProof_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("jwt_vc_json");
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
 
         credentialRequest.setProofs(null);
         mockMvc.perform(post("/issuance/credential")
@@ -215,8 +205,7 @@ public class VCIssuanceControllerTest {
         credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
         credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
         credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
 
         InvalidNonceException exception = new InvalidNonceException("test-new-nonce", 400);
@@ -237,9 +226,8 @@ public class VCIssuanceControllerTest {
         credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
         credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
         credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
         CredentialWrapper credentialWrapper = new CredentialWrapper<JsonLDObject>();
@@ -251,7 +239,6 @@ public class VCIssuanceControllerTest {
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.format").exists())
                 .andExpect(jsonPath("$.credentials").exists());
     }
 
@@ -261,9 +248,8 @@ public class VCIssuanceControllerTest {
         credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
         credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
         credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
         CredentialWrapper credentialWrapper = new CredentialWrapper<JsonLDObject>();
@@ -275,7 +261,6 @@ public class VCIssuanceControllerTest {
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.format").exists())
                 .andExpect(jsonPath("$.credentials").exists());
     }
 }
