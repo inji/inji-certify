@@ -8,7 +8,6 @@ package io.mosip.certify.services;
 import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -58,6 +57,7 @@ public class OAuthAuthorizationServerMetadataService {
         metadata.setResponseTypesSupported(parseCommaSeparatedValues(responseTypesSupported));
         metadata.setCodeChallengeMethodsSupported(parseCommaSeparatedValues(codeChallengeMethodsSupported));
         metadata.setInteractiveAuthorizationEndpoint(interactiveAuthorizationEndpoint);
+        metadata.setRequireInteractiveAuthorizationRequest(true);
 
         log.debug("OAuth Authorization Server metadata built successfully for issuer: {}", issuer);
         return metadata;
