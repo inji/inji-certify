@@ -65,3 +65,102 @@ AuthenticateUserVCI:
         "sendOtpResTemplate":"injicertify/SendOtp/SendOtpResult"
     }
 }'
+
+   InjiCertify_ESignet_AuthenticateUserVCI_MOSIPID_uin_Otp_Valid_Claim169_Smoke:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/authenticate
+      uniqueIdentifier: TC_esignetDependent_AuthenticateUser_claim169_01   
+      description: Authenticate User  
+      role: resident
+      restMethod: post
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCI
+      outputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_transactionId$",
+      	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+      	"authFactorType" : "OTP",
+      	"challenge" : "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_EMAIL$",
+        "sendOtp":{
+    "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_encodedResp$",
+    "requestTime": "$TIMESTAMP$",
+    "transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_uin_claim169_sid_transactionId$",
+	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+    "otpChannels": [{channel: "email"},{channel: "phone"}],
+    "sendOtpReqTemplate": "injicertify/SendOtp/SendOtp",
+    "sendOtpEndPoint": "$ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/send-otp"
+    }
+    }'
+      output: '{
+  "sendOtpResp":{
+        "sendOtpResTemplate":"injicertify/SendOtp/SendOtpResult"
+    }
+}'
+
+   InjiCertify_ESignet_AuthenticateUserVCI_MOSIPID_uin_ed25519_Claim169_Smoke:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/authenticate
+      uniqueIdentifier: TC_esignetDependent_AuthenticateUser_claim169_02  
+      description: Authenticate User for claim169 with ed25519 signature
+      role: resident
+      restMethod: post
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCI
+      outputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_transactionId$",
+      	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+      	"authFactorType" : "OTP",
+      	"challenge" : "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_EMAIL$",
+        "sendOtp":{
+    "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_encodedResp$",
+    "requestTime": "$TIMESTAMP$",
+    "transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_ed25519_claim169_sid_transactionId$",
+	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+    "otpChannels": [{channel: "email"},{channel: "phone"}],
+    "sendOtpReqTemplate": "injicertify/SendOtp/SendOtp",
+    "sendOtpEndPoint": "$ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/send-otp"
+    }
+    }'
+      output: '{
+  "sendOtpResp":{
+        "sendOtpResTemplate":"injicertify/SendOtp/SendOtpResult"
+    }
+}'
+
+   InjiCertify_ESignet_AuthenticateUserVCI_MOSIPID_uin_eccr1_Claim169_Smoke:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/authenticate
+      uniqueIdentifier: TC_esignetDependent_AuthenticateUser_claim169_03 
+      description: Authenticate User  for claim169 with eccr1 signature
+      role: resident
+      restMethod: post
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCI
+      outputTemplate: injicertify/VCIMosipID/AuthenticateUserVCI/AuthenticateUserVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_transactionId$",
+      	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+      	"authFactorType" : "OTP",
+      	"challenge" : "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_EMAIL$",
+        "sendOtp":{
+    "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_encodedResp$",
+    "requestTime": "$TIMESTAMP$",
+    "transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_eccr1_claim169_sid_transactionId$",
+	"individualId": "$ID:AddIdentity_Valid_Params_VCI_MOSIPID_uin_smoke_Pos_UIN$",
+    "otpChannels": [{channel: "email"},{channel: "phone"}],
+    "sendOtpReqTemplate": "injicertify/SendOtp/SendOtp",
+    "sendOtpEndPoint": "$ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/send-otp"
+    }
+    }'
+      output: '{
+  "sendOtpResp":{
+        "sendOtpResTemplate":"injicertify/SendOtp/SendOtpResult"
+    }
+}'
