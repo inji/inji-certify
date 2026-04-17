@@ -2,7 +2,6 @@ package io.mosip.certify.entity;
 
 
 import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
-import io.mosip.certify.entity.attributes.CredentialSubjectParameters;
 import io.mosip.certify.entity.attributes.MetaDataDisplay;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -89,7 +88,7 @@ public class CredentialConfig {
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "credential_subject", columnDefinition = "jsonb")
-    private Map<String, CredentialSubjectParameters> credentialSubject;
+    private Map<String, ClaimsDisplayFieldsConfigs> credentialSubject;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "mso_mdoc_claims", columnDefinition = "jsonb")

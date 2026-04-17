@@ -1265,7 +1265,7 @@ paths:
       tags:
         - Well-known
       summary: Issuer metadata
-      description: 'This endpoint provides metadata about the credential issuer and the supported credential configurations. The response structure adapts based on the version query parameter, allowing clients to discover issuer capabilities and supported credential types for different OID4VCI versions. The response will be as per the applicable OID4VCI specification, for e.g. for draft 13 of OID4VCI, the specification to be referred is https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#name-credential-issuer-metadata-p'
+      description: 'This endpoint provides metadata about the credential issuer and the supported credential configurations. The response structure adapts based on the version query parameter, allowing clients to discover issuer capabilities and supported credential types for different OID4VCI versions. The response will be as per the applicable OID4VCI specification, for e.g. for draft 1.0 of OID4VCI, the specification to be referred is https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-credential-issuer-metadata-p'
       operationId: getCredentialIssuerMetadata
       parameters:
         - name: version
@@ -1276,6 +1276,7 @@ paths:
             default: latest
             enum:
               - latest
+              - vd13
               - vd11
               - vd12
       responses:
@@ -2437,6 +2438,9 @@ components:
         credential_endpoint:
           type: string
           description: The API endpoint URL where clients can request credential issuance.
+        nonce_endpoint:
+          type: string
+          description: The API endpoint URL where clients can obtain a nonce for proof of possession during credential issuance.
         credential_configurations_supported:
           type: object
           description: Map of Verifiable Credential level configuration information.
@@ -2451,18 +2455,6 @@ components:
         scope:
           type: string
           description: The OAuth2 scope value associated with this credential configuration.
-        claims:
-          type: object
-          description: Map of claim definitions for the credential (used for mso_mdoc and vc+sd-jwt).
-          additionalProperties:
-            type: object
-        display:
-          type: array
-          description: 'List of localized display information for the credential (name, description, logo, etc.).'
-          items:
-            type: object
-            additionalProperties:
-              type: object
         order:
           type: array
           description: List specifying the display order of claims or fields in the credential.
@@ -2486,8 +2478,8 @@ components:
           description: 'Map of supported proof types and their parameters (e.g., jwt, ldp).'
           additionalProperties:
             type: object
-        credential_definition:
-          $ref: '#/components/schemas/CredentialDefinition'
+        credential_metadata:
+          $ref: '#/components/schemas/CredentialMetadata'
         vct:
           type: string
     OAuthAuthorizationServerMetadataDTO:
@@ -2788,6 +2780,70 @@ components:
       properties:
         display:
           type: array
+          items:
+            $ref: '#/components/schemas/Display'
+    CredentialMetadata:
+      type: object
+      description: |-
+        Credential metadata structure per OID4VCI 1.0 specification.
+        Contains display information for the credential and claim-level display mappings.
+      properties:
+        display:
+          type: array
+          description: |-
+            List of localized display information for the credential (name, description, logo, colors, etc.).
+            Used for rendering the credential in wallets and UI.
+          items:
+            $ref: '#/components/schemas/CredentialMetadataDisplay'
+        claims:
+          type: array
+          description: |-
+            Array of claims included in the credential with their display information.
+            Each claim object specifies a claim path (e.g., ["given_name"] or ["address", "street_address"])
+            and optional localized display names for that claim.
+          items:
+            $ref: '#/components/schemas/CredentialMetadataClaim'
+    CredentialMetadataDisplay:
+      type: object
+      description: Localized display information for a credential.
+      properties:
+        name:
+          type: string
+          description: The display name of the credential.
+        locale:
+          type: string
+          description: The language or regional setting for the display information.
+        logo:
+          $ref: '#/components/schemas/Logo'
+        background_image:
+          $ref: '#/components/schemas/BackgroundImage'
+        background_color:
+          type: string
+          description: Background color code for credential display (e.g., #12107c).
+        text_color:
+          type: string
+          description: Text color code for credential display (e.g., #FFFFFF).
+    CredentialMetadataClaim:
+      type: object
+      description: |-
+        Represents a claim within a credential in the metadata.
+        Specifies the claim path (supporting nested claims like address.street_address)
+        and optional localized display information.
+      required:
+        - path
+      properties:
+        path:
+          type: array
+          description: |-
+            JSONPath array indicating the claim location within the credential.
+            Examples: ["given_name"], ["family_name"], ["address"], ["address", "street_address"].
+          items:
+            type: string
+        display:
+          type: array
+          description: |-
+            Optional array of localized display names for this claim.
+            If not provided, the claim is still issued but may have no user-friendly display name.
           items:
             $ref: '#/components/schemas/Display'
     CredentialSubjectParametersDTO:

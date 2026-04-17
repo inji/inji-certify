@@ -23,6 +23,9 @@ public class CredentialIssuerMetadataDTOV2 {
 
     private List<Map<String, Object>> display;
 
+    @JsonProperty("nonce_endpoint")
+    private String nonceEndpoint;
+
     @JsonIgnore
     public Map<String, CredentialConfigurationSupportedDTOV2> getCredentialConfigurationSupportedDTOV2() {
         throw new UnsupportedOperationException("This method must be overridden in child classes.");
