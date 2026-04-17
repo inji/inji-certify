@@ -92,5 +92,6 @@ public class ErrorConstants {
     public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
+    public static final String QR_SIGNATURE_ALGO_REQUIRES_SIGNATURE_ALGO = "qr_signature_algo_requires_signature_algo";
 
 }
