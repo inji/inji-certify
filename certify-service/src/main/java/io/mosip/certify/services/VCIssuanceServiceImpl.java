@@ -104,6 +104,9 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
             for (String proofValue : entry.getValue()) {
                 try {
                     String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log);
+                    if (proofValidator == null) {
+                        throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
+                    }
                     boolean isValid = proofValidator.validate(clientId, validCNonce,
                             proofValue, supportedProofTypes);
                     if(!isValid) {
@@ -122,7 +125,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
             }
         }
         if(holderIds.isEmpty()) {
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
         for (String holderId : holderIds) {
             vcResults.add(getVerifiableCredential(credentialRequest, credentialMetadata, holderId));

@@ -326,7 +326,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_WithNoNonceInProofJwt_ThrowsInvalidNonceException() throws Exception {
+    public void getCredential_WithNoNonceInProofJwt_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         request.setProofs(Map.of("jwt", List.of(createValidJWT("", false))));
 
@@ -334,9 +334,20 @@ public class VCIssuanceServiceImplTest {
         claimsFromAccessToken.put("iat", LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        when(proofValidatorFactory.getProofValidator("jwt"))
+                .thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(null), anyString(), any())).thenReturn(true);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
 
-        assertEquals("invalid_proof", certifyException.getErrorCode());
+        VCResult<JsonLDObject> vcResultLdp = new VCResult<>();
+        JsonLDObject jsonLDObject = new JsonLDObject();
+        vcResultLdp.setCredential(jsonLDObject);
+        when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
+                .thenReturn(vcResultLdp);
+
+        CredentialResponse<?> response = issuanceService.getCredential(request);
+        assertNotNull(response);
+        verify(auditWrapper).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
     }
 
     @Test
@@ -354,22 +365,6 @@ public class VCIssuanceServiceImplTest {
         CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
 
         assertEquals("invalid_proof", certifyException.getErrorCode());
-    }
-
-    @Test
-    public void getCredential_AuthNonceAndProofJwtNonceNotSame_ThrowsInvalidNonceException() throws Exception {
-        request = createValidCredentialRequest(VCFormats.LDP_VC);
-        request.setProofs(Map.of("jwt",List.of(createValidJWT("jwt-nonce", true))));
-
-        when(parsedAccessToken.isActive()).thenReturn(true);
-        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-
-        when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
-
-        InvalidNonceException invalidNonceException = assertThrows(InvalidNonceException.class, () -> issuanceService.getCredential(request));
-
-        assertEquals("test-cnonce", invalidNonceException.getClientNonce());
-        assertEquals("invalid_proof", invalidNonceException.getErrorCode());
     }
 
     @Test

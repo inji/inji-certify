@@ -192,7 +192,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         }
 
         if(holderIds.isEmpty()) {
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
         for (String holderId : holderIds) {
             vcResults.add(getVerifiableCredential(credentialRequest, credentialMetadata, holderId));
