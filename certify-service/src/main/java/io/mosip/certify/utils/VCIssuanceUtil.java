@@ -159,14 +159,10 @@ public class VCIssuanceUtil {
                     throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
                 }
             }
-            else {
-                log.error("Nonce claim is not present in proof JWT");
-                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must be present in proof JWT.");
-            }
         }
         catch (ParseException e) {
             // check iff specific error exists for invalid holderKey
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
 
         if (!proofJwtHasNonceClaim) {
@@ -195,11 +191,7 @@ public class VCIssuanceUtil {
             throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
         }
 
-        if (Objects.equals(cachedNonce, proofJwtNonce)) {
-            return cachedNonce;
-        } else {
-            throw new InvalidNonceException(cachedNonce, cNonceExpire);
-        }
+        return transaction.getCNonce();
     }
 
     @SuppressWarnings("unchecked")
@@ -248,7 +240,7 @@ public class VCIssuanceUtil {
 
         if(dtoOpt.isEmpty()){
             throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
-                    "No matching credential configuration found for scope: " + scope);
+                    "No credential configuration found for credential_configuration_id");
         }
 
         CredentialConfigurationSupportedDTO dto = dtoOpt.get();

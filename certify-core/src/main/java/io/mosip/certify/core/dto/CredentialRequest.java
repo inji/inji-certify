@@ -25,8 +25,9 @@ public class CredentialRequest {
     private String credentialConfigId;
 
     /**
-     * OPTIONAL.
-     * JSON object containing proof of possession of the key material the issued Credential shall be bound to.
+     * REQUIRED (in this implementation).
+     * JSON object containing proof(s) of possession of the key material the issued Credential shall be bound to.
+     * Keys are proof types (e.g., "jwt"); values are non-empty lists of proof strings.
      */
     @Valid
     @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
