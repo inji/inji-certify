@@ -8,6 +8,7 @@ package io.mosip.certify.core.dto;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -19,39 +20,21 @@ import java.util.Map;
 @Data
 public class CredentialRequest {
 
-    /**
-     * REQUIRED. Format of the Credential to be issued.
-     */
-    @NotBlank(message = ErrorConstants.INVALID_VC_FORMAT)
-    private String format;
+    @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID)
+    @JsonProperty("credential_configuration_id")
+    private String credentialConfigId;
 
     /**
-     * OPTIONAL.
-     * JSON object containing proof of possession of the key material the issued Credential shall be bound to.
-     */
-    @Valid
-    @NotNull(message = VCIErrorConstants.INVALID_PROOF)
-    private CredentialProof proof;
-
-    /**
-     * "format": jwt_vc_json | jwt_vc_json-ld | ldp_vc
-     * REQUIRED
-     * JSON object containing (and isolating) the detailed description of the credential type.
-     * This object MUST be processed using full JSON-LD processing.
-     * It consists of the following sub claims:
-     * @context: REQUIRED. JSON array
-     * types: REQUIRED. JSON array. This claim contains the type values the Wallet shall request
-     * in the subsequent Credential Request.
+     * REQUIRED (in this implementation).
+     * JSON object containing proof(s) of possession of the key material the issued Credential shall be bound to.
+     * Keys are proof types (e.g., "jwt"); values are non-empty lists of proof strings.
      */
     @Valid
-    private CredentialDefinition credential_definition;
-
-    private String doctype;
-
-    /**
-     * The claims that are asserted in this credential.
-     */
-    private Map<String,Object> claims;
-
-    String vct;
+    @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
+    private Map<
+            @NotBlank(message = ErrorConstants.UNSUPPORTED_PROOF_TYPE) String,
+            @NotEmpty(message = VCIErrorConstants.INVALID_PROOF) List<
+                    @NotBlank(message = VCIErrorConstants.INVALID_PROOF) String
+                    >
+            > proofs;
 }

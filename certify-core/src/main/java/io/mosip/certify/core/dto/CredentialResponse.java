@@ -8,6 +8,8 @@ package io.mosip.certify.core.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CredentialResponse<T> {
 
@@ -22,7 +24,7 @@ public class CredentialResponse<T> {
      * MAY be a JSON string or a JSON object, depending on the Credential format.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private T credential;
+    private List<CredentialWrapper<T>> credentials;
 
     /**
      * A JSON string containing a security token subsequently used to obtain a Credential.

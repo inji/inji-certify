@@ -2,24 +2,18 @@ package io.mosip.certify.utils;
 
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
-import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.constants.VCFormats;
-import io.mosip.certify.core.constants.VCIErrorConstants;
+import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
-import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.exception.InvalidNonceException;
-import io.mosip.certify.services.VCICacheService;
+import io.mosip.certify.services.NonceCacheService;
 import io.mosip.certify.api.dto.VCResult;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
-import org.springframework.security.oauth2.jwt.JwtClaimNames;
 
 import java.text.ParseException;
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -150,118 +144,68 @@ public class VCIssuanceUtil {
         return transformedConfig;
     }
 
-    public static String validateAndGetClientNonce(VCICacheService vciCacheService, ParsedAccessToken parsedAccessToken,
-                                             int configuredCNonceExpireSeconds, SecurityHelperService securityHelperService,
-                                                   CredentialProof credentialProof, Logger log) {
-        String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        VCIssuanceTransaction transaction = vciCacheService.getVCITransaction(accessTokenHash);
-        String authZServerNonce = (transaction == null) ?
-                Optional.ofNullable(parsedAccessToken.getClaims().get(Constants.C_NONCE)).map(Object::toString).orElse("") :
-                transaction.getCNonce();
+    public static String validateAndGetClientNonce(NonceCacheService nonceCacheService,
+                                                   String proof, Logger log) {
+        String proofJwtNonce = null;
+        boolean proofJwtHasNonceClaim = false;
+        try {
+            SignedJWT proofJwt = SignedJWT.parse(proof);
+            Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
+            proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            if (proofJwtHasNonceClaim) {
+                proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
+                if (StringUtils.isBlank(proofJwtNonce)) {
+                    log.error("Nonce claim is present in proof JWT but is blank");
+                    throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
+                }
+            }
+        }
+        catch (ParseException e) {
+            // check iff specific error exists for invalid holderKey
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
+        }
+
+        if (!proofJwtHasNonceClaim) {
+            return null;
+        }
+
+        VCIssuanceTransaction transaction = nonceCacheService.getNonceTransaction(proofJwtNonce);
 
         int cNonceExpire;
+
         if (transaction == null) {
-            int tokenExpiry = determineCNonceExpiry(parsedAccessToken.getClaims().get(Constants.C_NONCE_EXPIRES_IN));
-            cNonceExpire = tokenExpiry > 0 ? tokenExpiry : configuredCNonceExpireSeconds;
+            log.error("Nonce Transaction could not be found");
+            throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "Nonce Transaction could not be found.");
         } else {
             cNonceExpire = transaction.getCNonceExpireSeconds();
         }
 
-        String proofJwtNonce = null;
-        boolean proofJwtHasNonceClaim = false;
-        if (credentialProof.getJwt() != null && !credentialProof.getJwt().isBlank()) {
-            try {
-                SignedJWT proofJwt = SignedJWT.parse(credentialProof.getJwt());
-                Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-                proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
-                if (proofJwtHasNonceClaim) {
-                    proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
-                    if (StringUtils.isBlank(proofJwtNonce)) {
-                        log.error("Nonce claim is present in proof JWT but is blank");
-                        throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce claim must not be empty.");
-                    }
-                }
-            } catch (ParseException e) {
-                // check iff specific error exists for invalid holderKey
-                throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
-            }
-        } else if (!StringUtils.isEmpty(authZServerNonce)) {
-            // Access token has nonce but no JWT provided to extract proof nonce from
-            log.error("JWT proof is required but not provided in credential proof");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "JWT proof is required when nonce is present in access token.");
-        }
+        String cachedNonce = transaction.getCNonce();
 
-        if (StringUtils.isEmpty(authZServerNonce) && !proofJwtHasNonceClaim) {
-            return null;
-        }
+        long issuedEpoch = transaction.getCNonceIssuedEpoch();
 
-        if (StringUtils.isEmpty(authZServerNonce) && proofJwtHasNonceClaim) {
-            log.error("Nonce present in proof JWT but missing in access token");
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Nonce must not be present in the proof JWT.");
-        }
-
-        long issuedEpoch;
-        if (transaction == null) {
-            Object iatClaimValue = parsedAccessToken.getClaims().get(JwtClaimNames.IAT);
-            issuedEpoch = switch (iatClaimValue) {
-                case null -> Instant.MIN.getEpochSecond();
-                case Instant instant -> instant.getEpochSecond();
-                case Number number -> number.longValue();
-                default ->
-                        throw new IllegalStateException("IAT claim is of an unexpected type: " + iatClaimValue.getClass().getName());
-            };
-        } else {
-            issuedEpoch = transaction.getCNonceIssuedEpoch();
-        }
-
-        boolean nonceExpired = !StringUtils.isEmpty(authZServerNonce) &&
-                (cNonceExpire <= 0 ||
-                        (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
+        boolean nonceExpired = (cNonceExpire <= 0 ||
+                (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
         if (nonceExpired) {
-            log.error("Client Nonce expired in the access token, generate new authZServerNonce for accessTokenHash: {}",
-                    accessTokenHash != null ? accessTokenHash.substring(0, Math.min(accessTokenHash.length(), 10)) + "..." : "null");
-            VCIssuanceTransaction newTransaction = createOrUpdateVCITransaction(
-                    securityHelperService, configuredCNonceExpireSeconds, vciCacheService, accessTokenHash, transaction);
-            authZServerNonce = newTransaction.getCNonce();
-            cNonceExpire = newTransaction.getCNonceExpireSeconds();
-        }
-        if (!StringUtils.isEmpty(authZServerNonce) && StringUtils.isEmpty(proofJwtNonce)) {
-            log.error("Nonce missing in the proof JWT but present in access token");
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
+            throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
         }
 
-        if (authZServerNonce.equals(proofJwtNonce)) {
-            return authZServerNonce;
-        } else {
-            throw new InvalidNonceException(authZServerNonce, cNonceExpire);
-        }
-    }
-
-    public static int determineCNonceExpiry(Object nonceExpireSecondsClaim) {
-        if (nonceExpireSecondsClaim instanceof Long) {
-            return (int)(long)nonceExpireSecondsClaim;
-        } else if (nonceExpireSecondsClaim instanceof Integer) {
-            return (int)nonceExpireSecondsClaim;
-        }
-        return 0;
-    }
-
-    public static VCIssuanceTransaction createOrUpdateVCITransaction(SecurityHelperService securityHelperService, int cNonceExpireSecondsConfig,
-                                                                     VCICacheService vciCacheService, String accessTokenHash, VCIssuanceTransaction existingTransaction) {
-        VCIssuanceTransaction transaction = (existingTransaction != null) ? existingTransaction : new VCIssuanceTransaction();
-        transaction.setCNonce(securityHelperService.generateSecureRandomString(20));
-        transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
-        transaction.setCNonceExpireSeconds(cNonceExpireSecondsConfig);
-        return vciCacheService.setVCITransaction(accessTokenHash, transaction);
+        return transaction.getCNonce();
     }
 
     @SuppressWarnings("unchecked")
-    public static CredentialResponse<?> getCredentialResponse(String format, VCResult<?> vcResult) {
+    public static CredentialResponse<?> getCredentialResponse(String format, List<VCResult<?>> vcResults) {
         switch (format) {
             case VCFormats.LDP_VC:
                 CredentialResponse<JsonLDObject> ldpVcResponse = new CredentialResponse<>();
-                ldpVcResponse.setCredential((JsonLDObject) vcResult.getCredential());
+                List<CredentialWrapper<JsonLDObject>> ldpVcCredentials = new ArrayList<>();
+                for (VCResult<?> vcResult : vcResults) {
+                    CredentialWrapper<JsonLDObject> credentialWrapper = new CredentialWrapper<>();
+                    credentialWrapper.setCredential((JsonLDObject) vcResult.getCredential());
+                    ldpVcCredentials.add(credentialWrapper);
+                }
+                ldpVcResponse.setCredentials(ldpVcCredentials);
                 return ldpVcResponse;
 
             case VCFormats.VC_SD_JWT:
@@ -269,7 +213,13 @@ public class VCIssuanceUtil {
             case VCFormats.JWT_VC_JSON_LD:
             case VCFormats.MSO_MDOC:
                 CredentialResponse<String> stringResponse = new CredentialResponse<>();
-                stringResponse.setCredential((String) vcResult.getCredential());
+                List<CredentialWrapper<String>> mDocCredentials = new ArrayList<>();
+                for (VCResult<?> vcResult : vcResults) {
+                    CredentialWrapper<String> credentialWrapper = new CredentialWrapper<>();
+                    credentialWrapper.setCredential((String) vcResult.getCredential());
+                    mDocCredentials.add(credentialWrapper);
+                }
+                stringResponse.setCredentials(mDocCredentials);
                 return stringResponse;
 
             default:
@@ -278,96 +228,44 @@ public class VCIssuanceUtil {
     }
 
     public static Optional<CredentialMetadata> getScopeCredentialMapping(
-            String scope, String format,
-            CredentialIssuerMetadataDTO credentialIssuerMetadataDTO,
-            CredentialRequest credentialRequest) {
+            String scope,
+            String credentialConfigId,
+            CredentialIssuerMetadataDTO credentialIssuerMetadataDTO) {
 
         Map<String, CredentialConfigurationSupportedDTO> supportedCredentials =
                 credentialIssuerMetadataDTO.getCredentialConfigurationSupportedDTO();
 
-        // Filter entries by scope
-        List<Map.Entry<String, CredentialConfigurationSupportedDTO>> scopeEntries = supportedCredentials.entrySet().stream()
-                .filter(cm -> Objects.equals(scope, cm.getValue().getScope()))
-                .toList();
+        Optional<CredentialConfigurationSupportedDTO> dtoOpt =
+                Optional.ofNullable(supportedCredentials.get(credentialConfigId));
 
-        if (scopeEntries.isEmpty()) {
+        if(dtoOpt.isEmpty()){
+            throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
+                    "No credential configuration found for credential_configuration_id");
+        }
+
+        CredentialConfigurationSupportedDTO dto = dtoOpt.get();
+
+        if(!Objects.equals(scope, dto.getScope())){
             return Optional.empty();
         }
 
-        // Check all scope-matched entries for format and validation
-        for (Map.Entry<String, CredentialConfigurationSupportedDTO> entry : scopeEntries) {
-            CredentialConfigurationSupportedDTO dto = entry.getValue();
-            if (Objects.equals(dto.getFormat(), format)) {
-                switch (format) {
-                    case VCFormats.LDP_VC:
-                        if(!isValidLdpVCRequest(credentialRequest, dto)) continue;
-                        break;
-                    case VCFormats.MSO_MDOC:
-                        if(!isValidMsoMdocRequest(credentialRequest, dto)) continue;
-                        break;
-                    case VCFormats.VC_SD_JWT:
-                        if(!isValidSDJwtRequest(credentialRequest, dto)) continue;
-                        break;
-                    default:
-                        continue;
-                }
-                // If valid, build and return metadata
-                CredentialMetadata credentialMetadata = new CredentialMetadata();
-                credentialMetadata.setFormat(dto.getFormat());
-                credentialMetadata.setScope(dto.getScope());
-                credentialMetadata.setId(entry.getKey());
-                credentialMetadata.setProofTypesSupported(dto.getProofTypesSupported());
-                if (format.equals(VCFormats.LDP_VC)) {
-                    credentialMetadata.setTypes(dto.getCredentialDefinition().getType());
-                }
-                return Optional.of(credentialMetadata);
-            }
-        }
+        CredentialMetadata credentialMetadata = new CredentialMetadata();
+        credentialMetadata.setFormat(dto.getFormat());
+        credentialMetadata.setScope(dto.getScope());
+        credentialMetadata.setId(credentialConfigId);
+        credentialMetadata.setProofTypesSupported(dto.getProofTypesSupported());
+        credentialMetadata.setType(dto.getCredentialDefinition().getType());
+        credentialMetadata.setContext(dto.getCredentialDefinition().getContext());
+        credentialMetadata.setCredentialSubject(dto.getCredentialDefinition().getCredentialSubject());
+        credentialMetadata.setClaims(dto.getClaims());
 
-        // If no valid entry found for the format, throw format-specific exception
-        switch (format) {
-            case VCFormats.LDP_VC:
-                throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
-                        "No matching ldp_vc credential configuration found for scope: " + scope);
-            case VCFormats.MSO_MDOC:
-                throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
-                        "No matching mso_mdoc credential configuration found for scope: " + scope);
-            case VCFormats.VC_SD_JWT:
-                throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
-                        "No matching vc+sd_jwt credential configuration found for scope: " + scope);
-            default:
-                throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT,
-                        "No matching credential configuration found for format: " + format);
-        }
-    }
+       if(dto.getFormat().equals(VCFormats.VC_SD_JWT)) {
+           credentialMetadata.setVct(dto.getVct());
+       } else if(dto.getFormat().equals(VCFormats.MSO_MDOC)) {
+           credentialMetadata.setDocType(dto.getDocType());
+       }
 
 
-    private static boolean isValidLdpVCRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
-        if(credentialRequest.getCredential_definition().getContext().size() != credentialConfigurationSupportedDTO.getCredentialDefinition().getContext().size()) {
-            return false;
-        }
-
-        if(credentialRequest.getCredential_definition().getType().size() != credentialConfigurationSupportedDTO.getCredentialDefinition().getType().size()) {
-            return false;
-        }
-
-        return new HashSet<>(credentialConfigurationSupportedDTO.getCredentialDefinition().getContext()).containsAll(credentialRequest.getCredential_definition().getContext()) &&
-                new HashSet<>(credentialConfigurationSupportedDTO.getCredentialDefinition().getType()).containsAll(credentialRequest.getCredential_definition().getType());
-    }
-
-    private static boolean isValidSDJwtRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
-        return Objects.equals(credentialConfigurationSupportedDTO.getVct(), credentialRequest.getVct());
-    }
-
-    private static boolean isValidMsoMdocRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
-        return Objects.equals(credentialConfigurationSupportedDTO.getDocType(), credentialRequest.getDoctype());
-    }
-
-    public static void validateLdpVcFormatRequest(CredentialRequest credentialRequest,
-                                                  CredentialMetadata credentialMetadata) {
-        if(!credentialRequest.getCredential_definition().getType().containsAll(credentialMetadata.getTypes()))
-            throw new InvalidRequestException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_TYPE);
-
-        //TODO need to validate Credential_definition as JsonLD document, if invalid throw exception
+       return Optional.of(credentialMetadata);
     }
 }
