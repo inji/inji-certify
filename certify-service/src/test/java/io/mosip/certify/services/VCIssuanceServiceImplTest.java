@@ -334,8 +334,7 @@ public class VCIssuanceServiceImplTest {
         claimsFromAccessToken.put("iat", LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(proofValidatorFactory.getProofValidator("jwt"))
-                .thenReturn(proofValidator);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(null), anyString(), any())).thenReturn(true);
         when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
 

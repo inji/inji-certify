@@ -178,15 +178,15 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
                     boolean isValid = proofValidator.validate(clientId, validCNonce,
                             proofValue, supportedProofTypes);
-                    if(!isValid) {
+                    if (!isValid) {
                         continue;
                     }
-                    if(validCNonce != null) {
+                    if (validCNonce != null) {
                         auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
                                 AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
                     }
                     holderIds.add(proofValidator.getKeyMaterial(proofValue));
-                } catch(CertifyException e) {
+                } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
                             AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
                     throw e;
@@ -197,12 +197,13 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         if(holderIds.isEmpty()) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
-        for (String holderId : holderIds) {
-            vcResults.add(getVerifiableCredential(credentialRequest, credentialMetadata, holderId));
-        }
 
         auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
                 AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
+
+        for (String holderId : holderIds) {
+            vcResults.add(getVerifiableCredential(credentialMetadata, holderId));
+        }
 
         auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
                 AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
@@ -215,7 +216,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         return didDocument;
     }
 
-    private VCResult<?> getVerifiableCredential(CredentialRequest credentialRequest, CredentialMetadata credentialMetadata, String holderId) {
+    private VCResult<?> getVerifiableCredential(CredentialMetadata credentialMetadata, String holderId) {
         parsedAccessToken.getClaims().put("accessTokenHash", parsedAccessToken.getAccessTokenHash());
         VCRequestDto vcRequestDto = new VCRequestDto();
         vcRequestDto.setFormat(credentialMetadata.getFormat());

@@ -500,7 +500,7 @@ paths:
               example:
                 value:
                   credential_configuration_id: MockVerifiableCredential
-                  proof:
+                  proofs:
                     jwt:
                     - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
                     - eyJ0eXAiOiJvcGVuaWQ0dmNpKXByb59mK2p3dM
@@ -559,48 +559,48 @@ paths:
                             verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
                             proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
                       - credential:
-                            credentialSubject:
-                              VID: 2154189532
-                              gender:
-                                - language: eng
-                                  value: Male
-                              province:
-                                - language: eng
-                                  value: ABC City
-                              phone: '+3725478456'
-                              postalCode: 10106
-                              fullName:
-                                - language: eng
-                                  value: Gorge Cooper
-                              dateOfBirth: 1985/04/29
-                              id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                              UIN: 2154189532
-                              region:
-                                - language: eng
-                                  value: ABC Region
-                              email: gorgecooper@gmail.com
-                            validUntil: '2027-08-07T11:57:39.350Z'
-                            validFrom: '2025-08-07T11:57:39.349Z'
-                            type:
-                              - VerifiableCredential
-                              - MockVerifiableCredential
-                            '@context':
-                              - 'https://www.w3.org/ns/credentials/v2'
-                              - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                              - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                            issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                            credentialStatus:
-                              statusPurpose: revocation
-                              statusListIndex: '5'
-                              id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                              type: BitstringStatusListEntry
-                              statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                            proof:
-                              type: EcdsaSecp256r1Signature2019
-                              created: '2025-08-07T11:57:39Z'
-                              proofPurpose: assertionMethod
-                              verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                              proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
                 Example 2:
                   value:
                     credentials:
@@ -631,7 +631,7 @@ paths:
               Example:
                 value:
                   credential_configuration_id: MockVerifiableCredential
-                  proof:
+                  proofs:
                     jwt:
                     - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d
                     - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
@@ -772,100 +772,100 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CredentialResponse'
-                examples:
-                  Example 1:
-                    value:
-                      credentials:
-                        - credential: eyJ4NXQjUzI1NiI6InAxRkps....
-                  Example 2:
-                    value:
-                      credentials:
-                        - credential:
-                            credentialSubject:
-                              VID: 2154189532
-                              gender:
-                                - language: eng
-                                  value: Male
-                              province:
-                                - language: eng
-                                  value: ABC City
-                              phone: '+3725478456'
-                              postalCode: 10106
-                              fullName:
-                                - language: eng
-                                  value: Gorge Cooper
-                              dateOfBirth: 1985/04/29
-                              id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                              UIN: 2154189532
-                              region:
-                                - language: eng
-                                  value: ABC Region
-                              email: gorgecooper@gmail.com
-                            validUntil: '2027-08-07T11:57:39.350Z'
-                            validFrom: '2025-08-07T11:57:39.349Z'
-                            type:
-                              - VerifiableCredential
-                              - MockVerifiableCredential
-                            '@context':
-                              - 'https://www.w3.org/ns/credentials/v2'
-                              - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                              - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                            issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                            credentialStatus:
-                              statusPurpose: revocation
-                              statusListIndex: '5'
-                              id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                              type: BitstringStatusListEntry
-                              statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                            proof:
-                              type: EcdsaSecp256r1Signature2019
-                              created: '2025-08-07T11:57:39Z'
-                              proofPurpose: assertionMethod
-                              verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                              proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
-                        - credential:
-                            credentialSubject:
-                              VID: 2154189532
-                              gender:
-                                - language: eng
-                                  value: Male
-                              province:
-                                - language: eng
-                                  value: ABC City
-                              phone: '+3725478456'
-                              postalCode: 10106
-                              fullName:
-                                - language: eng
-                                  value: Gorge Cooper
-                              dateOfBirth: 1985/04/29
-                              id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                              UIN: 2154189532
-                              region:
-                                - language: eng
-                                  value: ABC Region
-                              email: gorgecooper@gmail.com
-                            validUntil: '2027-08-07T11:57:39.350Z'
-                            validFrom: '2025-08-07T11:57:39.349Z'
-                            type:
-                              - VerifiableCredential
-                              - MockVerifiableCredential
-                            '@context':
-                              - 'https://www.w3.org/ns/credentials/v2'
-                              - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                              - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                            issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                            credentialStatus:
-                              statusPurpose: revocation
-                              statusListIndex: '5'
-                              id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                              type: BitstringStatusListEntry
-                              statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                            proof:
-                              type: EcdsaSecp256r1Signature2019
-                              created: '2025-08-07T11:57:39Z'
-                              proofPurpose: assertionMethod
-                              verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                              proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+              examples:
+                Example 1:
+                  value:
+                    credentials:
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                Example 2:
+                  value:
+                    credentials:
+                      - credential: eyJ4NXQjUzI1NiI6InAxRkps....
         '400':
           description: Bad Request
           content:

@@ -42,7 +42,7 @@ public class VCIssuanceUtil {
         }
         catch (ParseException e) {
             // check iff specific error exists for invalid holderKey
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
         if (!proofJwtHasNonceClaim) {

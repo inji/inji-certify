@@ -490,6 +490,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(expiredTransaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals(NonceErrorConstants.NONCE_EXPIRED, ex.getErrorCode());
@@ -503,6 +504,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsWithoutCNonce);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(null);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals(VCIErrorConstants.INVALID_NONCE, certifyException.getErrorCode());
     }

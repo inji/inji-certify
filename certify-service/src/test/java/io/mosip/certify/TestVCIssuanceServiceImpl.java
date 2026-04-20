@@ -24,10 +24,7 @@ public class TestVCIssuanceServiceImpl implements VCIssuanceService {
         List<CredentialWrapper> credentials = new ArrayList<>();
         credentials.add(credentialWrapper1);
         credentials.add(credentialWrapper2);
-        credentialResponse.setFormat("mock-format");
-        credentialResponse.setC_nonce("fake-nonce");
         credentialResponse.setAcceptance_token("fake-token");
-        credentialResponse.setC_nonce_expires_in(3600);
         return credentialResponse;
     }
 
