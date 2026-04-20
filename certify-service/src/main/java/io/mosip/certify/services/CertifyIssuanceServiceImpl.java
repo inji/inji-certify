@@ -169,10 +169,13 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
-
+            if (proofValidator == null) {
+                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
+            }
             for (String proofValue : entry.getValue()) {
                 try {
                     String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log);
+
                     boolean isValid = proofValidator.validate(clientId, validCNonce,
                             proofValue, supportedProofTypes);
                     if(!isValid) {

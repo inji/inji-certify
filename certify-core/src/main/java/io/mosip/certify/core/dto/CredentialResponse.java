@@ -14,12 +14,6 @@ import java.util.List;
 public class CredentialResponse<T> {
 
     /**
-     *  JSON string denoting the format of the issued Credential.
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String format;
-
-    /**
      * Contains issued Credential. MUST be present when acceptance_token is not returned.
      * MAY be a JSON string or a JSON object, depending on the Credential format.
      */
@@ -32,16 +26,4 @@ public class CredentialResponse<T> {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String acceptance_token;
-
-    /**
-     *  JSON string containing a nonce to be used to create a proof of possession of key material
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String c_nonce;
-
-    /**
-     *  JSON integer denoting the lifetime in seconds of the c_nonce
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Integer c_nonce_expires_in;
 }
