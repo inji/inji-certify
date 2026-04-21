@@ -1,6 +1,5 @@
 package io.mosip.certify.controller;
 
-import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTOV2;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.JwksService;
@@ -9,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Collections;
@@ -30,15 +29,8 @@ public class WellKnownController {
     private JwksService jwksService;
 
     @GetMapping(value = "/.well-known/openid-credential-issuer", produces = "application/json")
-    public CredentialIssuerMetadataDTO getCredentialIssuerMetadata(
-            @RequestParam(name = "version", required = false, defaultValue = "latest") String version) {
-        return credentialConfigurationService.fetchCredentialIssuerMetadata(version);
-    }
-
-    @GetMapping(value = "/v2/.well-known/openid-credential-issuer", produces = "application/json")
-    public CredentialIssuerMetadataDTOV2 getCredentialIssuerMetadataV2(
-            @RequestParam(name = "version", required = false, defaultValue = "latest") String version) {
-        return credentialConfigurationService.fetchCredentialIssuerMetadataV2(version);
+    public CredentialIssuerMetadataDTOV2 getCredentialIssuerMetadata() {
+        return credentialConfigurationService.fetchCredentialIssuerMetadataV2();
     }
 
     @GetMapping(value = "/.well-known/did.json", produces = "application/json")

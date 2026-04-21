@@ -118,8 +118,8 @@ public class PreAuthorizedCodeService {
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
-        Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
+        CredentialIssuerMetadataDTOV2 metadata = credentialConfigurationService.fetchCredentialIssuerMetadataV2();
+        Map<String, CredentialConfigurationSupportedDTOV2> supportedConfigs = metadata
                 .getCredentialConfigurationSupportedDTO();
 
         if (supportedConfigs == null || !supportedConfigs.containsKey(request.getCredentialConfigurationId())) {
@@ -127,11 +127,11 @@ public class PreAuthorizedCodeService {
             throw new InvalidRequestException(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID);
         }
 
-        CredentialConfigurationSupportedDTO config = supportedConfigs.get(request.getCredentialConfigurationId());
+        CredentialConfigurationSupportedDTOV2 config = supportedConfigs.get(request.getCredentialConfigurationId());
         validateClaims(config, request.getClaims());
     }
 
-    private void validateClaims(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
+    private void validateClaims(CredentialConfigurationSupportedDTOV2 config, Map<String, Object> providedClaims) {
         if (providedClaims == null) {
             providedClaims = Collections.emptyMap();
         }
@@ -151,7 +151,7 @@ public class PreAuthorizedCodeService {
         }
     }
 
-    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
+    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTOV2 config, Map<String, Object> providedClaims) {
         Set<String> allowedClaimKeys;
         CredentialDefinition credDef = config.getCredentialDefinition();
         if (credDef != null && credDef.getCredentialSubject() != null) {

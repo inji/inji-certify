@@ -23,8 +23,14 @@ public class CredentialIssuerMetadataDTOV2 {
 
     private List<Map<String, Object>> display;
 
-    @JsonIgnore
+    @JsonProperty("credential_configurations_supported")
+    private Map<String, CredentialConfigurationSupportedDTOV2> credentialConfigurationSupportedDTO;
+
+    public void setCredentialConfigurationSupportedDTOV2(Map<String, CredentialConfigurationSupportedDTOV2> credentialConfigurationSupportedDTO) {
+        this.credentialConfigurationSupportedDTO = credentialConfigurationSupportedDTO;
+    }
+
     public Map<String, CredentialConfigurationSupportedDTOV2> getCredentialConfigurationSupportedDTOV2() {
-        throw new UnsupportedOperationException("This method must be overridden in child classes.");
+        return credentialConfigurationSupportedDTO;
     }
 }
