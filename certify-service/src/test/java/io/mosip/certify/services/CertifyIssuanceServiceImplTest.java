@@ -109,7 +109,7 @@ public class CertifyIssuanceServiceImplTest {
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken; // Renamed for clarity
     VCIssuanceTransaction transaction;
-    CredentialIssuerMetadataDTOV2 mockGlobalCredentialIssuerMetadataDTO;
+    CredentialIssuerMetadataDTO mockGlobalCredentialIssuerMetadataDTO;
 
 
     @Before
@@ -154,15 +154,15 @@ public class CertifyIssuanceServiceImplTest {
         transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
 
-        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataDTOV2();
+        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataDTO();
         mockGlobalCredentialIssuerMetadataDTO.setCredentialIssuer("https://test.issuer.com");
         mockGlobalCredentialIssuerMetadataDTO.setAuthorizationServers(List.of("https://auth.server.com"));
         mockGlobalCredentialIssuerMetadataDTO.setCredentialEndpoint("https://test.issuer.com/credentials");
 
-        Map<String, CredentialConfigurationSupportedDTOV2> supportedCredsMap = new HashMap<>();
+        Map<String, CredentialConfigurationSupportedDTO> supportedCredsMap = new HashMap<>();
 
         // LDP Config DTO
-        CredentialConfigurationSupportedDTOV2 supportedDTO_LDP = new CredentialConfigurationSupportedDTOV2();
+        CredentialConfigurationSupportedDTO supportedDTO_LDP = new CredentialConfigurationSupportedDTO();
         supportedDTO_LDP.setScope(DEFAULT_SCOPE);
         supportedDTO_LDP.setFormat(DEFAULT_FORMAT_LDP);
         CredentialDefinition credDefDtoForLDP = new CredentialDefinition(); // Using your DTO structure
@@ -171,7 +171,7 @@ public class CertifyIssuanceServiceImplTest {
         supportedDTO_LDP.setCredentialDefinition(credDefDtoForLDP);
         supportedCredsMap.put("test-credential-id-ldp", supportedDTO_LDP);
 
-        CredentialConfigurationSupportedDTOV2 supportedDTO_LDP_DM2_0 = new CredentialConfigurationSupportedDTOV2();
+        CredentialConfigurationSupportedDTO supportedDTO_LDP_DM2_0 = new CredentialConfigurationSupportedDTO();
         supportedDTO_LDP_DM2_0.setScope(DEFAULT_SCOPE);
         supportedDTO_LDP_DM2_0.setFormat(DEFAULT_FORMAT_LDP);
         CredentialDefinition credDefDtoForLDP_DM2_0 = new CredentialDefinition(); // Using your DTO structure
@@ -181,7 +181,7 @@ public class CertifyIssuanceServiceImplTest {
         supportedCredsMap.put("test-credential-id-ldp-dm-2.0", supportedDTO_LDP_DM2_0);
 
         // SD-JWT Config DTO
-        CredentialConfigurationSupportedDTOV2 supportedDTO_SDJWT = new CredentialConfigurationSupportedDTOV2();
+        CredentialConfigurationSupportedDTO supportedDTO_SDJWT = new CredentialConfigurationSupportedDTO();
         supportedDTO_SDJWT.setScope(DEFAULT_SCOPE);
         supportedDTO_SDJWT.setFormat(DEFAULT_FORMAT_SDJWT);
         supportedDTO_SDJWT.setVct("test_vct");
@@ -192,7 +192,7 @@ public class CertifyIssuanceServiceImplTest {
         supportedCredsMap.put("test-credential-id-sdjwt", supportedDTO_SDJWT);
 
         // MSO_MDOC Config DTO
-        CredentialConfigurationSupportedDTOV2 supportedDTO_MDOC = new CredentialConfigurationSupportedDTOV2();
+        CredentialConfigurationSupportedDTO supportedDTO_MDOC = new CredentialConfigurationSupportedDTO();
         supportedDTO_MDOC.setScope(DEFAULT_SCOPE); // IMPORTANT: Must match claimsFromAccessToken
         supportedDTO_MDOC.setFormat(DEFAULT_FORMAT_MDOC);
         supportedDTO_MDOC.setDocType("org.iso.18013.5.1.mDL");
@@ -204,7 +204,7 @@ public class CertifyIssuanceServiceImplTest {
 
         mockGlobalCredentialIssuerMetadataDTO.setCredentialConfigurationSupportedDTO(supportedCredsMap);
 
-        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2())
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata())
                 .thenReturn(mockGlobalCredentialIssuerMetadataDTO); // Default mock
     }
 

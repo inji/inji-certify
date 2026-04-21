@@ -2,7 +2,7 @@ package io.mosip.certify.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.mosip.certify.core.dto.CredentialConfigResponse;
-import io.mosip.certify.core.dto.CredentialConfigurationDTOV2;
+import io.mosip.certify.core.dto.CredentialConfigurationDTO;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -13,31 +13,31 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/v2/credential-configurations")
-public class CredentialConfigControllerV2 {
+@RequestMapping("/credential-configurations")
+public class CredentialConfigController {
 
     @Autowired
     private CredentialConfigurationService credentialConfigurationService;
 
     @PostMapping(produces = "application/json")
-    public ResponseEntity<CredentialConfigResponse> addCredentialConfiguration(@Valid @RequestBody CredentialConfigurationDTOV2 credentialConfigurationRequest) throws JsonProcessingException {
+    public ResponseEntity<CredentialConfigResponse> addCredentialConfiguration(@Valid @RequestBody CredentialConfigurationDTO credentialConfigurationRequest) throws JsonProcessingException {
 
-        CredentialConfigResponse credentialConfigResponse = credentialConfigurationService.addCredentialConfigurationV2(credentialConfigurationRequest);
+        CredentialConfigResponse credentialConfigResponse = credentialConfigurationService.addCredentialConfiguration(credentialConfigurationRequest);
         return new ResponseEntity<>(credentialConfigResponse, HttpStatus.CREATED);
     }
 
     @GetMapping(value = "/{credentialConfigKeyId}", produces = "application/json")
-    public ResponseEntity<CredentialConfigurationDTOV2> getCredentialConfigurationById(@PathVariable String credentialConfigKeyId) throws JsonProcessingException {
+    public ResponseEntity<CredentialConfigurationDTO> getCredentialConfigurationById(@PathVariable String credentialConfigKeyId) throws JsonProcessingException {
 
-        CredentialConfigurationDTOV2 credentialConfigurationDTO = credentialConfigurationService.getCredentialConfigurationByIdV2(credentialConfigKeyId);
+        CredentialConfigurationDTO credentialConfigurationDTO = credentialConfigurationService.getCredentialConfigurationById(credentialConfigKeyId);
         return new ResponseEntity<>(credentialConfigurationDTO, HttpStatus.OK);
     }
 
     @PutMapping(value = "/{credentialConfigKeyId}", produces = "application/json")
     public ResponseEntity<CredentialConfigResponse> updateCredentialConfiguration(@PathVariable String credentialConfigKeyId,
-                                                                                  @Valid @RequestBody CredentialConfigurationDTOV2 credentialConfigurationRequest) throws JsonProcessingException {
+                                                                                  @Valid @RequestBody CredentialConfigurationDTO credentialConfigurationRequest) throws JsonProcessingException {
 
-        CredentialConfigResponse credentialConfigResponse = credentialConfigurationService.updateCredentialConfigurationV2(credentialConfigKeyId, credentialConfigurationRequest);
+        CredentialConfigResponse credentialConfigResponse = credentialConfigurationService.updateCredentialConfiguration(credentialConfigKeyId, credentialConfigurationRequest);
         return new ResponseEntity<>(credentialConfigResponse, HttpStatus.OK);
     }
 

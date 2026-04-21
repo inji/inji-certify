@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class CredentialConfigurationDTOV2 {
+public class CredentialConfigurationDTO {
 
     private String vcTemplate;
 
@@ -40,7 +40,7 @@ public class CredentialConfigurationDTOV2 {
 
     @Valid
     @NotNull(message = ErrorConstants.INVALID_METADATA_DISPLAY)
-    private List<MetaDataDisplayDTOV2> metaDataDisplay;
+    private List<MetaDataDisplayDTO> metaDataDisplay;
 
     private List<String> displayOrder;
 

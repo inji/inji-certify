@@ -3,7 +3,6 @@ package io.mosip.certify.utils;
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.*;
@@ -158,14 +157,14 @@ public class VCIssuanceUtil {
 
     public static Optional<CredentialMetadata> getScopeCredentialMapping(
             String scope, String format,
-            CredentialIssuerMetadataDTOV2 credentialIssuerMetadataDTO,
+            CredentialIssuerMetadataDTO credentialIssuerMetadataDTO,
             CredentialRequest credentialRequest) {
 
-        Map<String, CredentialConfigurationSupportedDTOV2> supportedCredentials =
-                credentialIssuerMetadataDTO.getCredentialConfigurationSupportedDTOV2();
+        Map<String, CredentialConfigurationSupportedDTO> supportedCredentials =
+                credentialIssuerMetadataDTO.getCredentialConfigurationSupportedDTO();
 
         // Filter entries by scope
-        List<Map.Entry<String, CredentialConfigurationSupportedDTOV2>> scopeEntries = supportedCredentials.entrySet().stream()
+        List<Map.Entry<String, CredentialConfigurationSupportedDTO>> scopeEntries = supportedCredentials.entrySet().stream()
                 .filter(cm -> Objects.equals(scope, cm.getValue().getScope()))
                 .toList();
 
@@ -174,8 +173,8 @@ public class VCIssuanceUtil {
         }
 
         // Check all scope-matched entries for format and validation
-        for (Map.Entry<String, CredentialConfigurationSupportedDTOV2> entry : scopeEntries) {
-            CredentialConfigurationSupportedDTOV2 dto = entry.getValue();
+        for (Map.Entry<String, CredentialConfigurationSupportedDTO> entry : scopeEntries) {
+            CredentialConfigurationSupportedDTO dto = entry.getValue();
             if (Objects.equals(dto.getFormat(), format)) {
                 switch (format) {
                     case VCFormats.LDP_VC:
@@ -221,7 +220,7 @@ public class VCIssuanceUtil {
     }
 
 
-    private static boolean isValidLdpVCRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTOV2 credentialConfigurationSupportedDTO) {
+    private static boolean isValidLdpVCRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
         if(credentialRequest.getCredential_definition().getContext().size() != credentialConfigurationSupportedDTO.getCredentialDefinition().getContext().size()) {
             return false;
         }
@@ -234,11 +233,11 @@ public class VCIssuanceUtil {
                 new HashSet<>(credentialConfigurationSupportedDTO.getCredentialDefinition().getType()).containsAll(credentialRequest.getCredential_definition().getType());
     }
 
-    private static boolean isValidSDJwtRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTOV2 credentialConfigurationSupportedDTO) {
+    private static boolean isValidSDJwtRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
         return Objects.equals(credentialConfigurationSupportedDTO.getVct(), credentialRequest.getVct());
     }
 
-    private static boolean isValidMsoMdocRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTOV2 credentialConfigurationSupportedDTO) {
+    private static boolean isValidMsoMdocRequest(CredentialRequest credentialRequest, CredentialConfigurationSupportedDTO credentialConfigurationSupportedDTO) {
         return Objects.equals(credentialConfigurationSupportedDTO.getDocType(), credentialRequest.getDoctype());
     }
 

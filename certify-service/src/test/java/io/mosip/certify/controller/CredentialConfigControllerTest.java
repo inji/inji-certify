@@ -25,8 +25,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @RunWith(SpringRunner.class)
-@WebMvcTest(value = CredentialConfigControllerV2.class)
-public class CredentialConfigControllerV2Test {
+@WebMvcTest(value = CredentialConfigController.class)
+public class CredentialConfigControllerTest {
     ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -39,11 +39,11 @@ public class CredentialConfigControllerV2Test {
     CredentialConfigurationService credentialConfigurationService;
 
     @Mock
-    private CredentialConfigurationDTOV2 credentialConfigurationDTO;
+    private CredentialConfigurationDTO credentialConfigurationDTO;
 
     @Before
     public void setup() {
-        credentialConfigurationDTO = new CredentialConfigurationDTOV2();
+        credentialConfigurationDTO = new CredentialConfigurationDTO();
         credentialConfigurationDTO.setVcTemplate("test_template");
         credentialConfigurationDTO.setContextURLs(List.of("https://www.w3.org/2018/credentials/v1"));
         credentialConfigurationDTO.setCredentialTypes(Arrays.asList("VerifiableCredential", "TestVerifiableCredential"));
@@ -69,9 +69,9 @@ public class CredentialConfigControllerV2Test {
         CredentialConfigResponse credentialConfigResponse = new CredentialConfigResponse();
         credentialConfigResponse.setId("farmer-credential-config-001");
         credentialConfigResponse.setStatus("active");
-        Mockito.when(credentialConfigurationService.addCredentialConfigurationV2(credentialConfigurationDTO)).thenReturn(credentialConfigResponse);
+        Mockito.when(credentialConfigurationService.addCredentialConfiguration(credentialConfigurationDTO)).thenReturn(credentialConfigResponse);
 
-        mockMvc.perform(post("/v2/credential-configurations")
+        mockMvc.perform(post("/credential-configurations")
                         .content(objectMapper.writeValueAsBytes(credentialConfigurationDTO))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
@@ -82,9 +82,9 @@ public class CredentialConfigControllerV2Test {
     @Test
     public void getCredentialConfigurationById_Success() throws Exception {
 
-        Mockito.when(credentialConfigurationService.getCredentialConfigurationByIdV2(Mockito.anyString())).thenReturn(credentialConfigurationDTO);
+        Mockito.when(credentialConfigurationService.getCredentialConfigurationById(Mockito.anyString())).thenReturn(credentialConfigurationDTO);
 
-        mockMvc.perform(get("/v2/credential-configurations/1"))
+        mockMvc.perform(get("/credential-configurations/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.vcTemplate").exists())
                 .andExpect(jsonPath("$.contextURLs").exists())
@@ -98,9 +98,9 @@ public class CredentialConfigControllerV2Test {
         CredentialConfigResponse credentialConfigResponse = new CredentialConfigResponse();
         credentialConfigResponse.setId("farmer-credential-config-001");
         credentialConfigResponse.setStatus("active");
-        Mockito.when(credentialConfigurationService.updateCredentialConfigurationV2(Mockito.anyString(), eq(credentialConfigurationDTO))).thenReturn(credentialConfigResponse);
+        Mockito.when(credentialConfigurationService.updateCredentialConfiguration(Mockito.anyString(), eq(credentialConfigurationDTO))).thenReturn(credentialConfigResponse);
 
-        mockMvc.perform(put("/v2/credential-configurations/1")
+        mockMvc.perform(put("/credential-configurations/1")
                         .content(objectMapper.writeValueAsBytes(credentialConfigurationDTO))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -112,7 +112,7 @@ public class CredentialConfigControllerV2Test {
     public void deleteExistingCredentialConfiguration_Success() throws Exception {
         Mockito.when(credentialConfigurationService.deleteCredentialConfigurationById(Mockito.anyString())).thenReturn("1");
 
-        mockMvc.perform(delete("/v2/credential-configurations/1"))
+        mockMvc.perform(delete("/credential-configurations/1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deleted configuration with id: 1"));
     }

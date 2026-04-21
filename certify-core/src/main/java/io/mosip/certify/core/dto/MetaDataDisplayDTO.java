@@ -1,11 +1,10 @@
 package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
-public class MetaDataDisplayDTOV2 {
+public class MetaDataDisplayDTO {
     private Logo logo;
     private String name;
     private String locale;

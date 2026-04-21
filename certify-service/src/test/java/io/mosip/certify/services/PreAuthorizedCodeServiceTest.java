@@ -15,7 +15,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -53,7 +52,7 @@ public class PreAuthorizedCodeServiceTest {
     private Map<String, Object> issuerMetadata;
     private Map<String, Object> supportedConfigs;
     private Map<String, Object> config;
-    private CredentialIssuerMetadataDTOV2 metadataDTO;
+    private CredentialIssuerMetadataDTO metadataDTO;
     private final String CONFIG_ID = "test-config";
 
     private PreAuthorizedCodeService preAuthorizedCodeService;
@@ -97,16 +96,16 @@ public class PreAuthorizedCodeServiceTest {
         // Mock ObjectMapper for JSON serialization
         when(objectMapper.writeValueAsString(any())).thenReturn("{\"name\":\"John Doe\"}");
         // Setup mock for credentialConfigurationService
-        Map<String, CredentialConfigurationSupportedDTOV2> supportedDTOMap = new LinkedHashMap<>();
-        CredentialConfigurationSupportedDTOV2 configDTO = new CredentialConfigurationSupportedDTOV2();
+        Map<String, CredentialConfigurationSupportedDTO> supportedDTOMap = new LinkedHashMap<>();
+        CredentialConfigurationSupportedDTO configDTO = new CredentialConfigurationSupportedDTO();
         configDTO.setClaims(requiredClaims);
         supportedDTOMap.put(CONFIG_ID, configDTO);
 
-        metadataDTO = mock(CredentialIssuerMetadataDTOV2.class);
+        metadataDTO = mock(CredentialIssuerMetadataDTO.class);
         when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(supportedDTOMap);
 
         // KEY FIX: Mock the credentialConfigurationService to return metadataDTO
-        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2()).thenReturn(metadataDTO);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(metadataDTO);
 
         // Mock credentialConfigRepository
         CredentialConfig credentialConfig = new CredentialConfig();
@@ -141,7 +140,7 @@ public class PreAuthorizedCodeServiceTest {
         request.setCredentialConfigurationId("invalid-id");
 
         // Update metadata mock to not include invalid-id
-        Map<String, CredentialConfigurationSupportedDTOV2> emptyMap = new LinkedHashMap<>();
+        Map<String, CredentialConfigurationSupportedDTO> emptyMap = new LinkedHashMap<>();
         when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(emptyMap);
 
         InvalidRequestException exception = assertThrows(InvalidRequestException.class,

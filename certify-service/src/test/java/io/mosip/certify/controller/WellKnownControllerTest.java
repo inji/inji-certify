@@ -1,6 +1,6 @@
 package io.mosip.certify.controller;
 
-import io.mosip.certify.core.dto.CredentialIssuerMetadataDTOV2;
+import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
 import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
@@ -50,11 +50,11 @@ class WellKnownControllerTest {
 
     @Test
     void getCredentialIssuerMetadata() throws Exception {
-        CredentialIssuerMetadataDTOV2 mockMetadata = mock(CredentialIssuerMetadataDTOV2.class);
-        when(credentialConfigurationService.fetchCredentialIssuerMetadataV2()).thenReturn(mockMetadata);
+        CredentialIssuerMetadataDTO mockMetadata = mock(CredentialIssuerMetadataDTO.class);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockMetadata);
         mockMvc.perform(get("/.well-known/openid-credential-issuer"))
                 .andExpect(status().isOk());
-        verify(credentialConfigurationService, times(1)).fetchCredentialIssuerMetadataV2();
+        verify(credentialConfigurationService, times(1)).fetchCredentialIssuerMetadata();
     }
 
     @Test

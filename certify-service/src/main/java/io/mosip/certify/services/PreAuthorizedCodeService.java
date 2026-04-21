@@ -8,23 +8,18 @@ import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.util.CommonUtil;
-import io.mosip.certify.entity.CredentialConfig;
-import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -118,8 +113,8 @@ public class PreAuthorizedCodeService {
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        CredentialIssuerMetadataDTOV2 metadata = credentialConfigurationService.fetchCredentialIssuerMetadataV2();
-        Map<String, CredentialConfigurationSupportedDTOV2> supportedConfigs = metadata
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata();
+        Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
                 .getCredentialConfigurationSupportedDTO();
 
         if (supportedConfigs == null || !supportedConfigs.containsKey(request.getCredentialConfigurationId())) {
@@ -127,11 +122,11 @@ public class PreAuthorizedCodeService {
             throw new InvalidRequestException(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID);
         }
 
-        CredentialConfigurationSupportedDTOV2 config = supportedConfigs.get(request.getCredentialConfigurationId());
+        CredentialConfigurationSupportedDTO config = supportedConfigs.get(request.getCredentialConfigurationId());
         validateClaims(config, request.getClaims());
     }
 
-    private void validateClaims(CredentialConfigurationSupportedDTOV2 config, Map<String, Object> providedClaims) {
+    private void validateClaims(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
         if (providedClaims == null) {
             providedClaims = Collections.emptyMap();
         }
@@ -151,7 +146,7 @@ public class PreAuthorizedCodeService {
         }
     }
 
-    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTOV2 config, Map<String, Object> providedClaims) {
+    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
         Set<String> allowedClaimKeys;
         CredentialDefinition credDef = config.getCredentialDefinition();
         if (credDef != null && credDef.getCredentialSubject() != null) {

@@ -1,7 +1,7 @@
 package io.mosip.certify.utils;
 
 import io.mosip.certify.core.dto.ClaimsDisplayFieldsConfigDTO;
-import io.mosip.certify.core.dto.CredentialConfigurationDTOV2;
+import io.mosip.certify.core.dto.CredentialConfigurationDTO;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
 import org.mapstruct.*;
@@ -27,7 +27,7 @@ public interface CredentialConfigMapper {
     @Mapping(target = "proofTypesSupported", ignore = true)
     @Mapping(target = "msoMdocClaims", source = "msoMdocClaims", qualifiedByName = "mapClaimsToEntity")
     @Mapping(target = "credentialSubject", source = "credentialSubjectDefinition")
-    CredentialConfig toEntityV2(CredentialConfigurationDTOV2 dto);
+    CredentialConfig toEntity(CredentialConfigurationDTO dto);
 
     // Convert Entity to DTO
     @Mapping(target = "contextURLs", source = "context", qualifiedByName = "commaSeparatedStringToList")
@@ -36,7 +36,7 @@ public interface CredentialConfigMapper {
     @Mapping(target = "displayOrder", source = "order")
     @Mapping(target = "msoMdocClaims", source = "msoMdocClaims", qualifiedByName = "mapClaimsToDto")
     @Mapping(target = "credentialSubjectDefinition", source = "credentialSubject")
-    CredentialConfigurationDTOV2 toDtoV2(CredentialConfig entity);
+    CredentialConfigurationDTO toDto(CredentialConfig entity);
 
     @Mapping(target = "configId", ignore = true)
     @Mapping(target = "status", ignore = true)
@@ -51,7 +51,7 @@ public interface CredentialConfigMapper {
     @Mapping(target = "proofTypesSupported", ignore = true)
     @Mapping(target = "msoMdocClaims", source = "msoMdocClaims", qualifiedByName = "mapClaimsToEntity")
     @Mapping(target = "credentialSubject", source = "credentialSubjectDefinition")
-    void updateEntityFromDtoV2(CredentialConfigurationDTOV2 dto, @MappingTarget CredentialConfig entity);
+    void updateEntityFromDto(CredentialConfigurationDTO dto, @MappingTarget CredentialConfig entity);
 
     ClaimsDisplayFieldsConfigs toEntity(ClaimsDisplayFieldsConfigDTO dto);
     ClaimsDisplayFieldsConfigDTO toDto(ClaimsDisplayFieldsConfigs dto);

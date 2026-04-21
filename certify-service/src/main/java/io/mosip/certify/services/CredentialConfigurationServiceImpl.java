@@ -76,10 +76,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
 
     @Override
-    public CredentialConfigResponse addCredentialConfigurationV2(CredentialConfigurationDTOV2 credentialConfigurationDTO) {
-        validateCredentialConfigurationV2(credentialConfigurationDTO, true);
+    public CredentialConfigResponse addCredentialConfiguration(CredentialConfigurationDTO credentialConfigurationDTO) {
+        validateCredentialConfiguration(credentialConfigurationDTO, true);
 
-        CredentialConfig credentialConfig = credentialConfigMapper.toEntityV2(credentialConfigurationDTO);
+        CredentialConfig credentialConfig = credentialConfigMapper.toEntity(credentialConfigurationDTO);
         return saveCredentialConfiguration(credentialConfig);
     }
 
@@ -102,33 +102,33 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return credentialConfigResponse;
     }
 
-    private void validateCredentialConfigurationV2(CredentialConfigurationDTOV2 credentialConfig, boolean shouldCheckDuplicate) {
+    private void validateCredentialConfiguration(CredentialConfigurationDTO credentialConfig, boolean shouldCheckDuplicate) {
 
         validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate(),credentialConfig.getQrSettings(),credentialConfig.getQrSignatureAlgo());
 
         switch (credentialConfig.getCredentialFormat()) {
             case VCFormats.LDP_VC:
-                if (!LdpVcCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
+                if (!LdpVcCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_MANDATORY_FIELDS_MISSING, "Fields context, credentialType, and signatureCryptoSuite are mandatory for the ldp_vc format.");
                 }
-                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
+                if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
                 validateKeyAliasMapperConfigurationV2(credentialConfig);
                 break;
             case VCFormats.MSO_MDOC:
-                if (!MsoMdocCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
+                if (!MsoMdocCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_MANDATORY_FIELDS_MISSING, "Fields doctype and signatureCryptoSuite are mandatory for the mso_mdoc format.");
                 }
-                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
+                if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
                 break;
             case VCFormats.VC_SD_JWT:
-                if (!SdJwtCredentialConfigValidator.isValidCheckV2(credentialConfig)) {
+                if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_MANDATORY_FIELDS_MISSING, "Fields vct and signatureAlgo are mandatory for the vc+sd-jwt format.");
                 }
-                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresentV2(credentialConfig, credentialConfigRepository)) {
+                if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 break;
@@ -167,7 +167,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
 
-    private void validateKeyAliasMapperConfigurationV2(CredentialConfigurationDTOV2 credentialConfig) {
+    private void validateKeyAliasMapperConfigurationV2(CredentialConfigurationDTO credentialConfig) {
         if(pluginMode.equals("VCIssuance")) {
             return;
         }
@@ -206,10 +206,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     @Override
-    public CredentialConfigurationDTOV2 getCredentialConfigurationByIdV2(String credentialConfigKeyId) {
+    public CredentialConfigurationDTO getCredentialConfigurationById(String credentialConfigKeyId) {
         CredentialConfig credentialConfig = getActiveCredentialConfig(credentialConfigKeyId);
 
-        return credentialConfigMapper.toDtoV2(credentialConfig);
+        return credentialConfigMapper.toDto(credentialConfig);
     }
 
     private CredentialConfig getActiveCredentialConfig(String credentialConfigKeyId) {
@@ -234,7 +234,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
      */
     @Override
     @CacheEvict(cacheNames = CREDENTIAL_CONFIG_CACHE_NAME, key = "@credentialCacheKeyGenerator.generateKeyFromCredentialConfigKeyId(#credentialConfigKeyId)", condition = "#credentialConfigKeyId != null")
-    public CredentialConfigResponse updateCredentialConfigurationV2(String credentialConfigKeyId, CredentialConfigurationDTOV2 credentialConfigurationDTO){
+    public CredentialConfigResponse updateCredentialConfiguration(String credentialConfigKeyId, CredentialConfigurationDTO credentialConfigurationDTO){
         Optional<CredentialConfig> optional = credentialConfigRepository.findByCredentialConfigKeyId(credentialConfigKeyId);
 
         if(optional.isEmpty()) {
@@ -243,9 +243,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         }
 
         CredentialConfig credentialConfig = optional.get();
-        credentialConfigMapper.updateEntityFromDtoV2(credentialConfigurationDTO, credentialConfig);
+        credentialConfigMapper.updateEntityFromDto(credentialConfigurationDTO, credentialConfig);
 
-        validateCredentialConfigurationV2(credentialConfigMapper.toDtoV2(credentialConfig), false);
+        validateCredentialConfiguration(credentialConfigMapper.toDto(credentialConfig), false);
 
         credentialConfig.setCredentialSigningAlgValuesSupported(Collections.singletonList(credentialConfig.getSignatureCryptoSuite()));
 
@@ -285,7 +285,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     @Override
-    public CredentialIssuerMetadataDTOV2 fetchCredentialIssuerMetadataV2() {
+    public CredentialIssuerMetadataDTO fetchCredentialIssuerMetadata() {
         List<CredentialConfig> credentialConfigList = credentialConfigRepository.findAll()
                 .stream()
                 .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
@@ -294,12 +294,12 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return buildMetadata(credentialConfigList);
     }
 
-    private CredentialIssuerMetadataDTOV2 buildMetadata(List<CredentialConfig> credentialConfigList) {
-        CredentialIssuerMetadataDTOV2 credentialIssuerMetadata = new CredentialIssuerMetadataDTOV2();
-        Map<String, CredentialConfigurationSupportedDTOV2> credentialConfigurationSupportedMap = new HashMap<>();
+    private CredentialIssuerMetadataDTO buildMetadata(List<CredentialConfig> credentialConfigList) {
+        CredentialIssuerMetadataDTO credentialIssuerMetadata = new CredentialIssuerMetadataDTO();
+        Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
 
         credentialConfigList.forEach(credentialConfig -> {
-            CredentialConfigurationSupportedDTOV2 dto = mapToSupportedDTO(credentialConfig);
+            CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
             if (credentialConfig.getSignatureCryptoSuite() != null) {
                 dto.setCredentialSigningAlgValuesSupported(
                         credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite())
@@ -312,12 +312,12 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
         });
 
-        credentialIssuerMetadata.setCredentialConfigurationSupportedDTOV2(credentialConfigurationSupportedMap);
+        credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
         populateCommonMetadataFields(credentialIssuerMetadata);
         return credentialIssuerMetadata;
     }
 
-    private void populateCommonMetadataFields(CredentialIssuerMetadataDTOV2 metadata) {
+    private void populateCommonMetadataFields(CredentialIssuerMetadataDTO metadata) {
         metadata.setCredentialIssuer(credentialIssuer);
         metadata.setAuthorizationServers(resolveAuthorizationServers());
         metadata.setCredentialEndpoint(buildCredentialEndpoint());
@@ -348,9 +348,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return credentialIssuer + servletPath + "/issuance/credential";
     }
 
-    private CredentialConfigurationSupportedDTOV2 mapToSupportedDTO(CredentialConfig credentialConfig) {
-        CredentialConfigurationSupportedDTOV2 credentialConfigurationSupported = new CredentialConfigurationSupportedDTOV2();
-        CredentialConfigurationDTOV2 credentialConfigurationDTO = credentialConfigMapper.toDtoV2(credentialConfig);
+    private CredentialConfigurationSupportedDTO mapToSupportedDTO(CredentialConfig credentialConfig) {
+        CredentialConfigurationSupportedDTO credentialConfigurationSupported = new CredentialConfigurationSupportedDTO();
+        CredentialConfigurationDTO credentialConfigurationDTO = credentialConfigMapper.toDto(credentialConfig);
         credentialConfigurationSupported.setFormat(credentialConfigurationDTO.getCredentialFormat());
         credentialConfigurationSupported.setScope(credentialConfigurationDTO.getScope());
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());

@@ -9,7 +9,7 @@ import java.util.Map;
 
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class CredentialConfigurationSupportedDTOV2 {
+public class CredentialConfigurationSupportedDTO {
 
     private String format;
 
@@ -37,7 +37,7 @@ public class CredentialConfigurationSupportedDTOV2 {
 
     private Map<String, Object> claims;
 
-    private List<MetaDataDisplayDTOV2> display;
+    private List<MetaDataDisplayDTO> display;
 
     private List<String> order;
 
