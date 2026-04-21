@@ -308,7 +308,7 @@
 									"    // Store access token",
 									"    console.log(\"access_token:\", accessToken);",
 									"    pm.collectionVariables.set('access_token', accessToken);",
-									"    console.log(\"✅ Access token saved successfully\");"
+									"    console.log(\"✅ Access token saved successfully\");",
 									"});"
 								],
 								"type": "text/javascript"
