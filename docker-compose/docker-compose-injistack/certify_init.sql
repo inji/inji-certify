@@ -191,7 +191,7 @@ VALUES (
     'EdDSA',  -- signature_algo (optional)
     'Ed25519Signature2020',  -- signature_crypto_suite
     NULL,  -- sd_claim (optional)
-    '[{"name": "Farmer Verifiable Credential", "locale": "en", "logo": {"url": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png", "alt_text": "Farmer Credential Logo"}, "background_color": "#12107c", "text_color": "#FFFFFF", "background_image": { "uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png" }}]'::JSONB,  -- display
+    '[{"name": "Farmer Verifiable Credential", "locale": "en", "logo": {"uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png", "alt_text": "Farmer Credential Logo"}, "background_color": "#12107c", "text_color": "#FFFFFF", "background_image": { "uri": "https://mosip.github.io/inji-config/logos/agro-vertias-logo.png" }}]'::JSONB,  -- display
     ARRAY['fullName', 'mobileNumber', 'dateOfBirth', 'gender', 'state', 'district', 'villageOrTown', 'postalCode', 'landArea', 'landOwnershipType', 'primaryCropType', 'secondaryCropType', 'farmerID'],  -- display_order
     'mock_identity_vc_ldp',  -- scope
     ARRAY['did:jwk'],  -- cryptographic_binding_methods_supported
