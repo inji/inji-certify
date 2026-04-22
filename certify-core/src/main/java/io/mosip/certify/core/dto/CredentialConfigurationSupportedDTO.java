@@ -33,13 +33,12 @@ public class CredentialConfigurationSupportedDTO {
     private Map<String, Object> proofTypesSupported;
 
     @JsonProperty("credential_definition")
-    private CredentialDefinition credentialDefinition;
+    private CredentialDefinition credentialDefinition; // will be removed, if removed now getCredential endpoint breaks
 
-    private Map<String, Object> claims;
-
-    private List<MetaDataDisplayDTO> display;
-
-    private List<String> order;
+    private Map<String, Object> claims; // will be removed , if removed now PreAuthorized endpoint breaks
 
     private String vct;
+
+    @JsonProperty("credential_metadata")
+    private CredentialMetadataV2 credentialMetadata;
 }
