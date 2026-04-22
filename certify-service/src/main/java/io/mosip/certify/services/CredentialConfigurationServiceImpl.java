@@ -43,6 +43,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     @Value("${mosip.certify.domain.url}")
     private String credentialIssuer;
 
+    @Value("${mosip.certify.allow-c-nonce:false}")
+    private boolean allowCNonce;
+
     @Value("${mosip.certify.authorization.url}")
     private String authUrl;
 
@@ -323,7 +326,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         metadata.setAuthorizationServers(resolveAuthorizationServers());
         metadata.setCredentialEndpoint(buildCredentialEndpoint());
         metadata.setDisplay(issuerDisplay);
-        metadata.setNonceEndpoint(buildNonceEndpoint());
+        if (allowCNonce) metadata.setNonceEndpoint(buildNonceEndpoint());
     }
 
     private String buildNonceEndpoint() {
