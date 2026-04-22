@@ -4,7 +4,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class CredentialMetadataV2 {
+public class CredentialMetadata {
 
     private List<MetaDataDisplayDTO> display;
 

@@ -362,7 +362,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
 
-        CredentialMetadataV2 credentialMetadata = new CredentialMetadataV2();
+        CredentialMetadata credentialMetadata = new CredentialMetadata();
         credentialMetadata.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
             credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
@@ -378,14 +378,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return credentialConfigurationSupported;
     }
 
-    private List<CredentialMetadataV2.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
+    private List<CredentialMetadata.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
         if (claims == null) return Collections.emptyList();
         return claims.entrySet().stream()
                 .map(entry -> buildClaimObject(Collections.singletonList(entry.getKey()), entry.getValue()))
                 .collect(Collectors.toList());
     }
 
-    private List<CredentialMetadataV2.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
+    private List<CredentialMetadata.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
         if (mDocClaims == null) return Collections.emptyList();
         return mDocClaims.entrySet().stream()
                 .flatMap(namespace -> namespace.getValue().entrySet().stream()
@@ -393,8 +393,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 .collect(Collectors.toList());
     }
 
-    private CredentialMetadataV2.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
-        CredentialMetadataV2.Claims claim = new CredentialMetadataV2.Claims();
+    private CredentialMetadata.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
+        CredentialMetadata.Claims claim = new CredentialMetadata.Claims();
         claim.setPath(path);
 
         if (value != null && value.getDisplay() != null) {
