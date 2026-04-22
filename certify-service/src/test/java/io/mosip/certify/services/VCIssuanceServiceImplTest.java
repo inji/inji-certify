@@ -491,8 +491,8 @@ public class VCIssuanceServiceImplTest {
             when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), any(CredentialProof.class), any())).thenReturn(true);
             when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn(HOLDER_ID);
 
-            // Mock CredentialMetadata and its getProofTypesSupported()
-            CredentialMetadata mockMetadata = org.mockito.Mockito.mock(CredentialMetadata.class);
+            // Mock CredentialConfigurationSupported and its getProofTypesSupported()
+            CredentialConfigurationSupported mockMetadata = org.mockito.Mockito.mock(CredentialConfigurationSupported.class);
             utilMock.when(() -> VCIssuanceUtil.getScopeCredentialMapping(
                     anyString(), anyString(), any(), any(CredentialRequest.class)
             )).thenReturn(Optional.of(mockMetadata));
@@ -547,8 +547,8 @@ public class VCIssuanceServiceImplTest {
             when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), any(CredentialProof.class), any())).thenReturn(true);
             when(proofValidator.getKeyMaterial(any(CredentialProof.class))).thenReturn(HOLDER_ID);
 
-            // Mock CredentialMetadata and its getProofTypesSupported()
-            CredentialMetadata mockMetadata = org.mockito.Mockito.mock(CredentialMetadata.class);
+            // Mock CredentialConfigurationSupported and its getProofTypesSupported()
+            CredentialConfigurationSupported mockMetadata = org.mockito.Mockito.mock(CredentialConfigurationSupported.class);
             utilMock.when(() -> VCIssuanceUtil.getScopeCredentialMapping(
                     anyString(), anyString(), any(), any(CredentialRequest.class)
             )).thenReturn(Optional.of(mockMetadata));

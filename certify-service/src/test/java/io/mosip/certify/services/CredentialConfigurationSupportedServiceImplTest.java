@@ -30,7 +30,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
-public class CredentialConfigurationServiceImplTest {
+public class CredentialConfigurationSupportedServiceImplTest {
 
     @Mock
     private CredentialConfigRepository credentialConfigRepository;
