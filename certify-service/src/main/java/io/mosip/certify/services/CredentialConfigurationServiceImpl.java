@@ -26,7 +26,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -362,29 +361,48 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigurationSupported.setScope(credentialConfigurationDTO.getScope());
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
-        credentialConfigurationSupported.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
-        credentialConfigurationSupported.setOrder(credentialConfigurationDTO.getDisplayOrder());
 
+        CredentialMetadataV2 credentialMetadata = new CredentialMetadataV2();
+        credentialMetadata.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
-            CredentialDefinition credentialDefinition = new CredentialDefinition();
-            credentialDefinition.setType(credentialConfigurationDTO.getCredentialTypes());
-            credentialDefinition.setContext(credentialConfigurationDTO.getContextURLs());
-            if (credentialConfig.getCredentialSubject() != null) {
-                credentialDefinition.setCredentialSubject(new HashMap<>(credentialConfig.getCredentialSubject()));
-            }
-            credentialConfigurationSupported.setCredentialDefinition(credentialDefinition);
+            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
-            if (credentialConfig.getMsoMdocClaims() != null) {
-                credentialConfigurationSupported.setClaims(new HashMap<>(new HashMap<>(credentialConfig.getMsoMdocClaims())));
-            }
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
+            credentialMetadata.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
         } else if (VCFormats.VC_SD_JWT.equals(credentialConfig.getCredentialFormat())) {
-            if (credentialConfig.getSdJwtClaims() != null) {
-                credentialConfigurationSupported.setClaims(new HashMap<>(credentialConfig.getSdJwtClaims()));
-            }
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
+            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getSdJwtClaims()));
         }
+        credentialConfigurationSupported.setCredentialMetadata(credentialMetadata);
 
         return credentialConfigurationSupported;
+    }
+
+    private List<CredentialMetadataV2.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
+        if (claims == null) return Collections.emptyList();
+        return claims.entrySet().stream()
+                .map(entry -> buildClaimObject(Collections.singletonList(entry.getKey()), entry.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    private List<CredentialMetadataV2.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
+        if (mDocClaims == null) return Collections.emptyList();
+        return mDocClaims.entrySet().stream()
+                .flatMap(namespace -> namespace.getValue().entrySet().stream()
+                        .map(entry -> buildClaimObject(Arrays.asList(namespace.getKey(), entry.getKey()), entry.getValue())))
+                .collect(Collectors.toList());
+    }
+
+    private CredentialMetadataV2.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
+        CredentialMetadataV2.Claims claim = new CredentialMetadataV2.Claims();
+        claim.setPath(path);
+
+        if (value != null && value.getDisplay() != null) {
+            List<ClaimsDisplayFieldsConfigDTO.Display> displayList = value.getDisplay().stream()
+                    .map(d -> new ClaimsDisplayFieldsConfigDTO.Display(d.getName(), d.getLocale()))
+                    .collect(Collectors.toList());
+            claim.setDisplay(displayList);
+        }
+        return claim;
     }
 }
