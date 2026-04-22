@@ -69,7 +69,7 @@ AuthenticateUserVCI:
    InjiCertify_ESignet_AuthenticateUserVCI_MOSIPID_uin_Otp_Valid_Claim169_Smoke:
       endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/authenticate
       uniqueIdentifier: TC_esignetDependent_AuthenticateUser_claim169_01   
-      description: Authenticate User  
+      description: Authenticate User for claim169 with UIN otp
       role: resident
       restMethod: post
       checkErrorsOnlyInResponse: true
