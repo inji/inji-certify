@@ -23,3 +23,4 @@ ALTER COLUMN credential_status TYPE VARCHAR
 
 ALTER TABLE certify.credential_config
 RENAME COLUMN credential_subject TO claims;
+COMMENT ON COLUMN certify.credential_config.claims IS 'Claims: JSON object containing subject attributes schema.';
