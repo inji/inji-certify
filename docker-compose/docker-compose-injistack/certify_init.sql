@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS certify.credential_config (
     cryptographic_binding_methods_supported TEXT[] NOT NULL,
     credential_signing_alg_values_supported TEXT[] NOT NULL,
     proof_types_supported JSONB NOT NULL,
-    credential_subject JSONB,
+    claims JSONB,
     sd_jwt_claims JSONB,
     mso_mdoc_claims JSONB,
     plugin_configurations JSONB,
@@ -166,7 +166,7 @@ INSERT INTO certify.credential_config (
     cryptographic_binding_methods_supported,
     credential_signing_alg_values_supported,
     proof_types_supported,
-    credential_subject,
+    claims,
     mso_mdoc_claims,
     plugin_configurations,
     credential_status_purpose,
@@ -197,7 +197,7 @@ VALUES (
     ARRAY['did:jwk'],  -- cryptographic_binding_methods_supported
     ARRAY['Ed25519Signature2020'],  -- credential_signing_alg_values_supported
     '{"jwt": {"proof_signing_alg_values_supported": ["RS256", "ES256"]}}'::JSONB,  -- proof_types_supported
-    '{"fullName": {"display": [{"name": "Full Name", "locale": "en"}]}, "phone": {"display": [{"name": "Phone Number", "locale": "en"}]}, "dateOfBirth": {"display": [{"name": "Date of Birth", "locale": "en"}]}, "gender": {"display": [{"name": "Gender", "locale": "en"}]}}'::JSONB,  -- credential_subject
+    '{"fullName": {"display": [{"name": "Full Name", "locale": "en"}]}, "phone": {"display": [{"name": "Phone Number", "locale": "en"}]}, "dateOfBirth": {"display": [{"name": "Date of Birth", "locale": "en"}]}, "gender": {"display": [{"name": "Gender", "locale": "en"}]}}'::JSONB,  -- claims
     NULL,  -- claims (optional)
     '[{"mosip.certify.mock.data-provider.csv.identifier-column": "id", "mosip.certify.mock.data-provider.csv.data-columns": "id,fullName,mobileNumber,dateOfBirth,gender,state,district,villageOrTown,postalCode,landArea,landOwnershipType,primaryCropType,secondaryCropType,face,farmerID", "mosip.certify.mock.data-provider.csv-registry-uri": "/home/mosip/config/farmer_identity_data.csv"}]'::JSONB,  -- plugin_configurations
     ARRAY['revocation'],  -- credential_status_purpose
