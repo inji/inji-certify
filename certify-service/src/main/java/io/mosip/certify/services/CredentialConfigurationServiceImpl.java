@@ -391,6 +391,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private List<CredentialMetadataDTO.Claims> mapMDocClaims(Map<String, Map<String, Claims>> mDocClaims) {
         if (mDocClaims == null) return Collections.emptyList();
         return mDocClaims.entrySet().stream()
+                .filter(namespace -> namespace.getValue() != null)
                 .flatMap(namespace -> namespace.getValue().entrySet().stream()
                         .map(entry -> buildClaimObject(Arrays.asList(namespace.getKey(), entry.getKey()), entry.getValue())))
                 .collect(Collectors.toList());
