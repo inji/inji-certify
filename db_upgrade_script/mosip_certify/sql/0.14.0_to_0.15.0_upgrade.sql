@@ -20,3 +20,6 @@ WHERE display IS NOT NULL;
 ALTER TABLE certify.status_list_credential
 ALTER COLUMN credential_status TYPE VARCHAR
         USING credential_status::text;
+
+ALTER TABLE certify.credential_config
+RENAME COLUMN credential_subject TO claims;
