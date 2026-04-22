@@ -114,7 +114,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
-                validateKeyAliasMapperConfigurationV2(credentialConfig);
+                validateKeyAliasMapperConfiguration(credentialConfig);
                 break;
             case VCFormats.MSO_MDOC:
                 if (!MsoMdocCredentialConfigValidator.isValidCheck(credentialConfig)) {
@@ -167,7 +167,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
 
-    private void validateKeyAliasMapperConfigurationV2(CredentialConfigurationDTO credentialConfig) {
+    private void validateKeyAliasMapperConfiguration(CredentialConfigurationDTO credentialConfig) {
         if(pluginMode.equals("VCIssuance")) {
             return;
         }

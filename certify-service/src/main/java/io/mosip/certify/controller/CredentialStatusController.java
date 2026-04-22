@@ -7,7 +7,6 @@ package io.mosip.certify.controller;
 
 import io.mosip.certify.core.dto.CredentialStatusResponse;
 import io.mosip.certify.core.dto.UpdateCredentialStatusRequest;
-import io.mosip.certify.core.dto.UpdateCredentialStatusRequestV2;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.CredentialStatusService;
 import io.mosip.certify.services.StatusListCredentialService;
@@ -48,16 +47,6 @@ public class CredentialStatusController {
     public ResponseEntity<CredentialStatusResponse> updateCredential(
             @Valid @RequestBody UpdateCredentialStatusRequest updateCredentialStatusRequest) {
         CredentialStatusResponse result = credentialStatusService.updateCredentialStatus(updateCredentialStatusRequest);
-        if (result == null) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    @PostMapping(value = "/v2/status", produces = "application/json")
-    public ResponseEntity<CredentialStatusResponse> updateCredentialV2(
-            @Valid @RequestBody UpdateCredentialStatusRequestV2 updateCredentialStatusRequestV2) {
-        CredentialStatusResponse result = credentialStatusService.updateCredentialStatusV2(updateCredentialStatusRequestV2);
         if (result == null) {
             return ResponseEntity.noContent().build();
         }
