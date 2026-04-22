@@ -5,9 +5,10 @@
  */
 package io.mosip.certify.controller;
 
-import java.time.ZoneId;
-import java.util.concurrent.TimeUnit;
-
+import io.mosip.certify.core.dto.RenderingTemplateDTO;
+import io.mosip.certify.core.exception.RenderingTemplateException;
+import io.mosip.certify.core.spi.RenderingTemplateService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
@@ -18,10 +19,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.mosip.certify.core.dto.RenderingTemplateDTO;
-import io.mosip.certify.core.exception.RenderingTemplateException;
-import io.mosip.certify.core.spi.RenderingTemplateService;
-import lombok.extern.slf4j.Slf4j;
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController

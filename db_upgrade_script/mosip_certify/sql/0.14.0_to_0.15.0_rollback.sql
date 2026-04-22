@@ -19,3 +19,7 @@ SET display = COALESCE((
     FROM jsonb_array_elements(display::jsonb) AS elem
 ), '[]'::jsonb)
 WHERE display IS NOT NULL;
+
+ALTER TABLE certify.status_list_credential
+ALTER COLUMN credential_status TYPE credential_status_enum
+        USING credential_status::credential_status_enum;

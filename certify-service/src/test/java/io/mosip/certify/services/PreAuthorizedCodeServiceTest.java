@@ -15,7 +15,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -106,7 +105,7 @@ public class PreAuthorizedCodeServiceTest {
         when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(supportedDTOMap);
 
         // KEY FIX: Mock the credentialConfigurationService to return metadataDTO
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata(anyString())).thenReturn(metadataDTO);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(metadataDTO);
 
         // Mock credentialConfigRepository
         CredentialConfig credentialConfig = new CredentialConfig();
