@@ -16,10 +16,11 @@ import io.mosip.certify.api.util.ActionStatus;
 import io.mosip.certify.api.util.AuditHelper;
 import io.mosip.certify.config.VelocityEnvConfig;
 import io.mosip.certify.core.constants.*;
-import io.mosip.certify.core.dto.CredentialMetadata;
-import io.mosip.certify.core.dto.CredentialRequest;
-import io.mosip.certify.core.dto.CredentialResponse;
 import io.mosip.certify.core.dto.ParsedAccessToken;
+import io.mosip.certify.core.dto.CredentialResponse;
+import io.mosip.certify.core.dto.CredentialRequest;
+import io.mosip.certify.core.dto.CredentialStatusDetail;
+import io.mosip.certify.core.dto.CredentialConfigurationSupported;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.exception.NotAuthenticatedException;
@@ -29,7 +30,6 @@ import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.credential.Credential;
 import io.mosip.certify.credential.CredentialFactory;
-import io.mosip.certify.core.dto.CredentialStatusDetail;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.CredentialUtils;
@@ -150,16 +150,16 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             throw new NotAuthenticatedException();
         // 2. Scope Validation
         String scopeClaim = (String) parsedAccessToken.getClaims().getOrDefault("scope", "");
-        CredentialMetadata credentialMetadata = null;
+        CredentialConfigurationSupported credentialConfigurationSupported = null;
         for(String scope : scopeClaim.split(Constants.SPACE)) {
-            Optional<CredentialMetadata> result = getScopeCredentialMapping(scope, credentialRequest.getFormat(), credentialConfigurationService.fetchCredentialIssuerMetadata(), credentialRequest);
+            Optional<CredentialConfigurationSupported> result = getScopeCredentialMapping(scope, credentialRequest.getFormat(), credentialConfigurationService.fetchCredentialIssuerMetadata(), credentialRequest);
             if(result.isPresent()) {
-                credentialMetadata = result.get(); //considering only first credential scope
+                credentialConfigurationSupported = result.get(); //considering only first credential scope
                 break;
             }
         }
 
-        if(credentialMetadata == null) {
+        if(credentialConfigurationSupported == null) {
             log.error("No credential mapping found for the provided scope {}", scopeClaim);
             throw new CertifyException(VCIErrorConstants.INVALID_SCOPE, "No credential mapping found for the provided scope.");
         }
@@ -169,12 +169,12 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, parsedAccessToken,
                 cNonceExpireSeconds, securityHelperService, credentialRequest.getProof(), log);
         if(!proofValidator.validate((String)parsedAccessToken.getClaims().get(Constants.CLIENT_ID), validCNonce,
-                credentialRequest.getProof(), credentialMetadata.getProofTypesSupported())) {
+                credentialRequest.getProof(), credentialConfigurationSupported.getProofTypesSupported())) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
         // 4. Get VC from configured plugin implementation
-        VCResult<?> vcResult = getVerifiableCredential(credentialRequest, credentialMetadata,
+        VCResult<?> vcResult = getVerifiableCredential(credentialRequest, credentialConfigurationSupported,
                 proofValidator.getKeyMaterial(credentialRequest.getProof()));
 
         auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
@@ -188,7 +188,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         return didDocument;
     }
 
-    private VCResult<?> getVerifiableCredential(CredentialRequest credentialRequest, CredentialMetadata credentialMetadata, String holderId) {
+    private VCResult<?> getVerifiableCredential(CredentialRequest credentialRequest, CredentialConfigurationSupported credentialConfigurationSupported, String holderId) {
         parsedAccessToken.getClaims().put("accessTokenHash", parsedAccessToken.getAccessTokenHash());
         VCRequestDto vcRequestDto = new VCRequestDto();
         vcRequestDto.setFormat(credentialRequest.getFormat());
@@ -208,7 +208,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     vcRequestDto.setContext(credentialRequest.getCredential_definition().getContext());
                     vcRequestDto.setType(credentialRequest.getCredential_definition().getType());
                     vcRequestDto.setCredentialSubject(credentialRequest.getCredential_definition().getCredentialSubject());
-                    validateLdpVcFormatRequest(credentialRequest, credentialMetadata);
+                    validateLdpVcFormatRequest(credentialRequest, credentialConfigurationSupported);
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
                     jsonObject.put(Constants.TYPE, credentialRequest.getCredential_definition().getType());
 

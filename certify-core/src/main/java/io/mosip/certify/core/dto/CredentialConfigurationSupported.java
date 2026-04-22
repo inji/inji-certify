@@ -12,7 +12,7 @@ import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-public class CredentialMetadata {
+public class CredentialConfigurationSupported {
 
     private String id;
     private String format;

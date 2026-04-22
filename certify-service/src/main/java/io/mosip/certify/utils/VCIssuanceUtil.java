@@ -155,7 +155,7 @@ public class VCIssuanceUtil {
         }
     }
 
-    public static Optional<CredentialMetadata> getScopeCredentialMapping(
+    public static Optional<CredentialConfigurationSupported> getScopeCredentialMapping(
             String scope, String format,
             CredentialIssuerMetadataDTO credentialIssuerMetadataDTO,
             CredentialRequest credentialRequest) {
@@ -190,15 +190,15 @@ public class VCIssuanceUtil {
                         continue;
                 }
                 // If valid, build and return metadata
-                CredentialMetadata credentialMetadata = new CredentialMetadata();
-                credentialMetadata.setFormat(dto.getFormat());
-                credentialMetadata.setScope(dto.getScope());
-                credentialMetadata.setId(entry.getKey());
-                credentialMetadata.setProofTypesSupported(dto.getProofTypesSupported());
+                CredentialConfigurationSupported credentialConfigurationSupported = new CredentialConfigurationSupported();
+                credentialConfigurationSupported.setFormat(dto.getFormat());
+                credentialConfigurationSupported.setScope(dto.getScope());
+                credentialConfigurationSupported.setId(entry.getKey());
+                credentialConfigurationSupported.setProofTypesSupported(dto.getProofTypesSupported());
                 if (format.equals(VCFormats.LDP_VC)) {
-                    credentialMetadata.setTypes(dto.getCredentialDefinition().getType());
+                    credentialConfigurationSupported.setTypes(dto.getCredentialDefinition().getType());
                 }
-                return Optional.of(credentialMetadata);
+                return Optional.of(credentialConfigurationSupported);
             }
         }
 
@@ -241,9 +241,8 @@ public class VCIssuanceUtil {
         return Objects.equals(credentialConfigurationSupportedDTO.getDocType(), credentialRequest.getDoctype());
     }
 
-    public static void validateLdpVcFormatRequest(CredentialRequest credentialRequest,
-                                                  CredentialMetadata credentialMetadata) {
-        if(!credentialRequest.getCredential_definition().getType().containsAll(credentialMetadata.getTypes()))
+    public static void validateLdpVcFormatRequest(CredentialRequest credentialRequest, CredentialConfigurationSupported credentialConfigurationSupported) {
+        if(!credentialRequest.getCredential_definition().getType().containsAll(credentialConfigurationSupported.getTypes()))
             throw new InvalidRequestException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_TYPE);
 
         //TODO need to validate Credential_definition as JsonLD document, if invalid throw exception
