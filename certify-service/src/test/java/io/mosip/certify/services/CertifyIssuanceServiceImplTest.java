@@ -159,6 +159,7 @@ public class CertifyIssuanceServiceImplTest {
         mockGlobalCredentialIssuerMetadataDTO.setCredentialIssuer("https://test.issuer.com");
         mockGlobalCredentialIssuerMetadataDTO.setAuthorizationServers(List.of("https://auth.server.com"));
         mockGlobalCredentialIssuerMetadataDTO.setCredentialEndpoint("https://test.issuer.com/credentials");
+        mockGlobalCredentialIssuerMetadataDTO.setNonceEndpoint("https://test.issuer.com/nonce");
 
         Map<String, CredentialConfigurationSupportedDTO> supportedCredsMap = new HashMap<>();
 
@@ -341,7 +342,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest")).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
 
         // Stub getKeyMaterial, its result is used in templateParams for createCredential
         when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
@@ -397,7 +398,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest")).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
 
         // Stub getKeyMaterial, its result is used in templateParams for createCredential
         when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
@@ -452,7 +453,7 @@ public class CertifyIssuanceServiceImplTest {
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(anyMap())).thenReturn(new JSONObject());
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest")).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
         when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.empty());
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));

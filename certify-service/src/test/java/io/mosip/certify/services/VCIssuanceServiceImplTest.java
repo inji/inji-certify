@@ -116,6 +116,7 @@ public class VCIssuanceServiceImplTest {
 
         // Setup mockGlobalCredentialIssuerMetadataDTO using actual DTO structures
         mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataDTO();
+        mockGlobalCredentialIssuerMetadataDTO.setNonceEndpoint("https://test.issuer.com/nonce");
         Map<String, CredentialConfigurationSupportedDTO> supportedCredsMap = new HashMap<>();
 
         // LDP Config DTO
@@ -329,6 +330,7 @@ public class VCIssuanceServiceImplTest {
     public void getCredential_WithNoNonceInProofJwt_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         request.setProofs(Map.of("jwt", List.of(createValidJWT("", false))));
+        mockGlobalCredentialIssuerMetadataDTO.setNonceEndpoint(null);
 
         claimsFromAccessToken.put("c_nonce", TEST_CNONCE);
         claimsFromAccessToken.put("iat", LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));

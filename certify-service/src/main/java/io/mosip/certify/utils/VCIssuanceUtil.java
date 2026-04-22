@@ -25,7 +25,7 @@ public class VCIssuanceUtil {
     }
 
     public static String validateAndGetClientNonce(NonceCacheService nonceCacheService,
-                                                   String proof, Logger log) {
+                                                   String proof, Logger log, String nonceEndpoint) {
         String proofJwtNonce = null;
         boolean proofJwtHasNonceClaim = false;
         try {
@@ -43,6 +43,22 @@ public class VCIssuanceUtil {
         catch (ParseException e) {
             // check iff specific error exists for invalid holderKey
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
+        }
+
+        boolean hasNonceEndpoint = nonceEndpoint != null && !nonceEndpoint.isEmpty();
+
+        if (proofJwtHasNonceClaim != hasNonceEndpoint) {
+            if (proofJwtHasNonceClaim) {
+                throw new CertifyException(
+                        VCIErrorConstants.INVALID_PROOF,
+                        "Invalid proof: nonce claim is present, but no nonce endpoint is configured."
+                );
+            } else {
+                throw new CertifyException(
+                        VCIErrorConstants.INVALID_PROOF,
+                        "Invalid proof: nonce claim is missing, but a nonce endpoint is configured."
+                );
+            }
         }
 
         if (!proofJwtHasNonceClaim) {

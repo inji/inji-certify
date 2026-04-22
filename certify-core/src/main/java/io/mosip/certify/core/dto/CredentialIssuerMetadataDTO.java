@@ -20,6 +20,9 @@ public class CredentialIssuerMetadataDTO {
     @JsonProperty("credential_endpoint")
     private String credentialEndpoint;
 
+    @JsonProperty("nonce_endpoint")
+    private String nonceEndpoint;
+
     private List<Map<String, Object>> display;
 
     @JsonProperty("credential_configurations_supported")

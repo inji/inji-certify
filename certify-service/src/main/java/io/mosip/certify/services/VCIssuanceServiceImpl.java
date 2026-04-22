@@ -96,14 +96,14 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                                 : new HashSet<>(entry.getValue())
                 ));
         List<String> holderIds = new ArrayList<>();
-
+        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
         for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
 
             for (String proofValue : entry.getValue()) {
                 try {
-                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log);
+                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log, nonceEndpoint);
                     if (proofValidator == null) {
                         throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
                     }
