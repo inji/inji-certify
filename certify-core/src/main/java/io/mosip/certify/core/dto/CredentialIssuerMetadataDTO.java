@@ -20,12 +20,12 @@ public class CredentialIssuerMetadataDTO {
     @JsonProperty("credential_endpoint")
     private String credentialEndpoint;
 
+    @JsonProperty("nonce_endpoint")
+    private String nonceEndpoint;
+
     private List<Map<String, Object>> display;
 
     @JsonProperty("credential_configurations_supported")
     private Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedDTO;
 
-    public void setCredentialConfigurationSupportedDTO(Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedDTO) {
-        this.credentialConfigurationSupportedDTO = credentialConfigurationSupportedDTO;
-    }
 }
