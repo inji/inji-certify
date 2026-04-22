@@ -362,30 +362,30 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialConfigurationSupported.setCryptographicBindingMethodsSupported(credentialConfig.getCryptographicBindingMethodsSupported());
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
 
-        CredentialMetadata credentialMetadata = new CredentialMetadata();
-        credentialMetadata.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
+        CredentialMetadataDTO credentialMetadataDTO = new CredentialMetadataDTO();
+        credentialMetadataDTO.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
-            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
+            credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
-            credentialMetadata.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
+            credentialMetadataDTO.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
         } else if (VCFormats.VC_SD_JWT.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
-            credentialMetadata.setClaims(mapStandardClaims(credentialConfig.getSdJwtClaims()));
+            credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getSdJwtClaims()));
         }
-        credentialConfigurationSupported.setCredentialMetadata(credentialMetadata);
+        credentialConfigurationSupported.setCredentialMetadataDTO(credentialMetadataDTO);
 
         return credentialConfigurationSupported;
     }
 
-    private List<CredentialMetadata.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
+    private List<CredentialMetadataDTO.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
         if (claims == null) return Collections.emptyList();
         return claims.entrySet().stream()
                 .map(entry -> buildClaimObject(Collections.singletonList(entry.getKey()), entry.getValue()))
                 .collect(Collectors.toList());
     }
 
-    private List<CredentialMetadata.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
+    private List<CredentialMetadataDTO.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
         if (mDocClaims == null) return Collections.emptyList();
         return mDocClaims.entrySet().stream()
                 .flatMap(namespace -> namespace.getValue().entrySet().stream()
@@ -393,8 +393,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 .collect(Collectors.toList());
     }
 
-    private CredentialMetadata.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
-        CredentialMetadata.Claims claim = new CredentialMetadata.Claims();
+    private CredentialMetadataDTO.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
+        CredentialMetadataDTO.Claims claim = new CredentialMetadataDTO.Claims();
         claim.setPath(path);
 
         if (value != null && value.getDisplay() != null) {

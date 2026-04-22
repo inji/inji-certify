@@ -836,9 +836,9 @@ public class CredentialConfigurationSupportedServiceImplTest {
         Assert.assertNotNull(result);
         Assert.assertEquals(VCFormats.LDP_VC, result.getFormat());
         Assert.assertEquals("test_scope", result.getScope());
-        Assert.assertEquals(1, result.getCredentialMetadata().getClaims().size());
-        Assert.assertEquals(List.of("name"), result.getCredentialMetadata().getClaims().getFirst().getPath());
-        Assert.assertEquals("Full Name", result.getCredentialMetadata().getClaims().getFirst().getDisplay().getFirst().getName());
+        Assert.assertEquals(1, result.getCredentialMetadataDTO().getClaims().size());
+        Assert.assertEquals(List.of("name"), result.getCredentialMetadataDTO().getClaims().getFirst().getPath());
+        Assert.assertEquals("Full Name", result.getCredentialMetadataDTO().getClaims().getFirst().getDisplay().getFirst().getName());
     }
 
     @Test
@@ -859,9 +859,9 @@ public class CredentialConfigurationSupportedServiceImplTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals("org.iso.18013.5.1.mDL", result.getDocType());
-        Assert.assertEquals(1, result.getCredentialMetadata().getClaims().size());
-        Assert.assertEquals(List.of("org.iso.18013.5.1", "given_name"), result.getCredentialMetadata().getClaims().getFirst().getPath());
-        Assert.assertEquals("First Name", result.getCredentialMetadata().getClaims().getFirst().getDisplay().getFirst().getName());
+        Assert.assertEquals(1, result.getCredentialMetadataDTO().getClaims().size());
+        Assert.assertEquals(List.of("org.iso.18013.5.1", "given_name"), result.getCredentialMetadataDTO().getClaims().getFirst().getPath());
+        Assert.assertEquals("First Name", result.getCredentialMetadataDTO().getClaims().getFirst().getDisplay().getFirst().getName());
     }
 
     @Test
@@ -882,9 +882,9 @@ public class CredentialConfigurationSupportedServiceImplTest {
 
         Assert.assertNotNull(result);
         Assert.assertEquals("https://example.com/vct", result.getVct());
-        Assert.assertEquals(1, result.getCredentialMetadata().getClaims().size());
-        Assert.assertEquals(List.of("family_name"), result.getCredentialMetadata().getClaims().getFirst().getPath());
-        Assert.assertEquals("Last Name", result.getCredentialMetadata().getClaims().getFirst().getDisplay().getFirst().getName());
+        Assert.assertEquals(1, result.getCredentialMetadataDTO().getClaims().size());
+        Assert.assertEquals(List.of("family_name"), result.getCredentialMetadataDTO().getClaims().getFirst().getPath());
+        Assert.assertEquals("Last Name", result.getCredentialMetadataDTO().getClaims().getFirst().getDisplay().getFirst().getName());
     }
 }
 

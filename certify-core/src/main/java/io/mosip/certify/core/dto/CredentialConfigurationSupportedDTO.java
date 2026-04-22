@@ -40,5 +40,5 @@ public class CredentialConfigurationSupportedDTO {
     private String vct;
 
     @JsonProperty("credential_metadata")
-    private CredentialMetadata credentialMetadata;
+    private CredentialMetadataDTO credentialMetadataDTO;
 }
