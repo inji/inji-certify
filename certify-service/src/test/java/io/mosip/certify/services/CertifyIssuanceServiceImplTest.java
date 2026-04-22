@@ -109,7 +109,7 @@ public class CertifyIssuanceServiceImplTest {
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken; // Renamed for clarity
     VCIssuanceTransaction transaction;
-    CredentialIssuerMetadataVD13DTO mockGlobalCredentialIssuerMetadataDTO;
+    CredentialIssuerMetadataDTO mockGlobalCredentialIssuerMetadataDTO;
 
 
     @Before
@@ -154,7 +154,7 @@ public class CertifyIssuanceServiceImplTest {
         transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
 
-        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataVD13DTO();
+        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataDTO();
         mockGlobalCredentialIssuerMetadataDTO.setCredentialIssuer("https://test.issuer.com");
         mockGlobalCredentialIssuerMetadataDTO.setAuthorizationServers(List.of("https://auth.server.com"));
         mockGlobalCredentialIssuerMetadataDTO.setCredentialEndpoint("https://test.issuer.com/credentials");
@@ -204,7 +204,7 @@ public class CertifyIssuanceServiceImplTest {
 
         mockGlobalCredentialIssuerMetadataDTO.setCredentialConfigurationSupportedDTO(supportedCredsMap);
 
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest"))
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata())
                 .thenReturn(mockGlobalCredentialIssuerMetadataDTO); // Default mock
     }
 

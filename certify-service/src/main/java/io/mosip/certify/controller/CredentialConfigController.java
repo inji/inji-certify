@@ -35,7 +35,7 @@ public class CredentialConfigController {
 
     @PutMapping(value = "/{credentialConfigKeyId}", produces = "application/json")
     public ResponseEntity<CredentialConfigResponse> updateCredentialConfiguration(@PathVariable String credentialConfigKeyId,
-                                                             @Valid @RequestBody CredentialConfigurationDTO credentialConfigurationRequest) throws JsonProcessingException {
+                                                                                  @Valid @RequestBody CredentialConfigurationDTO credentialConfigurationRequest) throws JsonProcessingException {
 
         CredentialConfigResponse credentialConfigResponse = credentialConfigurationService.updateCredentialConfiguration(credentialConfigKeyId, credentialConfigurationRequest);
         return new ResponseEntity<>(credentialConfigResponse, HttpStatus.OK);

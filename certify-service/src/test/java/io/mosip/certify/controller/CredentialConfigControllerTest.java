@@ -1,10 +1,7 @@
 package io.mosip.certify.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.mosip.certify.core.dto.CredentialConfigResponse;
-import io.mosip.certify.core.dto.CredentialConfigurationDTO;
-import io.mosip.certify.core.dto.CredentialSubjectParametersDTO;
-import io.mosip.certify.core.dto.ParsedAccessToken;
+import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import org.junit.Before;
 import org.junit.Test;

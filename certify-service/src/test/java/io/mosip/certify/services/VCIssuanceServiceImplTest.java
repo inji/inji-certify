@@ -46,8 +46,8 @@ import java.util.*;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.isNull;
+import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
 public class VCIssuanceServiceImplTest {
@@ -82,7 +82,7 @@ public class VCIssuanceServiceImplTest {
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken;
     VCIssuanceTransaction transaction;
-    CredentialIssuerMetadataVD13DTO mockGlobalCredentialIssuerMetadataDTO;
+    CredentialIssuerMetadataDTO mockGlobalCredentialIssuerMetadataDTO;
 
 
     @Before
@@ -118,7 +118,7 @@ public class VCIssuanceServiceImplTest {
         transaction.setCNonceIssuedEpoch(LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
 
         // Setup mockGlobalCredentialIssuerMetadataDTO using actual DTO structures
-        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataVD13DTO();
+        mockGlobalCredentialIssuerMetadataDTO = new CredentialIssuerMetadataDTO();
         Map<String, CredentialConfigurationSupportedDTO> supportedCredsMap = new HashMap<>();
 
         // LDP Config DTO
@@ -152,7 +152,7 @@ public class VCIssuanceServiceImplTest {
 
 
         mockGlobalCredentialIssuerMetadataDTO.setCredentialConfigurationSupportedDTO(supportedCredsMap);
-        when(credentialConfigurationService.fetchCredentialIssuerMetadata("latest"))
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata())
                 .thenReturn(mockGlobalCredentialIssuerMetadataDTO);
     }
 

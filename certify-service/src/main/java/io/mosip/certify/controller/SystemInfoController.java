@@ -6,7 +6,6 @@
 package io.mosip.certify.controller;
 
 import io.mosip.certify.api.spi.AuditPlugin;
-import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.ResponseWrapper;
 import io.mosip.certify.core.exception.CertifyException;
@@ -23,7 +22,6 @@ import io.mosip.kernel.partnercertservice.service.spi.PartnerCertificateManagerS
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;

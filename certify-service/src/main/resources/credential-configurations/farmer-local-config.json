@@ -19,7 +19,7 @@
     "name": "Farmer Credential",
     "locale": "en",
     "logo": {
-      "url": "https://example.com/logo.png",
+      "uri": "https://example.com/logo.png",
       "alt_text": "Farmer Logo"
     },
     "background_color": "#12107c",
