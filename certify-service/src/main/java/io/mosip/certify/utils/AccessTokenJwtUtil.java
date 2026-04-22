@@ -50,7 +50,7 @@ public class AccessTokenJwtUtil {
      * @param expirySeconds Token expiration time in seconds from now
      * @return Signed JWT string
      */
-    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds, String cNonce) {
+    public String generateSignedJwt(IarSession session, String issuer, String audience, int expirySeconds) {
         String identityData = session.getIdentityData();
         if (!StringUtils.hasText(identityData)) {
             log.warn("Identity data is null or empty for session: {}, transaction_id: {}",
@@ -65,7 +65,7 @@ public class AccessTokenJwtUtil {
             throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Scope is required but not found in session");
         }
 
-        return generateSignedJwt(identityData, scope, session.getClientId(), issuer, audience, expirySeconds, cNonce);
+        return generateSignedJwt(identityData, scope, session.getClientId(), issuer, audience, expirySeconds);
     }
 
     /**
@@ -81,7 +81,7 @@ public class AccessTokenJwtUtil {
      * @return Signed JWT string
      */
     public String generateSignedJwt(String identityData, String scope, String clientId,
-                                     String issuer, String audience, int expirySeconds, String cNonce) {
+                                     String issuer, String audience, int expirySeconds) {
         try {
             if (!StringUtils.hasText(identityData)) {
                 throw new CertifyException(ErrorConstants.INVALID_REQUEST, "Identity data is required");
@@ -105,11 +105,6 @@ public class AccessTokenJwtUtil {
             payload.put("client_id", clientId);
             payload.put("scope", scope);
             log.debug("Added scope '{}' to JWT", scope);
-
-
-            payload.put("c_nonce", cNonce);
-            payload.put("c_nonce_expires_in", cNonceExpireSeconds);
-            log.debug("Added c_nonce '{}' to JWT", cNonce);
 
             // Convert payload to JSON string
             String payloadJson = objectMapper.writeValueAsString(payload);

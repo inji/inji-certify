@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.*;
-import io.mosip.certify.entity.CredentialConfig;
-import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
+import io.mosip.certify.entity.CredentialConfig;
+import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
 import jakarta.validation.Validator;
 import org.junit.Assert;
@@ -22,9 +22,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.*;
 
 import static org.junit.Assert.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -72,7 +70,6 @@ public class PreAuthorizedCodeServiceTest {
         ReflectionTestUtils.setField(preAuthorizedCodeService, "maxExpirySeconds", 86400);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "credentialOfferUrl", "https://credentialOffer.com/");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "accessTokenExpirySeconds", 600);
-        ReflectionTestUtils.setField(preAuthorizedCodeService, "cNonceExpirySeconds", 300);
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthIssuer", "https://oauth.issuer.com");
         ReflectionTestUtils.setField(preAuthorizedCodeService, "oauthAudience", "https://oauth.audience.com");
 
@@ -305,9 +302,8 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
-        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
+        when(vciCacheService.setPreAuthTransaction(anyString(), any(PreAuthTransaction.class))).thenReturn(null);
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);
@@ -317,12 +313,10 @@ public class PreAuthorizedCodeServiceTest {
         Assert.assertEquals("test.jwt.token", response.getAccessToken());
         Assert.assertEquals("Bearer", response.getTokenType());
         Assert.assertEquals(Integer.valueOf(600), response.getExpiresIn());
-        Assert.assertNotNull(response.getCNonce());
-        Assert.assertEquals(Integer.valueOf(300), response.getCNonceExpiresIn());
 
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
         verify(vciCacheService).claimPreAuthCode(preAuthCode);
-        verify(vciCacheService).setVCITransaction(anyString(), any(VCIssuanceTransaction.class));
+        verify(vciCacheService).setPreAuthTransaction(anyString(), any(PreAuthTransaction.class));
     }
 
     @Test
@@ -347,9 +341,8 @@ public class PreAuthorizedCodeServiceTest {
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
         when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
-        when(vciCacheService.setVCITransaction(anyString(), any(VCIssuanceTransaction.class))).thenReturn(null);
-        when(accessTokenJwtUtil.generateCNonce()).thenReturn("test-cnonce");
-        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt(), anyString()))
+        when(vciCacheService.setPreAuthTransaction(anyString(), any(PreAuthTransaction.class))).thenReturn(null);
+        when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
 
         OAuthTokenResponse response = preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest);

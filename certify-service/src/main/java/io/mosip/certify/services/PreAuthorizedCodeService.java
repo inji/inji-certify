@@ -1,16 +1,16 @@
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.util.CommonUtil;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
-import io.mosip.certify.core.spi.CredentialConfigurationService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
@@ -58,9 +58,6 @@ public class PreAuthorizedCodeService {
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
-
-    @Value("${mosip.certify.cnonce-expire-seconds:300}")
-    private int cNonceExpirySeconds;
 
     @Value("${mosip.certify.oauth.issuer:}")
     private String oauthIssuer;
@@ -316,22 +313,17 @@ public class PreAuthorizedCodeService {
 
         validateTokenRequest(request, codeData);
 
-        // Generate c_nonce
-        String cNonce = accessTokenJwtUtil.generateCNonce();
         // Generate access token
-        String accessToken = generateAccessToken(codeData, cNonce);
+        String accessToken = generateAccessToken(codeData);
 
         long currentTime = System.currentTimeMillis();
-        PreAuthTransaction transaction = PreAuthTransaction.builder()
-                .credentialConfigurationId(codeData.getCredentialConfigurationId())
-                .claims(codeData.getClaims())
-                .cNonce(cNonce)
-                .cNonceIssuedEpoch(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).toEpochSecond(java.time.ZoneOffset.UTC))
-                .cNonceExpireSeconds(cNonceExpirySeconds)
-                .createdAt(currentTime)
-                .build();
 
-        vciCacheService.setVCITransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
+        PreAuthTransaction transaction = new PreAuthTransaction();
+        transaction.setCredentialConfigurationId(codeData.getCredentialConfigurationId());
+        transaction.setClaims(codeData.getClaims());
+        transaction.setCreatedAt(currentTime);
+
+        vciCacheService.setPreAuthTransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
 
         log.info("Successfully exchanged pre-authorized code for access token");
 
@@ -339,8 +331,6 @@ public class PreAuthorizedCodeService {
         response.setAccessToken(accessToken);
         response.setTokenType("Bearer");
         response.setExpiresIn(accessTokenExpirySeconds);
-        response.setCNonce(cNonce);
-        response.setCNonceExpiresIn(cNonceExpirySeconds);
         return response;
     }
 
@@ -382,7 +372,7 @@ public class PreAuthorizedCodeService {
      * Generate a signed JWT access token for pre-authorized code flow.
      * Calls AccessTokenJwtUtil.generateSignedJwt directly with raw parameters.
      */
-    private String generateAccessToken(PreAuthCodeData codeData, String cNonce) {
+    private String generateAccessToken(PreAuthCodeData codeData) {
         try {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
             String credentialConfigId = codeData.getCredentialConfigurationId();
@@ -416,8 +406,7 @@ public class PreAuthorizedCodeService {
                     "",
                     oauthIssuer,
                     oauthAudience,
-                    accessTokenExpirySeconds,
-                    cNonce
+                    accessTokenExpirySeconds
             );
         } catch (Exception e) {
             log.error("Failed to generate access token for pre-authorized code flow", e);

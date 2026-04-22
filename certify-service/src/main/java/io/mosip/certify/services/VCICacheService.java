@@ -23,6 +23,7 @@ public class VCICacheService {
     private String cacheType;
 
     private static final String VCISSUANCE_CACHE = "vcissuance";
+    private static final String PRE_AUTH_TXN_CACHE = "preAuthCacheTxn";
 
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -54,6 +55,20 @@ public class VCICacheService {
             return null;
         }
         return cache.get(accessTokenHash, VCIssuanceTransaction.class);
+    }
+
+    @CachePut(value = PRE_AUTH_TXN_CACHE, key = "#accessTokenHash")
+    public PreAuthTransaction setPreAuthTransaction(String accessTokenHash, PreAuthTransaction preAuthTransaction) {
+        return preAuthTransaction;
+    }
+
+    public PreAuthTransaction getPreAuthTransaction(String accessTokenHash) {
+        Cache cache = cacheManager.getCache(PRE_AUTH_TXN_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Please verify cache configuration.", VCISSUANCE_CACHE);
+            return null;
+        }
+        return cache.get(accessTokenHash, PreAuthTransaction.class);
     }
 
     public void setPreAuthCodeData(String code, PreAuthCodeData data) {

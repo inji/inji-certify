@@ -42,17 +42,4 @@ public class OAuthTokenResponse {
      */
     @JsonProperty("scope")
     private String scope;
-
-    /**
-     * OPTIONAL. String containing a nonce to be used to create a proof of possession of key material when requesting a Credential.
-     */
-    @JsonProperty("c_nonce")
-    private String cNonce;
-
-    /**
-     * OPTIONAL. Lifetime in seconds of the c_nonce.
-     */
-    @JsonProperty("c_nonce_expires_in")
-    private Integer cNonceExpiresIn;
-
 }
