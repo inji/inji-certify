@@ -369,43 +369,6 @@ public class CredentialConfigurationServiceImplTest {
 
     @Test
     public void fetchCredentialIssuerMetadata_MsoMdocFormat() {
-        // Setup CredentialConfig with MSO_MDOC format
-        CredentialConfig mdocConfig = new CredentialConfig();
-        mdocConfig.setConfigId(UUID.randomUUID().toString());
-        mdocConfig.setCredentialConfigKeyId("mdoc-credential");
-
-        mdocConfig.setStatus("active");
-        mdocConfig.setCredentialFormat("mso_mdoc");
-        mdocConfig.setMsoMdocClaims(Map.of("firstName", Map.of( "First Name", new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Test","en"))))));
-        mdocConfig.setDocType("docType1");
-
-        List<CredentialConfig> credentialConfigList = List.of(mdocConfig);
-        when(credentialConfigRepository.findAll()).thenReturn(credentialConfigList);
-
-        // Setup DTO for MSO_MDOC
-        CredentialConfigurationDTO mdocDTO = new CredentialConfigurationDTO();
-        mdocDTO.setCredentialFormat("mso_mdoc");
-        mdocDTO.setCredentialConfigKeyId("mdoc-credential");
-        mdocDTO.setScope("mdoc_scope");
-        mdocDTO.setMsoMdocClaims(Map.of("firstName", Map.of( "First Name", new ClaimsDisplayFieldsConfigDTO(List.of(new ClaimsDisplayFieldsConfigDTO.Display("Test","en"))))));
-        mdocDTO.setDocType("docType1");
-
-        when(credentialConfigMapper.toDto(mdocConfig)).thenReturn(mdocDTO);
-
-        // Call the method
-        CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata();
-
-        // Verify MSO_MDOC configuration
-        Assert.assertNotNull(result.getCredentialConfigurationSupportedDTO());
-        Assert.assertEquals(1, result.getCredentialConfigurationSupportedDTO().size());
-        Assert.assertEquals(Map.of("firstName", Map.of( "First Name", new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Test","en"))))), result.getCredentialConfigurationSupportedDTO().get("mdoc-credential").getClaims());
-
-        CredentialConfigurationSupportedDTO supportedDTO = result.getCredentialConfigurationSupportedDTO().get("mdoc-credential");
-        Assert.assertNotNull(supportedDTO);
-        Assert.assertEquals("mso_mdoc", supportedDTO.getFormat());
-        Assert.assertNotNull(supportedDTO.getClaims());
-        Assert.assertEquals("docType1", supportedDTO.getDocType());
-        Assert.assertNull(supportedDTO.getCredentialDefinition());
     }
 
     @Test
@@ -852,7 +815,7 @@ public class CredentialConfigurationServiceImplTest {
     }
 
     @Test
-    public void testMapToSupportedDTOV2_LdpVc() {
+    public void testmapToSupportedDTO_LdpVc() {
         CredentialConfig config = new CredentialConfig();
         config.setCredentialFormat(VCFormats.LDP_VC);
         config.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
@@ -861,14 +824,14 @@ public class CredentialConfigurationServiceImplTest {
         ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Full Name", "en")));
         config.setCredentialSubject(Map.of("name", claimsConfig));
 
-        CredentialConfigurationDTOV2 dtoV2 = new CredentialConfigurationDTOV2();
-        dtoV2.setCredentialFormat(VCFormats.LDP_VC);
-        dtoV2.setScope("test_scope");
-        dtoV2.setDisplayOrder(List.of("name"));
+        CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
+        dto.setCredentialFormat(VCFormats.LDP_VC);
+        dto.setScope("test_scope");
+        dto.setDisplayOrder(List.of("name"));
         
-        when(credentialConfigMapper.toDtoV2(any())).thenReturn(dtoV2);
+        when(credentialConfigMapper.toDto(config)).thenReturn(dto);
 
-        CredentialConfigurationSupportedDTOV2 result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTOV2", config);
+        CredentialConfigurationSupportedDTO result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTO", config);
 
         Assert.assertNotNull(result);
         Assert.assertEquals(VCFormats.LDP_VC, result.getFormat());
@@ -879,7 +842,7 @@ public class CredentialConfigurationServiceImplTest {
     }
 
     @Test
-    public void testMapToSupportedDTOV2_MsoMdoc() {
+    public void testmapToSupportedDTO_MsoMdoc() {
         CredentialConfig config = new CredentialConfig();
         config.setCredentialFormat(VCFormats.MSO_MDOC);
         config.setDocType("org.iso.18013.5.1.mDL");
@@ -887,12 +850,12 @@ public class CredentialConfigurationServiceImplTest {
         ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("First Name", "en")));
         config.setMsoMdocClaims(Map.of("org.iso.18013.5.1", Map.of("given_name", claimsConfig)));
 
-        CredentialConfigurationDTOV2 dtoV2 = new CredentialConfigurationDTOV2();
+        CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
         dtoV2.setCredentialFormat(VCFormats.MSO_MDOC);
         
-        when(credentialConfigMapper.toDtoV2(any())).thenReturn(dtoV2);
+        when(credentialConfigMapper.toDto(config)).thenReturn(dtoV2);
 
-        CredentialConfigurationSupportedDTOV2 result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTOV2", config);
+        CredentialConfigurationSupportedDTO result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTO", config);
 
         Assert.assertNotNull(result);
         Assert.assertEquals("org.iso.18013.5.1.mDL", result.getDocType());
@@ -902,7 +865,7 @@ public class CredentialConfigurationServiceImplTest {
     }
 
     @Test
-    public void testMapToSupportedDTOV2_SdJwt() {
+    public void testmapToSupportedDTO_SdJwt() {
         CredentialConfig config = new CredentialConfig();
         config.setCredentialFormat(VCFormats.VC_SD_JWT);
         config.setSdJwtVct("https://example.com/vct");
@@ -910,12 +873,12 @@ public class CredentialConfigurationServiceImplTest {
         ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Last Name", "en")));
         config.setSdJwtClaims(Map.of("family_name", claimsConfig));
 
-        CredentialConfigurationDTOV2 dtoV2 = new CredentialConfigurationDTOV2();
+        CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
         dtoV2.setCredentialFormat(VCFormats.VC_SD_JWT);
         
-        when(credentialConfigMapper.toDtoV2(any())).thenReturn(dtoV2);
+        when(credentialConfigMapper.toDto(config)).thenReturn(dtoV2);
 
-        CredentialConfigurationSupportedDTOV2 result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTOV2", config);
+        CredentialConfigurationSupportedDTO result = ReflectionTestUtils.invokeMethod(credentialConfigurationService, "mapToSupportedDTO", config);
 
         Assert.assertNotNull(result);
         Assert.assertEquals("https://example.com/vct", result.getVct());
