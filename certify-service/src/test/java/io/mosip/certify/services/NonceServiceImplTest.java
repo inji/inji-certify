@@ -8,7 +8,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+
 import java.lang.reflect.Field;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
@@ -16,14 +18,13 @@ import static org.mockito.Mockito.*;
 public class NonceServiceImplTest {
 
     @Mock
-    private NonceCacheService nonceCacheService;
+    private VCICacheService vciCacheService;
 
     private NonceServiceImpl nonceService;
 
     @Before
     public void setup() throws Exception {
-
-        nonceService = new NonceServiceImpl(nonceCacheService);
+        nonceService = new NonceServiceImpl(vciCacheService);
         // Inject @Value field manually
         Field field = NonceServiceImpl.class.getDeclaredField("cNonceExpiresInSeconds");
         field.setAccessible(true);
@@ -33,18 +34,17 @@ public class NonceServiceImplTest {
     @Test
     public void testGenerateNonce_success() {
         NonceResponse response = nonceService.generateNonce();
-
         assertNotNull(response);
         assertNotNull(response.cNonce());
 
-        verify(nonceCacheService, times(1))
+        verify(vciCacheService, times(1))
                 .setNonceTransaction(eq(response.cNonce()), any(VCIssuanceTransaction.class));
     }
 
 
     @Test
     public void testGenerateNonce_whenCacheFails_shouldThrowException() {
-        when(nonceCacheService.setNonceTransaction(anyString(), any(VCIssuanceTransaction.class)))
+        when(vciCacheService.setNonceTransaction(anyString(), any(VCIssuanceTransaction.class)))
                 .thenThrow(new CertifyException("CACHE_ERROR", "Cache failure"));
 
         CertifyException ex = assertThrows(CertifyException.class, () -> {
