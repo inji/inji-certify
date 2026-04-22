@@ -6,7 +6,7 @@ import java.util.List;
 @Data
 public class CredentialMetadataV2 {
 
-    private List<MetaDataDisplayDTOV2> display;
+    private List<MetaDataDisplayDTO> display;
 
     private List<Claims> claims;
 
