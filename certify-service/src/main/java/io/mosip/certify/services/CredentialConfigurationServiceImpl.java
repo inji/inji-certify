@@ -13,7 +13,7 @@ import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.CredentialConfigException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.entity.CredentialConfig;
-import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
+import io.mosip.certify.entity.attributes.Claims;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.validators.credentialconfigvalidators.LdpVcCredentialConfigValidator;
@@ -327,7 +327,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     private String buildNonceEndpoint() {
-        return credentialIssuer + servletPath + "/issuance/nonce";
+        return credentialIssuer + servletPath + "/nonce";
     }
 
     private List<String> resolveAuthorizationServers() {
@@ -365,7 +365,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         CredentialMetadataDTO credentialMetadataDTO = new CredentialMetadataDTO();
         credentialMetadataDTO.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
-            credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getCredentialSubject()));
+            credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getClaims()));
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
             credentialMetadataDTO.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
@@ -378,14 +378,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return credentialConfigurationSupported;
     }
 
-    private List<CredentialMetadataDTO.Claims> mapStandardClaims(Map<String, ClaimsDisplayFieldsConfigs> claims) {
+    private List<CredentialMetadataDTO.Claims> mapStandardClaims(Map<String, Claims> claims) {
         if (claims == null) return Collections.emptyList();
         return claims.entrySet().stream()
                 .map(entry -> buildClaimObject(Collections.singletonList(entry.getKey()), entry.getValue()))
                 .collect(Collectors.toList());
     }
 
-    private List<CredentialMetadataDTO.Claims> mapMDocClaims(Map<String, Map<String, ClaimsDisplayFieldsConfigs>> mDocClaims) {
+    private List<CredentialMetadataDTO.Claims> mapMDocClaims(Map<String, Map<String, Claims>> mDocClaims) {
         if (mDocClaims == null) return Collections.emptyList();
         return mDocClaims.entrySet().stream()
                 .flatMap(namespace -> namespace.getValue().entrySet().stream()
@@ -393,7 +393,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 .collect(Collectors.toList());
     }
 
-    private CredentialMetadataDTO.Claims buildClaimObject(List<String> path, ClaimsDisplayFieldsConfigs value) {
+    private CredentialMetadataDTO.Claims buildClaimObject(List<String> path, Claims value) {
         CredentialMetadataDTO.Claims claim = new CredentialMetadataDTO.Claims();
         claim.setPath(path);
 

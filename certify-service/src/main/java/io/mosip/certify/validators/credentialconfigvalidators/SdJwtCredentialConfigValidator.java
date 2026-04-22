@@ -11,7 +11,7 @@ public class SdJwtCredentialConfigValidator {
         return credentialConfig.getSdJwtVct() != null && !credentialConfig.getSdJwtVct().isEmpty()
                 && credentialConfig.getSignatureAlgo() != null && !credentialConfig.getSignatureAlgo().isEmpty()
                 && (credentialConfig.getCredentialTypes() == null || credentialConfig.getCredentialTypes().isEmpty()) && (credentialConfig.getContextURLs() == null || credentialConfig.getContextURLs().isEmpty())
-                && credentialConfig.getDocType() == null && credentialConfig.getCredentialSubjectDefinition() == null &&
+                && credentialConfig.getDocType() == null && credentialConfig.getClaims() == null &&
                 credentialConfig.getMsoMdocClaims() == null && credentialConfig.getSignatureCryptoSuite() == null;
     }
 

@@ -12,7 +12,7 @@ public class MsoMdocCredentialConfigValidator {
         return credentialConfig.getDocType() != null && !credentialConfig.getDocType().isEmpty()
                 && credentialConfig.getSignatureCryptoSuite() != null && !credentialConfig.getSignatureCryptoSuite().isEmpty()
                 && (credentialConfig.getCredentialTypes() == null || credentialConfig.getCredentialTypes().isEmpty()) && (credentialConfig.getContextURLs() == null || credentialConfig.getContextURLs().isEmpty())
-                && credentialConfig.getSdJwtVct() == null && credentialConfig.getCredentialSubjectDefinition() == null
+                && credentialConfig.getSdJwtVct() == null && credentialConfig.getClaims() == null
                 && credentialConfig.getSdJwtClaims() == null;
     }
 

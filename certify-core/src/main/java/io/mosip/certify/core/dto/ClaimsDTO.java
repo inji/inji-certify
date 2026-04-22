@@ -9,7 +9,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CredentialSubjectParametersDTO {
+public class ClaimsDTO {
     private List<Display> display;
 
     @Data
