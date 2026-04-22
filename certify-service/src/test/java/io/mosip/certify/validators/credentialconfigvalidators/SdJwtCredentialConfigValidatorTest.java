@@ -22,7 +22,7 @@ class SdJwtCredentialConfigValidatorTest {
         config.setCredentialTypes(null);
         config.setContextURLs(null);
         config.setDocType(null);
-        config.setCredentialSubjectDefinition(null);
+        config.setClaims(null);
         assertTrue(SdJwtCredentialConfigValidator.isValidCheck(config));
     }
 
@@ -34,7 +34,7 @@ class SdJwtCredentialConfigValidatorTest {
         config.setCredentialTypes(null);
         config.setContextURLs(null);
         config.setDocType(null);
-        config.setCredentialSubjectDefinition(null);
+        config.setClaims(null);
         config.setMsoMdocClaims(new HashMap<>());
         assertFalse(SdJwtCredentialConfigValidator.isValidCheck(config));
     }
@@ -103,7 +103,7 @@ class SdJwtCredentialConfigValidatorTest {
         CredentialConfigurationDTO config = new CredentialConfigurationDTO();
         config.setSdJwtVct("vctValue");
         config.setSignatureAlgo("algoValue");
-        config.setCredentialSubjectDefinition(new HashMap<>());
+        config.setClaims(new HashMap<>());
         assertFalse(SdJwtCredentialConfigValidator.isValidCheck(config));
     }
 

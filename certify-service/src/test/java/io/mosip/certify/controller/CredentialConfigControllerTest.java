@@ -59,8 +59,8 @@ public class CredentialConfigControllerTest {
         pluginConfigMap.put("mosip.certify.mock.data-provider.test-two", "valueTwo");
         pluginConfigMap.put("mosip.certify.mock.data-provider.test-three", "valueThree");
         credentialConfigurationDTO.setPluginConfigurations(List.of(pluginConfigMap));
-        credentialConfigurationDTO.setCredentialSubjectDefinition(Map.of(
-                "name", new CredentialSubjectParametersDTO(List.of(new CredentialSubjectParametersDTO.Display("Full Name", "en")))
+        credentialConfigurationDTO.setClaims(Map.of(
+                "name", new ClaimsDTO(List.of(new ClaimsDTO.Display("Full Name", "en")))
         ));
     }
 

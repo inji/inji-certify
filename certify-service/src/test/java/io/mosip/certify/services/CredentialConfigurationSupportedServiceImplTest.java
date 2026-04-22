@@ -5,7 +5,7 @@ import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.CredentialConfigException;
 import io.mosip.certify.entity.CredentialConfig;
-import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
+import io.mosip.certify.entity.attributes.Claims;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.validators.credentialconfigvalidators.LdpVcCredentialConfigValidator;
@@ -79,7 +79,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         credentialConfig.setScope("test_vc_ldp");
         credentialConfig.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         credentialConfig.setCredentialSigningAlgValuesSupported(List.of("Ed25519Signature2020"));
-        credentialConfig.setCredentialSubject(Map.of("name", new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Full Name", "en")))));
+        credentialConfig.setClaims(Map.of("name", new Claims(List.of(new Claims.Display("Full Name", "en")))));
         credentialConfig.setKeyManagerAppId("TEST2019");
         credentialConfig.setKeyManagerRefId("TEST2019-REF");
         credentialConfig.setSignatureCryptoSuite("Ed25519Signature2020");
@@ -94,7 +94,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         credentialConfigurationDTO.setSignatureCryptoSuite("Ed25519Signature2020");
         credentialConfigurationDTO.setKeyManagerAppId("TEST2019");
         credentialConfigurationDTO.setKeyManagerRefId("TEST2019-REF");
-        credentialConfigurationDTO.setCredentialSubjectDefinition(Map.of("name", new CredentialSubjectParametersDTO(List.of(new CredentialSubjectParametersDTO.Display("Full Name", "en")))));
+        credentialConfigurationDTO.setClaims(Map.of("name", new ClaimsDTO(List.of(new ClaimsDTO.Display("Full Name", "en")))));
 
         ReflectionTestUtils.setField(credentialConfigurationService, "credentialIssuer", "http://example.com/");
         ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth.com");
@@ -305,7 +305,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCredentialFormat("ldp_vc");
         config.setSignatureCryptoSuite(null); // triggers else branch
         config.setSignatureAlgo("ES256");
-        config.setCredentialSubject(null);
+        config.setClaims(null);
 
         when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
@@ -821,8 +821,8 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         config.setProofTypesSupported(Map.of("jwt", Map.of()));
         
-        ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Full Name", "en")));
-        config.setCredentialSubject(Map.of("name", claimsConfig));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("Full Name", "en")));
+        config.setClaims(Map.of("name", claimsConfig));
 
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat(VCFormats.LDP_VC);
@@ -847,7 +847,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCredentialFormat(VCFormats.MSO_MDOC);
         config.setDocType("org.iso.18013.5.1.mDL");
         
-        ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("First Name", "en")));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("First Name", "en")));
         config.setMsoMdocClaims(Map.of("org.iso.18013.5.1", Map.of("given_name", claimsConfig)));
 
         CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
@@ -870,7 +870,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCredentialFormat(VCFormats.VC_SD_JWT);
         config.setSdJwtVct("https://example.com/vct");
         
-        ClaimsDisplayFieldsConfigs claimsConfig = new ClaimsDisplayFieldsConfigs(List.of(new ClaimsDisplayFieldsConfigs.Display("Last Name", "en")));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("Last Name", "en")));
         config.setSdJwtClaims(Map.of("family_name", claimsConfig));
 
         CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
