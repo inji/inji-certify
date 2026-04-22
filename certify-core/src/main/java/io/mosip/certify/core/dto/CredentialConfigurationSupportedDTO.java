@@ -33,9 +33,9 @@ public class CredentialConfigurationSupportedDTO {
     private Map<String, Object> proofTypesSupported;
 
     @JsonProperty("credential_definition")
-    private CredentialDefinition credentialDefinition; // will be removed, if removed now getCredential endpoint breaks
+    private CredentialDefinition credentialDefinition; // TODO: remove as part of https://github.com/inji/inji-certify/issues/678
 
-    private Map<String, Object> claims; // will be removed , if removed now PreAuthorized endpoint breaks
+    private Map<String, Object> claims; // TODO: remove as part of https://github.com/inji/inji-certify/issues/678
 
     private String vct;
 
