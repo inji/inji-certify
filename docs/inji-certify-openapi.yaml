@@ -761,7 +761,8 @@ paths:
             examples:
               Example:
                 value:
-                  proof:
+                  credential_configuration_id: MockVerifiableCredential
+                  proofs:
                     jwt:
                       - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
                       - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d....

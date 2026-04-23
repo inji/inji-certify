@@ -19,7 +19,7 @@ import java.util.Map;
 @Data
 public class CredentialRequest {
 
-    @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID)
+    @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_REQUEST)
     @JsonProperty("credential_configuration_id")
     private String credentialConfigId;
 

@@ -48,6 +48,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static io.mosip.certify.utils.CredentialUtils.toJsonMap;
 import static io.mosip.certify.utils.VCIssuanceUtil.getScopeCredentialMapping;
@@ -150,8 +151,48 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         // 3. Proof Validation
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        List<String> holderIds = VCIssuanceUtil.validateProofsAndGetHolderIds(credentialRequest,credentialConfigurationSupported,
-                clientId, accessTokenHash, auditWrapper,proofValidatorFactory,vcICacheService,credentialConfigurationService);
+        Map<String, Object> supportedProofTypes = credentialConfigurationSupported.getProofTypesSupported();
+        Map<String, Set<String>> proofs = credentialRequest.getProofs()
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue() == null
+                                ? Collections.emptySet()
+                                : new HashSet<>(entry.getValue())
+                ));
+        List<String> holderIds = new ArrayList<>();
+        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
+        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey();
+            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
+            if (proofValidator == null) {
+                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
+            }
+            for (String proofValue : entry.getValue()) {
+                try {
+                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vcICacheService, proofValue, log, nonceEndpoint);
+
+                    boolean isValid = proofValidator.validate(clientId, validCNonce, proofValue, supportedProofTypes);
+                    if (!isValid) {
+                        continue;
+                    }
+                    if (validCNonce != null) {
+                        auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
+                                AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
+                    }
+                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
+                } catch (CertifyException e) {
+                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
+                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
+                    throw e;
+                }
+            }
+        }
+
+        if(holderIds.isEmpty()) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
+        }
 
         auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
                 AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
@@ -195,7 +236,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     jsonObject.put(Constants.TYPE, credentialConfigurationSupported.getType());
 
                     List<String> credentialStatusPurposeList = vcFormatter.getCredentialStatusPurpose(templateName);
-                    if (credentialStatusPurposeList != null && !credentialStatusPurposeList.isEmpty() && credentialConfigurationSupported.getContext().contains(VCDM2Constants.URL)) {
+                    if (credentialStatusPurposeList != null && !credentialStatusPurposeList.isEmpty()
+                            && credentialConfigurationSupported.getContext() != null
+                            && credentialConfigurationSupported.getContext().contains(VCDM2Constants.URL)) {
                         if(!isLedgerEnabled) {
                             log.warn("Ledger feature is currently disabled. Since revocation is enabled, please note that searching for VCs to revoke within Certify is not available.");
                         }

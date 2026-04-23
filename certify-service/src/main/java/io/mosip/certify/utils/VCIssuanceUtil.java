@@ -2,18 +2,9 @@ package io.mosip.certify.utils;
 
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
-import io.mosip.certify.api.spi.AuditPlugin;
-import io.mosip.certify.api.util.Action;
-import io.mosip.certify.api.util.ActionStatus;
-import io.mosip.certify.api.util.AuditHelper;
 import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
-import io.mosip.certify.core.exception.InvalidRequestException;
-import io.mosip.certify.core.spi.CredentialConfigurationService;
-import io.mosip.certify.exception.InvalidNonceException;
-import io.mosip.certify.proof.ProofValidator;
-import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.api.dto.VCResult;
 
 import io.mosip.certify.services.VCICacheService;
@@ -25,7 +16,6 @@ import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class VCIssuanceUtil {
@@ -36,12 +26,12 @@ public class VCIssuanceUtil {
 
     public static String validateAndGetClientNonce(VCICacheService vciCacheService,
                                                    String proof, Logger log, String nonceEndpoint) {
+        boolean hasNonceEndpoint = nonceEndpoint != null && !nonceEndpoint.isEmpty();
         String proofJwtNonce = null;
-        boolean proofJwtHasNonceClaim = false;
         try {
             SignedJWT proofJwt = SignedJWT.parse(proof);
             Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-            proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            Boolean proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
             if (proofJwtHasNonceClaim) {
                 proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
                 if (StringUtils.isBlank(proofJwtNonce)) {
@@ -55,10 +45,8 @@ public class VCIssuanceUtil {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
-        boolean hasNonceEndpoint = nonceEndpoint != null && !nonceEndpoint.isEmpty();
-
-        if (proofJwtHasNonceClaim != hasNonceEndpoint) {
-            if (proofJwtHasNonceClaim) {
+        if ((proofJwtNonce != null) != hasNonceEndpoint) {
+            if (proofJwtNonce != null) {
                 throw new CertifyException(
                         VCIErrorConstants.INVALID_PROOF,
                         "nonce claim is present, but issuer doesn't support nonce"
@@ -71,7 +59,7 @@ public class VCIssuanceUtil {
             }
         }
 
-        if (!proofJwtHasNonceClaim) {
+        if (proofJwtNonce == null) {
             return null;
         }
 
@@ -141,97 +129,35 @@ public class VCIssuanceUtil {
         Map<String, CredentialConfigurationSupportedDTO> supportedCredentials =
                 credentialIssuerMetadataDTO.getCredentialConfigurationSupportedDTO();
 
-        Optional<CredentialConfigurationSupportedDTO> dtoOpt =
-                Optional.ofNullable(supportedCredentials.get(credentialConfigId));
-
         CredentialConfigurationSupportedDTO credentialConfig = supportedCredentials.get(credentialConfigId);
         if(credentialConfig == null) {
             throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
                     "No credential configuration found for credential_configuration_id");
         }
 
-        CredentialConfigurationSupportedDTO dto = dtoOpt.get();
-
-        if(!Objects.equals(scope, dto.getScope())){
+        if(!Objects.equals(scope, credentialConfig.getScope())){
             return Optional.empty();
         }
 
         CredentialConfigurationSupported credentialConfigurationSupported = new CredentialConfigurationSupported();
-        credentialConfigurationSupported.setFormat(dto.getFormat());
-        credentialConfigurationSupported.setScope(dto.getScope());
+        credentialConfigurationSupported.setFormat(credentialConfig.getFormat());
+        credentialConfigurationSupported.setScope(credentialConfig.getScope());
         credentialConfigurationSupported.setId(credentialConfigId);
-        credentialConfigurationSupported.setProofTypesSupported(dto.getProofTypesSupported());
-        credentialConfigurationSupported.setType(dto.getCredentialDefinition().getType());
-        credentialConfigurationSupported.setContext(dto.getCredentialDefinition().getContext());
-        credentialConfigurationSupported.setCredentialSubject(dto.getCredentialDefinition().getCredentialSubject());
-        credentialConfigurationSupported.setClaims(dto.getClaims());
+        credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
+        if (credentialConfig.getCredentialDefinition() != null) {
+            credentialConfigurationSupported.setType(credentialConfig.getCredentialDefinition().getType());
+            credentialConfigurationSupported.setContext(credentialConfig.getCredentialDefinition().getContext());
+            credentialConfigurationSupported.setCredentialSubject(credentialConfig.getCredentialDefinition().getCredentialSubject());
+        }
+        credentialConfigurationSupported.setClaims(credentialConfig.getClaims());
 
-        if(dto.getFormat().equals(VCFormats.VC_SD_JWT)) {
-            credentialConfigurationSupported.setVct(dto.getVct());
-        } else if(dto.getFormat().equals(VCFormats.MSO_MDOC)) {
-            credentialConfigurationSupported.setDocType(dto.getDocType());
+        if(credentialConfig.getFormat().equals(VCFormats.VC_SD_JWT)) {
+            credentialConfigurationSupported.setVct(credentialConfig.getVct());
+        } else if(credentialConfig.getFormat().equals(VCFormats.MSO_MDOC)) {
+            credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
         }
 
 
         return Optional.of(credentialConfigurationSupported);
-    }
-
-    public static List<String> validateProofsAndGetHolderIds(
-            CredentialRequest credentialRequest,
-            CredentialConfigurationSupported credentialConfigurationSupported,
-            String clientId,
-            String accessTokenHash,
-            AuditPlugin auditWrapper,
-            ProofValidatorFactory proofValidatorFactory,
-            VCICacheService vciCacheService,
-            CredentialConfigurationService credentialConfigurationService) {
-        Map<String, Object> supportedProofTypes = credentialConfigurationSupported.getProofTypesSupported();
-        Map<String, Set<String>> proofs = credentialRequest.getProofs()
-                .entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue() == null
-                                ? Collections.emptySet()
-                                : new HashSet<>(entry.getValue())
-                ));
-        List<String> holderIds = new ArrayList<>();
-        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
-        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
-            String proofType = entry.getKey();
-            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
-            if (proofValidator == null) {
-                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
-            }
-            for (String proofValue : entry.getValue()) {
-                try {
-                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, proofValue, log, nonceEndpoint);
-
-                    boolean isValid = proofValidator.validate(clientId, validCNonce,
-                            proofValue, supportedProofTypes);
-                    if (!isValid) {
-                        continue;
-                    }
-                    if (validCNonce != null) {
-                        auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
-                                AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
-                    }
-                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
-                } catch (CertifyException e) {
-                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
-                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
-                    throw e;
-                }
-            }
-        }
-
-        if(holderIds.isEmpty()) {
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
-        }
-
-        auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
-                AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
-
-        return holderIds;
     }
 }

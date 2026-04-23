@@ -23,6 +23,7 @@ public class TestVCIssuanceServiceImpl implements VCIssuanceService {
         List<CredentialResponse.CredentialWrapper> credentials = new ArrayList<>();
         credentials.add(credentialWrapper1);
         credentials.add(credentialWrapper2);
+        credentialResponse.setCredentials(credentials);
         return credentialResponse;
     }
 

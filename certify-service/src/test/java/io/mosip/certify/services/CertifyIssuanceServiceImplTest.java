@@ -476,9 +476,6 @@ public class CertifyIssuanceServiceImplTest {
     @Test
     public void getCredential_ExpiredNonce_ThrowsInvalidNonceException() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
-        CredentialProof proof = new CredentialProof();
-        proof.setProof_type("jwt");
-        proof.setJwt(createValidJWT("expired-cnonce"));
         request.setProofs(Map.of("jwt",List.of(createValidJWT("expired-cnonce"))));
 
         VCIssuanceTransaction expiredTransaction = new VCIssuanceTransaction();

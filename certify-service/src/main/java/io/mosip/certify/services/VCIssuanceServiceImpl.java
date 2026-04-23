@@ -35,6 +35,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -84,8 +85,49 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         // 3. Proof Validation
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        List<String> holderIds = VCIssuanceUtil.validateProofsAndGetHolderIds(credentialRequest,credentialConfigurationSupported,
-                clientId, accessTokenHash, auditWrapper,proofValidatorFactory,vciCacheService,credentialConfigurationService);
+        Map<String, Object> supportedProofTypes = credentialConfigurationSupported.getProofTypesSupported();
+        Map<String, Set<String>> proofs = credentialRequest.getProofs()
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue() == null
+                                ? Collections.emptySet()
+                                : new HashSet<>(entry.getValue())
+                ));
+        List<String> holderIds = new ArrayList<>();
+        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
+        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey();
+            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
+            if (proofValidator == null) {
+                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
+            }
+            for (String proofValue : entry.getValue()) {
+                try {
+                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, proofValue, log, nonceEndpoint);
+
+                    boolean isValid = proofValidator.validate(clientId, validCNonce, proofValue, supportedProofTypes);
+                    if (!isValid) {
+                        continue;
+                    }
+                    if (validCNonce != null) {
+                        auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
+                                AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
+                    }
+                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
+                } catch (CertifyException e) {
+                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
+                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
+                    throw e;
+                }
+            }
+        }
+
+        if(holderIds.isEmpty()) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
+        }
+
         for (String holderId : holderIds) {
             vcResults.add(getVerifiableCredential(credentialConfigurationSupported, holderId));
         }

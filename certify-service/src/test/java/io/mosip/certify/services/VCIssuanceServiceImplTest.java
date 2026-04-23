@@ -353,9 +353,6 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_WithEmptyNonceInProofJwt_ThrowsCertifyException() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
-        CredentialProof proof = new CredentialProof();
-        proof.setProof_type("jwt");
-        proof.setJwt(createValidJWT("", true)); // Create JWT with empty nonce
         request.setProofs(Map.of("jwt",List.of(createValidJWT("", true))));
 
         claimsFromAccessToken.put("c_nonce", TEST_CNONCE);

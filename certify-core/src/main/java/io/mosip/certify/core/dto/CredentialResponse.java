@@ -13,8 +13,8 @@ import java.util.List;
 public class CredentialResponse<T> {
 
     /**
-     * Contains issued Credential. MUST be present when acceptance_token is not returned.
-     * MAY be a JSON string or a JSON object, depending on the Credential format.
+     * Contains issued Credentials for immediate issuance.
+     * Each credential MAY be a JSON string or a JSON object, depending on the Credential format.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<CredentialWrapper<T>> credentials;

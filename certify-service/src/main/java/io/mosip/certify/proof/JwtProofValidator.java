@@ -148,13 +148,13 @@ public class JwtProofValidator implements ProofValidator {
 
 
     /**
-     * @param proof from the credential request.
+     * @param proofJwt from the credential request.
      * @return the key material from the proof in a did:jwk or did:key format
      */
     @Override
-    public String getKeyMaterial(String proof) {
+    public String getKeyMaterial(String proofJwt) {
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(proof);
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
             JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
             return jpkm.getDID(jwt.getHeader()).get();
         } catch (ParseException e) {

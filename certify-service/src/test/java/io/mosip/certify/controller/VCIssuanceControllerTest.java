@@ -76,14 +76,14 @@ public class VCIssuanceControllerTest {
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_REQUEST));
 
         credentialRequest.setCredentialConfigId("  ");
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_REQUEST));
     }
 
     @Test
