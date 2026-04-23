@@ -321,6 +321,7 @@ public class VCIssuanceServiceImplTest {
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(expiredTransaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
         CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals(NonceErrorConstants.NONCE_EXPIRED, certifyException.getErrorCode());
@@ -363,6 +364,7 @@ public class VCIssuanceServiceImplTest {
         claimsFromAccessToken.put("iat", LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
 
         assertEquals("invalid_proof", certifyException.getErrorCode());
@@ -528,7 +530,7 @@ public class VCIssuanceServiceImplTest {
                 .thenReturn(jwtVcResult);
 
         CredentialResponse<String> jwtVcResponse = new CredentialResponse<>();
-        CredentialWrapper credentialWrapper = new CredentialWrapper<JsonLDObject>();
+        CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
         credentialWrapper.setCredential(new String("jwt_vc_credential_string"));
         jwtVcResponse.setCredentials(List.of(credentialWrapper));
 

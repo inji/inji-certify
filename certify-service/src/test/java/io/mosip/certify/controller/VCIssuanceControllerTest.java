@@ -54,7 +54,7 @@ public class VCIssuanceControllerTest {
         credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
-        CredentialWrapper credentialWrapper = new CredentialWrapper<JsonLDObject>();
+        CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
         credentialWrapper.setCredential(new JsonLDObject());
         credentialResponse.setCredentials(List.of(credentialWrapper));
         Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenReturn(credentialResponse);

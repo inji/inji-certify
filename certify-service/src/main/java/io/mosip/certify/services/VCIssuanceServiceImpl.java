@@ -84,49 +84,9 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
 
         // 3. Proof Validation
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
-        Map<String, Object> supportedProofTypes = credentialMetadata.getProofTypesSupported();
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        Map<String, Set<String>> proofs = credentialRequest.getProofs()
-                .entrySet()
-                .stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> entry.getValue() == null
-                                ? Collections.emptySet()
-                                : new HashSet<>(entry.getValue())
-                ));
-        List<String> holderIds = new ArrayList<>();
-        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
-        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
-            String proofType = entry.getKey();
-            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
-
-            for (String proofValue : entry.getValue()) {
-                try {
-                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log, nonceEndpoint);
-                    if (proofValidator == null) {
-                        throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
-                    }
-                    boolean isValid = proofValidator.validate(clientId, validCNonce,
-                            proofValue, supportedProofTypes);
-                    if(!isValid) {
-                        continue;
-                    }
-                    if(validCNonce != null) {
-                        auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
-                                AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
-                    }
-                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
-                } catch(CertifyException e) {
-                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
-                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
-                    throw e;
-                }
-            }
-        }
-        if(holderIds.isEmpty()) {
-            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
-        }
+        List<String> holderIds = VCIssuanceUtil.validateProofsAndGetHolderIds(credentialRequest,credentialMetadata,
+                clientId, accessTokenHash, auditWrapper,proofValidatorFactory,nonceCacheService,credentialConfigurationService);
         for (String holderId : holderIds) {
             vcResults.add(getVerifiableCredential(credentialRequest, credentialMetadata, holderId));
         }

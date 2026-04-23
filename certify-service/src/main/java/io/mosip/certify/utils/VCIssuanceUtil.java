@@ -2,14 +2,22 @@ package io.mosip.certify.utils;
 
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
+import io.mosip.certify.api.spi.AuditPlugin;
+import io.mosip.certify.api.util.Action;
+import io.mosip.certify.api.util.ActionStatus;
+import io.mosip.certify.api.util.AuditHelper;
 import io.mosip.certify.core.constants.*;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.exception.InvalidNonceException;
+import io.mosip.certify.proof.ProofValidator;
+import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.services.NonceCacheService;
 import io.mosip.certify.api.dto.VCResult;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
@@ -17,7 +25,9 @@ import java.text.ParseException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.stream.Collectors;
 
+@Slf4j
 public class VCIssuanceUtil {
 
     private VCIssuanceUtil() {
@@ -51,12 +61,12 @@ public class VCIssuanceUtil {
             if (proofJwtHasNonceClaim) {
                 throw new CertifyException(
                         VCIErrorConstants.INVALID_PROOF,
-                        "Invalid proof: nonce claim is present, but no nonce endpoint is configured."
+                        "nonce claim is present, but issuer doesn't support nonce"
                 );
             } else {
                 throw new CertifyException(
                         VCIErrorConstants.INVALID_PROOF,
-                        "Invalid proof: nonce claim is missing, but a nonce endpoint is configured."
+                        "nonce claim is missing, but issuer support nonce"
                 );
             }
         }
@@ -71,7 +81,7 @@ public class VCIssuanceUtil {
 
         if (transaction == null) {
             log.error("Nonce Transaction could not be found");
-            throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "Nonce Transaction could not be found.");
+            throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "c_nonce is invalid or expired");
         } else {
             cNonceExpire = transaction.getCNonceExpireSeconds();
         }
@@ -95,9 +105,9 @@ public class VCIssuanceUtil {
         switch (format) {
             case VCFormats.LDP_VC:
                 CredentialResponse<JsonLDObject> ldpVcResponse = new CredentialResponse<>();
-                List<CredentialWrapper<JsonLDObject>> ldpVcCredentials = new ArrayList<>();
+                List<CredentialResponse.CredentialWrapper<JsonLDObject>> ldpVcCredentials = new ArrayList<>();
                 for (VCResult<?> vcResult : vcResults) {
-                    CredentialWrapper<JsonLDObject> credentialWrapper = new CredentialWrapper<>();
+                    CredentialResponse.CredentialWrapper<JsonLDObject> credentialWrapper = new CredentialResponse.CredentialWrapper<>();
                     credentialWrapper.setCredential((JsonLDObject) vcResult.getCredential());
                     ldpVcCredentials.add(credentialWrapper);
                 }
@@ -109,13 +119,13 @@ public class VCIssuanceUtil {
             case VCFormats.JWT_VC_JSON_LD:
             case VCFormats.MSO_MDOC:
                 CredentialResponse<String> stringResponse = new CredentialResponse<>();
-                List<CredentialWrapper<String>> mDocCredentials = new ArrayList<>();
+                List<CredentialResponse.CredentialWrapper<String>> credentials = new ArrayList<>();
                 for (VCResult<?> vcResult : vcResults) {
-                    CredentialWrapper<String> credentialWrapper = new CredentialWrapper<>();
+                    CredentialResponse.CredentialWrapper<String> credentialWrapper = new CredentialResponse.CredentialWrapper<>();
                     credentialWrapper.setCredential((String) vcResult.getCredential());
-                    mDocCredentials.add(credentialWrapper);
+                    credentials.add(credentialWrapper);
                 }
-                stringResponse.setCredentials(mDocCredentials);
+                stringResponse.setCredentials(credentials);
                 return stringResponse;
 
             default:
@@ -134,7 +144,8 @@ public class VCIssuanceUtil {
         Optional<CredentialConfigurationSupportedDTO> dtoOpt =
                 Optional.ofNullable(supportedCredentials.get(credentialConfigId));
 
-        if(dtoOpt.isEmpty()){
+        CredentialConfigurationSupportedDTO credentialConfig = supportedCredentials.get(credentialConfigId);
+        if(credentialConfig == null) {
             throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
                     "No credential configuration found for credential_configuration_id");
         }
@@ -163,5 +174,64 @@ public class VCIssuanceUtil {
 
 
        return Optional.of(credentialMetadata);
+    }
+
+    public static List<String> validateProofsAndGetHolderIds(
+            CredentialRequest credentialRequest,
+            CredentialMetadata credentialMetadata,
+            String clientId,
+            String accessTokenHash,
+            AuditPlugin auditWrapper,
+            ProofValidatorFactory proofValidatorFactory,
+            NonceCacheService nonceCacheService,
+            CredentialConfigurationService credentialConfigurationService) {
+        Map<String, Object> supportedProofTypes = credentialMetadata.getProofTypesSupported();
+        Map<String, Set<String>> proofs = credentialRequest.getProofs()
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue() == null
+                                ? Collections.emptySet()
+                                : new HashSet<>(entry.getValue())
+                ));
+        List<String> holderIds = new ArrayList<>();
+        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
+        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey();
+            ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
+            if (proofValidator == null) {
+                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
+            }
+            for (String proofValue : entry.getValue()) {
+                try {
+                    String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(nonceCacheService, proofValue, log, nonceEndpoint);
+
+                    boolean isValid = proofValidator.validate(clientId, validCNonce,
+                            proofValue, supportedProofTypes);
+                    if (!isValid) {
+                        continue;
+                    }
+                    if (validCNonce != null) {
+                        auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
+                                AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
+                    }
+                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
+                } catch (CertifyException e) {
+                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
+                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
+                    throw e;
+                }
+            }
+        }
+
+        if(holderIds.isEmpty()) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
+        }
+
+        auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
+                AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
+
+        return holderIds;
     }
 }

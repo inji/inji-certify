@@ -63,14 +63,14 @@ public class JwtProofValidator implements ProofValidator {
     }
 
     @Override
-    public boolean validate(String clientId, String cNonce, String proof, Map<String, Object> proofConfiguration) {
-        if(proof == null || proof.isBlank()) {
+    public boolean validate(String clientId, String cNonce, String proofJwt, Map<String, Object> proofConfiguration) {
+        if(proofJwt == null || proofJwt.isBlank()) {
             log.error("Found invalid jwt in the credential proof");
             return false;
         }
 
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(proof);
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
             Map<String, Object> jwtConfiguration;
             if(proofConfiguration.get("jwt") != null) {
              jwtConfiguration =(Map<String, Object>) proofConfiguration.get("jwt");
@@ -133,7 +133,7 @@ public class JwtProofValidator implements ProofValidator {
                 jwtProcessor.setJWSKeySelector(keySelector);
                 jwtProcessor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier(new JOSEObjectType(HEADER_TYP)));
                 jwtProcessor.setJWTClaimsSetVerifier(claimsSetVerifier);
-                jwtProcessor.process(proof, null);
+                jwtProcessor.process(proofJwt, null);
                 return true;
             }
         } catch (InvalidRequestException e) {

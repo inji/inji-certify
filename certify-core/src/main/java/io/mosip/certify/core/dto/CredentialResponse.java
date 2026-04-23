@@ -20,10 +20,9 @@ public class CredentialResponse<T> {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<CredentialWrapper<T>> credentials;
 
-    /**
-     * A JSON string containing a security token subsequently used to obtain a Credential.
-     *  MUST be present when credential is not returned
-     */
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String acceptance_token;
+    @Data
+    public static class CredentialWrapper<T> {
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private T credential;
+    }
 }

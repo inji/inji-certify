@@ -3,7 +3,6 @@ package io.mosip.certify;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialRequest;
 import io.mosip.certify.core.dto.CredentialResponse;
-import io.mosip.certify.core.dto.CredentialWrapper;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,15 +15,14 @@ import java.util.Map;
 public class TestVCIssuanceServiceImpl implements VCIssuanceService {
     @Override
     public  CredentialResponse getCredential(CredentialRequest credentialRequest) {
-        CredentialWrapper credentialWrapper1 = new CredentialWrapper();
+        CredentialResponse.CredentialWrapper credentialWrapper1 = new CredentialResponse.CredentialWrapper();
         credentialWrapper1.setCredential( "Mock Credential1");
-        CredentialWrapper credentialWrapper2 = new CredentialWrapper();
+        CredentialResponse.CredentialWrapper credentialWrapper2 = new CredentialResponse.CredentialWrapper();
         credentialWrapper2.setCredential( "Mock Credential2");
         CredentialResponse credentialResponse = new CredentialResponse();
-        List<CredentialWrapper> credentials = new ArrayList<>();
+        List<CredentialResponse.CredentialWrapper> credentials = new ArrayList<>();
         credentials.add(credentialWrapper1);
         credentials.add(credentialWrapper2);
-        credentialResponse.setAcceptance_token("fake-token");
         return credentialResponse;
     }
 

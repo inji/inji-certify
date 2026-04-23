@@ -507,7 +507,7 @@ public class CertifyIssuanceServiceImplTest {
         when(nonceCacheService.getNonceTransaction(anyString())).thenReturn(null);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         CertifyException certifyException = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
-        assertEquals(VCIErrorConstants.INVALID_NONCE, certifyException.getErrorCode());
+        assertEquals(NonceErrorConstants.INVALID_NONCE, certifyException.getErrorCode());
     }
 
     @Test
