@@ -6,7 +6,11 @@
 package io.mosip.certify.api.util;
 
 public enum Action {
-    VC_ISSUANCE("vci-service");
+    VC_ISSUANCE("vci-service"),
+
+    PROOF_VALIDATION("proof-validation"),
+
+    NONCE_VALIDATION("nonce-validation");
 
     String module;
 

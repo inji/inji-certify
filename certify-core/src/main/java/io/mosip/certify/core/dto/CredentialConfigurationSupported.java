@@ -17,7 +17,12 @@ public class CredentialConfigurationSupported {
     private String id;
     private String format;
     private String scope;
-    private List<String> types;
+    private List<String> type;
     private Map<String, Object> proofTypesSupported;
+    private List<String> context;
+    private Map<String, Object> credentialSubject;
+    private String vct;
+    private String docType;
+    private Map<String, Object> claims;
 
 }

@@ -39,7 +39,7 @@ public class VCIssuanceController {
      */
     @PostMapping(value = "/credential",produces = "application/json")
     public CredentialResponse getCredential(@Valid @RequestBody CredentialRequest credentialRequest) throws CertifyException {
-        log.info("Get credential request received for format: {}", credentialRequest.getFormat());
+        log.info("Get credential request received for credential configuration id: {}", credentialRequest.getCredentialConfigId());
         return vcIssuanceService.getCredential(credentialRequest);
     }
 

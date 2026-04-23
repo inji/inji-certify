@@ -6,6 +6,7 @@ import io.mosip.certify.api.spi.AuditPlugin;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.*;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.exception.InvalidNonceException;
 import io.mosip.certify.services.VCICacheService;
@@ -18,8 +19,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Arrays;
+import java.util.*;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,79 +49,67 @@ public class VCIssuanceControllerTest {
 
     @Test
     public void getVerifiableCredential_withValidDetails_thenPass() throws Exception {
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setProof_type("jwt");
-        credentialProof.setJwt("dummy_jwt_proof");
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
-        credentialRequest.setProof(credentialProof);
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
+        credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
-        credentialResponse.setCredential(new JsonLDObject());
+        CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
+        credentialWrapper.setCredential(new JsonLDObject());
+        credentialResponse.setCredentials(List.of(credentialWrapper));
         Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenReturn(credentialResponse);
 
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.credential").exists());
+                .andExpect(jsonPath("$.credentials").exists());
     }
 
     @Test
-    public void getVerifiableCredential_withInvalidFormat_thenFail() throws Exception {
+    public void getVerifiableCredential_withInvalid_CredentialConfigId_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat(null);
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setProof_type("jwt");
-        credentialRequest.setProof(credentialProof);
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId(null);
+        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
 
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_VC_FORMAT));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
 
-        credentialRequest.setFormat("  ");
+        credentialRequest.setCredentialConfigId("  ");
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_VC_FORMAT));
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_CONFIG_ID));
     }
 
     @Test
     public void getVerifiableCredential_withInvalidProof_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("jwt_vc_json");
-        CredentialDefinition credentialDefinition = new CredentialDefinition();
-        credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
 
-        credentialRequest.setProof(null);
+        credentialRequest.setProofs(null);
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(VCIErrorConstants.INVALID_PROOF));
 
-        CredentialProof credentialProof = new CredentialProof();
-        credentialRequest.setProof(credentialProof);
+        credentialRequest.setProofs(Map.of());
+
+        CertifyException certifyException = new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE,"The proof type is not supported.");
+        Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenThrow(certifyException);
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.UNSUPPORTED_PROOF_TYPE));
+                .andExpect(jsonPath("$.error").value(VCIErrorConstants.INVALID_PROOF));
 
 
-        credentialProof.setProof_type("  ");
-        credentialRequest.setProof(credentialProof);
+        credentialRequest.setProofs(Map.of(" ",List.of("jwt_vc_json")));
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
                         .contentType(MediaType.APPLICATION_JSON))
@@ -134,13 +122,9 @@ public class VCIssuanceControllerTest {
         CredentialDefinition credentialDefinition = new CredentialDefinition();
         credentialDefinition.setType(Arrays.asList("VerifiableCredential", "SampleVerifiableCredential_ldp"));
         credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
-        CredentialProof credentialProof = new CredentialProof();
-        credentialProof.setProof_type("jwt");
-        credentialProof.setJwt("dummy_jwt_proof");
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setFormat("ldp_vc");
-        credentialRequest.setProof(credentialProof);
-        credentialRequest.setCredential_definition(credentialDefinition);
+        credentialRequest.setCredentialConfigId("TestId");
+        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
 
         InvalidNonceException exception = new InvalidNonceException("test-new-nonce", 400);
         Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenThrow(exception);
