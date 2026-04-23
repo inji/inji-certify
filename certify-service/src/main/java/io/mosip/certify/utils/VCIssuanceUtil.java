@@ -31,7 +31,7 @@ public class VCIssuanceUtil {
         try {
             SignedJWT proofJwt = SignedJWT.parse(proof);
             Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-            Boolean proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            boolean proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
             if (proofJwtHasNonceClaim) {
                 proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
                 if (StringUtils.isBlank(proofJwtNonce)) {
@@ -73,8 +73,6 @@ public class VCIssuanceUtil {
         } else {
             cNonceExpire = transaction.getCNonceExpireSeconds();
         }
-
-        String cachedNonce = transaction.getCNonce();
 
         long issuedEpoch = transaction.getCNonceIssuedEpoch();
 

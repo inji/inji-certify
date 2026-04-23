@@ -524,11 +524,6 @@ public class VCIssuanceServiceImplTest {
         when(vcIssuancePlugin.getVerifiableCredential(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
                 .thenReturn(jwtVcResult);
 
-        CredentialResponse<String> jwtVcResponse = new CredentialResponse<>();
-        CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
-        credentialWrapper.setCredential(new String("jwt_vc_credential_string"));
-        jwtVcResponse.setCredentials(List.of(credentialWrapper));
-
         CredentialResponse<?> response = issuanceService.getCredential(request);
         assertNotNull(response);
         assertEquals("jwt_vc_credential_string", response.getCredentials().getFirst().getCredential());

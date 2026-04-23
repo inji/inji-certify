@@ -2350,9 +2350,6 @@ components:
                 anyOf:
                   - type: object
                   - type: string
-        acceptance_token:
-          type: string
-          description: A JSON string containing a security token used to subsequently obtain a credential. Must be present if credentials are not returned.
     VCError:
       type: object
       properties:
