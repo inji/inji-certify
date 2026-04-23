@@ -231,7 +231,6 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 case "ldp_vc":
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
                     vcRequestDto.setType(credentialConfigurationSupported.getType());
-                    vcRequestDto.setCredentialSubject(credentialConfigurationSupported.getCredentialSubject());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
                     jsonObject.put(Constants.TYPE, credentialConfigurationSupported.getType());
 

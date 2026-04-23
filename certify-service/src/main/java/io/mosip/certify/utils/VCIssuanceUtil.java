@@ -147,7 +147,6 @@ public class VCIssuanceUtil {
         if (credentialConfig.getCredentialDefinition() != null) {
             credentialConfigurationSupported.setType(credentialConfig.getCredentialDefinition().getType());
             credentialConfigurationSupported.setContext(credentialConfig.getCredentialDefinition().getContext());
-            credentialConfigurationSupported.setCredentialSubject(credentialConfig.getCredentialDefinition().getCredentialSubject());
         }
         credentialConfigurationSupported.setClaims(credentialConfig.getClaims());
 

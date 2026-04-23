@@ -155,7 +155,6 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                 case "ldp_vc" :
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
                     vcRequestDto.setType(credentialConfigurationSupported.getType());
-                    vcRequestDto.setCredentialSubject(credentialConfigurationSupported.getCredentialSubject());
                     vcResult = vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
                     break;
@@ -165,7 +164,6 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                 case "jwt_vc_json" :
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
                     vcRequestDto.setType(credentialConfigurationSupported.getType());
-                    vcRequestDto.setCredentialSubject(credentialConfigurationSupported.getCredentialSubject());
                     vcResult = vcIssuancePlugin.getVerifiableCredential(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
                     break;
