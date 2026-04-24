@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 public class Claims implements Serializable {
     private List<Display> display;
+    private boolean mandatory;
 
     @Data
     @NoArgsConstructor

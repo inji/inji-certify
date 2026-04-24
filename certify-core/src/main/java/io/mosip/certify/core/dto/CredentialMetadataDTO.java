@@ -1,5 +1,6 @@
 package io.mosip.certify.core.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import java.util.List;
 
@@ -14,6 +15,9 @@ public class CredentialMetadataDTO {
     public static class Claims {
 
         private List<String> path;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private Boolean mandatory;
 
         private List<ClaimsDisplayFieldsConfigDTO.Display> display;
 

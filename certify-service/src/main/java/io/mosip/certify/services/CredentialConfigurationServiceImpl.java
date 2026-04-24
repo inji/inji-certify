@@ -400,12 +400,15 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private CredentialMetadataDTO.Claims buildClaimObject(List<String> path, Claims value) {
         CredentialMetadataDTO.Claims claim = new CredentialMetadataDTO.Claims();
         claim.setPath(path);
-
-        if (value != null && value.getDisplay() != null) {
-            List<ClaimsDisplayFieldsConfigDTO.Display> displayList = value.getDisplay().stream()
-                    .map(d -> new ClaimsDisplayFieldsConfigDTO.Display(d.getName(), d.getLocale()))
-                    .collect(Collectors.toList());
-            claim.setDisplay(displayList);
+        if (value != null) {
+            if (value.getDisplay() != null) {
+                List<ClaimsDisplayFieldsConfigDTO.Display> displayList = value.getDisplay().stream()
+                        .map(d -> new ClaimsDisplayFieldsConfigDTO.Display(d.getName(), d.getLocale()))
+                        .collect(Collectors.toList());
+                claim.setDisplay(displayList);
+            }
+            log.info("mandatory fields " + value.isMandatory());
+            if(value.isMandatory())  claim.setMandatory(value.isMandatory());
         }
         return claim;
     }

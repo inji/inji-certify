@@ -24,6 +24,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -124,33 +125,18 @@ public class PreAuthorizedCodeService {
     }
 
     private void validateClaims(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
-        if (providedClaims == null) {
-            providedClaims = Collections.emptyMap();
-        }
-
-        String format = config.getFormat();
-
-        if (VCFormats.LDP_VC.equals(format)) {
-            // For ldp_vc: claims are defined in credential_definition.credentialSubject
-            validateClaimsForLDPVC(config, providedClaims);
-        } else {
-            // For mso_mdoc, vc+sd-jwt: use top-level claims with mandatory checking
-            Map<String, Object> requiredClaims = config.getClaims();
-            if (requiredClaims == null || requiredClaims.isEmpty()) {
-                return;
-            }
-            validateClaimsWithMandatory(requiredClaims, providedClaims);
-        }
-    }
-
-    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
-        Set<String> allowedClaimKeys;
-        CredentialDefinition credDef = config.getCredentialDefinition();
-        if (credDef != null && credDef.getCredentialSubject() != null) {
-            allowedClaimKeys = credDef.getCredentialSubject().keySet();
-        } else {
+        if (config.getCredentialMetadataDTO() == null ||
+                config.getCredentialMetadataDTO().getClaims() == null) {
             return;
         }
+
+        Set<String> allowedClaimKeys = config.getCredentialMetadataDTO().getClaims().stream()
+                .map(claim -> {
+                    List<String> path = claim.getPath();
+                    return path != null && path.size() > 1 ? path.getLast() : null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
         List<String> unknownClaims = new ArrayList<>();
         for (String providedClaim : providedClaims.keySet()) {
@@ -158,43 +144,6 @@ public class PreAuthorizedCodeService {
                 unknownClaims.add(providedClaim);
             }
         }
-        if (!unknownClaims.isEmpty()) {
-            log.error("Unknown claims provided: {}", unknownClaims);
-            throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
-        }
-    }
-
-    private void validateClaimsWithMandatory(Map<String, Object> requiredClaims, Map<String, Object> providedClaims) {
-        List<String> missingClaims = new ArrayList<>();
-        List<String> unknownClaims = new ArrayList<>();
-
-        for (Map.Entry<String, Object> entry : requiredClaims.entrySet()) {
-            if (!(entry.getValue() instanceof Map)) {
-                log.warn("Claim {} has unexpected format, skipping mandatory check", entry.getKey());
-                continue;
-            }
-            Map<String, Object> claimAttrs = (Map<String, Object>) entry.getValue();
-            Boolean mandatory = claimAttrs.containsKey(Constants.MANDATORY)
-                    ? (Boolean) claimAttrs.get(Constants.MANDATORY)
-                    : Boolean.FALSE;
-
-            if (Boolean.TRUE.equals(mandatory) &&
-                    (!providedClaims.containsKey(entry.getKey()) || providedClaims.get(entry.getKey()) == null)) {
-                    missingClaims.add(entry.getKey());
-            }
-        }
-
-        for (String providedClaim : providedClaims.keySet()) {
-            if (!requiredClaims.containsKey(providedClaim)) {
-                unknownClaims.add(providedClaim);
-            }
-        }
-
-        if (!missingClaims.isEmpty()) {
-            log.error("Missing mandatory claims: {}", missingClaims);
-            throw new InvalidRequestException(ErrorConstants.MISSING_MANDATORY_CLAIM);
-        }
-
         if (!unknownClaims.isEmpty()) {
             log.error("Unknown claims provided: {}", unknownClaims);
             throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);

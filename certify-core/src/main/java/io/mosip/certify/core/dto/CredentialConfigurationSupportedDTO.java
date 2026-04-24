@@ -33,9 +33,7 @@ public class CredentialConfigurationSupportedDTO {
     private Map<String, Object> proofTypesSupported;
 
     @JsonProperty("credential_definition")
-    private CredentialDefinition credentialDefinition; // TODO: remove as part of https://github.com/inji/inji-certify/issues/678
-
-    private Map<String, Object> claims; // TODO: remove as part of https://github.com/inji/inji-certify/issues/678
+    private CredentialDefinition credentialDefinition;
 
     private String vct;
 

@@ -22,6 +22,5 @@ public class CredentialConfigurationSupported {
     private List<String> context;
     private String vct;
     private String docType;
-    private Map<String, Object> claims;
 
 }

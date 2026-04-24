@@ -95,8 +95,25 @@ public class PreAuthorizedCodeServiceTest {
         // Setup mock for credentialConfigurationService
         Map<String, CredentialConfigurationSupportedDTO> supportedDTOMap = new LinkedHashMap<>();
         CredentialConfigurationSupportedDTO configDTO = new CredentialConfigurationSupportedDTO();
-        configDTO.setClaims(requiredClaims);
+        CredentialMetadataDTO metadata = new CredentialMetadataDTO();
+        List<CredentialMetadataDTO.Claims> claimsList = new ArrayList<>();
+
+        CredentialMetadataDTO.Claims givenName = new CredentialMetadataDTO.Claims();
+        givenName.setPath(List.of("credentialSubject", "name"));
+
+        ClaimsDisplayFieldsConfigDTO.Display givenNameDisplay =
+                new ClaimsDisplayFieldsConfigDTO.Display();
+        givenNameDisplay.setName("Given Name");
+        givenNameDisplay.setLocale("en-US");
+
+        givenName.setDisplay(List.of(givenNameDisplay));
+
+        claimsList.add(givenName);
+        metadata.setClaims(claimsList);
+        configDTO.setCredentialMetadataDTO(metadata);
         supportedDTOMap.put(CONFIG_ID, configDTO);
+
+
 
         metadataDTO = mock(CredentialIssuerMetadataDTO.class);
         when(metadataDTO.getCredentialConfigurationSupportedDTO()).thenReturn(supportedDTOMap);
@@ -144,16 +161,6 @@ public class PreAuthorizedCodeServiceTest {
                         () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
 
         Assert.assertEquals(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID, exception.getMessage());
-    }
-
-    @Test
-    public void generatePreAuthorizedCode_MissingMandatoryClaim() {
-        request.getClaims().remove("name");
-
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
-
-        Assert.assertEquals(ErrorConstants.MISSING_MANDATORY_CLAIM, exception.getErrorCode());
     }
 
     @Test

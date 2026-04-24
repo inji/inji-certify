@@ -168,7 +168,6 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                             parsedAccessToken.getClaims());
                     break;
                 case VCFormats.MSO_MDOC :
-                    vcRequestDto.setClaims(credentialConfigurationSupported.getClaims());
                     vcRequestDto.setDoctype( credentialConfigurationSupported.getDocType());
                     vcResult = vcIssuancePlugin.getVerifiableCredential(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());

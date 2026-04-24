@@ -79,7 +79,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         credentialConfig.setScope("test_vc_ldp");
         credentialConfig.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         credentialConfig.setCredentialSigningAlgValuesSupported(List.of("Ed25519Signature2020"));
-        credentialConfig.setClaims(Map.of("name", new Claims(List.of(new Claims.Display("Full Name", "en")))));
+        credentialConfig.setClaims(Map.of("name", new Claims(List.of(new Claims.Display("Full Name", "en")),false)));
         credentialConfig.setKeyManagerAppId("TEST2019");
         credentialConfig.setKeyManagerRefId("TEST2019-REF");
         credentialConfig.setSignatureCryptoSuite("Ed25519Signature2020");
@@ -821,7 +821,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         config.setProofTypesSupported(Map.of("jwt", Map.of()));
         
-        Claims claimsConfig = new Claims(List.of(new Claims.Display("Full Name", "en")));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("Full Name", "en")),false);
         config.setClaims(Map.of("name", claimsConfig));
 
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
@@ -847,7 +847,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCredentialFormat(VCFormats.MSO_MDOC);
         config.setDocType("org.iso.18013.5.1.mDL");
         
-        Claims claimsConfig = new Claims(List.of(new Claims.Display("First Name", "en")));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("First Name", "en")),false);
         config.setMsoMdocClaims(Map.of("org.iso.18013.5.1", Map.of("given_name", claimsConfig)));
 
         CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
@@ -870,7 +870,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setCredentialFormat(VCFormats.VC_SD_JWT);
         config.setSdJwtVct("https://example.com/vct");
         
-        Claims claimsConfig = new Claims(List.of(new Claims.Display("Last Name", "en")));
+        Claims claimsConfig = new Claims(List.of(new Claims.Display("Last Name", "en")),false);
         config.setSdJwtClaims(Map.of("family_name", claimsConfig));
 
         CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();

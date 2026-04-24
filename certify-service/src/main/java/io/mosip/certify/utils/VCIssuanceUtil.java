@@ -146,7 +146,6 @@ public class VCIssuanceUtil {
             credentialConfigurationSupported.setType(credentialConfig.getCredentialDefinition().getType());
             credentialConfigurationSupported.setContext(credentialConfig.getCredentialDefinition().getContext());
         }
-        credentialConfigurationSupported.setClaims(credentialConfig.getClaims());
 
         if(credentialConfig.getFormat().equals(VCFormats.VC_SD_JWT)) {
             credentialConfigurationSupported.setVct(credentialConfig.getVct());
