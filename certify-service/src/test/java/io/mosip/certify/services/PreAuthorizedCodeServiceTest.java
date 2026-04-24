@@ -107,6 +107,7 @@ public class PreAuthorizedCodeServiceTest {
         givenNameDisplay.setLocale("en-US");
 
         givenName.setDisplay(List.of(givenNameDisplay));
+        givenName.setMandatory(true);
 
         claimsList.add(givenName);
         metadata.setClaims(claimsList);
@@ -161,6 +162,16 @@ public class PreAuthorizedCodeServiceTest {
                         () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
 
         Assert.assertEquals(ErrorConstants.INVALID_CREDENTIAL_CONFIGURATION_ID, exception.getMessage());
+    }
+
+    @Test
+    public void generatePreAuthorizedCode_MissingMandatoryClaim() {
+        request.getClaims().remove("name");
+
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> preAuthorizedCodeService.generatePreAuthorizedCode(request));
+
+        Assert.assertEquals(ErrorConstants.MISSING_MANDATORY_CLAIM, exception.getErrorCode());
     }
 
     @Test

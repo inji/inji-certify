@@ -130,14 +130,37 @@ public class PreAuthorizedCodeService {
             return;
         }
 
-        Set<String> allowedClaimKeys = config.getCredentialMetadataDTO().getClaims().stream()
-                .map(claim -> {
-                    List<String> path = claim.getPath();
-                    return path != null && path.size() > 1 ? path.getLast() : null;
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
+        Set<String> allowedClaimKeys = new HashSet<>();
+        List<String> mandatoryClaims = new ArrayList<>();
+
+        for (CredentialMetadataDTO.Claims claim :
+                config.getCredentialMetadataDTO().getClaims()) {
+
+            List<String> path = claim.getPath();
+
+            if (path != null && path.size() > 1) {
+                String claimKey = path.get(path.size() - 1);
+
+                allowedClaimKeys.add(claimKey);
+                if (Boolean.TRUE.equals(claim.getMandatory())) {
+                    mandatoryClaims.add(claimKey);
+                }
+            }
+        }
+
+        List<String> missingMandatoryClaims = mandatoryClaims.stream()
+                .filter(key ->
+                        !providedClaims.containsKey(key) ||
+                                providedClaims.get(key) == null ||
+                                providedClaims.get(key).toString().trim().isEmpty()
+                )
+                .toList();
+
+        if (!missingMandatoryClaims.isEmpty()) {
+            log.error("Missing mandatory claims: {}", missingMandatoryClaims);
+            throw new InvalidRequestException(ErrorConstants.MISSING_MANDATORY_CLAIM);
+        }
+
         List<String> unknownClaims = new ArrayList<>();
         for (String providedClaim : providedClaims.keySet()) {
             if (!allowedClaimKeys.contains(providedClaim)) {
