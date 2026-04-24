@@ -138,8 +138,8 @@ public class PreAuthorizedCodeService {
 
             List<String> path = claim.getPath();
 
-            if (path != null && path.size() > 1) {
-                String claimKey = path.get(path.size() - 1);
+            if (path != null && !path.isEmpty()) {
+                String claimKey = path.getLast();
 
                 allowedClaimKeys.add(claimKey);
                 if (Boolean.TRUE.equals(claim.getMandatory())) {
