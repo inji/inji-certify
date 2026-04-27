@@ -451,6 +451,7 @@ public class CertifyIssuanceServiceImplTest {
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(anyMap())).thenReturn(new JSONObject());
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn("did:example:holder123");
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
         when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.empty());
 
@@ -465,6 +466,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn("did:example:holder123");
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
         DataProviderExchangeException e = new DataProviderExchangeException("DP_FETCH_FAILED", "Failed to fetch data");
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenThrow(e);
