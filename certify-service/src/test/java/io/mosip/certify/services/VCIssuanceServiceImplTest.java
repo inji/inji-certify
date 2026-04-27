@@ -168,7 +168,7 @@ public class VCIssuanceServiceImplTest {
             req.setCredentialConfigId("test-credential-id-jwt");
         }
 
-        req.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE, true))));
+        req.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT(TEST_CNONCE, true))));
         return req;
     }
 
@@ -262,7 +262,7 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_LDP_WithValidTransaction_Two_Proofs_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
-        request.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE, true),createValidJWTWithEC(TEST_CNONCE, true))));
+        request.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT(TEST_CNONCE, true),createValidJWTWithEC(TEST_CNONCE, true))));
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
@@ -286,7 +286,7 @@ public class VCIssuanceServiceImplTest {
     public void getCredential_LDP_WithValidTransaction_Two_SAME_Proofs_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         String jwt = createValidJWT(TEST_CNONCE, true);
-        request.setProofs(Map.of("jwt",List.of(jwt,jwt)));
+        request.setProofs(Map.of(ProofType.JWT,List.of(jwt,jwt)));
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
@@ -309,7 +309,7 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_ExpiredNonce_ThrowsInvalidNonceException() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
-        request.setProofs(Map.of("jwt",List.of(createValidJWT("expired-cnonce", true))));
+        request.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT("expired-cnonce", true))));
 
         VCIssuanceTransaction expiredTransaction = new VCIssuanceTransaction();
         expiredTransaction.setCNonce("expired-cnonce");
@@ -328,7 +328,7 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_WithNoNonceInProofJwt_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
-        request.setProofs(Map.of("jwt", List.of(createValidJWT("", false))));
+        request.setProofs(Map.of(ProofType.JWT, List.of(createValidJWT("", false))));
         mockGlobalCredentialIssuerMetadataDTO.setNonceEndpoint(null);
 
         claimsFromAccessToken.put("c_nonce", TEST_CNONCE);
@@ -353,7 +353,7 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_WithEmptyNonceInProofJwt_ThrowsCertifyException() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
-        request.setProofs(Map.of("jwt",List.of(createValidJWT("", true))));
+        request.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT("", true))));
 
         claimsFromAccessToken.put("c_nonce", TEST_CNONCE);
         claimsFromAccessToken.put("iat", LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
@@ -427,7 +427,7 @@ public class VCIssuanceServiceImplTest {
     @Test
     public void getCredential_ValidRequest_MsoMDoc_Two_Proof_Success() throws Exception {
         request = createValidCredentialRequest(VCFormats.MSO_MDOC);
-        request.setProofs(Map.of("jwt",List.of(createValidJWT(TEST_CNONCE, true),createValidJWT(TEST_CNONCE, true))));
+        request.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT(TEST_CNONCE, true),createValidJWT(TEST_CNONCE, true))));
         // request.setDoctype("org.iso.18013.5.1.mDL"); // This is set in createValidCredentialRequest
 
         when(parsedAccessToken.isActive()).thenReturn(true);

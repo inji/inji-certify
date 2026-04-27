@@ -31,7 +31,7 @@ public class CredentialRequest {
     @Valid
     @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
     private Map<
-            @NotBlank(message = ErrorConstants.UNSUPPORTED_PROOF_TYPE) String,
+            ProofType,
             @NotEmpty(message = VCIErrorConstants.INVALID_PROOF) List<
                     @NotBlank(message = VCIErrorConstants.INVALID_PROOF) String
                     >

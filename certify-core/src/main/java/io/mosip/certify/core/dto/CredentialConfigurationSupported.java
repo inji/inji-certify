@@ -17,7 +17,7 @@ public class CredentialConfigurationSupported {
     private String id;
     private String format;
     private String scope;
-    private List<String> type;
+    private List<String> types;
     private Map<String, Object> proofTypesSupported;
     private List<String> context;
     private String vct;

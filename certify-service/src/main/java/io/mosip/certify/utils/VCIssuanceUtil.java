@@ -32,7 +32,7 @@ public class VCIssuanceUtil {
             SignedJWT proofJwt = SignedJWT.parse(proof);
             Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
             boolean proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
-            if (proofJwtHasNonceClaim) {
+            if (proofJwtHasNonceClaim && hasNonceEndpoint) {
                 proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
                 if (StringUtils.isBlank(proofJwtNonce)) {
                     log.error("Nonce claim is present in proof JWT but is blank");
@@ -143,7 +143,7 @@ public class VCIssuanceUtil {
         credentialConfigurationSupported.setId(credentialConfigId);
         credentialConfigurationSupported.setProofTypesSupported(credentialConfig.getProofTypesSupported());
         if (credentialConfig.getCredentialDefinition() != null) {
-            credentialConfigurationSupported.setType(credentialConfig.getCredentialDefinition().getType());
+            credentialConfigurationSupported.setTypes(credentialConfig.getCredentialDefinition().getType());
             credentialConfigurationSupported.setContext(credentialConfig.getCredentialDefinition().getContext());
         }
 

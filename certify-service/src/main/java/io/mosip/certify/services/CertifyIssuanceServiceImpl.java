@@ -152,7 +152,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
         Map<String, Object> supportedProofTypes = credentialConfigurationSupported.getProofTypesSupported();
-        Map<String, Set<String>> proofs = credentialRequest.getProofs()
+        Map<ProofType, Set<String>> proofs = credentialRequest.getProofs()
                 .entrySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -163,8 +163,8 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 ));
         List<String> holderIds = new ArrayList<>();
         String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
-        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
-            String proofType = entry.getKey();
+        for (Map.Entry<ProofType,Set<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey().toString().toLowerCase();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
             if (proofValidator == null) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
@@ -230,9 +230,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             switch (format) {
                 case "ldp_vc":
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
-                    vcRequestDto.setType(credentialConfigurationSupported.getType());
+                    vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
-                    jsonObject.put(Constants.TYPE, credentialConfigurationSupported.getType());
+                    jsonObject.put(Constants.TYPE, credentialConfigurationSupported.getTypes());
 
                     List<String> credentialStatusPurposeList = vcFormatter.getCredentialStatusPurpose(templateName);
                     if (credentialStatusPurposeList != null && !credentialStatusPurposeList.isEmpty()

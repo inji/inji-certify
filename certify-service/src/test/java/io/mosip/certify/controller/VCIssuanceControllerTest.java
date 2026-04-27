@@ -50,7 +50,7 @@ public class VCIssuanceControllerTest {
     @Test
     public void getVerifiableCredential_withValidDetails_thenPass() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
-        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
+        credentialRequest.setProofs(Map.of(ProofType.JWT,List.of("dummy_jwt_proof")));
         credentialRequest.setCredentialConfigId("TestId");
 
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
@@ -70,7 +70,7 @@ public class VCIssuanceControllerTest {
     public void getVerifiableCredential_withInvalid_CredentialConfigId_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
         credentialRequest.setCredentialConfigId(null);
-        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
+        credentialRequest.setProofs(Map.of(ProofType.JWT,List.of("dummy_jwt_proof")));
 
         mockMvc.perform(post("/issuance/credential")
                         .content(objectMapper.writeValueAsBytes(credentialRequest))
@@ -107,14 +107,6 @@ public class VCIssuanceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(VCIErrorConstants.INVALID_PROOF));
-
-
-        credentialRequest.setProofs(Map.of(" ",List.of("jwt_vc_json")));
-        mockMvc.perform(post("/issuance/credential")
-                        .content(objectMapper.writeValueAsBytes(credentialRequest))
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.UNSUPPORTED_PROOF_TYPE));
     }
 
     @Test
@@ -124,7 +116,7 @@ public class VCIssuanceControllerTest {
         credentialDefinition.setContext(Arrays.asList("https://www.w3.org/2018/credentials/v1"));
         CredentialRequest credentialRequest = new CredentialRequest();
         credentialRequest.setCredentialConfigId("TestId");
-        credentialRequest.setProofs(Map.of("jwt",List.of("dummy_jwt_proof")));
+        credentialRequest.setProofs(Map.of(ProofType.JWT,List.of("dummy_jwt_proof")));
 
         InvalidNonceException exception = new InvalidNonceException("test-new-nonce", 400);
         Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenThrow(exception);

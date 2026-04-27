@@ -142,7 +142,7 @@ public class PreAuthorizedCodeService {
                 String claimKey = path.getLast();
 
                 allowedClaimKeys.add(claimKey);
-                if (Boolean.TRUE.equals(claim.getMandatory())) {
+                if (Boolean.TRUE.equals(claim.isMandatory())) {
                     mandatoryClaims.add(claimKey);
                 }
             }

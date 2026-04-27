@@ -409,7 +409,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             }
             log.info("mandatory fields " + value.isMandatory());
             if(value.isMandatory())  {
-                claim.setMandatory(true);
+                claim.setMandatory(value.isMandatory());
             }
         }
         return claim;

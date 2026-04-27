@@ -17,10 +17,7 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.constants.VCIErrorConstants;
-import io.mosip.certify.core.dto.CredentialConfigurationSupported;
-import io.mosip.certify.core.dto.CredentialRequest;
-import io.mosip.certify.core.dto.CredentialResponse;
-import io.mosip.certify.core.dto.ParsedAccessToken;
+import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.exception.NotAuthenticatedException;
@@ -29,6 +26,7 @@ import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.VCIssuanceUtil;
+import kotlinx.html.P;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -86,7 +84,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         String clientId = (String) parsedAccessToken.getClaims().get(Constants.CLIENT_ID);
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
         Map<String, Object> supportedProofTypes = credentialConfigurationSupported.getProofTypesSupported();
-        Map<String, Set<String>> proofs = credentialRequest.getProofs()
+        Map<ProofType, Set<String>> proofs = credentialRequest.getProofs()
                 .entrySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -97,8 +95,8 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                 ));
         List<String> holderIds = new ArrayList<>();
         String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
-        for (Map.Entry<String,Set<String>> entry : proofs.entrySet()) {
-            String proofType = entry.getKey();
+        for (Map.Entry<ProofType,Set<String>> entry : proofs.entrySet()) {
+            String proofType = entry.getKey().toString().toLowerCase();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
             if (proofValidator == null) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
@@ -154,7 +152,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
             switch (credentialConfigurationSupported.getFormat()) {
                 case "ldp_vc" :
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
-                    vcRequestDto.setType(credentialConfigurationSupported.getType());
+                    vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     vcResult = vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
                     break;
@@ -163,7 +161,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                 case "jwt_vc_json-ld" :
                 case "jwt_vc_json" :
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
-                    vcRequestDto.setType(credentialConfigurationSupported.getType());
+                    vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     vcResult = vcIssuancePlugin.getVerifiableCredential(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
                     break;
