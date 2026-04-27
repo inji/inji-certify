@@ -26,7 +26,6 @@ import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.VCIssuanceUtil;
-import kotlinx.html.P;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
