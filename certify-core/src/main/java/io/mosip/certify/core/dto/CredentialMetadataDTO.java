@@ -16,7 +16,7 @@ public class CredentialMetadataDTO {
 
         private List<String> path;
 
-        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
         private boolean mandatory;
 
         private List<ClaimsDisplayFieldsConfigDTO.Display> display;

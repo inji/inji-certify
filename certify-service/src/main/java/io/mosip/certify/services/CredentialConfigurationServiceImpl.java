@@ -368,6 +368,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         CredentialMetadataDTO credentialMetadataDTO = new CredentialMetadataDTO();
         credentialMetadataDTO.setDisplay(credentialConfigurationDTO.getMetaDataDisplay());
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
+            CredentialDefinition credentialDefinition = new CredentialDefinition();
+            credentialDefinition.setType(credentialConfigurationDTO.getCredentialTypes());
+            credentialDefinition.setContext(credentialConfigurationDTO.getContextURLs());
+            credentialConfigurationSupported.setCredentialDefinition(credentialDefinition);
             credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getClaims()));
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
