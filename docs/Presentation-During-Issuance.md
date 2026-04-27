@@ -47,9 +47,9 @@ sequenceDiagram
     Note over W,IC: 1. Authorization to download credential
     W->>IC: 5. POST Content-Type: application/x-www-form-urlencoded /iae<br/>{response_type="code", client_id, code_challenge, code_challenge_method:"S256", redirect_uri, interaction_types_supported=urn:openid:dcp:iae:openid4vp_presentation,urn:openid:dcp:iae:redirect_to_web}
     IC->>IVP: 6. Create presentation request
-    IVP-->>IC: 7. {request_id,transaction_id, {standard ovp request by value with response_mode as "direct-post" or "direct-post.jwt"}} (non-normative)
+    IVP-->>IC: 7. {request_id,transaction_id, {standard ovp request by value with response_mode as "direct_post" or "direct_post.jwt"}} (non-normative)
     IC->>IC: 8. store transaction id for the presentation request mapped to Auth Session
-    Note over IC: Map direct-post to iae-post and direct-post.jwt to iae-post.jwt and construct the response
+    Note over IC: Map direct_post to iae-post and direct_post.jwt to iae-post.jwt and construct the response
     IC-->>W: 9. 200 Interactive Authorization Response<br/>{status:"require_interaction", type:"urn:openid:dcp:iae:openid4vp_presentation", auth_session:"..random string", openid4vp_request: {standard ovp request by value with response_mode as "iae-post" or "iae-post.jwt"}}
     
     Note over W,IC: 2. Presentation Flow with Issuer and VP Verifier
@@ -95,7 +95,7 @@ The Wallet initiates the request, and the Issuer determines if a presentation is
     - If a VP is required, it proceeds to create a presentation request with the VP Verifier.
     - If no VP is required, it continues with authorization code flow. (That is as per standard OpenId4VCI spec, not included here)
 3. **Inji Certify to VP Verifier**: Instructs the VP Verifier to create a presentation request.
-4. **VP Verifier to Inji Certify**: Returns `request_id`, `transaction_id`, and `request` (e.g. `{response_type": "vp_token","response_mode": "direct-post"....}`). Inji Certify stores `transaction_id` mapped to the Auth Session.
+4. **VP Verifier to Inji Certify**: Returns `request_id`, `transaction_id`, and `request` (e.g. `{response_type": "vp_token","response_mode": "direct_post"....}`). Inji Certify stores `transaction_id` mapped to the Auth Session.
 5. **Inji Certify to Wallet**: Responds with `200 Interactive Authorization Response`. Includes `status:"require_interaction"`, `type:"urn:openid:dcp:iae:openid4vp_presentation"`, `auth_session`, `openid4vp_request:{}`
     - The `openid4vp_request` contains the standard OpenID4VP request by value, with `response_mode` set to either `iae-post` for unencrypted response or `iae-post.jwt` for encrypted response. [Refer](https://openid.github.io/OpenID4VCI/openid-4-verifiable-credential-issuance-1_1-wg-draft.html#name-interactive-authorization-e)
 

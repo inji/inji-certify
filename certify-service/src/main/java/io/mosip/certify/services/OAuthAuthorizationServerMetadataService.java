@@ -41,6 +41,9 @@ public class OAuthAuthorizationServerMetadataService {
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
     private String interactiveAuthorizationEndpoint;
 
+    @Value("${mosip.certify.oauth.require-interactive-authorization-request:true}")
+    private boolean requireInteractiveAuthorizationRequest;
+
     /**
      * Builds and returns OAuth 2.0 Authorization Server Metadata
      * @return OAuthAuthorizationServerMetadataDTO containing the OAuth Authorization Server metadata
@@ -57,7 +60,7 @@ public class OAuthAuthorizationServerMetadataService {
         metadata.setResponseTypesSupported(parseCommaSeparatedValues(responseTypesSupported));
         metadata.setCodeChallengeMethodsSupported(parseCommaSeparatedValues(codeChallengeMethodsSupported));
         metadata.setInteractiveAuthorizationEndpoint(interactiveAuthorizationEndpoint);
-        metadata.setRequireInteractiveAuthorizationRequest(true);
+        metadata.setRequireInteractiveAuthorizationRequest(requireInteractiveAuthorizationRequest);
 
         log.debug("OAuth Authorization Server metadata built successfully for issuer: {}", issuer);
         return metadata;

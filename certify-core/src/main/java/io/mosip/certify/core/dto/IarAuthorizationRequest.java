@@ -28,7 +28,7 @@ public class IarAuthorizationRequest {
     /**
      * OpenID4VP presentation response (unencrypted or encrypted JWT)
      */
-    @NotBlank(message = "openid4vp response is required")
+    @NotBlank(message = "openid4vp_presentation is required")
     @JsonProperty("openid4vp_presentation")
     private String openid4vpPresentation;
 }

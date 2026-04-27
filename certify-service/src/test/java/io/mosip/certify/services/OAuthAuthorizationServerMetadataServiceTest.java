@@ -37,6 +37,7 @@ public class OAuthAuthorizationServerMetadataServiceTest {
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "grantTypesSupported", TEST_GRANT_TYPES);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "codeChallengeMethodsSupported", TEST_CODE_CHALLENGE_METHODS);
         ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "interactiveAuthorizationEndpoint", TEST_INTERACTIVE_AUTHORIZATION_ENDPOINT);
+        ReflectionTestUtils.setField(oAuthAuthorizationServerMetadataService, "requireInteractiveAuthorizationRequest", true);
     }
 
     @Test
