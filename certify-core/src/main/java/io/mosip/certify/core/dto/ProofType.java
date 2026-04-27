@@ -3,8 +3,7 @@ package io.mosip.certify.core.dto;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum ProofType {
-    JWT,
-    LDP_VP;
+    JWT;
 
     @JsonCreator
     public static ProofType fromValue(String value) {

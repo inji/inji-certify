@@ -411,9 +411,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                         .collect(Collectors.toList());
                 claim.setDisplay(displayList);
             }
-            if(value.isMandatory())  {
-                claim.setMandatory(value.isMandatory());
-            }
+            claim.setMandatory(value.isMandatory());
         }
         return claim;
     }

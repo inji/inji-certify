@@ -90,7 +90,9 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                         Map.Entry::getKey,
                         entry -> entry.getValue() == null
                                 ? Collections.emptySet()
-                                : new HashSet<>(entry.getValue())
+                                : new HashSet<>(entry.getValue()),
+                        (a, b) -> a,
+                        LinkedHashMap::new
                 ));
         List<String> holderIds = new ArrayList<>();
         String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
@@ -112,7 +114,10 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                         auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
                                 AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
                     }
-                    holderIds.add(proofValidator.getKeyMaterial(proofValue));
+                    String keyMaterial = proofValidator.getKeyMaterial(proofValue);
+                    if (keyMaterial != null) {
+                        holderIds.add(keyMaterial);
+                    }
                 } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
                             AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
