@@ -25,9 +25,11 @@
 									"    pm.expect(jsonData).to.have.property('credential_issuer');",
 									"    pm.expect(jsonData).to.have.property('authorization_servers');",
 									"    pm.expect(jsonData).to.have.property('credential_endpoint');",
+									"    pm.expect(jsonData).to.have.property('nonce_endpoint');",
 									"",
 									"    pm.collectionVariables.set('authorization_server', jsonData.authorization_servers[0]);",
 									"    pm.collectionVariables.set('credential_endpoint', jsonData.credential_endpoint);",
+									"    pm.collectionVariables.set('nonce_endpoint', jsonData.nonce_endpoint);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -621,6 +623,10 @@
 		},
 		{
 			"key": "credential_endpoint",
+			"value": ""
+		},
+		{
+			"key": "nonce_endpoint",
 			"value": ""
 		}
 	]
