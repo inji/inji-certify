@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "710a0e17-88d9-4686-8332-05dd6045c363",
+		"_postman_id": "6e03a109-6aea-423e-8ebb-45e8bb5ad85a",
 		"name": "Inji Certify - Pre Auth Code",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "1282483"
+		"_exporter_id": "41350892"
 	},
 	"item": [
 		{
@@ -402,7 +402,9 @@
 									"    console.log('Credential received successfully');",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						},
 						{
@@ -437,7 +439,9 @@
 									"",
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -461,7 +465,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ],\n        \"type\": [\n            \"VerifiableCredential\",\n            \"FarmerCredential\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}"
+							"raw": "{\n    \"credential_configuration_id\":\"FarmerCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}"
 						},
 						"url": {
 							"raw": "{{certifyurl}}/issuance/credential",

@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "edd685ae-f66f-425a-8859-ef319d8d5443",
+		"_postman_id": "73d9e832-fc1b-4156-83ff-29f9f7d7f1e9",
 		"name": "certify- Mock IDA",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "1282483"
+		"_exporter_id": "41350892"
 	},
 	"item": [
 		{
@@ -795,7 +795,9 @@
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
 									""
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						},
 						{
@@ -810,7 +812,9 @@
 									"    }    ",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -829,7 +833,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\" : \n    { \n        \"type\" : [\"VerifiableCredential\", \"FarmerCredential\"], \n    \"@context\" : [\"https://www.w3.org/2018/credentials/v1\"]\n    },\n    \"proof\": {\n        \"proof_type\":\"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"FarmerCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"

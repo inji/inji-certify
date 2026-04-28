@@ -44,7 +44,7 @@ To enable QR code support in your credential configurations, you need to include
 5. Below is an example of how to include `qr_settings` and `qr_signature_algo` in your credential configuration JSON:
 ```json
 {
-  "credentialFormat": "vc+sd-jwt",
+  "credentialFormat": "dc+sd-jwt",
   "qrSettings": [
     {
       "Full Name": "${fullName}",

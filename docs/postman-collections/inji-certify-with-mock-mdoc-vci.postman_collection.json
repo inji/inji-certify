@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "37eb73f6-3f54-4fee-a226-49aa46665379",
+		"_postman_id": "dc5253d4-a6a8-4da3-9271-a358e097bb9e",
 		"name": "Inji Certify Mock MDL VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "1282483"
+		"_exporter_id": "41350892"
 	},
 	"item": [
 		{
@@ -485,7 +485,9 @@
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
 									""
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						},
 						{
@@ -500,7 +502,9 @@
 									"    }    ",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -519,7 +523,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"mso_mdoc\",\n    \"doctype\": \"org.iso.18013.5.1.mDL\",\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"DrivingLicenseCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"

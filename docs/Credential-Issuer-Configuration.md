@@ -37,7 +37,7 @@ You can use these endpoints to manage your credential configurations:
 
 ## What Information Do You Need to Provide?
 
-When adding or updating a configuration, you need to send a JSON object with details related to the credential format you are configuring. The required fields depend on the credential format (e.g., `ldp_vc`, `mso_mdoc`, `vc+sd-jwt`). For more details regarding the API fields and examples, refer to the [Inji Certify API docs](https://mosip.stoplight.io/docs/inji-certify).
+When adding or updating a configuration, you need to send a JSON object with details related to the credential format you are configuring. The required fields depend on the credential format (e.g., `ldp_vc`, `mso_mdoc`, `dc+sd-jwt`). For more details regarding the API fields and examples, refer to the [Inji Certify API docs](https://mosip.stoplight.io/docs/inji-certify).
 
 ---
 
@@ -48,7 +48,7 @@ The Inji Certify uses several configuration properties to control how credential
 | Property Name                                                          | Description                                                               | Example Value                                                                                                                                                                                                                                                                                     |
 |------------------------------------------------------------------------|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes` | List of supported credential status purposes. Default value 'revocation'. | `["suspension", "revocation"]`                                                                                                                                                                                                                                                                    |
-| `mosip.certify.credential-config.cryptographic-binding-methods-supported` | Supported cryptographic binding methods per credential format.            | `{ 'ldp_vc': {'did:jwk','did:key'}, 'mso_mdoc': {'cose_key'},'vc+sd-jwt': {'did:jwk','did:key'} }`                                                                                                                                                                                                |
+| `mosip.certify.credential-config.cryptographic-binding-methods-supported` | Supported cryptographic binding methods per credential format.            | `{ 'ldp_vc': {'did:jwk','did:key'}, 'mso_mdoc': {'cose_key'},'dc+sd-jwt': {'did:jwk','did:key'} }`                                                                                                                                                                                                |
 | `mosip.certify.credential-config.credential-signing-alg-values-supported` | Supported signing algorithms per crypto suite.                            | `{ 'RsaSignature2018': {'RS256'}, 'Ed25519Signature2018': {'EdDSA'}, 'Ed25519Signature2020': {'EdDSA'}, 'EcdsaKoblitzSignature2016': {'ES256K'}, 'EcdsaSecp256k1Signature2019': {'ES256K'}, 'EcdsaSecp256r1Signature2019': {'ES256'}, 'ecdsa-rdfc-2019': {'ES256'}, 'ecdsa-jcs-2019': {'ES256'}}` |
 | `mosip.certify.credential-config.proof-types-supported`                | Supported proof types for credentials.                                    | `{'jwt': {'proof_signing_alg_values_supported': {'RS256', 'PS256', 'ES256', 'EdDSA'}}}`                                                                                                                                                                                                           |
 | `mosip.certify.signature-algo.key-alias-mapper`                       | Maps signature algorithms to list of key-aliases in key_alias table.      | `{'EdDSA': {{'CERTIFY_VC_SIGN_ED25519', ''}, {'CERTIFY_VC_SIGN_ED25519', 'ED25519_SIGN'}}`                                                                                                                                                                                                        |
@@ -57,7 +57,7 @@ The Inji Certify uses several configuration properties to control how credential
 
 **Note** : 
 In case of VCIssuance plugin mode, `ldp_vc` and `mso_mdoc` formats are supported by credential-configurations endpoints. 
-In case of DataProviderPlugin mode, `ldp_vc` and `vc+sd-jwt` formats are supported by credential-configurations endpoints.
+In case of DataProviderPlugin mode, `ldp_vc` and `dc+sd-jwt` formats are supported by credential-configurations endpoints.
 
 Inji Certify checks your configuration for required fields and possible duplicates:
 
@@ -65,7 +65,7 @@ Inji Certify checks your configuration for required fields and possible duplicat
 - **No duplicate configurations**: You cannot add two configurations with the same key details. For example, 
   - for `ldp_vc` format, combination of context & type should be unique. 
   - for `mso_mdoc` format, docType value should be unique.
-  - for `vc+sd-jwt` format, sdJwtVct value should be unique.
+  - for `dc+sd-jwt` format, sdJwtVct value should be unique.
 - **Validation for `signatureCryptoSuite`, `signatureAlgo`, `keyManagerAppId`, `keyManagerRefId`**.
   - `signatureCryptoSuite` must be one of the supported suites defined in `mosip.certify.credential-config.credential-signing-alg-values-supported`.
   - `signatureAlgo` must be one of the supported algorithms for the chosen `signatureCryptoSuite`.
