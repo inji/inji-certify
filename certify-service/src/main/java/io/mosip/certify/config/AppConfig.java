@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Configuration
 @EnableJpaRepositories(basePackages = {"io.mosip.kernel.keymanagerservice.repository", "io.mosip.certify.repository"})
-@EntityScan(basePackages = {"io.mosip.kernel.keymanagerservice.entity, io.mosip.certify.entity"})
+@EntityScan(basePackages = {"io.mosip.kernel.keymanagerservice.entity", "io.mosip.certify.entity"})
 @Slf4j
 public class AppConfig implements ApplicationRunner {
 
