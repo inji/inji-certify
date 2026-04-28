@@ -143,7 +143,6 @@ public class VCIssuanceServiceImplTest {
         // JWT_VC_JSON Config DTO
         CredentialConfigurationSupportedDTO supportedDTO_JWT = new CredentialConfigurationSupportedDTO();
         supportedDTO_JWT.setScope(DEFAULT_SCOPE);
-        supportedDTO_JWT.setFormat(VCFormats.JWT_VC_JSON);
         CredentialDefinition credDefDtoJwt = new CredentialDefinition();
         credDefDtoJwt.setContext(List.of("https://www.w3.org/2018/credentials/v1"));
         credDefDtoJwt.setType(List.of("VerifiableCredential", "TestJWTCredential"));
@@ -164,8 +163,6 @@ public class VCIssuanceServiceImplTest {
             req.setCredentialConfigId("test-credential-id-ldp");
         } else if(VCFormats.MSO_MDOC.equals(format)) {
             req.setCredentialConfigId("test-credential-id-msodoc");
-        } else if(VCFormats.JWT_VC_JSON.equals(format)) {
-            req.setCredentialConfigId("test-credential-id-jwt");
         }
 
         req.setProofs(Map.of(ProofType.JWT,List.of(createValidJWT(TEST_CNONCE, true))));
@@ -507,26 +504,5 @@ public class VCIssuanceServiceImplTest {
 
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals("PLUGIN_ERROR_CODE", ex.getErrorCode());
-    }
-
-    @Test
-    public void getCredential_JwtVcJson_Success() throws Exception {
-        request = createValidCredentialRequest(VCFormats.JWT_VC_JSON);
-        when(parsedAccessToken.isActive()).thenReturn(true);
-        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
-        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
-        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
-
-        VCResult<String> jwtVcResult = new VCResult<>();
-        jwtVcResult.setCredential("jwt_vc_credential_string");
-        when(vcIssuancePlugin.getVerifiableCredential(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
-                .thenReturn(jwtVcResult);
-
-        CredentialResponse<?> response = issuanceService.getCredential(request);
-        assertNotNull(response);
-        assertEquals("jwt_vc_credential_string", response.getCredentials().getFirst().getCredential());
-        verify(auditWrapper).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), isNull());
     }
 }

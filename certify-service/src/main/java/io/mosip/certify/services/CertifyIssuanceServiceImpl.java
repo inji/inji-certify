@@ -22,7 +22,6 @@ import io.mosip.certify.core.exception.NotAuthenticatedException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.CredentialLedgerService;
 import io.mosip.certify.core.spi.VCIssuanceService;
-import io.mosip.certify.core.util.SecurityHelperService;
 import io.mosip.certify.credential.Credential;
 import io.mosip.certify.credential.CredentialFactory;
 import io.mosip.certify.proof.ProofValidator;
@@ -44,7 +43,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -135,8 +137,10 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         // 2. Scope Validation
         String scopeClaim = (String) parsedAccessToken.getClaims().getOrDefault("scope", "");
         CredentialConfigurationSupported credentialConfigurationSupported = null;
+        CredentialIssuerMetadataDTO credentialIssuerMetadataDTO = credentialConfigurationService.fetchCredentialIssuerMetadata();
         for(String scope : scopeClaim.split(Constants.SPACE)) {
-            Optional<CredentialConfigurationSupported> result = getScopeCredentialMapping(scope, credentialRequest.getCredentialConfigId(), credentialConfigurationService.fetchCredentialIssuerMetadata());
+            Optional<CredentialConfigurationSupported> result = getScopeCredentialMapping(
+                    scope, credentialRequest.getCredentialConfigId(), credentialIssuerMetadataDTO);
             if(result.isPresent()) {
                 credentialConfigurationSupported = result.get(); //considering only first credential scope
                 break;
@@ -164,13 +168,10 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                         LinkedHashMap::new
                 ));
         List<String> holderIds = new ArrayList<>();
-        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
+        String nonceEndpoint = credentialIssuerMetadataDTO.getNonceEndpoint();
         for (Map.Entry<ProofType,Set<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey().toString().toLowerCase();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
-            if (proofValidator == null) {
-                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
-            }
             for (String proofValue : entry.getValue()) {
                 try {
                     String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vcICacheService, proofValue, log, nonceEndpoint);

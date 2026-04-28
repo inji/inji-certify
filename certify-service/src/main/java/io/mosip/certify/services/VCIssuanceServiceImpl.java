@@ -66,8 +66,11 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
 
         String scopeClaim = (String) parsedAccessToken.getClaims().getOrDefault("scope", "");
         CredentialConfigurationSupported credentialConfigurationSupported = null;
+        CredentialIssuerMetadataDTO credentialIssuerMetadataDTO = credentialConfigurationService.fetchCredentialIssuerMetadata();
+
         for(String scope : scopeClaim.split(Constants.SPACE)) {
-            Optional<CredentialConfigurationSupported> result = VCIssuanceUtil.getScopeCredentialMapping(scope,credentialRequest.getCredentialConfigId() ,credentialConfigurationService.fetchCredentialIssuerMetadata());
+            Optional<CredentialConfigurationSupported> result = VCIssuanceUtil.getScopeCredentialMapping(
+                    scope,credentialRequest.getCredentialConfigId() , credentialIssuerMetadataDTO);
             if(result.isPresent()) {
                 credentialConfigurationSupported = result.get(); //considering only first credential scope
                 break;
@@ -95,13 +98,10 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                         LinkedHashMap::new
                 ));
         List<String> holderIds = new ArrayList<>();
-        String nonceEndpoint = credentialConfigurationService.fetchCredentialIssuerMetadata().getNonceEndpoint();
+        String nonceEndpoint = credentialIssuerMetadataDTO.getNonceEndpoint();
         for (Map.Entry<ProofType,Set<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey().toString().toLowerCase();
             ProofValidator proofValidator = proofValidatorFactory.getProofValidator(proofType);
-            if (proofValidator == null) {
-                throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "Unsupported proof type: " + proofType);
-            }
             for (String proofValue : entry.getValue()) {
                 try {
                     String validCNonce = VCIssuanceUtil.validateAndGetClientNonce(vciCacheService, proofValue, log, nonceEndpoint);
@@ -154,19 +154,10 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         VCResult<?> vcResult = null;
         try {
             switch (credentialConfigurationSupported.getFormat()) {
-                case "ldp_vc" :
+                case VCFormats.LDP_VC :
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
                     vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     vcResult = vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(vcRequestDto, holderId,
-                            parsedAccessToken.getClaims());
-                    break;
-
-                // jwt_vc_json & jwt_vc_json-ld cases are merged
-                case "jwt_vc_json-ld" :
-                case "jwt_vc_json" :
-                    vcRequestDto.setContext(credentialConfigurationSupported.getContext());
-                    vcRequestDto.setType(credentialConfigurationSupported.getTypes());
-                    vcResult = vcIssuancePlugin.getVerifiableCredential(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
                     break;
                 case VCFormats.MSO_MDOC :

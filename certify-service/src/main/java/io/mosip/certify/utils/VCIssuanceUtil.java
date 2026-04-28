@@ -28,10 +28,11 @@ public class VCIssuanceUtil {
                                                    String proof, Logger log, String nonceEndpoint) {
         boolean hasNonceEndpoint = nonceEndpoint != null && !nonceEndpoint.isEmpty();
         String proofJwtNonce = null;
+        boolean proofJwtHasNonceClaim;
         try {
             SignedJWT proofJwt = SignedJWT.parse(proof);
             Map<String, Object> proofClaims = proofJwt.getJWTClaimsSet().getClaims();
-            boolean proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
+            proofJwtHasNonceClaim = proofClaims.containsKey("nonce");
             if (proofJwtHasNonceClaim && hasNonceEndpoint) {
                 proofJwtNonce = proofJwt.getJWTClaimsSet().getStringClaim("nonce");
                 if (StringUtils.isBlank(proofJwtNonce)) {
@@ -45,7 +46,7 @@ public class VCIssuanceUtil {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "Error encountered during proof jwt parsing.");
         }
 
-        if ((proofJwtNonce != null) != hasNonceEndpoint) {
+        if (proofJwtHasNonceClaim != hasNonceEndpoint) {
             if (proofJwtNonce != null) {
                 throw new CertifyException(
                         VCIErrorConstants.INVALID_PROOF,
@@ -59,31 +60,30 @@ public class VCIssuanceUtil {
             }
         }
 
-        if (proofJwtNonce == null) {
-            return null;
+        if (proofJwtNonce != null) {
+            VCIssuanceTransaction transaction = vciCacheService.getNonceTransaction(proofJwtNonce);
+
+            int cNonceExpire;
+
+            if (transaction == null) {
+                log.error("Nonce Transaction could not be found");
+                throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "c_nonce is invalid or expired");
+            } else {
+                cNonceExpire = transaction.getCNonceExpireSeconds();
+            }
+
+            long issuedEpoch = transaction.getCNonceIssuedEpoch();
+
+            boolean nonceExpired = (cNonceExpire <= 0 ||
+                    (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
+
+            if (nonceExpired) {
+                throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
+            }
+
+            return transaction.getCNonce();
         }
-
-        VCIssuanceTransaction transaction = vciCacheService.getNonceTransaction(proofJwtNonce);
-
-        int cNonceExpire;
-
-        if (transaction == null) {
-            log.error("Nonce Transaction could not be found");
-            throw new CertifyException(NonceErrorConstants.INVALID_NONCE, "c_nonce is invalid or expired");
-        } else {
-            cNonceExpire = transaction.getCNonceExpireSeconds();
-        }
-
-        long issuedEpoch = transaction.getCNonceIssuedEpoch();
-
-        boolean nonceExpired = (cNonceExpire <= 0 ||
-                (issuedEpoch + cNonceExpire) < LocalDateTime.now(ZoneOffset.UTC).toEpochSecond(ZoneOffset.UTC));
-
-        if (nonceExpired) {
-            throw new CertifyException(NonceErrorConstants.NONCE_EXPIRED, "c_nonce is expired.");
-        }
-
-        return transaction.getCNonce();
+        return null;
     }
 
     @SuppressWarnings("unchecked")
@@ -101,8 +101,6 @@ public class VCIssuanceUtil {
                 return ldpVcResponse;
 
             case VCFormats.DC_SD_JWT:
-            case VCFormats.JWT_VC_JSON:
-            case VCFormats.JWT_VC_JSON_LD:
             case VCFormats.MSO_MDOC:
                 CredentialResponse<String> stringResponse = new CredentialResponse<>();
                 List<CredentialResponse.CredentialWrapper<String>> credentials = new ArrayList<>();
