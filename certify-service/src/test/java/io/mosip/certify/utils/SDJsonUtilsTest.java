@@ -148,7 +148,7 @@ public class SDJsonUtilsTest extends TestCase {
         //         .build();
         JWSHeader header =
             new JWSHeader.Builder(JWSAlgorithm.ES256)
-                .type(new JOSEObjectType("vc+sd-jwt")).build();
+                .type(new JOSEObjectType("dc+sd-jwt")).build();
         // Create a credential JWT. (not signed yet)
         SignedJWT jwt = new SignedJWT(header, claimsSet);
 

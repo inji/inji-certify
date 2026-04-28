@@ -158,7 +158,7 @@ public class VCIssuanceServiceImplTest {
 
     private CredentialRequest createValidCredentialRequest(String format) throws Exception {
         CredentialRequest req = new CredentialRequest();
-        if (VCFormats.VC_SD_JWT.equals(format)) {
+        if (VCFormats.DC_SD_JWT.equals(format)) {
             req.setCredentialConfigId("test-credential-id-sdjwt");
         } else if(VCFormats.LDP_VC.equals(format)) { // LDP
             req.setCredentialConfigId("test-credential-id-ldp");

@@ -65,9 +65,9 @@ public class MDocCredentialTest {
 
     @Test
     public void testCanHandleReturnsFalseForOtherFormat() {
-        assertFalse("Should not handle ldp_vc", mDocCredential.canHandle("ldp_vc"));
-        assertFalse("Should not handle jwt_vc", mDocCredential.canHandle("jwt_vc"));
-        assertFalse("Should not handle vc+sd-jwt", mDocCredential.canHandle("vc+sd-jwt"));
+        assertFalse("Should not handle ldp_vc", mDocCredential.canHandle(VCFormats.LDP_VC));
+        assertFalse("Should not handle jwt_vc", mDocCredential.canHandle(VCFormats.JWT_VC_JSON));
+        assertFalse("Should not handle dc+sd-jwt", mDocCredential.canHandle(VCFormats.DC_SD_JWT));
         assertFalse("Should not handle null", mDocCredential.canHandle(null));
     }
 

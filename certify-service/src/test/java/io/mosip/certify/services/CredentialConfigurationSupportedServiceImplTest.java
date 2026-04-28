@@ -195,7 +195,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         mockCredentialConfig.setCredentialConfigKeyId("test-credential");
         mockCredentialConfig.setStatus(expectedStatus);
         mockCredentialConfig.setVcTemplate("some_template");
-        mockCredentialConfig.setCredentialFormat("vc+sd-jwt");
+        mockCredentialConfig.setCredentialFormat("dc+sd-jwt");
         mockCredentialConfig.setSdJwtVct("test-vct");
         mockCredentialConfig.setSignatureAlgo("ES256");
 
@@ -208,7 +208,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
 
         // Create a valid DTO for validation that will be returned by toDto
         CredentialConfigurationDTO validationDto = new CredentialConfigurationDTO();
-        validationDto.setCredentialFormat("vc+sd-jwt");
+        validationDto.setCredentialFormat("dc+sd-jwt");
         validationDto.setVcTemplate("some_template");
         validationDto.setSdJwtVct("test-vct");
         validationDto.setSignatureAlgo("ES256");
@@ -327,14 +327,14 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setConfigId(UUID.randomUUID().toString());
         config.setCredentialConfigKeyId("sdjwt-credential");
         config.setStatus("active");
-        config.setCredentialFormat("vc+sd-jwt");
+        config.setCredentialFormat("dc+sd-jwt");
         config.setSignatureCryptoSuite(null); // triggers else branch
         config.setSignatureAlgo("ES256");
         config.setSdJwtVct("test-vct");
 
         when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
-        dto.setCredentialFormat("vc+sd-jwt");
+        dto.setCredentialFormat("dc+sd-jwt");
         when(credentialConfigMapper.toDto(config)).thenReturn(dto);
 
         CredentialIssuerMetadataDTO result = credentialConfigurationService.fetchCredentialIssuerMetadata();
@@ -406,12 +406,12 @@ public class CredentialConfigurationSupportedServiceImplTest {
         sdJwtConfig.setCredentialConfigKeyId("sdjwt-credential");
         sdJwtConfig.setVcTemplate("sd_jwt_template");
         sdJwtConfig.setStatus("active");
-        sdJwtConfig.setCredentialFormat("vc+sd-jwt");
+        sdJwtConfig.setCredentialFormat("dc+sd-jwt");
         sdJwtConfig.setSdJwtVct("test-vct");
         sdJwtConfig.setSignatureAlgo("ES256");
 
         CredentialConfigurationDTO sdJwtDTO = new CredentialConfigurationDTO();
-        sdJwtDTO.setCredentialFormat("vc+sd-jwt");
+        sdJwtDTO.setCredentialFormat("dc+sd-jwt");
         sdJwtDTO.setCredentialConfigKeyId("sdjwt-credential");
         sdJwtDTO.setVcTemplate("sd_jwt_template");
         sdJwtDTO.setSdJwtVct("test-vct"); // required
@@ -489,21 +489,21 @@ public class CredentialConfigurationSupportedServiceImplTest {
     @Test
     public void validateCredentialConfiguration_SdJwt_Invalid_ThrowsException() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
-        dto.setCredentialFormat("vc+sd-jwt");
+        dto.setCredentialFormat("dc+sd-jwt");
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(SdJwtCredentialConfigValidator.class)) {
             mocked.when(() -> SdJwtCredentialConfigValidator.isValidCheck(dto)).thenReturn(false);
             CertifyException ex = assertThrows(CertifyException.class, () ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
-            assertEquals("Fields vct and signatureAlgo are mandatory for the vc+sd-jwt format.", ex.getMessage());
+            assertEquals("Fields vct and signatureAlgo are mandatory for the dc+sd-jwt format.", ex.getMessage());
         }
     }
 
     @Test
     public void validateCredentialConfiguration_SdJwt_Duplicate_ThrowsException() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
-        dto.setCredentialFormat("vc+sd-jwt");
+        dto.setCredentialFormat("dc+sd-jwt");
         dto.setVcTemplate("test_template");
         try (var mocked = org.mockito.Mockito.mockStatic(SdJwtCredentialConfigValidator.class)) {
             mocked.when(() -> SdJwtCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
@@ -867,14 +867,14 @@ public class CredentialConfigurationSupportedServiceImplTest {
     @Test
     public void testmapToSupportedDTO_SdJwt() {
         CredentialConfig config = new CredentialConfig();
-        config.setCredentialFormat(VCFormats.VC_SD_JWT);
+        config.setCredentialFormat(VCFormats.DC_SD_JWT);
         config.setSdJwtVct("https://example.com/vct");
         
         Claims claimsConfig = new Claims(List.of(new Claims.Display("Last Name", "en")),false);
         config.setSdJwtClaims(Map.of("family_name", claimsConfig));
 
         CredentialConfigurationDTO dtoV2 = new CredentialConfigurationDTO();
-        dtoV2.setCredentialFormat(VCFormats.VC_SD_JWT);
+        dtoV2.setCredentialFormat(VCFormats.DC_SD_JWT);
         
         when(credentialConfigMapper.toDto(config)).thenReturn(dtoV2);
 

@@ -105,7 +105,7 @@ public class CertifyIssuanceServiceImplTest {
     private static final String TEST_CNONCE = "test-cnonce";
     private static final String DEFAULT_SCOPE = "test-scope";
     private static final String DEFAULT_FORMAT_LDP = VCFormats.LDP_VC;
-    private static final String DEFAULT_FORMAT_SDJWT = VCFormats.VC_SD_JWT; // vc+sd-jwt
+    private static final String DEFAULT_FORMAT_SDJWT = VCFormats.DC_SD_JWT; // dc+sd-jwt
     private static final String DEFAULT_FORMAT_MDOC = VCFormats.MSO_MDOC; // mso_mdoc
 
     CredentialRequest request;
