@@ -128,12 +128,12 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
                 break;
-            case VCFormats.VC_SD_JWT:
+            case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig)) {
-                    throw new CertifyException(ErrorConstants.VC_SD_JWT_MANDATORY_FIELDS_MISSING, "Fields vct and signatureAlgo are mandatory for the vc+sd-jwt format.");
+                    throw new CertifyException(ErrorConstants.DC_SD_JWT_MANDATORY_FIELDS_MISSING, "Fields vct and signatureAlgo are mandatory for the dc+sd-jwt format.");
                 }
                 if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
-                    throw new CertifyException(ErrorConstants.VC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
+                    throw new CertifyException(ErrorConstants.DC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 break;
             default:
@@ -376,7 +376,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         } else if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());
             credentialMetadataDTO.setClaims(mapMDocClaims(credentialConfig.getMsoMdocClaims()));
-        } else if (VCFormats.VC_SD_JWT.equals(credentialConfig.getCredentialFormat())) {
+        } else if (VCFormats.DC_SD_JWT.equals(credentialConfig.getCredentialFormat())) {
             credentialConfigurationSupported.setVct(credentialConfig.getSdJwtVct());
             credentialMetadataDTO.setClaims(mapStandardClaims(credentialConfig.getSdJwtClaims()));
         }

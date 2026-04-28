@@ -37,7 +37,7 @@ public class CredentialUtils {
     public static String getTemplateName(VCRequestDto vcRequestDto) {
         //TODO: Cache this entire data so we do not construct all the time.
 
-        if(vcRequestDto.getFormat().equals(VCFormats.VC_SD_JWT)) {
+        if(vcRequestDto.getFormat().equals(VCFormats.DC_SD_JWT)) {
             return String.join(Constants.DELIMITER, vcRequestDto.getFormat(), vcRequestDto.getVct());
         }
         if(vcRequestDto.getFormat().equals(VCFormats.MSO_MDOC)) {

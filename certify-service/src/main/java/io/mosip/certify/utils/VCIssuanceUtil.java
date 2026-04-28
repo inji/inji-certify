@@ -100,7 +100,7 @@ public class VCIssuanceUtil {
                 ldpVcResponse.setCredentials(ldpVcCredentials);
                 return ldpVcResponse;
 
-            case VCFormats.VC_SD_JWT:
+            case VCFormats.DC_SD_JWT:
             case VCFormats.JWT_VC_JSON:
             case VCFormats.JWT_VC_JSON_LD:
             case VCFormats.MSO_MDOC:
@@ -147,7 +147,7 @@ public class VCIssuanceUtil {
             credentialConfigurationSupported.setContext(credentialConfig.getCredentialDefinition().getContext());
         }
 
-        if(credentialConfig.getFormat().equals(VCFormats.VC_SD_JWT)) {
+        if(credentialConfig.getFormat().equals(VCFormats.DC_SD_JWT)) {
             credentialConfigurationSupported.setVct(credentialConfig.getVct());
         } else if(credentialConfig.getFormat().equals(VCFormats.MSO_MDOC)) {
             credentialConfigurationSupported.setDocType(credentialConfig.getDocType());

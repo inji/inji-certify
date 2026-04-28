@@ -233,7 +233,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
 
             // Handle format-specific setup
             switch (format) {
-                case "ldp_vc":
+                case VCFormats.LDP_VC:
                     vcRequestDto.setContext(credentialConfigurationSupported.getContext());
                     vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
@@ -250,7 +250,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     }
                     break;
 
-                case "vc+sd-jwt":
+                case VCFormats.DC_SD_JWT:
                     vcRequestDto.setVct(credentialConfigurationSupported.getVct());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
                     templateParams.put(Constants.VCTYPE, vcRequestDto.getVct());
@@ -259,7 +259,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     jsonObject.put(Constants.TYPE, vcRequestDto.getVct());
                     break;
 
-                case "mso_mdoc":
+                case VCFormats.MSO_MDOC:
                     vcRequestDto.setDoctype(credentialConfigurationSupported.getDocType());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
                     templateParams.put("_doctype", vcRequestDto.getDoctype());
