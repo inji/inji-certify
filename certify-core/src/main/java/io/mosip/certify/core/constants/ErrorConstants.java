@@ -63,8 +63,8 @@ public class ErrorConstants {
     public static final String LDP_VC_CONFIG_EXISTS = "ldp_vc_config_exists";
     public static final String MSO_MDOC_MANDATORY_FIELDS_MISSING = "mso_mdoc_mandatory_fields_missing";
     public static final String MSO_MDOC_CONFIG_EXISTS = "mso_mdoc_config_exists";
-    public static final String VC_SD_JWT_MANDATORY_FIELDS_MISSING = "vc_sd_jwt_mandatory_fields_missing";
-    public static final String VC_SD_JWT_CONFIG_EXISTS = "vc_sd_jwt_config_exists";
+    public static final String DC_SD_JWT_MANDATORY_FIELDS_MISSING = "dc_sd_jwt_mandatory_fields_missing";
+    public static final String DC_SD_JWT_CONFIG_EXISTS = "dc_sd_jwt_config_exists";
     public static final String UNSUPPORTED_FORMAT = "unsupported_format";
     public static final String UNSUPPORTED_CRYPTO_SUITE = "unsupported_crypto_suite";
     public static final String UNSUPPORTED_SIGNATURE_ALGO = "unsupported_signature_algo";
