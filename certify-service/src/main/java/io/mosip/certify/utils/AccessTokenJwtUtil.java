@@ -137,15 +137,4 @@ public class AccessTokenJwtUtil {
             throw new CertifyException(ErrorConstants.UNKNOWN_ERROR, "JWT generation failed", e);
         }
     }
-
-    /**
-     * Generate a cryptographically secure c_nonce following eSignet pattern
-     *
-     * @return Generated c_nonce string
-     */
-    public String generateCNonce() {
-        String cNonce = java.util.UUID.randomUUID().toString();
-        log.debug("Generated c_nonce following eSignet pattern (length: {})", cNonce.length());
-        return cNonce;
-    }
 }
