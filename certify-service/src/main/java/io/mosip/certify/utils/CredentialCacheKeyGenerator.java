@@ -39,7 +39,7 @@ public class CredentialCacheKeyGenerator {
         if (configOpt.isPresent()) {
            CredentialConfig config = configOpt.get();
 
-           if(config.getCredentialFormat().equals(VCFormats.VC_SD_JWT)){
+           if(config.getCredentialFormat().equals(VCFormats.DC_SD_JWT)){
                 return String.join(DELIMITER,
                           config.getCredentialFormat(),
                           config.getSdJwtVct());
