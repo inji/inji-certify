@@ -163,7 +163,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                         Map.Entry::getKey,
                         entry -> entry.getValue() == null
                                 ? Collections.emptySet()
-                                : new HashSet<>(entry.getValue()),
+                                : new LinkedHashSet<>(entry.getValue()),
                         (a, b) -> a,
                         LinkedHashMap::new
                 ));
