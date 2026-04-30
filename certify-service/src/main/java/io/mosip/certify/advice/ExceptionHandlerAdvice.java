@@ -26,6 +26,7 @@ import org.springframework.security.authentication.AuthenticationCredentialsNotF
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -63,6 +64,12 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotAcceptable(
             HttpMediaTypeNotAcceptableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return handleExceptions(ex, request);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         return handleExceptions(ex, request);
     }
 
@@ -112,7 +119,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             for (FieldError error : ((MethodArgumentNotValidException) ex).getBindingResult().getFieldErrors()) {
                 errors.add(new Error(error.getDefaultMessage(), error.getField() + ": " + error.getDefaultMessage()));
             }
-            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.OK);
+            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof javax.validation.ConstraintViolationException) {
             List<Error> errors = new ArrayList<>();
@@ -120,20 +127,30 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             for(javax.validation.ConstraintViolation<?> cv : violations) {
                 errors.add(new Error(INVALID_REQUEST,cv.getPropertyPath().toString() + ": " + cv.getMessage()));
             }
-            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.OK);
+            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errors), HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof MissingServletRequestParameterException) {
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
-                    HttpStatus.OK);
+                    HttpStatus.BAD_REQUEST);
+        }
+        if(ex instanceof MissingRequestHeaderException) {
+            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
+                    HttpStatus.BAD_REQUEST);
         }
         if(ex instanceof HttpMediaTypeNotAcceptableException) {
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
-                    HttpStatus.OK);
+                    HttpStatus.NOT_ACCEPTABLE);
+        }
+        if(ex instanceof HttpMediaTypeNotSupportedException) {
+            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         }
         if(ex instanceof CertifyException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
             String errorMessage = ex.getMessage();
-            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errorCode, errorMessage), HttpStatus.OK);
+            // Map CertifyException to appropriate status code based on error code
+            HttpStatus status = getInternalExceptionStatus(errorCode);
+            return new ResponseEntity<ResponseWrapper>(getResponseWrapper(errorCode, errorMessage), status);
         }
         if(ex instanceof RenderingTemplateException) {
             return new ResponseEntity<>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()) ,HttpStatus.NOT_FOUND);
@@ -149,7 +166,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(HttpStatus.FORBIDDEN.name(),
                     HttpStatus.FORBIDDEN.getReasonPhrase()), HttpStatus.FORBIDDEN);
         }
-        return new ResponseEntity<ResponseWrapper>(getResponseWrapper(UNKNOWN_ERROR, ex.getMessage()), HttpStatus.OK);
+        return new ResponseEntity<ResponseWrapper>(getResponseWrapper(UNKNOWN_ERROR, ex.getMessage()), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     public ResponseEntity<VCError> handleVCIControllerExceptions(Exception ex) {
@@ -170,6 +187,9 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         if(ex instanceof InvalidRequestException) {
             String errorCode = ((InvalidRequestException) ex).getErrorCode();
             return new ResponseEntity<VCError>(getVCErrorDto(errorCode, getMessage(errorCode, errorCode)), HttpStatus.BAD_REQUEST);
+        }
+        if(ex instanceof HttpMediaTypeNotSupportedException) {
+            return new ResponseEntity<VCError>(getVCErrorDto(INVALID_REQUEST, ex.getMessage()), HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         }
         if(ex instanceof CertifyException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
@@ -203,7 +223,11 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         }
         if(ex instanceof HttpMediaTypeNotAcceptableException) {
             OAuthTokenError oauthError = new OAuthTokenError("invalid_request", ex.getMessage());
-            return new ResponseEntity<Object>(oauthError, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<Object>(oauthError, HttpStatus.NOT_ACCEPTABLE);
+        }
+        if(ex instanceof HttpMediaTypeNotSupportedException) {
+            OAuthTokenError oauthError = new OAuthTokenError("invalid_request", ex.getMessage());
+            return new ResponseEntity<Object>(oauthError, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         }
         if(ex instanceof NotAuthenticatedException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
@@ -244,8 +268,17 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
-                       AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        handleExceptions(accessDeniedException, (WebRequest) request);
+                   AccessDeniedException accessDeniedException) throws IOException {
+
+    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    response.setContentType("application/json;charset=UTF-8");
+
+    ResponseWrapper responseWrapper =
+            getResponseWrapper(HttpStatus.FORBIDDEN.name(), accessDeniedException.getMessage());
+
+    response.getWriter().write(
+            new com.fasterxml.jackson.databind.ObjectMapper()
+                    .writeValueAsString(responseWrapper));
     }
 
     private String getMessage(String errorCode, String defaultMessage) {
@@ -317,5 +350,24 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             default:
                 return HttpStatus.BAD_REQUEST;
         }
+    }
+
+    private HttpStatus getInternalExceptionStatus(String errorCode) {
+        if (errorCode == null) {
+            return HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+
+        String code = errorCode.toLowerCase();
+        
+        if (code.contains("invalid") || code.contains("not_found") || code.contains("validation") ||
+            code.contains("constraint") || code.contains("missing")) {
+            return HttpStatus.BAD_REQUEST;
+        }
+        
+        if (code.contains("unauthorized") || code.contains("forbidden") || code.contains("denied")) {
+            return HttpStatus.FORBIDDEN;
+        }
+        
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }
