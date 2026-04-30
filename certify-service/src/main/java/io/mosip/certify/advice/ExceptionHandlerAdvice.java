@@ -11,6 +11,7 @@ import io.mosip.certify.core.dto.VCError;
 import io.mosip.certify.core.dto.OAuthTokenError;
 import io.mosip.certify.core.exception.*;
 import io.mosip.certify.core.util.CommonUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,9 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
 
     @Autowired
     MessageSource messageSource;
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers,
@@ -245,7 +249,13 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        handleExceptions(accessDeniedException, (WebRequest) request);
+        log.error("Access denied while handling request {} {}", request.getMethod(), request.getRequestURI(), accessDeniedException);
+        ResponseWrapper responseWrapper = getResponseWrapper(HttpStatus.FORBIDDEN.name(), "Access denied");
+
+        response.setStatus(HttpStatus.FORBIDDEN.value());
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        objectMapper.writeValue(response.getWriter(), responseWrapper);
     }
 
     private String getMessage(String errorCode, String defaultMessage) {
