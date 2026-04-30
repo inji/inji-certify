@@ -5,27 +5,32 @@
  */
 package io.mosip.certify.core.dto;
 
-import io.mosip.certify.core.constants.ErrorConstants;
-import lombok.Data;
-
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import lombok.Getter;
+
+import java.util.List;
 
 @Data
 public class CredentialProof {
 
-    /**
-     * The proof object MUST contain a proof_type claim of type JSON string denoting the concrete proof type.
-     */
-    @NotBlank(message = ErrorConstants.UNSUPPORTED_PROOF_TYPE)
-    private String proof_type;
+    @NotNull(message = VCIErrorConstants.INVALID_PROOF)
+    private ProofType proofType;
 
-    /**
-     * When proof_type is jwt, a proof object MUST include a jwt claim
-     */
-    private String jwt;
+    @NotEmpty(message = VCIErrorConstants.INVALID_PROOF)
+    private List<@NotBlank(message = VCIErrorConstants.INVALID_PROOF) String> proofs;
 
-    /**
-     * When proof_type is cwt, a proof object MUST include a cwt claim
-     */
-    private String cwt;
+    @Getter
+    enum ProofType {
+        JWT("jwt");
+
+        private final String value;
+
+        ProofType(String value) {
+            this.value = value;
+        }
+    }
 }

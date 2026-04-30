@@ -3,10 +3,10 @@ package io.mosip.certify.credential;
 import java.util.Optional;
 import java.util.List;
 
+import io.mosip.certify.core.constants.VCFormats;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import io.mosip.certify.enums.CredentialFormat;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -24,7 +24,7 @@ public class CredentialFactory {
      * Factory method to create objects based on the given format.
      * 
      * Known formats are defined in 
-     * @see CredentialFormat
+     * @see VCFormats
      * @param format
      * @return
      */

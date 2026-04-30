@@ -47,7 +47,7 @@ TokenExchange:
       "tx_code": "1234"
     }'
     output: '{
-      "error": "server_error"
+      "error": "invalid_request"
     }'
 
   InjiCertify_TokenExchange_preauthcode_InvalidCode_Neg:

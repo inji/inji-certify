@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 
 @Component
 public class ProofValidatorFactory {
@@ -20,14 +19,10 @@ public class ProofValidatorFactory {
     private List<ProofValidator> proofValidators;
 
     public ProofValidator getProofValidator(String proofType) {
-        Optional<ProofValidator> result = proofValidators.stream()
+       return proofValidators.stream()
                 .filter(v -> v.getProofType().equals(proofType))
-                .findFirst();
-
-        if(result.isPresent())
-            return result.get();
-
-        throw new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "The proof type " + proofType + " is not supported.");
+                .findFirst()
+                .orElseThrow(
+                        () -> new CertifyException(ErrorConstants.UNSUPPORTED_PROOF_TYPE, "The proof type " + proofType + " is not supported."));
     }
-
 }

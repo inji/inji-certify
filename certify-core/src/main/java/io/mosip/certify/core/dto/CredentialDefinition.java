@@ -24,7 +24,4 @@ public class CredentialDefinition {
 
     @NotEmpty(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST)
     private List<@NotBlank(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST) String> type;
-
-    private Map<String, Object> credentialSubject;
-
 }

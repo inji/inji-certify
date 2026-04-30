@@ -1,7 +1,6 @@
 package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
@@ -21,7 +20,7 @@ public class MetaDataDisplayDTO {
 
     @Data
     public static class Logo {
-        private String url;
+        private String uri;
 
         @JsonProperty("alt_text")
         private String altText;

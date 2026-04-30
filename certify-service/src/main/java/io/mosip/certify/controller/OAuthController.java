@@ -95,11 +95,11 @@ public class OAuthController {
      * OAuth Token endpoint (Step 19-20)
      * POST /oauth/token
      * 
-     * Exchanges authorization code for access token and c_nonce.
+     * Exchanges authorization code for access token.
      * Supports authorization_code and pre-authorized_code grant types.
      *
      * @param params OAuth token request containing grant_type and relevant fields
-     * @return ResponseEntity with OAuthTokenResponse containing access_token and c_nonce
+     * @return ResponseEntity with OAuthTokenResponse containing access_token
      * @throws CertifyException if token request processing fails
      */
     @PostMapping(value = "/oauth/token",

@@ -26,7 +26,6 @@ import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.mosip.certify.core.constants.ErrorConstants;
-import io.mosip.certify.core.dto.CredentialProof;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -64,17 +63,17 @@ public class JwtProofValidator implements ProofValidator {
     }
 
     @Override
-    public boolean validate(String clientId, String cNonce, CredentialProof credentialProof, Map<String, Object> proofConfiguration) {
-        if(credentialProof.getJwt() == null || credentialProof.getJwt().isBlank()) {
+    public boolean validate(String clientId, String cNonce, String proofJwt, Map<String, Object> proofConfiguration) {
+        if(proofJwt == null || proofJwt.isBlank()) {
             log.error("Found invalid jwt in the credential proof");
             return false;
         }
 
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(credentialProof.getJwt());
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
             Map<String, Object> jwtConfiguration;
             if(proofConfiguration.get("jwt") != null) {
-             jwtConfiguration =(Map<String, Object>) proofConfiguration.get("jwt");
+                jwtConfiguration =(Map<String, Object>) proofConfiguration.get("jwt");
             } else {
                 throw new InvalidRequestException(UNSUPPORTED_ALGORITHM);
             }
@@ -134,7 +133,7 @@ public class JwtProofValidator implements ProofValidator {
                 jwtProcessor.setJWSKeySelector(keySelector);
                 jwtProcessor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier(new JOSEObjectType(HEADER_TYP)));
                 jwtProcessor.setJWTClaimsSetVerifier(claimsSetVerifier);
-                jwtProcessor.process(credentialProof.getJwt(), null);
+                jwtProcessor.process(proofJwt, null);
                 return true;
             }
         } catch (InvalidRequestException e) {
@@ -149,13 +148,13 @@ public class JwtProofValidator implements ProofValidator {
 
 
     /**
-     * @param credentialProof proof from the credential request.
+     * @param proofJwt from the credential request.
      * @return the key material from the proof in a did:jwk or did:key format
      */
     @Override
-    public String getKeyMaterial(CredentialProof credentialProof) {
+    public String getKeyMaterial(String proofJwt) {
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(credentialProof.getJwt());
+            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
             JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
             return jpkm.getDID(jwt.getHeader()).get();
         } catch (ParseException e) {
@@ -174,9 +173,9 @@ public class JwtProofValidator implements ProofValidator {
             throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_ALG);
 
         if ((Objects.isNull(jwsHeader.getKeyID()) && Objects.isNull(jwsHeader.getJWK()))
-        ||
+                ||
                 (Objects.isNull(jwsHeader.getJWK()) && Objects.nonNull(jwsHeader.getKeyID()) &&
-                    !(jwsHeader.getKeyID().startsWith(DID_KEY_PREFIX) || jwsHeader.getKeyID().startsWith(DID_JWK_PREFIX))))
+                        !(jwsHeader.getKeyID().startsWith(DID_KEY_PREFIX) || jwsHeader.getKeyID().startsWith(DID_JWK_PREFIX))))
             throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
 
         // both cannot be present, either one of them is only allowed

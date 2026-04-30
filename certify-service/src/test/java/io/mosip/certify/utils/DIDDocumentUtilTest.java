@@ -10,12 +10,13 @@ import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.kernel.keymanagerservice.dto.AllCertificatesDataResponseDto;
 import io.mosip.kernel.keymanagerservice.dto.CertificateDataResponseDto;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -24,13 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@RunWith(MockitoJUnitRunner.class)
 class DIDDocumentUtilTest {
 
     @Mock
@@ -39,8 +37,9 @@ class DIDDocumentUtilTest {
     @Mock
     private CredentialConfigRepository credentialConfigRepository;
 
-    @InjectMocks
     private DIDDocumentUtil didDocumentUtil;
+
+    private AutoCloseable mocks;
 
     private static final String DID_URL = "did:example:123";
 
@@ -50,10 +49,19 @@ class DIDDocumentUtilTest {
 
     @BeforeEach
     void setUp() {
+        mocks = MockitoAnnotations.openMocks(this);
+        didDocumentUtil = new DIDDocumentUtil(keymanagerService, credentialConfigRepository);
         LinkedHashMap<String, List<String>> signingMap = new LinkedHashMap<>();
         signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2018, List.of(JWSAlgorithm.EdDSA));
         signingMap.put(SignatureAlg.ED25519_SIGNATURE_SUITE_2020, List.of(JWSAlgorithm.EdDSA));
         ReflectionTestUtils.setField(didDocumentUtil, "credentialSigningAlgValuesSupportedMap", signingMap);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if (mocks != null) {
+            mocks.close();
+        }
     }
 
     @Test

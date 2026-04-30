@@ -1,8 +1,8 @@
 package io.mosip.certify.entity;
 
 
-import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
-import io.mosip.certify.entity.attributes.CredentialSubjectParameters;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import io.mosip.certify.entity.attributes.Claims;
 import io.mosip.certify.entity.attributes.MetaDataDisplay;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
@@ -80,6 +81,7 @@ public class CredentialConfig {
     private List<String> credentialSigningAlgValuesSupported;
 
     @NotNull(message = "Invalid request")
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "proof_types_supported", columnDefinition = "jsonb")
     private Map<String, Object> proofTypesSupported;
@@ -87,21 +89,25 @@ public class CredentialConfig {
     @Column(name = "doctype")
     private String docType;
 
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "credential_subject", columnDefinition = "jsonb")
-    private Map<String, CredentialSubjectParameters> credentialSubject;
+    @Column(name = "claims", columnDefinition = "jsonb")
+    private Map<String, Claims> claims;
 
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "mso_mdoc_claims", columnDefinition = "jsonb")
-    private Map<String, Map<String, ClaimsDisplayFieldsConfigs>> msoMdocClaims;
+    private Map<String, Map<String, Claims>> msoMdocClaims;
 
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "sd_jwt_claims", columnDefinition = "jsonb")
-    private Map<String, ClaimsDisplayFieldsConfigs> sdJwtClaims;
+    private Map<String, Claims> sdJwtClaims;
 
     @Column(name = "sd_jwt_vct")
     private String sdJwtVct;
 
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "plugin_configurations", columnDefinition = "jsonb")
     private List<Map<String, String>> pluginConfigurations;
@@ -109,6 +115,7 @@ public class CredentialConfig {
     @Column(name = "credential_status_purpose", columnDefinition = "TEXT[]")
     private List<String> credentialStatusPurposes;
 
+    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "qr_settings", columnDefinition = "jsonb")
     private List<Map<String, Object>> qrSettings;

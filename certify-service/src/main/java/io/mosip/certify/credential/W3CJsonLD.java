@@ -73,7 +73,7 @@ public class W3CJsonLD extends Credential{
 
     @Override
     public boolean canHandle(String format){
-        if(format.equals("ldp_vc")){
+        if(format.equals(VCFormats.LDP_VC)){
             return true;
         }
         return false;
@@ -145,7 +145,7 @@ public class W3CJsonLD extends Credential{
             dataIntegrityProof.addToJsonLDObject(jsonLDObject);
         }
         vcResult.setCredential(jsonLDObject);
-        vcResult.setFormat("ldp_vc");
+        vcResult.setFormat(VCFormats.LDP_VC);
         return vcResult;
     }
 

@@ -28,7 +28,9 @@ Inji Certify now includes support for generating and embedding QR codes in Verif
         "fullName": "${fullName}",
         "mobileNumber": "${mobileNumber}",
         "dateOfBirth": "${dateOfBirth}",
-        "identityQRCode": $claim_169_values[0]
+        "claim169": {
+              "identityQRCode": "$claim_169_values[0]"
+            }
       }
     }
     ```
@@ -44,7 +46,7 @@ To enable QR code support in your credential configurations, you need to include
 5. Below is an example of how to include `qr_settings` and `qr_signature_algo` in your credential configuration JSON:
 ```json
 {
-  "credentialFormat": "vc+sd-jwt",
+  "credentialFormat": "ldp_vc",
   "qrSettings": [
     {
       "Full Name": "${fullName}",
