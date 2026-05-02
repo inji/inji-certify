@@ -418,12 +418,13 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals("pre_auth_code_expired", exception.getErrorCode());
+        // Expired codes must never be consumed — claiming would corrupt single-use semantics
+        verify(vciCacheService, never()).claimPreAuthCode(preAuthCode);
     }
 
     @Test
