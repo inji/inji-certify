@@ -319,7 +319,8 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.CLAIMED);
         when(vciCacheService.setPreAuthTransaction(anyString(), any(PreAuthTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
@@ -333,7 +334,7 @@ public class PreAuthorizedCodeServiceTest {
         Assert.assertEquals(Integer.valueOf(600), response.getExpiresIn());
 
         verify(vciCacheService).getPreAuthCodeData(preAuthCode);
-        verify(vciCacheService).claimPreAuthCode(preAuthCode);
+        verify(vciCacheService).claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong());
         verify(vciCacheService).setPreAuthTransaction(anyString(), any(PreAuthTransaction.class));
     }
 
@@ -358,7 +359,8 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.CLAIMED);
         when(vciCacheService.setPreAuthTransaction(anyString(), any(PreAuthTransaction.class))).thenReturn(null);
         when(accessTokenJwtUtil.generateSignedJwt(anyString(), anyString(), anyString(), anyString(), anyString(), anyInt()))
                 .thenReturn("test.jwt.token");
@@ -367,7 +369,7 @@ public class PreAuthorizedCodeServiceTest {
 
         Assert.assertNotNull(response);
         Assert.assertNotNull(response.getAccessToken());
-        verify(vciCacheService).claimPreAuthCode(preAuthCode);
+        verify(vciCacheService).claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong());
     }
 
     @Test
@@ -418,13 +420,15 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.EXPIRED);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals("pre_auth_code_expired", exception.getErrorCode());
-        // Expired codes must never be consumed — claiming would corrupt single-use semantics
-        verify(vciCacheService, never()).claimPreAuthCode(preAuthCode);
+        // Expiry and claim are validated atomically in cache layer
+        verify(vciCacheService).claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong());
     }
 
     @Test
@@ -441,7 +445,8 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(false);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.INVALID_OR_USED);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -464,7 +469,8 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.CLAIMED);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
@@ -488,7 +494,8 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
+        when(vciCacheService.claimPreAuthCodeIfUnexpired(eq(preAuthCode), anyLong()))
+                .thenReturn(VCICacheService.PreAuthCodeClaimResult.CLAIMED);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
