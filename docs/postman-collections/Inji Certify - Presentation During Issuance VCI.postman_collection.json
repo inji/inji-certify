@@ -186,10 +186,10 @@
 			]
 		},
 		{
-			"name": "3. IAR Request with VP",
+			"name": "3. Interactive Auth Request with VP",
 			"item": [
 				{
-					"name": "3.1 Auth Request with VP (iar-post)",
+					"name": "3.1 Auth Request with VP (iae-post)",
 					"event": [
 						{
 							"listen": "test",
@@ -265,14 +265,11 @@
 									"    pm.expect(jsonData).to.have.property('access_token');",
 									"    pm.expect(jsonData).to.have.property('token_type');",
 									"    pm.expect(jsonData).to.have.property('expires_in');",
-									"    pm.expect(jsonData).to.have.property('c_nonce');",
-									"    pm.expect(jsonData).to.have.property('c_nonce_expires_in');",
 									"",
 									"    const accessToken = jsonData.access_token;",
 									"    // Store access token",
 									"    console.log(\"access_token:\", accessToken);",
 									"    pm.collectionVariables.set('access_token', accessToken);",
-									"    // pm.environment.set('access_token', accessToken);",
 									"    console.log(\"✅ Access token saved successfully\");",
 									"});"
 								],
@@ -334,11 +331,25 @@
 						{
 							"listen": "test",
 							"script": {
-								"type": "text/javascript",
 								"exec": [
-									"var response = pm.response.json();",
-									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
-								]
+									" pm.test('Nonce generation successful', function () {",
+									"     pm.response.to.have.status(200);",
+									"",
+									"    console.log(\"Tests executed\");",
+									"",
+									"    var jsonData = pm.response.json();",
+									"",
+									"    // Verify important properties exist",
+									"    pm.expect(jsonData).to.have.property('c_nonce');",
+									"    ",
+									"    const c_nonce = jsonData.c_nonce;",
+									"    // Store c_nonce",
+									"    console.log(\"c_nonce:\", c_nonce);",
+									"    pm.collectionVariables.set('c_nonce', c_nonce);",
+									"    console.log(\"✅ Nonce saved successfully\");",
+									" });"
+								],
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -367,39 +378,39 @@
 							"script": {
 								"exec": [
 									"eval(pm.globals.get('pmlib_code'))",
-									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
+									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");",
 									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
 									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
-									"jwkPublicKey[\"alg\"] = \"RS256\";",
+									"jwkPublicKey[\"alg\"] = \"ES256\";",
 									"jwkPublicKey[\"use\"] = \"sig\";",
 									"",
-									"pm.collectionVariables.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
-									"pm.collectionVariables.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
+									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
 									"",
 									"// Set headers for JWT",
 									"var header = {\t",
-									"\t\"alg\": \"RS256\",",
+									"\t\"alg\": \"ES256\",",
 									"    \"typ\" : \"openid4vci-proof+jwt\",",
-									"    \"jwk\" : JSON.parse(pm.collectionVariables.get(\"holder_public_key\"))",
+									"    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
 									"};",
-									"",
 									"",
 									"const cNonce = pm.collectionVariables.get('c_nonce');",
 									"console.log(\"Getting c_nonce >> \" +  cNonce);",
-									"const clientId = pm.environment.get('clientId');",
-									"console.log(\"Getting clientId >> \" +  clientId);",
 									"",
-									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.collectionVariables.get(\"holder_private_key\")), {",
-									"    \"aud\" : pm.environment.get('audUrl'),",
+									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
+									"    \"aud\": pm.environment.get('audUrl'),",
 									"\t\"nonce\": cNonce,",
-									"    \"iss\" : clientId,",
-									"}, header, exp=600, alg = \"RS256\")",
+									"    \"iss\" : pm.environment.get('clientId'),",
+									"}, header, exp=600, alg = \"ES256\")",
 									"",
-									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
+									"console.log(\"modified aud\")",
+									"",
+									"console.log(\"proof - \",signed_jwt)",
+									"",
+									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
+									""
 								],
-								"type": "text/javascript",
-								"packages": {},
-								"requests": {}
+								"type": "text/javascript"
 							}
 						},
 						{
@@ -408,9 +419,7 @@
 								"exec": [
 									""
 								],
-								"type": "text/javascript",
-								"packages": {},
-								"requests": {}
+								"type": "text/javascript"
 							}
 						}
 					],
@@ -429,7 +438,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"credential_configuration_id\":\"FarmerCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"DrivingLicenseCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
