@@ -19,10 +19,12 @@ import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import io.mosip.kernel.signature.service.SignatureService;
 import io.mosip.kernel.signature.service.impl.CoseSignatureServiceImpl;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.springframework.beans.factory.annotation.Autowired;
 
 
+@Slf4j
 public abstract class Credential{
     
     protected VCFormatter vcFormatter;
@@ -133,6 +135,7 @@ public abstract class Credential{
         protectedHeaders.put("kid", true);
 
         cwtSignRequestDto.setProtectedHeader(protectedHeaders);
+        log.info("CWT sign request DTO built successfully");
         CoseSignResponseDto coseSignResponseDto = coseSignatureService.cwtSign(cwtSignRequestDto);
 
         return coseSignResponseDto.getSignedData();

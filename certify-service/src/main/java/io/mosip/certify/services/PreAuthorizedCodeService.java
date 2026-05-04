@@ -1,34 +1,30 @@
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.util.CommonUtil;
-import io.mosip.certify.entity.CredentialConfig;
-import io.mosip.certify.entity.IarSession;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.AccessTokenJwtUtil;
-import io.mosip.certify.core.spi.CredentialConfigurationService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
-import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -63,9 +59,6 @@ public class PreAuthorizedCodeService {
 
     @Value("${mosip.certify.oauth.token.expires-in-seconds:600}")
     private int accessTokenExpirySeconds;
-
-    @Value("${mosip.certify.cnonce-expire-seconds:300}")
-    private int cNonceExpirySeconds;
 
     @Value("${mosip.certify.oauth.issuer:}")
     private String oauthIssuer;
@@ -118,7 +111,7 @@ public class PreAuthorizedCodeService {
     }
 
     private void validatePreAuthorizedRequest(PreAuthorizedRequest request) {
-        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata("latest");
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata();
         Map<String, CredentialConfigurationSupportedDTO> supportedConfigs = metadata
                 .getCredentialConfigurationSupportedDTO();
 
@@ -132,77 +125,48 @@ public class PreAuthorizedCodeService {
     }
 
     private void validateClaims(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
-        if (providedClaims == null) {
-            providedClaims = Collections.emptyMap();
-        }
-
-        String format = config.getFormat();
-
-        if (VCFormats.LDP_VC.equals(format)) {
-            // For ldp_vc: claims are defined in credential_definition.credentialSubject
-            validateClaimsForLDPVC(config, providedClaims);
-        } else {
-            // For mso_mdoc, vc+sd-jwt: use top-level claims with mandatory checking
-            Map<String, Object> requiredClaims = config.getClaims();
-            if (requiredClaims == null || requiredClaims.isEmpty()) {
-                return;
-            }
-            validateClaimsWithMandatory(requiredClaims, providedClaims);
-        }
-    }
-
-    private static void validateClaimsForLDPVC(CredentialConfigurationSupportedDTO config, Map<String, Object> providedClaims) {
-        Set<String> allowedClaimKeys;
-        CredentialDefinition credDef = config.getCredentialDefinition();
-        if (credDef != null && credDef.getCredentialSubject() != null) {
-            allowedClaimKeys = credDef.getCredentialSubject().keySet();
-        } else {
+        if (config.getCredentialMetadataDTO() == null ||
+                config.getCredentialMetadataDTO().getClaims() == null) {
             return;
         }
-        // For ldp_vc, just validate unknown claims (mandatory not supported in this structure)
+
+        Set<String> allowedClaimKeys = new HashSet<>();
+        List<String> mandatoryClaims = new ArrayList<>();
+
+        for (CredentialMetadataDTO.Claims claim :
+                config.getCredentialMetadataDTO().getClaims()) {
+
+            List<String> path = claim.getPath();
+
+            if (path != null && !path.isEmpty()) {
+                String claimKey = path.getLast();
+
+                allowedClaimKeys.add(claimKey);
+                if (Boolean.TRUE.equals(claim.isMandatory())) {
+                    mandatoryClaims.add(claimKey);
+                }
+            }
+        }
+
+        List<String> missingMandatoryClaims = mandatoryClaims.stream()
+                .filter(key ->
+                        !providedClaims.containsKey(key) ||
+                                providedClaims.get(key) == null ||
+                                providedClaims.get(key).toString().trim().isEmpty()
+                )
+                .toList();
+
+        if (!missingMandatoryClaims.isEmpty()) {
+            log.error("Missing mandatory claims: {}", missingMandatoryClaims);
+            throw new InvalidRequestException(ErrorConstants.MISSING_MANDATORY_CLAIM);
+        }
+
         List<String> unknownClaims = new ArrayList<>();
         for (String providedClaim : providedClaims.keySet()) {
             if (!allowedClaimKeys.contains(providedClaim)) {
                 unknownClaims.add(providedClaim);
             }
         }
-        if (!unknownClaims.isEmpty()) {
-            log.error("Unknown claims provided: {}", unknownClaims);
-            throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
-        }
-    }
-
-    private void validateClaimsWithMandatory(Map<String, Object> requiredClaims, Map<String, Object> providedClaims) {
-        List<String> missingClaims = new ArrayList<>();
-        List<String> unknownClaims = new ArrayList<>();
-
-        for (Map.Entry<String, Object> entry : requiredClaims.entrySet()) {
-            if (!(entry.getValue() instanceof Map)) {
-                log.warn("Claim {} has unexpected format, skipping mandatory check", entry.getKey());
-                continue;
-            }
-            Map<String, Object> claimAttrs = (Map<String, Object>) entry.getValue();
-            Boolean mandatory = claimAttrs.containsKey(Constants.MANDATORY)
-                    ? (Boolean) claimAttrs.get(Constants.MANDATORY)
-                    : Boolean.FALSE;
-
-            if (Boolean.TRUE.equals(mandatory) &&
-                    (!providedClaims.containsKey(entry.getKey()) || providedClaims.get(entry.getKey()) == null)) {
-                    missingClaims.add(entry.getKey());
-            }
-        }
-
-        for (String providedClaim : providedClaims.keySet()) {
-            if (!requiredClaims.containsKey(providedClaim)) {
-                unknownClaims.add(providedClaim);
-            }
-        }
-
-        if (!missingClaims.isEmpty()) {
-            log.error("Missing mandatory claims: {}", missingClaims);
-            throw new InvalidRequestException(ErrorConstants.MISSING_MANDATORY_CLAIM);
-        }
-
         if (!unknownClaims.isEmpty()) {
             log.error("Unknown claims provided: {}", unknownClaims);
             throw new InvalidRequestException(ErrorConstants.UNKNOWN_CLAIMS);
@@ -321,22 +285,17 @@ public class PreAuthorizedCodeService {
 
         validateTokenRequest(request, codeData);
 
-        // Generate c_nonce
-        String cNonce = accessTokenJwtUtil.generateCNonce();
         // Generate access token
-        String accessToken = generateAccessToken(codeData, cNonce);
+        String accessToken = generateAccessToken(codeData);
 
         long currentTime = System.currentTimeMillis();
-        PreAuthTransaction transaction = PreAuthTransaction.builder()
-                .credentialConfigurationId(codeData.getCredentialConfigurationId())
-                .claims(codeData.getClaims())
-                .cNonce(cNonce)
-                .cNonceIssuedEpoch(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).toEpochSecond(java.time.ZoneOffset.UTC))
-                .cNonceExpireSeconds(cNonceExpirySeconds)
-                .createdAt(currentTime)
-                .build();
 
-        vciCacheService.setVCITransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
+        PreAuthTransaction transaction = new PreAuthTransaction();
+        transaction.setCredentialConfigurationId(codeData.getCredentialConfigurationId());
+        transaction.setClaims(codeData.getClaims());
+        transaction.setCreatedAt(currentTime);
+
+        vciCacheService.setPreAuthTransaction(CommonUtil.generateOIDCAtHash(accessToken), transaction);
 
         log.info("Successfully exchanged pre-authorized code for access token");
 
@@ -344,8 +303,6 @@ public class PreAuthorizedCodeService {
         response.setAccessToken(accessToken);
         response.setTokenType("Bearer");
         response.setExpiresIn(accessTokenExpirySeconds);
-        response.setCNonce(cNonce);
-        response.setCNonceExpiresIn(cNonceExpirySeconds);
         return response;
     }
 
@@ -387,7 +344,7 @@ public class PreAuthorizedCodeService {
      * Generate a signed JWT access token for pre-authorized code flow.
      * Calls AccessTokenJwtUtil.generateSignedJwt directly with raw parameters.
      */
-    private String generateAccessToken(PreAuthCodeData codeData, String cNonce) {
+    private String generateAccessToken(PreAuthCodeData codeData) {
         try {
             String claimsJson = objectMapper.writeValueAsString(codeData.getClaims());
             String credentialConfigId = codeData.getCredentialConfigurationId();
@@ -421,8 +378,7 @@ public class PreAuthorizedCodeService {
                     "",
                     oauthIssuer,
                     oauthAudience,
-                    accessTokenExpirySeconds,
-                    cNonce
+                    accessTokenExpirySeconds
             );
         } catch (Exception e) {
             log.error("Failed to generate access token for pre-authorized code flow", e);

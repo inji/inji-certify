@@ -102,10 +102,9 @@ public class PutWithPathParamsAndBody extends InjiCertifyUtil implements ITest {
 		inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
 
 		JSONObject requestJson = new JSONObject(inputJson);
-		// Check and encode vcTemplate
-		if (requestJson.has("vcTemplate") && requestJson.get("vcTemplate") instanceof JSONObject) {
-
+		if (requestJson.has("vcTemplate")) {
 			inputJson = extractAndEncodeVcTemplate(requestJson.toString());
+			requestJson = new JSONObject(inputJson);
 		}
 
 		if (testCaseDTO.getTemplateFields() != null && templateFields.length > 0) {

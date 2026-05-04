@@ -183,16 +183,13 @@ public class VCICacheServiceTest {
     // Tests for setTransaction
 
     @Test
-    public void setVCITransaction_ShouldReturnSameTransaction_PreAuth() {
+    public void setPreAuthTransaction_ShouldReturnSameTransaction_PreAuth() {
         String accessToken = "test-access-token";
-        PreAuthTransaction transaction = PreAuthTransaction.builder()
-                .credentialConfigurationId("test-config")
-                .claims(java.util.Collections.emptyMap()) // Adding required field or valid dummy
-                .credentialConfigurationId("test-config")
-                .cNonce("test-nonce")
-                .build();
+        PreAuthTransaction transaction = new PreAuthTransaction();
+        transaction.setCredentialConfigurationId("test-config");
+        transaction.setClaims(java.util.Collections.emptyMap());
 
-        VCIssuanceTransaction result = vciCacheService.setVCITransaction(accessToken, transaction);
+        PreAuthTransaction result = vciCacheService.setPreAuthTransaction(accessToken, transaction);
 
         assertNotNull(result);
         assertEquals(transaction, result);

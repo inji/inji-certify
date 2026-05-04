@@ -1,7 +1,12 @@
 package io.mosip.certify.services;
 
 import io.mosip.certify.core.constants.Constants;
-import io.mosip.certify.core.dto.*;
+import io.mosip.certify.core.constants.NonceErrorConstants;
+import io.mosip.certify.core.dto.CredentialOfferResponse;
+import io.mosip.certify.core.dto.PreAuthCodeData;
+import io.mosip.certify.core.dto.PreAuthTransaction;
+import io.mosip.certify.core.dto.VCIssuanceTransaction;
+import io.mosip.certify.core.exception.CertifyException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,8 @@ public class VCICacheService {
     private String cacheType;
 
     private static final String VCISSUANCE_CACHE = "vcissuance";
+    private static final String PRE_AUTH_TXN_CACHE = "preAuthCacheTxn";
+    private static final String NONCE_CACHE = "nonce";
 
     @PostConstruct
     public void validateCacheConfiguration() {
@@ -54,6 +61,35 @@ public class VCICacheService {
             return null;
         }
         return cache.get(accessTokenHash, VCIssuanceTransaction.class);
+    }
+
+    @CachePut(value = PRE_AUTH_TXN_CACHE, key = "#accessTokenHash")
+    public PreAuthTransaction setPreAuthTransaction(String accessTokenHash, PreAuthTransaction preAuthTransaction) {
+        return preAuthTransaction;
+    }
+
+    public PreAuthTransaction getPreAuthTransaction(String accessTokenHash) {
+        Cache cache = cacheManager.getCache(PRE_AUTH_TXN_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Please verify cache configuration.", PRE_AUTH_TXN_CACHE);
+            return null;
+        }
+        return cache.get(accessTokenHash, PreAuthTransaction.class);
+    }
+
+    @CachePut(value = NONCE_CACHE, key = "'txn:' + #cNonce")
+    public VCIssuanceTransaction setNonceTransaction(String cNonce, VCIssuanceTransaction transaction) {
+        return transaction;
+    }
+
+    public VCIssuanceTransaction getNonceTransaction(String cNonce) {
+        Cache cache = cacheManager.getCache(NONCE_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Please verify cache configuration.", NONCE_CACHE);
+            throw new CertifyException(NonceErrorConstants.CACHE_NOT_AVAILABLE,
+                    "Nonce cache is not configured. Please verify cache configuration.");
+        }
+        return cache.get("txn:" + cNonce, VCIssuanceTransaction.class);
     }
 
     public void setPreAuthCodeData(String code, PreAuthCodeData data) {

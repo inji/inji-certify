@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "fd7002a2-0db6-4eab-bc4f-f312d90dbe43",
+		"_postman_id": "acff4e4d-2fad-4f4e-98fe-86f452e747db",
 		"name": "Inji Certify - Presentation During Issuance VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "1282483"
+		"_exporter_id": "41350892"
 	},
 	"item": [
 		{
@@ -25,9 +25,11 @@
 									"    pm.expect(jsonData).to.have.property('credential_issuer');",
 									"    pm.expect(jsonData).to.have.property('authorization_servers');",
 									"    pm.expect(jsonData).to.have.property('credential_endpoint');",
+									"    pm.expect(jsonData).to.have.property('nonce_endpoint');",
 									"",
 									"    pm.collectionVariables.set('authorization_server', jsonData.authorization_servers[0]);",
 									"    pm.collectionVariables.set('credential_endpoint', jsonData.credential_endpoint);",
+									"    pm.collectionVariables.set('nonce_endpoint', jsonData.nonce_endpoint);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -272,10 +274,6 @@
 									"    pm.collectionVariables.set('access_token', accessToken);",
 									"    // pm.environment.set('access_token', accessToken);",
 									"    console.log(\"✅ Access token saved successfully\");",
-									"    const cNonce = jsonData.c_nonce;",
-									"    const cNonceExpiresIn = jsonData.c_nonce_expires_in;",
-									"    pm.collectionVariables.set('c_nonce', cNonce);",
-									"    pm.collectionVariables.set('c_nonce_expires_in', cNonceExpiresIn);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -328,10 +326,41 @@
 			]
 		},
 		{
-			"name": "5. Credential download",
+			"name": "5. Nonce endpoint",
 			"item": [
 				{
-					"name": "5.1 Get Credential",
+					"name": "5.1 Get Nonce",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var response = pm.response.json();",
+									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{nonce_endpoint}}",
+							"host": [
+								"{{nonce_endpoint}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Credential download",
+			"item": [
+				{
+					"name": "6.1 Get Credential",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -368,7 +397,9 @@
 									"",
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						},
 						{
@@ -377,7 +408,9 @@
 								"exec": [
 									""
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
 							}
 						}
 					],
@@ -396,7 +429,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ],\n        \"type\": [\n            \"VerifiableCredential\",\n            \"FarmerCredential\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"FarmerCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -590,6 +623,10 @@
 		},
 		{
 			"key": "credential_endpoint",
+			"value": ""
+		},
+		{
+			"key": "nonce_endpoint",
 			"value": ""
 		}
 	]

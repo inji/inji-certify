@@ -2,8 +2,7 @@ package io.mosip.certify.entity;
 
 
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
-import io.mosip.certify.entity.attributes.ClaimsDisplayFieldsConfigs;
-import io.mosip.certify.entity.attributes.CredentialSubjectParameters;
+import io.mosip.certify.entity.attributes.Claims;
 import io.mosip.certify.entity.attributes.MetaDataDisplay;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -63,7 +62,6 @@ public class CredentialConfig {
     private String sdClaim;
 
     @NotNull(message = "Invalid request")
-    @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "display", columnDefinition = "jsonb")
     private List<MetaDataDisplay> display;
@@ -93,18 +91,18 @@ public class CredentialConfig {
 
     @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "credential_subject", columnDefinition = "jsonb")
-    private Map<String, CredentialSubjectParameters> credentialSubject;
+    @Column(name = "claims", columnDefinition = "jsonb")
+    private Map<String, Claims> claims;
 
     @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "mso_mdoc_claims", columnDefinition = "jsonb")
-    private Map<String, Map<String, ClaimsDisplayFieldsConfigs>> msoMdocClaims;
+    private Map<String, Map<String, Claims>> msoMdocClaims;
 
     @Type(JsonBinaryType.class)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "sd_jwt_claims", columnDefinition = "jsonb")
-    private Map<String, ClaimsDisplayFieldsConfigs> sdJwtClaims;
+    private Map<String, Claims> sdJwtClaims;
 
     @Column(name = "sd_jwt_vct")
     private String sdJwtVct;

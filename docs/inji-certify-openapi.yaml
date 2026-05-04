@@ -454,7 +454,35 @@ paths:
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
-
+  /issuance/nonce:
+    post:
+      tags:
+        - 'Nonce Controller'
+      summary: Generate Nonce
+      description: 'Generates a c_nonce value to be used in credential issuance flow as per OpenID4VCI specification.'
+      operationId: getNonce
+      responses:
+        '200':
+          description: Nonce generated successfully.
+          headers:
+            Cache-Control:
+              description: Prevents caching of nonce responses.
+              schema:
+                type: string
+                example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NonceResponse'
+              examples:
+                Example 1:
+                  value:
+                    c_nonce: "abc123xyz"
+        '500':
+          description: Internal server error while generating nonce.
+      servers:
+        - url: 'http://localhost:8090/v1/certify'
+          description: Generated server url
   /issuance/vd12/credential:
     post:
       tags:
@@ -469,25 +497,13 @@ paths:
             schema:
               $ref: '#/components/schemas/CredentialRequest'
             examples:
-              ldp_vc example:
+              example:
                 value:
-                  format: ldp_vc
-                  credential_definition:
-                    type:
-                      - VerifiableCredential
-                      - MockVerifiableCredential
-                    '@context':
-                      - 'https://www.w3.org/2018/credentials/v1'
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
-              vc+sd-jwt example:
-                value:
-                  format: vc+sd-jwt
-                  vct: MockVerifiableCredential_SD_JWT
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d....
+                  credential_configuration_id: MockVerifiableCredential
+                  proofs:
+                    jwt:
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpKXByb59mK2p3dM
       responses:
         '200':
           description: OK
@@ -498,52 +514,97 @@ paths:
               examples:
                 Example 1:
                   value:
-                    credential:
-                      credentialSubject:
-                        VID: 2154189532
-                        gender:
-                          - language: eng
-                            value: Male
-                        province:
-                          - language: eng
-                            value: ABC City
-                        phone: '+3725478456'
-                        postalCode: 10106
-                        fullName:
-                          - language: eng
-                            value: Gorge Cooper
-                        dateOfBirth: 1985/04/29
-                        id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                        UIN: 2154189532
-                        region:
-                          - language: eng
-                            value: ABC Region
-                        email: gorgecooper@gmail.com
-                      validUntil: '2027-08-07T11:57:39.350Z'
-                      validFrom: '2025-08-07T11:57:39.349Z'
-                      type:
-                        - VerifiableCredential
-                        - MockVerifiableCredential
-                      '@context':
-                        - 'https://www.w3.org/ns/credentials/v2'
-                        - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                        - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                      issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                      credentialStatus:
-                        statusPurpose: revocation
-                        statusListIndex: '5'
-                        id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                        type: BitstringStatusListEntry
-                        statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                      proof:
-                        type: EcdsaSecp256r1Signature2019
-                        created: '2025-08-07T11:57:39Z'
-                        proofPurpose: assertionMethod
-                        verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                        proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                    credentials:
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
                 Example 2:
                   value:
-                    credential: eyJ4NXQjUzI1NiI6InAxRkps....
+                    credentials:
+                      - credential: eyJ4NXQjUzI1NiI6InAxRkps....
         '400':
           description: Bad Request
           content:
@@ -567,25 +628,13 @@ paths:
             schema:
               $ref: '#/components/schemas/CredentialRequest'
             examples:
-              Example 1:
+              Example:
                 value:
-                  format: vc+sd-jwt
-                  vct: MockVerifiableCredential_SD_JWT
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d....
-              Example 2:
-                value:
-                  format: ldp_vc
-                  credential_definition:
-                    type:
-                      - VerifiableCredential
-                      - MockVerifiableCredential
-                    '@context':
-                      - 'https://www.w3.org/2018/credentials/v1'
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
+                  credential_configuration_id: MockVerifiableCredential
+                  proofs:
+                    jwt:
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
       responses:
         '200':
           description: OK
@@ -596,52 +645,97 @@ paths:
               examples:
                 Example 1:
                   value:
-                    credential: eyJ4NXQjUzI1NiI6InAxRkp......
+                    credentials:
+                      - credential: eyJ4NXQjUzI1NiI6InAxRkps....
                 Example 2:
                   value:
-                    credential:
-                      credentialSubject:
-                        VID: 2154189532
-                        gender:
-                          - language: eng
-                            value: Male
-                        province:
-                          - language: eng
-                            value: ABC City
-                        phone: '+3725478456'
-                        postalCode: 10106
-                        fullName:
-                          - language: eng
-                            value: Gorge Cooper
-                        dateOfBirth: 1985/04/29
-                        id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                        UIN: 2154189532
-                        region:
-                          - language: eng
-                            value: ABC Region
-                        email: gorgecooper@gmail.com
-                      validUntil: '2027-08-07T11:57:39.350Z'
-                      validFrom: '2025-08-07T11:57:39.349Z'
-                      type:
-                        - VerifiableCredential
-                        - MockVerifiableCredential
-                      '@context':
-                        - 'https://www.w3.org/ns/credentials/v2'
-                        - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                        - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                      issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                      credentialStatus:
-                        statusPurpose: revocation
-                        statusListIndex: '5'
-                        id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                        type: BitstringStatusListEntry
-                        statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                      proof:
-                        type: EcdsaSecp256r1Signature2019
-                        created: '2025-08-07T11:57:39Z'
-                        proofPurpose: assertionMethod
-                        verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                        proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                    credentials:
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
         '400':
           description: Bad Request
           content:
@@ -665,25 +759,13 @@ paths:
             schema:
               $ref: '#/components/schemas/CredentialRequest'
             examples:
-              Example 1:
+              Example:
                 value:
-                  format: ldp_vc
-                  credential_definition:
-                    type:
-                      - VerifiableCredential
-                      - MockVerifiableCredential
-                    '@context':
-                      - 'https://www.w3.org/2018/credentials/v1'
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
-              Example 2:
-                value:
-                  format: vc+sd-jwt
-                  vct: MockVerifiableCredential_SD_JWT
-                  proof:
-                    proof_type: jwt
-                    jwt: eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d....
+                  credential_configuration_id: MockVerifiableCredential
+                  proofs:
+                    jwt:
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3dC
+                      - eyJ0eXAiOiJvcGVuaWQ0dmNpLXByb29mK2p3d....
       responses:
         '200':
           description: OK
@@ -694,52 +776,97 @@ paths:
               examples:
                 Example 1:
                   value:
-                    credential:
-                      credentialSubject:
-                        VID: 2154189532
-                        gender:
-                          - language: eng
-                            value: Male
-                        province:
-                          - language: eng
-                            value: ABC City
-                        phone: '+3725478456'
-                        postalCode: 10106
-                        fullName:
-                          - language: eng
-                            value: Gorge Cooper
-                        dateOfBirth: 1985/04/29
-                        id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
-                        UIN: 2154189532
-                        region:
-                          - language: eng
-                            value: ABC Region
-                        email: gorgecooper@gmail.com
-                      validUntil: '2027-08-07T11:57:39.350Z'
-                      validFrom: '2025-08-07T11:57:39.349Z'
-                      type:
-                        - VerifiableCredential
-                        - MockVerifiableCredential
-                      '@context':
-                        - 'https://www.w3.org/ns/credentials/v2'
-                        - 'https://www.example.com/.well-known/mosip-ida-context.json'
-                        - 'https://w3id.org/security/suites/ed25519-2020/v1'
-                      issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
-                      credentialStatus:
-                        statusPurpose: revocation
-                        statusListIndex: '5'
-                        id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
-                        type: BitstringStatusListEntry
-                        statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
-                      proof:
-                        type: EcdsaSecp256r1Signature2019
-                        created: '2025-08-07T11:57:39Z'
-                        proofPurpose: assertionMethod
-                        verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
-                        proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                    credentials:
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
+                      - credential:
+                          credentialSubject:
+                            VID: 2154189532
+                            gender:
+                              - language: eng
+                                value: Male
+                            province:
+                              - language: eng
+                                value: ABC City
+                            phone: '+3725478456'
+                            postalCode: 10106
+                            fullName:
+                              - language: eng
+                                value: Gorge Cooper
+                            dateOfBirth: 1985/04/29
+                            id: 'did:jwk:eyJrdHkiOiJSU0EiLCJlIjoiQVFBQiIsInVzZSI6InNpZyIsImtpZCI6IndzbXVFM1EyaHUzT3hvRlhrRHFWaXdqMUFWeTZUQ2x0M1ZTZm9GcXZySE0iLCJhbGciOiJSUzI1NiIsIm4iOiJwTE9obUEyenBraHZlM0RDVlo4LU9kSDNZZlF3NEVmLXpWMTBqREt0SlFranlycS0yVzRadnFVYjdXSm9ZbV9jb3FPczEwMllsalE2UGpJMXJfU2haeldDZGFHT24ydFU2TGUxeEdNTlVaRXRRVmhINWpCV2Y0VTZKUDAxM1Q0bE5MOGZ0Wm1BRy1ZZGU4MW1rb0Nabm51RXdyQ0lyTWpLNWxodHJfSnpfbm9oSnMwUENaVFI2enJTWk44SVpuTldXQVZ2TmRIbHZKTEJMU0FZZXp0MHF3RlgzZkw1UXFKTm53c09YckNjVi1CNTR6VmxtT1ZiOG05d1hOODJGdkFZQUxiWFB2UGtuZ3JzVUhUdzlOMmlFR3VZU1JNbE1WLVFJSEtEMUdiTVNBWFNRbjlQaEctY2UtXzlWR2NwMkZkeHpWVTJFY1hqdXVPTWlHbmtGa3NBcVEifQ=='
+                            UIN: 2154189532
+                            region:
+                              - language: eng
+                                value: ABC Region
+                            email: gorgecooper@gmail.com
+                          validUntil: '2027-08-07T11:57:39.350Z'
+                          validFrom: '2025-08-07T11:57:39.349Z'
+                          type:
+                            - VerifiableCredential
+                            - MockVerifiableCredential
+                          '@context':
+                            - 'https://www.w3.org/ns/credentials/v2'
+                            - 'https://www.example.com/.well-known/mosip-ida-context.json'
+                            - 'https://w3id.org/security/suites/ed25519-2020/v1'
+                          issuer: 'did:web:www.example.com:inji-config:collab:mock-identity'
+                          credentialStatus:
+                            statusPurpose: revocation
+                            statusListIndex: '5'
+                            id: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067#5'
+                            type: BitstringStatusListEntry
+                            statusListCredential: 'https://www.example.com/v1/certify/status-list/7bf52e81-f3bb-40ec-a0f9-a714847fd067'
+                          proof:
+                            type: EcdsaSecp256r1Signature2019
+                            created: '2025-08-07T11:57:39Z'
+                            proofPurpose: assertionMethod
+                            verificationMethod: 'did:web:www.example.com:inji-config:collab:mock-identity#b-yFcX3lbDH96eQUmUYHTYK5y5VE0ymJxmu-1CgM_AY'
+                            proofValue: z4qiRPtXgfE14sbZ6UogFbwMjiXKnviLBkbb2RinZyvub3wZHQVVhigiynuKuKSZCBpbeLckHrtxK4QCrzPPQXyWH
                 Example 2:
                   value:
-                    credential: eyJ4NXQjUzI1NiI6InAxRkp......
+                    credentials:
+                      - credential: eyJ4NXQjUzI1NiI6InAxRkps....
         '400':
           description: Bad Request
           content:
@@ -757,7 +884,7 @@ paths:
       description: |-
         Creates a new credential configuration. Requires a valid request body as per schema and has some additional validations too based on credential format and plugin configuration.
 
-        **Note** : Incase of VCIssuance plugin mode, only `ldp_vc` and `mso_mdoc` formats are supported by credential-configuration endpoints. `vc+sd-jwt` format is not yet supported currently.
+        **Note** : Incase of VCIssuance plugin mode, only `ldp_vc` and `mso_mdoc` formats are supported by credential-configuration endpoints. `dc+sd-jwt` format is not yet supported currently.
       operationId: addCredentialConfiguration
       requestBody:
         required: true
@@ -890,7 +1017,7 @@ paths:
                         display:
                           - name: Document Number
                             locale: en
-              vc+sd-jwt example:
+              dc+sd-jwt example:
                 value:
                   credentialConfigKeyId: SD_JWT
                   vcTemplate: ewogICAgICAgICAiQGNvbnRleHQiOiBbCiAgICAgICAgICAgICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy9ucy9jcmVkZW50aWFscy92MiIsCiAgICAgICAgICAgICAgICAgImh0dHBzOi8vbW9zaXAuZ2l0aHViLmlvL2luamktY29uZmlnL2NvbnRleHRzL2xhbmRyZWdpc3RyeS1zdGF0ZW1lbnQtY29udGV4dC5qc29uIiwKICAgICAgICAgICAgICAgICAiaHR0cHM6Ly93M2lkLm9yZy9zZWN1cml0eS9zdWl0ZXMvZWQyNTUxOS0yMDIwL3YxIgogICAgICAgICBdLAogICAgICAgICAiaXNzdWVyIjogIiR7X2lzc3Vlcn0iLAogICAgICAgICAidHlwZSI6IFsKICAgICAgICAgICAgICJWZXJpZmlhYmxlQ3JlZGVudGlhbCIsCiAgICAgICAgICAgICAiTGFuZFN0YXRlbWVudENyZWRlbnRpYWwiCiAgICAgICAgIF0sCiAgICAgICAgICJ2YWxpZEZyb20iOiAiJHt2YWxpZEZyb219IiwKICAgICAgICAgInZhbGlkVW50aWwiOiAiJHt2YWxpZFVudGlsfSIsCiAgICAgICAgICJjcmVkZW50aWFsU3ViamVjdCI6IHsKICAgICAgICAgICAgImlkIjogIiR7X2hvbGRlcklkfSIsCiAgICAgICAgICAgICJOdW1iZXJPZkNBUiI6ICIke2Nhcl9yZWdpc3RyYXRpb25fbnVtYmVyfSIsCiAgICAgICAgICAgICJSZWdpc3RyYXRpb25EYXRlIjogIiR7cmVnaXN0cmF0aW9uX2RhdGV9IiwKICAgICAgICAgICAgIkxhc3RNb2RpZmljYXRpb25EYXRlIjogIiR7ZGF0ZV9vZl9sYXN0X2FtZW5kbWVudH0iLAogICAgICAgICAgICAiUnVyYWxQcm9wZXJ0eUFyZWEiOiAke3J1cmFsX3Byb3BlcnR5X2FyZWF9LAogICAgICAgICAgICAiTGF0aXR1ZGUiOiAiJHtsYXRpdHVkZX0iLAogICAgICAgICAgICAiTG9uZ2l0dWRlIjogIiR7bG9uZ2l0dWRlfSIsCiAgICAgICAgICAgICJNdW5pY2lwYWxpdHkiOiAiJHttdW5pY2lwYWxpdHl9IiwKICAgICAgICAgICAgIkV4dGVybmFsQ29uZGl0aW9uIjogIiR7ZXh0ZXJuYWxfY29uZGl0aW9ufSIsCiAgICAgICAgICAgICJSZWdpc3RyYXRpb25TdGF0dXMiOiAiJHtyZWdpc3RyYXRpb25fc3RhdHVzfSIsCiAgICAgICAgICAgICJQUkFDb25kaXRpb24iOiAiJHtwcmFfY29uZGl0aW9ufSIsCiAgICAgICAgICAgICJHcm91bmRDb3ZlcmFnZSI6ICIke2xhbmRfY292ZXJ9IiwKICAgICAgICAgICAgIk5hdGl2ZVZlZ2V0YXRpb25SZW1uYW50QXJlYSI6ICR7bmF0aXZlX3ZlZ2V0YXRpb25fcmVtbmFudF9hcmVhfSwKICAgICAgICAgICAgIkNvbnNvbGlkYXRlZFJ1cmFsQXJlYSI6ICR7Y29uc29saWRhdGVkX3J1cmFsX2FyZWF9LAogICAgICAgICAgICAiQWRtaW5pc3RyYXRpdmVFYXNlbWVudEFyZWEiOiAke2FkbWluaXN0cmF0aXZlX2Vhc2VtZW50X2FyZWF9LAogICAgICAgICAgICAiTGVnYWxSZXNlcnZlTG9jYXRpb24iOiAiJHtsb2NhdGlvbl9vZl9sZWdhbF9yZXNlcnZlfSIsCiAgICAgICAgICAgICJSZWdpc3RlcmVkTGVnYWxSZXNlcnZlQXJlYSI6ICR7cmVnaXN0ZXJlZF9sZWdhbF9yZXNlcnZlX2FyZWF9LAogICAgICAgICAgICAiR2VvcmVmZXJlbmNlZExlZ2FsUmVzZXJ2ZUFyZWEiOiAke2dlb3JlZmVyZW5jZWRfbGVnYWxfcmVzZXJ2ZV9hcmVhfSwKICAgICAgICAgICAgIkFwcHJvdmVkVW5yZWdpc3RlcmVkTGVnYWxSZXNlcnZlQXJlYSI6ICR7YXBwcm92ZWRfbGVnYWxfcmVzZXJ2ZV9hcmVhX25vdF9yZWdpc3RlcmVkfSwKICAgICAgICAgICAgIlByb3Bvc2VkTGVnYWxSZXNlcnZlQXJlYSI6ICR7cHJvcG9zZWRfbGVnYWxfcmVzZXJ2ZV9hcmVhfSwKICAgICAgICAgICAgIlRvdGFsRGVjbGFyZWRMZWdhbFJlc2VydmUiOiAke3RvdGFsX2xlZ2FsX3Jlc2VydmVfZGVjbGFyZWR9LAogICAgICAgICAgICAiUGVybWFuZW50UHJlc2VydmF0aW9uQXJlYXMiOiAke3Blcm1hbmVudF9wcmVzZXJ2YXRpb25fYXJlYXNfYXBwfSwKICAgICAgICAgICAgIkFQUEluQ29uc29saWRhdGVkUnVyYWxBcmVhIjogJHthcHBfaW5fY29uc29saWRhdGVkX3J1cmFsX2FyZWF9LAogICAgICAgICAgICAiQVBQSW5OYXRpdmVWZWdldGF0aW9uUmVtbmFudEFyZWEiOiAke2FwcF9pbl9uYXRpdmVfdmVnZXRhdGlvbl9yZW1uYW50X2FyZWF9LAogICAgICAgICAgICAiUmVzdHJpY3RlZFVzZUFyZWFzIjogJHtyZXN0cmljdGVkX3VzZV9hcmVhc30sCiAgICAgICAgICAgICJMZWdhbFJlc2VydmVEZWZpY2l0T3JFeGNlc3MiOiAke2xlZ2FsX3Jlc2VydmVfZGVmaWNpdF9leGNlc3N9LAogICAgICAgICAgICAiTGVnYWxSZXNlcnZlQXJlYVRvQmVSZXN0b3JlZCI6ICR7bGVnYWxfcmVzZXJ2ZV9hcmVhX3RvX3JlY29tcG9zZX0sCiAgICAgICAgICAgICJQZXJtYW5lbnRQcmVzZXJ2YXRpb25BcmVhc1RvQmVSZXN0b3JlZCI6ICR7cGVybWFuZW50X3ByZXNlcnZhdGlvbl9hcmVhc190b19yZWNvbXBvc2V9LAogICAgICAgICAgICAiUmVzdHJpY3RlZFVzZUFyZWFUb0JlUmVzdG9yZWQiOiAke3Jlc3RyaWN0ZWRfdXNlX2FyZWFfdG9fcmVjb21wb3NlfSwKICAgICAgICAgICAgIkVtYmFyZ2dlZEFyZWFEZXNjcmlwdGlvbiI6ICIke2VtYmFyZ29lZF9hcmVhX2Rlc2NyaXB0aW9ufSIsCiAgICAgICAgICAgICJFbWJhcmdnZWRBcmVhUHJvY2Vzc2luZ0RhdGUiOiAiJHtlbWJhcmdvZWRfYXJlYV9wcm9jZXNzaW5nX2RhdGV9IiwKICAgICAgICAgICAgIkVtYmFyZ2dlZEFyZWFPdmVybGFwIjogJHtlbWJhcmdvZWRfYXJlYV9vdmVybGFwfSwKICAgICAgICAgICAgIkVtYmFyZ2dlZEFyZWFPdmVybGFwUGVyY2VudGFnZSI6ICR7ZW1iYXJnb2VkX2FyZWFfb3ZlcmxhcF9wZXJjZW50YWdlfSwKICAgICAgICAgICAgIkNvbnNlcnZhdGlvblVuaXREZXNjcmlwdGlvbiI6ICIke2NvbnNlcnZhdGlvbl91bml0X2Rlc2NyaXB0aW9ufSIsCiAgICAgICAgICAgICJDb25zZXJ2YXRpb25Vbml0UHJvY2Vzc2luZ0RhdGUiOiAiJHtjb25zZXJ2YXRpb25fdW5pdF9wcm9jZXNzaW5nX2RhdGV9IiwKICAgICAgICAgICAgIkNvbnNlcnZhdGlvblVuaXRPdmVybGFwQXJlYSI6ICR7Y29uc2VydmF0aW9uX3VuaXRfb3ZlcmxhcF9hcmVhfSwKICAgICAgICAgICAgIkNvbnNlcnZhdGlvblVuaXRPdmVybGFwUGVyY2VudGFnZSI6ICR7Y29uc2VydmF0aW9uX3VuaXRfb3ZlcmxhcF9wZXJjZW50YWdlfQogICAgICAgICB9CiAgICAgfQ==
@@ -898,7 +1025,7 @@ paths:
                   keyManagerRefId: ED25519_SIGN
                   signatureAlgo: EdDSA
                   sdJwtVct: SD_JWT
-                  credentialFormat: vc+sd-jwt
+                  credentialFormat: dc+sd-jwt
                   didUrl: 'did:web:likhitharl.github.io:vc:qainji#key-0'
                   metaDataDisplay:
                     - name: STATEMENT OF THE STATUS OF INFORMATION DECLARED IN CAR
@@ -1802,14 +1929,14 @@ components:
             type: string
         sdJwtVct:
           type: string
-          description: Represents the Verifiable Credential Type (VCT) used in Selective Disclosure JWT (SD-JWT) credentials. This field specifies the credential type identifier required for vc+sd-jwt format.
+          description: Represents the Verifiable Credential Type (VCT) used in Selective Disclosure JWT (SD-JWT) credentials. This field specifies the credential type identifier required for dc+sd-jwt format.
         credentialFormat:
-          description: 'Format of the credential. Valid values are ldp_vc, mso_mdoc, vc+sd-jwt.'
+          description: 'Format of the credential. Valid values are ldp_vc, mso_mdoc, dc+sd-jwt.'
           type: string
           enum:
             - ldp_vc
             - mso_mdoc
-            - vc+sd-jwt
+            - dc+sd-jwt
         didUrl:
           type: string
           description: URL of the Decentralized Identifier (DID) document. Mandatory for DataProvider plugin mode.
@@ -1821,7 +1948,7 @@ components:
           description: Reference ID for the key manager. Applicable for DataProvider plugin mode.
         signatureAlgo:
           description: |-
-            Signature or proof algorithm used for credential signing. This field is required for certain credential formats, such as vc+sd-jwt and optionally for ldp_vc when the signatureCryptoSuite is one of DataIntegrityProof suite (e.g. ecdsa-rdfc-2019, ecdsa-jcs-2019, etc). It ensures compatibility between the cryptographic suite and the signing algorithm. Mapping of signatureCryptoSuite and signatureAlgo values for DataIntegrityProof suite scenario :
+            Signature or proof algorithm used for credential signing. This field is required for certain credential formats, such as dc+sd-jwt and optionally for ldp_vc when the signatureCryptoSuite is one of DataIntegrityProof suite (e.g. ecdsa-rdfc-2019, ecdsa-jcs-2019, etc). It ensures compatibility between the cryptographic suite and the signing algorithm. Mapping of signatureCryptoSuite and signatureAlgo values for DataIntegrityProof suite scenario :
 
             signatureCryptoSuite |  signatureAlgo
             ---------|----------
@@ -1835,7 +1962,7 @@ components:
           type: string
         sdClaim:
           type: string
-          description: Comma-separated list for selective disclosure claim configuration. Applicable for vc+sd-jwt credential type.
+          description: Comma-separated list for selective disclosure claim configuration. Applicable for dc+sd-jwt credential type.
         metaDataDisplay:
           type: array
           description: 'To configure the display properties (e.g., logo, name, colors, and localization) for metadata associated with the Verifiable Credential type.'
@@ -1862,7 +1989,7 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/CredentialSubjectParametersDTO'
         msoMdocClaims:
-          description: Claims included in the credential. Applicable for mso_mdoc and vc+sd-jwt credential formats.
+          description: Claims included in the credential. Applicable for mso_mdoc and dc+sd-jwt credential formats.
           type: object
           additionalProperties:
             type: object
@@ -2168,47 +2295,25 @@ components:
         - timestamp
     CredentialRequest:
       type: object
-      x-examples: {}
       required:
-        - format
-        - proof
+        - credential_configuration_id
+        - proofs
       properties:
-        format:
-          description: Format of the Credential to be issued.
-          enum:
-            - ldp_vc
-            - vc+sd-jwt
-            - mso_mdoc
+        credential_configuration_id:
           type: string
-        proof:
-          $ref: '#/components/schemas/CredentialProof'
-        credential_definition:
-          $ref: '#/components/schemas/CredentialDefinition'
-        doctype:
-          type: string
-          description: Type or category of the document for which the credential is being issued. Used to specify the intended document schema or classification. Applicable for `mso_mdoc` credential format.
-        claims:
+          description: Identifier of the credential configuration.
+
+        proofs:
           type: object
-          description: Claims asserted in the credential. A key-value map where each key is a claim name and the value is the corresponding claim data to be included in the issued credential. Applicable for `mso_mdoc` format.
+          description: |
+            JSON object containing proof(s) of possession of the key material.
+            Keys are proof types (e.g., "jwt"), values are non-empty arrays of proof strings.
           additionalProperties:
-            type: object
-        vct:
-          type: string
-          description: Represents the Verifiable Credential Type (VCT) used in Selective Disclosure JWT (SD-JWT) credentials. This field specifies the credential type identifier required for `vc+sd-jwt` format.
-    CredentialProof:
-      type: object
-      properties:
-        proof_type:
-          type: string
-          description: 'Type of proof provided (e.g., jwt, cwt).'
-        jwt:
-          type: string
-          description: 'When proof type is jwt, a proof object MUST include a jwt claim.'
-        cwt:
-          type: string
-          description: 'When proof type is cwt, a proof object MUST include a cwt claim.'
-      required:
-        - proof_type
+            type: array
+            minItems: 1
+            items:
+              type: string
+              minLength: 1
     CredentialDefinition:
       type: object
       properties:
@@ -2231,30 +2336,20 @@ components:
         - type
     CredentialResponse:
       type: object
-      x-examples: {}
       required:
-        - credential
+        - credentials
       properties:
-        format:
-          type: string
-          description: JSON string denoting the format of the issued Credential.
-        credential:
-          description: 'The issued credential itself. Its type is generic and may be a JSON string or object, depending on the credential format. Must be present if acceptance_token is not returned.'
-          anyOf:
-            - type: object
-            - type: string
-              x-stoplight:
-                id: zc9urdivz83ao
-        acceptance_token:
-          type: string
-          description: A JSON string containing a security token used to subsequently obtain a credential. Must be present if credential is not returned.
-        c_nonce:
-          type: string
-          description: 'A JSON string representing a nonce value, used to create a proof of possession of key material.'
-        c_nonce_expires_in:
-          type: integer
-          format: int32
-          description: A JSON integer specifying the lifetime (in seconds) of the c_nonce.
+        credentials:
+          type: array
+          description: List of issued credentials. Each entry may contain a credential in object (JSON-LD) or string (JWT) format.
+          items:
+            type: object
+            properties:
+              credential:
+                description: The issued credential itself. Can be JSON object (LDP VC) or string (JWT VC).
+                anyOf:
+                  - type: object
+                  - type: string
     VCError:
       type: object
       properties:
@@ -2419,13 +2514,13 @@ components:
       properties:
         format:
           type: string
-          description: 'The credential format supported (e.g., ldp_vc, mso_mdoc, vc+sd-jwt).'
+          description: 'The credential format supported (e.g., ldp_vc, mso_mdoc, dc+sd-jwt).'
         scope:
           type: string
           description: The OAuth2 scope value associated with this credential configuration.
         claims:
           type: object
-          description: Map of claim definitions for the credential (used for mso_mdoc and vc+sd-jwt).
+          description: Map of claim definitions for the credential (used for mso_mdoc and dc+sd-jwt).
           additionalProperties:
             type: object
         display:
@@ -3110,3 +3205,12 @@ components:
           type: string
         issuer_state:
           type: string
+    NonceResponse:
+      type: object
+      properties:
+        c_nonce:
+          type: string
+          description: One-time nonce value used for proof validation
+          example: "abc123xyz"
+      required:
+        - c_nonce

@@ -1,4 +1,4 @@
-# Support for Public Key Infrastructure (PKI) and Its Integration with SD-JWT(IETF format vc+sd-jwt) Verifiable Credentials
+# Support for Public Key Infrastructure (PKI) and Its Integration with SD-JWT(IETF format dc+sd-jwt) Verifiable Credentials
 Inji Certify allows issuers to integrate their own CA-signed certificates into the credential signing pipeline. This workflow guides you through the complete setup—from generating a CSR to uploading the signed certificate—so that all Verifiable Credentials (VCs) are signed using your institution’s PKI.
 
 ## Overview

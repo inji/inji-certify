@@ -63,8 +63,8 @@ public class ErrorConstants {
     public static final String LDP_VC_CONFIG_EXISTS = "ldp_vc_config_exists";
     public static final String MSO_MDOC_MANDATORY_FIELDS_MISSING = "mso_mdoc_mandatory_fields_missing";
     public static final String MSO_MDOC_CONFIG_EXISTS = "mso_mdoc_config_exists";
-    public static final String VC_SD_JWT_MANDATORY_FIELDS_MISSING = "vc_sd_jwt_mandatory_fields_missing";
-    public static final String VC_SD_JWT_CONFIG_EXISTS = "vc_sd_jwt_config_exists";
+    public static final String DC_SD_JWT_MANDATORY_FIELDS_MISSING = "dc_sd_jwt_mandatory_fields_missing";
+    public static final String DC_SD_JWT_CONFIG_EXISTS = "dc_sd_jwt_config_exists";
     public static final String UNSUPPORTED_FORMAT = "unsupported_format";
     public static final String UNSUPPORTED_CRYPTO_SUITE = "unsupported_crypto_suite";
     public static final String UNSUPPORTED_SIGNATURE_ALGO = "unsupported_signature_algo";
@@ -79,6 +79,7 @@ public class ErrorConstants {
     public static final String INVALID_QR_SIGNING_ALGORITHM = "invalid_qr_signing_algorithm";
     public static final String INVALID_QR_SIGNED_RESULT = "invalid_qr_signed_result";
     public static final String ERROR_SIGNING_QR_ENTRY = "error_signing_qr_entry";
+    public static final String ERROR_SIGNING_QR_DATA = "error_signing_qr_data";
     public static final String QR_CBOR_ENCODING_ERROR = "qr_cbor_encoding_error";
     public static final String INVALID_CREDENTIAL_CONFIGURATION_ID = "invalid_credential_configuration_id";
     public static final String MISSING_MANDATORY_CLAIM = "missing_mandatory_claim";
@@ -91,5 +92,5 @@ public class ErrorConstants {
     public static final String AUTHORIZATION_SERVER_DISCOVERY_FAILED = "authorization_server_discovery_failed";
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
-
+    public static final String INVALID_CREDENTIAL_REQUEST = "invalid_credential_request";
 }

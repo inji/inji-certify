@@ -12,7 +12,7 @@ Ledger issuance refers to the process of creating a new ledger entry while a Ver
 ### Credential Status Details in Ledger
  - The ledger entry also contains credential status details (including status purpose, status list index, and status list credential URL), which allows tracking and managing the status of the issued credentials. 
  - The availability of credential status is subject to the allowed status purposes set in the credential configuration. The issuer can enable or disable the status purposed based on their business requirements.
- - To read more about credential status purposes, refer to the [`credentialStatusPurposes` Support](./VC-`credentialStatusPurposes`-Support.md) documentation.
+ - To read more about credential status purposes, refer to the [credentialStatusPurposes Support](./VC-Revocation-Support.md) documentation.
  - To read about configuring allowed status purposes, refer to the [Credential Configuration](./Credential-Issuer-Configuration.md#configuration-properties) documentation.
 
 ## Ledger Issuance Flow
@@ -36,7 +36,7 @@ When a VC is issued, the following steps are typically involved in the ledger is
  - Then for above VC subject claims, the indexed attributes can be configured as:
     ```
         mosip.certify.indexed-mappings.allQualifications=$.credentialSubject.qualifications
-        mosip.certify.indexed-mappings.latestDegree=$.credentialSubject.qualifications[-1].degree
+        mosip.certify.indexed-mappings.latestDegree=$.credentialSubject.qualifications[1].degree
         mosip.certify.indexed-mappings.firstSkill=$.credentialSubject.skills[0]
         mosip.certify.indexed-mappings.allSkills=$.credentialSubject.skills
     ```
@@ -94,30 +94,12 @@ The following points should be considered when enabling or disabling ledger issu
       "statusListCredentialUrl": "7bf52e81-f3bb-40ec-a0f9-a714847fd067",
       "statusListIndex": 5,
       "statusPurpose": "revocation",
-      "issueDate": "2025-08-07T11:57:39",
+      "issuanceDate": "2025-08-07T11:57:39",
       "credentialType": "MockVerifiableCredential,VerifiableCredential",
       "statusTimestamp": "2025-08-07T11:57:39"
     }
   ]
 ```
-
-- `/v2/ledger-search`
-```json
-    [
-      {
-        "credentialId": "afce16e8-02ac-4210-80d9-a0a20132bda3",
-        "issuerId": "did:web:sample.github.io:my-files:sample",
-        "statusListCredentialUrl": "7bf52e81-f3bb-40ec-a0f9-a714847fd067",
-        "statusListIndex": 5,
-        "statusPurpose": "revocation",
-        "issuanceDate": "2025-08-07T11:57:39",
-        "credentialType": "MockVerifiableCredential,VerifiableCredential",
-        "statusTimestamp": "2025-08-07T11:57:39"
-      }
-    ]
-```
-
-**Important:** The v1 `/ledger-search` API uses issueDate for issuance, while v2 `/v2/ledger-search` uses issuanceDate for improved field consistency; both return credential and status details for search queries. Overall the response structure remains the same.
 
 **Ledger Test Scenarios**
 - When `credentialId` is not provided during ledger search, the system returns all credentials matching the other criteria along with their status information.

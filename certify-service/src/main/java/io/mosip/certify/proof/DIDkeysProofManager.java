@@ -32,7 +32,15 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
     public Optional<JWK> getKeyFromHeader(JWSHeader header) {
         if(Objects.nonNull(header.getJWK()))
             return Optional.ofNullable(header.getJWK());
-        byte b[] = Multibase.decode(header.getKeyID().split("did:key:")[1]);
+        // Extract the multibase part between "did:key:" and "#" (if present)
+        String keyId = header.getKeyID();
+        String multibase = keyId.substring(keyId.indexOf(DID_KEY_PREFIX) + DID_KEY_PREFIX.length());
+        int hashIdx = multibase.indexOf('#');
+        if (hashIdx != -1) {
+            multibase = multibase.substring(0, hashIdx);
+        }
+        byte[] b = Multibase.decode(multibase);
+
         // full list of keys and their multibase prefixes available here: https://github.com/multiformats/multicodec/blob/master/table.csv
         // NOTE: https://w3c-ccg.github.io/did-key-spec/#signature-method-creation-algorithm
         if ((b[0] == (byte) 0xed && b[1] == (byte) 0x01) && b.length == 34) {
@@ -41,7 +49,7 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
                         "x", Base64.getUrlEncoder().withoutPadding().encodeToString(Arrays.copyOfRange(b, 2, 34))));
                 return Optional.of(edKey);
             } catch (ParseException e) {
-                return null;
+                return Optional.empty();
             }
         } else if (b[0] == (byte) 0xe7 && b[1] == (byte) 0x01 && b.length == 35) {
             ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("secp256k1");
