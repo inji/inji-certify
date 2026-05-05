@@ -316,7 +316,7 @@ public class PreAuthorizedCodeService {
 
         // Reject unknown codes immediately before any expiry or claim check
         if (codeData == null) {
-            log.error("Pre-authorized code not found: {}", request.getPre_authorized_code());
+            log.error("Pre-authorized code not found");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code not found");
         }
 
