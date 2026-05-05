@@ -118,8 +118,8 @@ public class AccessTokenJwtUtil {
             signatureRequest.setIncludePayload(true);
             signatureRequest.setIncludeCertificate(false);
             signatureRequest.setIncludeCertHash(false);
-            signatureRequest.setValidateJson(false);
-            signatureRequest.setB64JWSHeaderParam(false);
+            signatureRequest.setValidateJson(true);
+            signatureRequest.setB64JWSHeaderParam(true);
             signatureRequest.setSignAlgorithm("RS256");
 
             // Sign using keymanager service

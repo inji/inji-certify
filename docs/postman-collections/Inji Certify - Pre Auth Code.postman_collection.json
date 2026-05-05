@@ -363,8 +363,22 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"var response = pm.response.json();",
-									"pm.collectionVariables.set(\"c_nonce\", response.c_nonce);"
+									" pm.test('Nonce generation successful', function () {",
+									"     pm.response.to.have.status(200);",
+									"",
+									"    console.log(\"Tests executed\");",
+									"",
+									"    var jsonData = pm.response.json();",
+									"",
+									"    // Verify important properties exist",
+									"    pm.expect(jsonData).to.have.property('c_nonce');",
+									"    ",
+									"    const c_nonce = jsonData.c_nonce;",
+									"    // Store c_nonce",
+									"    console.log(\"c_nonce:\", c_nonce);",
+									"    pm.collectionVariables.set('c_nonce', c_nonce);",
+									"    console.log(\"✅ Nonce saved successfully\");",
+									" });"
 								],
 								"type": "text/javascript"
 							}
@@ -402,9 +416,7 @@
 									"    console.log('Credential received successfully');",
 									"});"
 								],
-								"type": "text/javascript",
-								"packages": {},
-								"requests": {}
+								"type": "text/javascript"
 							}
 						},
 						{
@@ -439,9 +451,7 @@
 									"",
 									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
 								],
-								"type": "text/javascript",
-								"packages": {},
-								"requests": {}
+								"type": "text/javascript"
 							}
 						}
 					],
