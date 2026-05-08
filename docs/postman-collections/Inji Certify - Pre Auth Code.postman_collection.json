@@ -227,7 +227,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"credential_configuration_id\": \"{{credential_config_id}}\",\n    \"claims\": {\n        \"fullName\": \"John Doe\",\n        \"dateOfBirth\": \"1990-01-15\",\n        \"gender\": \"Male\",\n        \"phone\": \"+1234567890\"\n    },\n    \"expires_in\": 600,\n    \"tx_code\": \"{{pre_auth_tx_code}}\"\n}"
+							"raw": "{\n    \"credential_configuration_id\": \"{{credential_config_id}}\",\n    \"claims\": {\n        \"fullName\": \"John Doe\",\n        \"dateOfBirth\": \"1990-01-15\",\n        \"gender\": \"Male\",\n        \"phoneNumber\": \"+1234567890\"\n    },\n    \"expires_in\": 600,\n    \"tx_code\": \"{{pre_auth_tx_code}}\"\n}"
 						},
 						"url": {
 							"raw": "{{certifyurl}}/pre-authorized-data",
