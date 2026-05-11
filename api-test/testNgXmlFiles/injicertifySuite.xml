@@ -65,6 +65,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceSunBirdC">
+		<parameter name="ymlFile"
+			value="injicertify/SunBirdC/GenerateNonceSunBirdC/GenerateNonceSunBirdC.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialSunBirdC">
 		<parameter name="ymlFile"
 			value="injicertify/SunBirdC/GetCredentialSunBirdC/GetCredentialSunBirdC.yml" />
@@ -117,6 +127,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceForSunBirdCNeg">
+		<parameter name="ymlFile"
+			value="injicertify/SunBirdCNegative/GenerateNonceForSunBirdCNeg/GenerateNonceForSunBirdCNeg.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialSunBirdCNeg">
@@ -183,6 +203,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceVCIMosipID">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipID/GenerateNonceVCI/GenerateNonceVCI.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialMosipID">
@@ -254,6 +284,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForMosipIDNeg">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMosipIDNegative/GenerateNonceForMosipIDNeg/GenerateNonceForMosipIDNeg.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialMosipIDNeg">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMosipIDNegative/GetCredentialMosipIDNeg/GetCredentialMosipIDNeg.yml" />
@@ -299,6 +339,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceForMockIDA">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMockIDA/GenerateNonceForMockIDA/GenerateNonceForMockIDA.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialForMockIDA">
@@ -348,6 +398,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForMockIDANegTC">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMockIDANegTC/GenerateNonceForMockIDANegTC/GenerateNonceForMockIDANegTC.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForMockIDANegTC">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMockIDANegTC/GetCredentialForMockIDANegTC/GetCredentialForMockIDANegTC.yml" />
@@ -395,6 +455,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForLandRegistry">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistry/GenerateNonceForLandRegistry.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForLandRegistry">
 		<parameter name="ymlFile"
 			value="injicertify/VCILandRegistry/GetCredentialForLandRegistry/GetCredentialForLandRegistry.yml" />
@@ -440,6 +510,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceForLandRegistryNeg">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistryNeg/GenerateNonceForLandRegistryNeg/GenerateNonceForLandRegistryNeg.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialForLandRegistryNeg">
@@ -496,6 +576,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceFormDoc">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/GenerateNonceFormDoc/GenerateNonceFormDoc.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialFormDoc">
@@ -601,6 +691,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForLandRegistryEccR1">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistryEccR1/GenerateNonceForLandRegistryEccR1.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForLandRegistryEccR1">
 		<parameter name="ymlFile"
 			value="injicertify/EccR1/GetCredentialForLandRegistryEccR1/GetCredentialForLandRegistryEccR1.yml" />
@@ -663,6 +763,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceForLandRegistrySdJwt">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistrySdJwt/GenerateNonceForLandRegistrySdJwt.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialForSd_jwt">
@@ -729,6 +839,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForLandRegistryDataIntegrity">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistryDataIntegrity/GenerateNonceForLandRegistryDataIntegrity.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForDataIntegrityProof">
 		<parameter name="ymlFile"
 			value="injicertify/DataIntegrityProof/GetCredentialForDataIntegrity/GetCredentialForDataIntegrity.yml" />
@@ -786,6 +906,16 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNonceForLandRegistryRevocation">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistryRevocation/GenerateNonceForLandRegistryRevocation.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialForRevocation">
@@ -926,6 +1056,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceForLandRegistryCSR">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/GenerateNonceForLandRegistryCSR/GenerateNonceForLandRegistryCSR.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForCSRCertificate">
 		<parameter name="ymlFile"
 			value="injicertify/CSRCertificate/GetCredentialForCSRCertificate/GetCredentialForCSRCertificate.yml" />
@@ -1030,6 +1170,14 @@
 		<parameter name="idKeyName" value="access_token,c_nonce" />
 		<classes>
 			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="GenerateNoncePreAuthCode">
+		<parameter name="ymlFile"
+			value="injicertify/PreAuthCodeFlow/GenerateNoncePreAuth/GenerateNoncePreAuth.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
 	<test name="GetCredentialPreAuthFlow">
