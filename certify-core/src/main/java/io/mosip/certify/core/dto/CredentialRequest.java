@@ -62,9 +62,4 @@ public class CredentialRequest {
      * a proof of possession of key material
      */
     private String c_nonce;
-
-    /**
-     * JSON integer denoting the lifetime in seconds of the c_nonce
-     */
-    private Integer c_nonce_expires_in;
 }
