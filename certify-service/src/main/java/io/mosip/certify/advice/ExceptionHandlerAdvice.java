@@ -153,6 +153,12 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     }
 
     public ResponseEntity<VCError> handleVCIControllerExceptions(Exception ex) {
+        if (ex instanceof HttpMessageNotReadableException) {
+            return new ResponseEntity<>(
+                    getVCErrorDto(INVALID_REQUEST, ex.getMessage()),
+                    HttpStatus.BAD_REQUEST
+            );
+        }
         if(ex instanceof MethodArgumentNotValidException) {
             FieldError fieldError = ((MethodArgumentNotValidException) ex).getBindingResult().getFieldError();
             String message = fieldError != null ? fieldError.getDefaultMessage() : ex.getMessage();

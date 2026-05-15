@@ -10,6 +10,7 @@ import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.Valid;
 import lombok.Data;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,6 +18,7 @@ import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CredentialRequest {
 
     /**
@@ -54,4 +56,15 @@ public class CredentialRequest {
     private Map<String,Object> claims;
 
     String vct;
+
+    /**
+     * JSON string containing a nonce to be used to create
+     * a proof of possession of key material
+     */
+    private String c_nonce;
+
+    /**
+     * JSON integer denoting the lifetime in seconds of the c_nonce
+     */
+    private Integer c_nonce_expires_in;
 }
