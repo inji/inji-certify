@@ -89,6 +89,8 @@ public class InjiTestRunner {
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
 			if (useCaseToExecute != null) {
 				useCaseToExecute = useCaseToExecute.trim();
+			} else {
+				useCaseToExecute = "";
 			}
 
 			HealthChecker healthcheck = new HealthChecker();

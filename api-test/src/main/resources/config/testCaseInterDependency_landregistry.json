@@ -1132,16 +1132,16 @@
     ],
     "TC_esignetDependent_AuthenticateUser_csrcertificate_01": [
         "TC_mock_identity_dependency_02",
-        "TC_esignetDependent_OAuthdetailsRequest_CsrCertifiacte_01"
+        "TC_esignetDependent_OAuthdetailsRequest_CsrCertificate_01"
     ],
     "TC_esignetDependent_AuthenticateUser_csrcertificate_02": [
         "TC_mock_identity_dependency_02",
-        "TC_esignetDependent_OAuthdetailsRequest_CsrCertifiacte_02"
+        "TC_esignetDependent_OAuthdetailsRequest_CsrCertificate_02"
     ],
-    "TC_esignetDependent_OAuthdetailsRequest_CsrCertifiacte_01": [
+    "TC_esignetDependent_OAuthdetailsRequest_CsrCertificate_01": [
         "TC_esignetDependent_CreateOidc_03"
     ],
-    "TC_esignetDependent_OAuthdetailsRequest_CsrCertifiacte_02": [
+    "TC_esignetDependent_OAuthdetailsRequest_CsrCertificate_02": [
         "TC_esignetDependent_CreateOidc_03"
     ],
     "TC_landRegistryDependent_GenerateNonce_ecc_r1_01": [

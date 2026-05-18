@@ -1176,6 +1176,7 @@
 		<parameter name="ymlFile"
 			value="injicertify/PreAuthCodeFlow/GenerateNoncePreAuth/GenerateNoncePreAuth.yml" />
 		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
 		<classes>
 			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>

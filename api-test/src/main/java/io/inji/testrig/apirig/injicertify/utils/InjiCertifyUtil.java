@@ -1261,11 +1261,20 @@ public static void configureOtp() {
 		if (cNonceOverride != null && !cNonceOverride.isBlank()) {
 			return cNonceOverride;
 		}
+		if (accessToken == null || accessToken.isBlank()) {
+			throw new IllegalArgumentException("accessToken is required to resolve c_nonce");
+		}
 		String[] jwtParts = accessToken.split("\\.");
-		String jwtPayloadBase64 = jwtParts[1];
-		byte[] jwtPayloadBytes = Base64.getDecoder().decode(jwtPayloadBase64);
+		if (jwtParts.length < 2) {
+			throw new IllegalArgumentException("Invalid JWT: missing payload segment");
+		}
+		byte[] jwtPayloadBytes = Base64.getUrlDecoder().decode(jwtParts[1]);
 		String jwtPayload = new String(jwtPayloadBytes, StandardCharsets.UTF_8);
-		return new ObjectMapper().readTree(jwtPayload).get("c_nonce").asText();
+		com.fasterxml.jackson.databind.JsonNode cNonceNode = new ObjectMapper().readTree(jwtPayload).get("c_nonce");
+		if (cNonceNode == null || cNonceNode.isNull()) {
+			throw new IllegalArgumentException("c_nonce claim missing from access token");
+		}
+		return cNonceNode.asText();
 	}
 	
 	public static String generateP256DidKey(byte[] rawP256PublicKey) {
@@ -1442,6 +1451,9 @@ public static void configureOtp() {
 
 				// Generate did:key
 				String didKey = generateSecp256k1DidKey(compressedKey);
+				if (testCaseName.contains("_Did_Key_Sign_invalid")) {
+					didKey = "did:key:zINVALIDDIDKEYFORPROOFTEST";
+				}
 
 				header = new JWSHeader.Builder(JWSAlgorithm.ES256K)
 						.type(new JOSEObjectType("openid4vci-proof+jwt"))
