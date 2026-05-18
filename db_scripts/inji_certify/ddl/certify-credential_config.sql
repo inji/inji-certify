@@ -33,7 +33,7 @@ CREATE TABLE credential_config (
     cryptographic_binding_methods_supported TEXT[] NOT NULL,
     credential_signing_alg_values_supported TEXT[] NOT NULL,
     proof_types_supported JSONB NOT NULL,
-    credential_subject JSONB,
+    claims JSONB,
     mso_mdoc_claims JSONB,
     sd_jwt_claims JSONB,
     plugin_configurations JSONB,
@@ -79,7 +79,7 @@ COMMENT ON COLUMN credential_config.scope IS 'Scope: Authorization scope for the
 COMMENT ON COLUMN credential_config.cryptographic_binding_methods_supported IS 'Cryptographic Binding Methods: Array of supported binding methods.';
 COMMENT ON COLUMN credential_config.credential_signing_alg_values_supported IS 'Credential Signing Algorithms: Array of supported signing algorithms.';
 COMMENT ON COLUMN credential_config.proof_types_supported IS 'Proof Types: JSON object containing supported proof types and their configurations.';
-COMMENT ON COLUMN credential_config.credential_subject IS 'Credential Subject: JSON object containing subject attributes schema.';
+COMMENT ON COLUMN credential_config.claims IS 'Claims: JSON object containing subject attributes schema.';
 COMMENT ON COLUMN credential_config.mso_mdoc_claims IS 'Mso_mdoc Claims: JSON object containing subject attributes schema specifically for MSO-MDOC VC.';
 COMMENT ON COLUMN credential_config.sd_jwt_claims IS 'SdJwt Claims: JSON object containing subject attributes schema specifically for SdJwt VC.';
 COMMENT ON COLUMN credential_config.plugin_configurations IS 'Plugin Configurations: Array of JSON objects for plugin configurations.';

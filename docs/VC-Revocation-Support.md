@@ -1,6 +1,6 @@
 # VC Revocation Feature
 
-This document explains how the Credential Status feature works in Inji Certify. This feature lets you revoke or suspend verifiable credentials (VCs) in a privacy-preserving and scalable way, using a W3C-compliant status list.
+This document explains how the Credential Status feature works in Inji Certify. This feature lets you `revoke` verifiable credentials (VCs) in a privacy-preserving and scalable way, using a W3C-compliant status list.
 
 ---
 
@@ -10,7 +10,7 @@ With this feature, the system can:
 
 - Issue and manage [BitstringStatusListCredential](https://www.w3.org/TR/vc-bitstring-status-list/) credentials.
 - Assign and track a unique status index for each credential.
-- Update the status of credentials (for example, to revoke or suspend them).
+- Update the status of credentials (for example, to revoke them).
 - Store and retrieve status information efficiently.
 - Add status information directly into each issued credential.
 
@@ -19,15 +19,12 @@ With this feature, the system can:
 ## Key Data and Storage
 
 - **Status List Credential**: Stores the status list, its purpose (like revocation), and its current state.  
-  _Note: The Status List Credential is now managed independently and is not directly tied to the ledger._
-- **Ledger**: Keeps a record of each issued credential, including its status and searchable attributes.
 - **Credential Status Transaction**: Logs every status change (such as a revocation) for tracking and audit.
 
 **Database tables used:**
 
 - `status_list_credential`
 - `status_list_available_indices`
-- `ledger`
 - `credential_status_transaction`
 
 ---
@@ -56,8 +53,7 @@ A status list credential is a special Verifiable Credential with this structure:
 
 ## How It Works
 1. **Issuing a Credential with Status**
-- When a new credential is issued, the system:
-- Finds or creates a status list for the required purpose (like revocation).
+- When a new credential is issued, the system finds/creates a status list for the required purpose (like revocation).
 - The status list is managed independently and does not require a ledger entry.
 - Assigns the next available index in the list to the credential.
 - Adds a credentialStatus section to the credential, for example:
@@ -164,23 +160,7 @@ end
    - The system updates the status list independently of the ledger.
 
    **Provide**:
-   - For `/credential/status` - credentialId is mandatory
-   - **Request Body for `/credential/status`**:
-     ```json
-        {
-            "credentialId": "9df9fe77-55ac-42f9-b1f1-f2223674fcf1",
-            "credentialStatus": {
-                "id": "1c6c4caa-47db-47f8-b8e3-12831a384419",
-                "type": "BitstringStatusListEntry",
-                "statusPurpose": "revocation",
-                "statusListIndex": 1,
-                "statusListCredential": "09ccbfcf-9edd-4a0a-965d-be3aca7a6baf"
-            },
-            "status": true
-        }
-     ```
-   - For `/credentials/v2/status` - The credential status details (statusListCredentialId, statusListIndex) inside credentialStatus is mandatory.
-   - **Request Body for `/credentials/v2/status`**:
+   - **Request Body for `/credentials/status`**:  - The credential status details (statusListCredential, statusListIndex) inside credentialStatus is mandatory.
      ```json
         {
             "credentialStatus": {
@@ -202,38 +182,21 @@ sequenceDiagram
 box Inji Certify #E6F3FF
 participant Controller as 🔗 CredentialStatusController
 participant Service as ⚙️ CredentialStatusServiceImpl
-participant LedgerRepo as 🗄️ LedgerRepository
-participant StatusRepo as 🗄️ CredentialStatusTransactionRepository
+participant StatusListRepo as 🗄️ StatusListCredentialRepository
+participant StatusTxnRepo as 📋 CredentialStatusTransactionRepository
 end
 
-%% v1 endpoint flow
-Client->>Controller: POST /credentials/status (credentialId mandatory)
-Controller->>Service: updateCredentialStatusV1(request)
-Service->>LedgerRepo: findByCredentialId(credentialId)
-LedgerRepo-->>Service: Optional<Ledger>
-alt Credential Found
+Client->>Controller: POST /credentials/status (credentialStatus mandatory)
+Controller->>Service: updateCredentialStatus(request)
+Service->>StatusListRepo: findById(statusListCredential)
+StatusListRepo-->>Service: Optional<StatusListCredential>
+alt StatusListCredential Found
 Service->>Service: Create CredentialStatusTransaction
-Service->>StatusRepo: save(transaction)
-StatusRepo-->>Service: CredentialStatusTransaction with timestamp
+Service->>StatusTxnRepo: save(transaction)
+StatusTxnRepo-->>Service: CredentialStatusTransaction with timestamp
 Service-->>Controller: CredentialStatusResponse
 Controller-->>Client: 200 OK
-else Credential Not Found
-Service-->>Controller: ResponseStatusException (404)
-Controller-->>Client: 404 Not Found
-end
-
-%% v2 endpoint flow
-Client->>Controller: POST /credentials/v2/status (credentialStatus mandatory)
-Controller->>Service: updateCredentialStatusV2(request)
-Service->>LedgerRepo: findByStatusListCredentialIdAndIndex(statusListCredentialId, statusListIndex)
-LedgerRepo-->>Service: Optional<Ledger>
-alt Credential Found
-Service->>Service: Create CredentialStatusTransaction
-Service->>StatusRepo: save(transaction)
-StatusRepo-->>Service: CredentialStatusTransaction with timestamp
-Service-->>Controller: CredentialStatusResponse
-Controller-->>Client: 200 OK
-else Credential Not Found
+else StatusListCredential Not Found
 Service-->>Controller: ResponseStatusException (404)
 Controller-->>Client: 404 Not Found
 end
@@ -291,12 +254,13 @@ end
 
 
 ## Configuration Properties
-| Property Name                                                       | Description                                                                                             | Example Value          |
-|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|------------------------|
-| `mosip.certify.status-list.signature-crypto-suite` | Signature Crypto Suite for signing Status List VCs                                                      | `Ed25519Signature2020` |
-| `mosip.certify.status-list.signature-algo` | Supported signing algorithms for signature crypto suite defined above.                                  | `EdDSA`                |
-| `mosip.certify.statuslist.size-in-kb`                | Supported proof types for credentials.                                                                  | `16`                   |
-| `mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes`                                     | Set the default values as list that can be allowed for `credentialStatusPurpose` in `credential_config` | `{'revocation'}`          |
+
+| Property Name                                                                  | Description                                                                                             | Example Value          |
+|--------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|------------------------|
+| `mosip.certify.status-list.signature-crypto-suite`                             | Signature Crypto Suite for signing Status List VCs                                                      | `Ed25519Signature2020` |
+| `mosip.certify.status-list.signature-algo`                                     | Supported signing algorithms for signature crypto suite defined above.                                  | `EdDSA`                |
+| `mosip.certify.statuslist.size-in-kb`                                          | Supported proof types for credentials.                                                                  | `16`                   |
+| `mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes` | Set the default values as list that can be allowed for `credentialStatusPurpose` in `credential_config` | `{'revocation'}`       |
 
 ## Enabling the Feature
 1. Database Setup: Make sure the following tables exist:

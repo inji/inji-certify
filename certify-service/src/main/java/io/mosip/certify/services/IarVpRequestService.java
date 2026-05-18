@@ -49,11 +49,14 @@ public class IarVpRequestService {
     @Value("${mosip.certify.verify.service.verifier-client-id:}")
     private String verifierClientId;
 
-    @Value("${mosip.certify.iar.response-mode.iar-post:iar-post}")
-    private String iarPostResponseMode;
+    @Value("${mosip.certify.iae.response-mode.post:iae-post}")
+    private String iaePostResponseMode;
+
+    @Value("${mosip.certify.iae.response-mode.post-jwt:iae-post.jwt}")
+    private String iaePostJwtResponseMode;
 
     @Value("${mosip.certify.oauth.interactive-authorization-endpoint:}")
-    private String certifyIarEndpoint;
+    private String certifyIaeEndpoint;
 
     @Value("${spring.profiles.active:}")
     private String activeProfile;
@@ -102,8 +105,8 @@ public class IarVpRequestService {
             log.debug("Using verifier client_id: {} for VP request (wallet client_id: {})", 
                      verifierClientId, iarRequest.getClientId());
             verifyRequest.setResponseModesSupported(Arrays.asList(
-                "direct-post", 
-                "direct-post.jwt"
+                "direct_post",
+                "direct_post.jwt"
             ));
             verifyRequest.setEncryptionRequired(true);
 
@@ -164,17 +167,17 @@ public class IarVpRequestService {
         if (!StringUtils.hasText(responseMode)) {
             throw new CertifyException("unknown_error", "Response mode is required");
         }
-        
-        // Simple mapping
+
+        // Map verifier response_mode to OpenID4VCI 1.1 IAE modes.
         if ("direct_post".equals(responseMode)) {
-            responseMode = iarPostResponseMode;
+            responseMode = iaePostResponseMode;
         } else if ("direct_post.jwt".equals(responseMode)) {
-            responseMode = "iar-post.jwt";
+            responseMode = iaePostJwtResponseMode;
         }
         openId4VpRequest.put("response_mode", responseMode);
         
-        openId4VpRequest.put("response_uri", certifyIarEndpoint);
-        log.info("Using certify /iar endpoint for wallet VP submission: {}", certifyIarEndpoint);
+        openId4VpRequest.put("response_uri", certifyIaeEndpoint);
+        log.info("Using certify /iae endpoint for wallet VP submission: {}", certifyIaeEndpoint);
 
         log.info("Successfully converted verify service response to OpenId4VpRequest for client_id: {}", iarRequest.getClientId());
         log.debug("OpenId4VpRequest - responseType: {}, responseMode: {}, responseUri: {}, nonce: {}", 
@@ -191,7 +194,7 @@ public class IarVpRequestService {
         if (!StringUtils.hasText(verifierClientId)) {
             throw new IllegalStateException("mosip.certify.verify.service.verifier-client-id must be configured");
         }
-        if (!StringUtils.hasText(certifyIarEndpoint)) {
+        if (!StringUtils.hasText(certifyIaeEndpoint)) {
             throw new IllegalStateException("mosip.certify.oauth.interactive-authorization-endpoint must be configured");
         }
         log.info("IarVpRequestService configuration validation successful");

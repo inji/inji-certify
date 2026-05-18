@@ -10,6 +10,5 @@ import java.util.Map;
 
 public interface CredentialLedgerService {
     List<CredentialStatusResponse> searchCredentialLedger(CredentialLedgerSearchRequest request);
-    List<CredentialStatusResponse> searchCredentialLedgerV2(CredentialLedgerSearchRequest request);
     void storeLedgerEntry(String credentialId, String issuerId, String credentialType, CredentialStatusDetail statusDetails, Map<String, Object> indexedAttributes, LocalDateTime issuanceDate);
 }

@@ -47,8 +47,8 @@ public class CredentialConfigurationDTO {
     @NotNull(message = VCIErrorConstants.INVALID_SCOPE)
     private String scope;
 
-    @JsonProperty("credentialSubjectDefinition")
-    private Map<String, CredentialSubjectParametersDTO> credentialSubjectDefinition;
+    @JsonProperty("claims")
+    private Map<String, ClaimsDTO> claims;
 
     @JsonProperty("msoMdocClaims")
     private Map<String, Map<String, ClaimsDisplayFieldsConfigDTO>> msoMdocClaims;

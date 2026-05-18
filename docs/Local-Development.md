@@ -169,7 +169,7 @@ mosip.certify.oauth.jwks-uri=${mosip.certify.authorization.url}${server.servlet.
 mosip.certify.oauth.grant-types-supported=authorization_code,urn:ietf:params:oauth:grant-type:pre-authorized_code
 mosip.certify.oauth.response-types-supported=code
 mosip.certify.oauth.code-challenge-methods-supported=S256
-mosip.certify.oauth.interactive-authorization-endpoint=${mosip.certify.authorization.url}${server.servlet.path}/oauth/iar
+mosip.certify.oauth.interactive-authorization-endpoint=${mosip.certify.authorization.url}${server.servlet.path}/oauth/iae
 ```
 2. Refer to the collections in [Presentation During Issuance](./postman-collections/Presentation-During-Issuance.postman_collection.json) and the respective env to test the flow.
 3. Use `Discovery Endpoints Copy` to get the issuer and oauth metadata endpoints.

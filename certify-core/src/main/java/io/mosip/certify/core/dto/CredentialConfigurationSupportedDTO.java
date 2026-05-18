@@ -35,11 +35,8 @@ public class CredentialConfigurationSupportedDTO {
     @JsonProperty("credential_definition")
     private CredentialDefinition credentialDefinition;
 
-    private Map<String, Object> claims;
-
-    private List<MetaDataDisplayDTO> display;
-
-    private List<String> order;
-
     private String vct;
+
+    @JsonProperty("credential_metadata")
+    private CredentialMetadataDTO credentialMetadataDTO;
 }

@@ -48,7 +48,7 @@ jobs:
     uses: mosip/kattu/.github/workflows/chart-lint-publish.yml@master
     with:
       CHARTS_DIR: ./helm
-      CHARTS_URL: https://mosip.github.io/helm
+      CHARTS_URL: https://inji.github.io/helm
       REPOSITORY: helm
       BRANCH: gh-pages
       INCLUDE_ALL_CHARTS: "${{ inputs.INCLUDE_ALL_CHARTS || 'NO' }}"

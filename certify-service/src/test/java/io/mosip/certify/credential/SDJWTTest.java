@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.vcformatters.VCFormatter;
 import io.mosip.kernel.signature.dto.JWSSignatureRequestDtoV2;
@@ -50,12 +51,12 @@ public class SDJWTTest {
 
     @Test
     public void testCanHandle_ShouldReturnTrueForCorrectFormat() {
-        assertTrue(sdjwt.canHandle("vc+sd-jwt"));
+        assertTrue(sdjwt.canHandle(VCFormats.DC_SD_JWT));
     }
 
     @Test
     public void testCanHandle_ShouldReturnFalseForIncorrectFormat() {
-        assertFalse(sdjwt.canHandle("ld+vc"));
+        assertFalse(sdjwt.canHandle(VCFormats.LDP_VC));
     }
 
     @Test

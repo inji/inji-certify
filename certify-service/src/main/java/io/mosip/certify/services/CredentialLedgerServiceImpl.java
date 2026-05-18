@@ -30,7 +30,7 @@ public class CredentialLedgerServiceImpl implements CredentialLedgerService {
     public List<CredentialStatusResponse> searchCredentialLedger(CredentialLedgerSearchRequest request) {
         validateSearchRequest(request);
         try {
-            return mapRecordsToResponses(request, false);
+            return mapRecordsToResponses(request);
         } catch (Exception e) {
             throw new CertifyException(ErrorConstants.SEARCH_CREDENTIALS_FAILED, "Failed to search credentials.");
         }
@@ -40,7 +40,6 @@ public class CredentialLedgerServiceImpl implements CredentialLedgerService {
         CredentialStatusResponse response = new CredentialStatusResponse();
         response.setCredentialId(record.getCredentialId());
         response.setIssuerId(record.getIssuerId());
-        response.setIssueDate(record.getIssuanceDate());
         response.setIssuanceDate(record.getIssuanceDate());
         response.setExpirationDate(record.getExpirationDate());
         response.setCredentialType(record.getCredentialType());
@@ -72,17 +71,6 @@ public class CredentialLedgerServiceImpl implements CredentialLedgerService {
         }
     }
 
-    @Override
-    public List<CredentialStatusResponse> searchCredentialLedgerV2(CredentialLedgerSearchRequest request) {
-        validateSearchRequest(request);
-        try {
-            return mapRecordsToResponses(request, true);
-
-        } catch (Exception e) {
-            throw new CertifyException(ErrorConstants.SEARCH_CREDENTIALS_FAILED, "Failed to search credentials.");
-        }
-    }
-
     @Transactional
     @Override
     public void storeLedgerEntry(String credentialId, String issuerId, String credentialType, CredentialStatusDetail statusDetails, Map<String, Object> indexedAttributes, LocalDateTime issuanceDate) {
@@ -110,7 +98,7 @@ public class CredentialLedgerServiceImpl implements CredentialLedgerService {
         }
     }
 
-    private List<CredentialStatusResponse> mapRecordsToResponses(CredentialLedgerSearchRequest request, boolean isV2) {
+    private List<CredentialStatusResponse> mapRecordsToResponses(CredentialLedgerSearchRequest request) {
         List<Ledger> records = ledgerRepository.findBySearchRequest(request);
 
         if (records.isEmpty()) {
@@ -121,24 +109,8 @@ public class CredentialLedgerServiceImpl implements CredentialLedgerService {
                     List<CredentialStatusDetail> details = record.getCredentialStatusDetails();
                     return Optional.ofNullable(details)
                             .filter(list -> !list.isEmpty())
-                            .map(list -> list.stream().map(detail -> {
-                                CredentialStatusResponse response = mapToSearchResponse(record, detail);
-                                if (isV2) {
-                                    response.setIssueDate(null);
-                                } else {
-                                    response.setIssuanceDate(null);
-                                }
-                                return response;
-                            }))
-                            .orElseGet(() -> {
-                                CredentialStatusResponse response = mapToSearchResponse(record, null);
-                                if (isV2) {
-                                    response.setIssueDate(null);
-                                } else {
-                                    response.setIssuanceDate(null);
-                                }
-                                return Stream.of(response);
-                            });
+                            .map(list -> list.stream().map(detail -> mapToSearchResponse(record, detail)))
+                            .orElseGet(() -> Stream.of(mapToSearchResponse(record, null)));
                 })
                 .collect(Collectors.toList());
     }

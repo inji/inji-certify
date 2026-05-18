@@ -1,9 +1,9 @@
 {
 	"info": {
-		"_postman_id": "fd7002a2-0db6-4eab-bc4f-f312d90dbe43",
+		"_postman_id": "acff4e4d-2fad-4f4e-98fe-86f452e747db",
 		"name": "Inji Certify - Presentation During Issuance VCI",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "1282483"
+		"_exporter_id": "41350892"
 	},
 	"item": [
 		{
@@ -25,9 +25,11 @@
 									"    pm.expect(jsonData).to.have.property('credential_issuer');",
 									"    pm.expect(jsonData).to.have.property('authorization_servers');",
 									"    pm.expect(jsonData).to.have.property('credential_endpoint');",
+									"    pm.expect(jsonData).to.have.property('nonce_endpoint');",
 									"",
 									"    pm.collectionVariables.set('authorization_server', jsonData.authorization_servers[0]);",
 									"    pm.collectionVariables.set('credential_endpoint', jsonData.credential_endpoint);",
+									"    pm.collectionVariables.set('nonce_endpoint', jsonData.nonce_endpoint);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -122,7 +124,7 @@
 									"pm.test('Requires interaction for employee credential', function () {",
 									"    var jsonData = pm.response.json();",
 									"    pm.expect(jsonData.status).to.eql('require_interaction');",
-									"    pm.expect(jsonData.type).to.eql('openid4vp_presentation');",
+									"    pm.expect(jsonData.type).to.eql('urn:openid:dcp:iae:openid4vp_presentation');",
 									"    pm.expect(jsonData).to.have.property('auth_session');",
 									"    pm.expect(jsonData).to.have.property('openid4vp_request');",
 									"    ",
@@ -163,7 +165,7 @@
 								},
 								{
 									"key": "interaction_types_supported",
-									"value": "openid4vp_presentation"
+									"value": "urn:openid:dcp:iae:openid4vp_presentation"
 								},
 								{
 									"key": "authorization_details",
@@ -184,10 +186,10 @@
 			]
 		},
 		{
-			"name": "3. IAR Request with VP",
+			"name": "3. Interactive Auth Request with VP",
 			"item": [
 				{
-					"name": "3.1 Auth Request with VP (iar-post)",
+					"name": "3.1 Auth Request with VP (iae-post)",
 					"event": [
 						{
 							"listen": "test",
@@ -263,19 +265,12 @@
 									"    pm.expect(jsonData).to.have.property('access_token');",
 									"    pm.expect(jsonData).to.have.property('token_type');",
 									"    pm.expect(jsonData).to.have.property('expires_in');",
-									"    pm.expect(jsonData).to.have.property('c_nonce');",
-									"    pm.expect(jsonData).to.have.property('c_nonce_expires_in');",
 									"",
 									"    const accessToken = jsonData.access_token;",
 									"    // Store access token",
 									"    console.log(\"access_token:\", accessToken);",
 									"    pm.collectionVariables.set('access_token', accessToken);",
-									"    // pm.environment.set('access_token', accessToken);",
 									"    console.log(\"✅ Access token saved successfully\");",
-									"    const cNonce = jsonData.c_nonce;",
-									"    const cNonceExpiresIn = jsonData.c_nonce_expires_in;",
-									"    pm.collectionVariables.set('c_nonce', cNonce);",
-									"    pm.collectionVariables.set('c_nonce_expires_in', cNonceExpiresIn);",
 									"});"
 								],
 								"type": "text/javascript"
@@ -328,45 +323,92 @@
 			]
 		},
 		{
-			"name": "5. Credential download",
+			"name": "5. Nonce endpoint",
 			"item": [
 				{
-					"name": "5.1 Get Credential",
+					"name": "5.1 Get Nonce",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									" pm.test('Nonce generation successful', function () {",
+									"     pm.response.to.have.status(200);",
+									"",
+									"    console.log(\"Tests executed\");",
+									"",
+									"    var jsonData = pm.response.json();",
+									"",
+									"    // Verify important properties exist",
+									"    pm.expect(jsonData).to.have.property('c_nonce');",
+									"    ",
+									"    const c_nonce = jsonData.c_nonce;",
+									"    // Store c_nonce",
+									"    console.log(\"c_nonce:\", c_nonce);",
+									"    pm.collectionVariables.set('c_nonce', c_nonce);",
+									"    console.log(\"✅ Nonce saved successfully\");",
+									" });"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{nonce_endpoint}}",
+							"host": [
+								"{{nonce_endpoint}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Credential download",
+			"item": [
+				{
+					"name": "6.1 Get Credential",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
 									"eval(pm.globals.get('pmlib_code'))",
-									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
+									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");",
 									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
 									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
-									"jwkPublicKey[\"alg\"] = \"RS256\";",
+									"jwkPublicKey[\"alg\"] = \"ES256\";",
 									"jwkPublicKey[\"use\"] = \"sig\";",
 									"",
-									"pm.collectionVariables.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
-									"pm.collectionVariables.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
+									"pm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))",
+									"pm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));",
 									"",
 									"// Set headers for JWT",
 									"var header = {\t",
-									"\t\"alg\": \"RS256\",",
+									"\t\"alg\": \"ES256\",",
 									"    \"typ\" : \"openid4vci-proof+jwt\",",
-									"    \"jwk\" : JSON.parse(pm.collectionVariables.get(\"holder_public_key\"))",
+									"    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))",
 									"};",
-									"",
 									"",
 									"const cNonce = pm.collectionVariables.get('c_nonce');",
 									"console.log(\"Getting c_nonce >> \" +  cNonce);",
-									"const clientId = pm.environment.get('clientId');",
-									"console.log(\"Getting clientId >> \" +  clientId);",
 									"",
-									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.collectionVariables.get(\"holder_private_key\")), {",
-									"    \"aud\" : pm.environment.get('audUrl'),",
+									"const signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {",
+									"    \"aud\": pm.environment.get('audUrl'),",
 									"\t\"nonce\": cNonce,",
-									"    \"iss\" : clientId,",
-									"}, header, exp=600, alg = \"RS256\")",
+									"    \"iss\" : pm.environment.get('clientId'),",
+									"}, header, exp=600, alg = \"ES256\")",
 									"",
-									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);"
+									"console.log(\"modified aud\")",
+									"",
+									"console.log(\"proof - \",signed_jwt)",
+									"",
+									"pm.collectionVariables.set(\"proof_jwt\",signed_jwt);",
+									""
 								],
 								"type": "text/javascript"
 							}
@@ -396,7 +438,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"format\": \"ldp_vc\",\n    \"credential_definition\": {\n        \"@context\": [\n            \"https://www.w3.org/2018/credentials/v1\"\n        ],\n        \"type\": [\n            \"VerifiableCredential\",\n            \"FarmerCredential\"\n        ]\n    },\n    \"proof\": {\n        \"proof_type\": \"jwt\",\n        \"jwt\": \"{{proof_jwt}}\"\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"DrivingLicenseCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -590,6 +632,10 @@
 		},
 		{
 			"key": "credential_endpoint",
+			"value": ""
+		},
+		{
+			"key": "nonce_endpoint",
 			"value": ""
 		}
 	]

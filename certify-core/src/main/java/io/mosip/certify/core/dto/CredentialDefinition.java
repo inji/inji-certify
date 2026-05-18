@@ -27,8 +27,10 @@ public class CredentialDefinition {
     @NotEmpty(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST)
     private List<@NotBlank(message = VCIErrorConstants.INVALID_CREDENTIAL_REQUEST) String> type;
 
+
     private Map<String, Object> credentialSubject;
 
     // OpenID4VCI (jwt_vc_json) / VC profiles: order is defined inside credential_definition.
     private List<String> order;
+
 }

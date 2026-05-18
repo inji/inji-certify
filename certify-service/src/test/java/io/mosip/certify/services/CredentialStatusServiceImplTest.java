@@ -2,11 +2,11 @@ package io.mosip.certify.services;
 
 import io.mosip.certify.core.dto.CredentialStatusResponse;
 import io.mosip.certify.core.dto.UpdateCredentialStatusRequest;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.entity.CredentialStatusTransaction;
-import io.mosip.certify.entity.Ledger;
-import io.mosip.certify.core.dto.CredentialStatusDetail;
+import io.mosip.certify.entity.StatusListCredential;
 import io.mosip.certify.repository.CredentialStatusTransactionRepository;
-import io.mosip.certify.repository.LedgerRepository;
+import io.mosip.certify.repository.StatusListCredentialRepository;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,25 +14,22 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CredentialStatusServiceImplTest {
     @Mock
-    private LedgerRepository ledgerRepository;
-    @Mock
     private CredentialStatusTransactionRepository credentialStatusTransactionRepository;
+
+    @Mock
+    private StatusListCredentialRepository statusListCredentialRepository;
 
     @InjectMocks
     private CredentialStatusServiceImpl credentialStatusService;
@@ -40,172 +37,146 @@ public class CredentialStatusServiceImplTest {
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        ReflectionTestUtils.setField(credentialStatusService, "allowedCredentialStatusPurposes", List.of("revocation", "purpose2"));
     }
 
     @Test
-    public void updateCredential_CredentialIdNotFound_ThrowsException() {
-        String credentialId = "124";
-        String statusListCredential = "https://example.com/status-list/xyz";
-        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(credentialId, statusListCredential);
+    public void updateCredentialStatusV2_StatusIdMismatch_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setId("https://example.com/status-list/abc#12345"); // Mismatched ID
 
-        when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.empty());
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
             credentialStatusService.updateCredentialStatus(request);
         });
 
-        assertEquals("404 NOT_FOUND \"Credential not found: " + credentialId + "\"", exception.getMessage());
+        assertEquals("status_id_mismatch", exception.getErrorCode());
+        assertEquals("Mismatch between credential status ID and Status List Credential.", exception.getMessage());
     }
 
     @Test
-    public void updateCredential_With_ExistingTransaction() {
-        // Given
-        String credentialId = "67823e96-fda0-4eba-9828-a32a8d22cc45";
-        String statusListCredential = "https://example.com/status-list/xyz";
-        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(credentialId, statusListCredential);
+    public void updateCredentialStatusV2_StatusListNotFound_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
 
-        Ledger ledger = createLedger(credentialId);
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.empty());
 
-        // Add a CredentialStatusDetail to avoid CertifyException
-        CredentialStatusDetail detail = new CredentialStatusDetail();
-        detail.setStatusListCredentialId(statusListCredential);
-        detail.setStatusListIndex(87823L);
-        detail.setStatusPurpose("revocation");
-        detail.setCreatedTimes(System.currentTimeMillis());
-        ledger.getCredentialStatusDetails().add(detail);
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
 
-        // Existing transaction with old values
-        CredentialStatusTransaction existingTransaction = new CredentialStatusTransaction();
-        existingTransaction.setTransactionLogId(42L);
-        existingTransaction.setCredentialId(credentialId);
-        existingTransaction.setStatusPurpose("suspension"); // old value
-        existingTransaction.setStatusValue(false);
-        existingTransaction.setStatusListCredentialId("https://old.example.com/status");
-        existingTransaction.setStatusListIndex(11111L);
-
-        // Mocking
-        when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(credentialStatusTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // When
-        CredentialStatusResponse result = credentialStatusService.updateCredentialStatus(request);
-
-        // Then
-        assertNotNull(result);
-
-        CredentialStatusResponse response = result;
-        assertEquals(credentialId, response.getCredentialId());
-        assertEquals("revocation", response.getStatusPurpose());
-        assertEquals(87823, response.getStatusListIndex().longValue());
-        assertEquals(statusListCredential, response.getStatusListCredentialUrl());
-        assertEquals("VerifiableCredential", response.getCredentialType());
-        assertEquals(ledger.getIssuanceDate(), response.getIssueDate());
-        assertNull(response.getExpirationDate());
+        assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
+        assertEquals("Status List Credential not found for ID: " + statusListCredential, exception.getMessage());
     }
 
-
     @Test
-    public void updateCredential_WithValidRequest_UpdatesLedgerAndReturnsResponse() {
-        String credentialId = "67823e96-fda0-4eba-9828-a32a8d22cc42";
-        String statusListCredential = "https://example.com/status-list/xyz";
+    public void updateCredentialStatusV2_NullStatusPurpose_UsesStatusListCredentialPurpose() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose(null); // Null status purpose
 
-        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(credentialId, statusListCredential);
-        Ledger ledger = createLedger(credentialId);
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
 
-        // Add a CredentialStatusDetail to the ledger
-        CredentialStatusDetail detail = new CredentialStatusDetail();
-        detail.setStatusListCredentialId(statusListCredential);
-        detail.setStatusListIndex(87823L);
-        detail.setStatusPurpose("revocation");
-        detail.setCreatedTimes(System.currentTimeMillis());
-        ledger.getCredentialStatusDetails().add(detail);
-
-        CredentialStatusTransaction savedTransaction = createSavedTransaction(credentialId, statusListCredential);
-
-        when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
-                .thenReturn(savedTransaction);
-
-        CredentialStatusResponse result = credentialStatusService.updateCredentialStatus(request);
-
-        assertNotNull(result);
-
-        CredentialStatusResponse response = result;
-        assertEquals(credentialId, response.getCredentialId());
-        assertEquals("revocation", response.getStatusPurpose());
-        assertEquals(87823, response.getStatusListIndex().longValue());
-        assertEquals("VerifiableCredential", response.getCredentialType());
-        assertEquals(statusListCredential, response.getStatusListCredentialUrl());
-        assertNotNull(response.getStatusTimestamp());
-
-        verify(ledgerRepository).findByCredentialId(credentialId);
-        verify(credentialStatusTransactionRepository).save(any(CredentialStatusTransaction.class));
-    }
-
-    @Test
-    public void updateCredentialStatus_NullStatusPurpose_AllowsUpdate() {
-        String credentialId = "cid-002";
-        String statusListCredential = "https://example.com/status-list/def";
-        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(credentialId, statusListCredential);
-        // Set status purpose to null
-        request.getCredentialStatus().setStatusPurpose(null);
-
-        Ledger ledger = createLedger(credentialId);
-
-        // Add a CredentialStatusDetail to the ledger
-        CredentialStatusDetail detail = new CredentialStatusDetail();
-        detail.setStatusListCredentialId(statusListCredential);
-        detail.setStatusListIndex(87823L);
-        detail.setStatusPurpose(null);
-        detail.setCreatedTimes(System.currentTimeMillis());
-        ledger.getCredentialStatusDetails().add(detail);
-
-        when(ledgerRepository.findByCredentialId(credentialId)).thenReturn(Optional.of(ledger));
-        when(credentialStatusTransactionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+
         assertNotNull(response);
-        assertEquals(credentialId, response.getCredentialId());
-        assertNull(response.getStatusPurpose());
+        assertEquals("revocation", response.getStatusPurpose());
     }
 
-    private UpdateCredentialStatusRequest createValidUpdateCredentialRequest(String credentialId, String statusListCredential) {
+    @Test
+    public void updateCredentialStatusV2_ValidRequest_ReturnsResponse() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+        when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+
+        assertNotNull(response);
+        assertEquals(statusListCredential, response.getStatusListCredentialUrl());
+        assertEquals("revocation", response.getStatusPurpose());
+        assertEquals(87823L, response.getStatusListIndex());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_NullStatusListCredential_ThrowsException() {
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(null); // Null StatusListCredential
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
+        assertEquals("Status List Credential not found for ID: null", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_NullStatusListIndex_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusListIndex(null); // Null StatusListIndex
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
+        assertEquals("Status List Credential not found for ID: https://example.com/status-list/xyz#87823", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_EmptyStatusPurpose_UsesStatusListCredentialPurpose() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose(""); // Empty StatusPurpose
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+        when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+
+        assertNotNull(response);
+        assertEquals("revocation", response.getStatusPurpose());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_InvalidStatusListCredentialFormat_ThrowsException() {
+        String statusListCredential = "invalid-format";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
+        assertEquals("Status List Credential not found for ID: invalid-format", exception.getMessage());
+    }
+
+    private UpdateCredentialStatusRequest createValidUpdateCredentialRequest(String statusListCredential) {
         UpdateCredentialStatusRequest.CredentialStatusDto statusDto = new UpdateCredentialStatusRequest.CredentialStatusDto();
-        statusDto.setId(statusListCredential + "#87823");
+        statusDto.setId(statusListCredential);
         statusDto.setType("BitstringStatusListEntry");
         statusDto.setStatusPurpose("revocation");
         statusDto.setStatusListIndex(87823L);
         statusDto.setStatusListCredential(statusListCredential);
 
         UpdateCredentialStatusRequest request = new UpdateCredentialStatusRequest();
-        request.setCredentialId(credentialId);
         request.setCredentialStatus(statusDto);
         request.setStatus(true); // Mark as revoked
 
         return request;
-    }
-
-    private CredentialStatusTransaction createSavedTransaction(String credentialId, String statusListCredential) {
-        CredentialStatusTransaction transaction = new CredentialStatusTransaction();
-        transaction.setCredentialId(credentialId);
-        transaction.setStatusPurpose("revocation");
-        transaction.setStatusValue(true);
-        transaction.setStatusListCredentialId(statusListCredential);
-        transaction.setStatusListIndex(87823L);
-        transaction.setCreatedDtimes(LocalDateTime.parse("2025-06-11T11:41:30.236"));
-        return transaction;
-    }
-
-    private Ledger createLedger(String credentialId) {
-        Ledger ledger = new Ledger();
-        ledger.setId(1L);
-        ledger.setCredentialId(credentialId);
-        ledger.setIssuerId("did:web:Nandeesh778.github.io:local-test:certify_did");
-        ledger.setIssuanceDate(LocalDateTime.parse("2025-06-11T11:41:30.236"));
-        ledger.setExpirationDate(null);
-        ledger.setCredentialType("VerifiableCredential");
-        ledger.setCredentialStatusDetails(new ArrayList<>());
-        return ledger;
     }
 }

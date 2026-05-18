@@ -174,9 +174,7 @@ public class IarServiceImpl implements IarService {
             IarSession session = validateAndMarkAuthorizationCodeUsed(tokenRequest);
 
             OAuthTokenResponse response = new OAuthTokenResponse();
-            // Generate c_nonce
-            String cNonce = accessTokenJwtUtil.generateCNonce();
-            response.setAccessToken(generateAccessToken(session, cNonce));
+            response.setAccessToken(generateAccessToken(session));
             response.setTokenType(tokenType);
             response.setExpiresIn(tokenExpiresInSeconds);
             
@@ -185,11 +183,6 @@ public class IarServiceImpl implements IarService {
                 response.setScope(session.getScope());
             }
 
-            if (cNonce != null) {
-                response.setCNonce(cNonce);
-                response.setCNonceExpiresIn(cNonceExpiresInSeconds);
-            }
-            
             // Note: refresh_token and authorization_details are optional and not implemented yet
             // They can be added based on specific requirements
             
@@ -240,7 +233,7 @@ public class IarServiceImpl implements IarService {
             return;
         }
 
-        // Validate that openid4vp_presentation is supported
+        // Validate OpenID4VCI 1.1 interaction type value.
         Arrays.stream(interactionTypesSupported.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -248,7 +241,8 @@ public class IarServiceImpl implements IarService {
                     InteractionType.OPENID4VP_PRESENTATION.getValue().equals(interactionType))
                 .findFirst()
                 .orElseThrow(() -> new CertifyException(IarConstants.MISSING_INTERACTION_TYPE,
-                    "interaction_types_supported in the request is missing the required interaction type 'openid4vp_presentation'"));
+                    "interaction_types_supported in the request is missing the required interaction type '" +
+                        InteractionType.OPENID4VP_PRESENTATION.getValue() + "'"));
 
         log.debug("Interaction types validation successful: {}", interactionTypesSupported);
     }
@@ -416,14 +410,13 @@ public class IarServiceImpl implements IarService {
      * @param session The IAR session containing client and transaction information
      * @return Signed JWT access token string
      */
-    private String generateAccessToken(IarSession session, String cNonce) {
+    private String generateAccessToken(IarSession session) {
         try {
             String jwtToken = accessTokenJwtUtil.generateSignedJwt(
                 session, 
                 issuer,
                 audience,
-                tokenExpiresInSeconds,
-                cNonce
+                tokenExpiresInSeconds
             );
             log.debug("Generated JWT access token for client_id: {}, transaction_id: {}", 
                      session.getClientId(), session.getTransactionId());

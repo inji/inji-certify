@@ -8,7 +8,7 @@ This document explains how to configure and use SD-JWT (Selective Disclosure JWT
 
 To add a new SD-JWT credential configuration, use the `/credential-configurations` endpoint with the following important fields in your JSON payload:
 
-- **credentialFormat**: Must be set to `vc+sd-jwt`
+- **credentialFormat**: Must be set to `dc+sd-jwt`
 - **signatureAlgo**: The signing algorithm (e.g., `ES256K`)
 - **sdJwtVct**: The VCT (Verifiable Credential Type) value for the credential
 
@@ -24,7 +24,7 @@ Add the following properties to your `application.yml` or `application.propertie
 |------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------|
 | `mosip.certify.credential-config.credential-signing-alg-values-supported` | Supported signing algorithms for SD-JWT                                                                                                                                   | `{ 'RsaSignature2018': {'RS256'}, 'Ed25519Signature2018': {'EdDSA'}, 'Ed25519Signature2020': {'EdDSA'}, 'EcdsaKoblitzSignature2016': {'ES256K'}, 'EcdsaSecp256k1Signature2019': {'ES256K'}, 'EcdsaSecp256r1Signature2019': {'ES256'}, 'ecdsa-rdfc-2019': {'ES256'}, 'ecdsa-jcs-2019': {'ES256'}}`              |
 | `mosip.certify.credential-config.proof-types-supported`                | Supported proof types for SD-JWT                                                                                                                                          | `{'jwt': {'proof_signing_alg_values_supported': {'RS256', 'PS256', 'ES256', 'EdDSA'}}}`                     |
-| `mosip.certify.credential-config.cryptographic-binding-methods-supported` | Supported binding methods for SD-JWT                                                                                                                                      | `{ 'ldp_vc': {'did:jwk','did:key'}, 'mso_mdoc': {'cose_key'},'vc+sd-jwt': {'did:jwk','did:key'} }`          |
+| `mosip.certify.credential-config.cryptographic-binding-methods-supported` | Supported binding methods for SD-JWT                                                                                                                                      | `{ 'ldp_vc': {'did:jwk','did:key'}, 'mso_mdoc': {'cose_key'},'dc+sd-jwt': {'did:jwk','did:key'} }`          |
 | `mosip.certify.data-provider-plugin.did-url` | The base Decentralized Identifier document URL used by the data provider plugin to resolve and bind DIDs for credential issuance.                                         | `did:web:someuser.github.io:somerepo:somedirectory` |
 |`mosip.kernel.keymanager.signature.kid.prepend`| The prefix to prepend to the `kid` field in SD-JWT credentials. This is useful for ensuring unique key identifiers across different systems. Default value will be blank. | `#`, `<DOMAIN_NAME>#` or `PAYLOAD_ISSUER`                          |
 ---
@@ -42,7 +42,7 @@ sequenceDiagram
     participant SDJWTCredential as 🔐 SDJWTCredential
     end
 
-    Client->>CredentialAPI: Request VC Issuance (format: vc+sd-jwt)
+    Client->>CredentialAPI: Request VC Issuance (format: dc+sd-jwt)
 
     CredentialAPI->>CredentialConfiguration: Validate VC request & get template
     CredentialConfiguration-->>CredentialAPI: Return validation success & template
@@ -61,9 +61,9 @@ sequenceDiagram
 
     CredentialAPI->>SDJWTCredential: addProof(unsigned credential)
     note right of SDJWTCredential: Signs the JWT and adds the final proof alongwith disclosures.
-    SDJWTCredential-->>CredentialAPI: Return signed vc+sd-jwt
+    SDJWTCredential-->>CredentialAPI: Return signed dc+sd-jwt
 
-    CredentialAPI-->>Client: Return final vc+sd-jwt
+    CredentialAPI-->>Client: Return final dc+sd-jwt
 ```
 
 ## 4. Configuring `kid` and DID Binding

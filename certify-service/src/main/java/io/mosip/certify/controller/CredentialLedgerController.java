@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -25,16 +24,6 @@ public class CredentialLedgerController {
     public ResponseEntity<List<CredentialStatusResponse>> searchCredentials(
             @Valid @RequestBody CredentialLedgerSearchRequest request) {
         List<CredentialStatusResponse> result = credentialLedgerService.searchCredentialLedger(request);
-        if (result.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    @PostMapping(value = "/v2/ledger-search", produces = "application/json")
-    public ResponseEntity<List<CredentialStatusResponse>> searchCredentialsV2(
-            @Valid @RequestBody CredentialLedgerSearchRequest request) {
-        List<CredentialStatusResponse> result = credentialLedgerService.searchCredentialLedgerV2(request);
         if (result.isEmpty()) {
             return ResponseEntity.noContent().build();
         }

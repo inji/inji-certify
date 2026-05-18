@@ -32,15 +32,13 @@ public class PreAuthIssuanceServiceImpl implements DataProviderPlugin {
         }
 
         String accessTokenHash = parsedAccessToken.getAccessTokenHash();
-        Object cachedObject = vciCacheService.getVCITransaction(accessTokenHash);
-
-        // Validate the cached object type
-        if (!(cachedObject instanceof PreAuthTransaction cachedTransaction)) {
-            log.error("Invalid or null cached transaction for access token hash: {}", accessTokenHash);
-            throw new DataProviderExchangeException("Cached transaction is null or of incorrect type");
-        }
+        PreAuthTransaction cachedTransaction = vciCacheService.getPreAuthTransaction(accessTokenHash);
 
         // Validate claims in the cached transaction
+        if (cachedTransaction == null) {
+            log.error("No cached transaction found for access token hash: {}", accessTokenHash);
+            throw new DataProviderExchangeException("Cached transaction is missing");
+        }
         if (cachedTransaction.getClaims() == null || cachedTransaction.getClaims().isEmpty()) {
             log.error("No claims found in cached transaction for access token hash: {}", accessTokenHash);
             throw new DataProviderExchangeException("Cached transaction claims are null or empty");

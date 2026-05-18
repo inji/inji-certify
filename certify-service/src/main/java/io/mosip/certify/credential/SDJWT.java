@@ -52,7 +52,7 @@ public class SDJWT extends Credential{
      */
     @Override
     public boolean canHandle(String format){
-        return "vc+sd-jwt".equals(format);
+        return VCFormats.DC_SD_JWT.equals(format);
     }
 
 
@@ -121,7 +121,7 @@ public class SDJWT extends Credential{
         payload.setDataToSign(jwtPayload.length > 1?jwtPayload[1]:jwtPayload[0]);
         payload.setApplicationId(appID);
         payload.setReferenceId(refID);
-        payload.setAdditionalHeaders(Map.of("typ", VCFormats.VC_SD_JWT));
+        payload.setAdditionalHeaders(Map.of("typ", VCFormats.DC_SD_JWT));
         //TODO: Wait for keymanager fix here.
         payload.setSignAlgorithm(signAlgorithm);
         payload.setIncludePayload(true);

@@ -35,7 +35,7 @@ In particular, certify focuses on the issuer’s role in and provides the follow
 | Credential Binding with did:.. keys                                 | ✅        |
 | Credential Binding with jwt proof                                   | ✅        |
 | Support for JSON\_LD VC Format                                      | ✅        |
-| Support for IETF SD\_JWT VC Format with support only for vc+sd\_jwt | ✅        |
+| Support for IETF SD\_JWT VC Format with support only for dc+sd\_jwt | ✅        |
 | Revocation support for JSON\_LD                                     | ✅        |
 | Credential Offer with Pre Authorization Code Flow                   | ✅        |
 | Credential Issuance with Interactive Authorization Request          | ✅        |
