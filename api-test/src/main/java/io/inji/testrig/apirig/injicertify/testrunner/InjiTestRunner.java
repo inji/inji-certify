@@ -221,6 +221,8 @@ public class InjiTestRunner {
 			String useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
 			if (useCaseToExecute != null) {
 				useCaseToExecute = useCaseToExecute.trim();
+			} else {
+				useCaseToExecute = "";
 			}
 			InjiCertifyUtil.currentUseCase = useCaseToExecute;
 
