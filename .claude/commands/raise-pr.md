@@ -42,10 +42,11 @@ Create a PR from a new branch in the fork to the upstream repo.
 5. **Stage and commit the changes** (all uncommitted/untracked work):
    ```
    git add <files>
-   git commit -m "<concise subject line>
+   git commit -s -m "<concise subject line>
 
    <optional body explaining what and why>"
    ```
+   - The `-s` flag adds a `Signed-off-by:` trailer (required by inji).
    - Do **not** add any `Co-Authored-By:` or attribution trailers.
 
 6. **Push to the fork**:
