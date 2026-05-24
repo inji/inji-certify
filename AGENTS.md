@@ -6,7 +6,7 @@ This file describes the agent-relevant context for Inji Certify — its architec
 
 ## Project Identity
 
-Inji Certify is an **OpenID4VCI (draft 13) compliant Verifiable Credential issuance service**. It signs and issues credentials in W3C JSON-LD (`ldp_vc`), SD-JWT (`vc+sd-jwt`), and mock mDL (`mso_mdoc`) formats. It is a Spring Boot 3.2.3 / Java 21 multi-module Maven project licensed under MPL 2.0.
+Inji Certify is an **OpenID4VCI 1.0 compliant Verifiable Credential issuance service**. It signs and issues credentials in W3C JSON-LD (`ldp_vc`), SD-JWT (`dc+sd-jwt`), and mock mDL (`mso_mdoc`) formats. It is a Spring Boot 3.2.3 / Java 21 multi-module Maven project licensed under MPL 2.0.
 
 - **GitHub**: https://github.com/inji/inji-certify
 - **Docs**: https://docs.inji.io/inji-certify/overview
@@ -53,7 +53,7 @@ Certify uses a **runtime plugin model**. Two plugin modes exist, set via `mosip.
 | Format | Class | Notes |
 |---|---|---|
 | `ldp_vc` | `W3CJsonLD` | JSON-LD with linked-data proofs, supports revocation |
-| `vc+sd-jwt` | `SDJWT` | Selective Disclosure JWT |
+| `dc+sd-jwt` | `SDJWT` | Selective Disclosure JWT (renamed from `vc+sd-jwt` in OpenID4VCI 1.0) |
 | `mso_mdoc` | `MDocCredential` | Mock only; full implementation pending |
 
 `CredentialFactory` selects the right class based on `credentialFormat` in the `credential_config`.
@@ -70,7 +70,8 @@ Certify uses a **runtime plugin model**. Two plugin modes exist, set via `mosip.
 
 | Controller | Prefix | Purpose |
 |---|---|---|
-| `VCIssuanceController` | `/issuance/credential` | Core VC issuance (OpenID4VCI) |
+| `VCIssuanceController` | `/issuance/credential` | Core VC issuance (OpenID4VCI 1.0 — single unified endpoint) |
+| `NonceController` | `/nonce` | Dedicated `POST /nonce` endpoint for c_nonce generation (OpenID4VCI 1.0; no longer returned in token response) |
 | `WellKnownController` | `/.well-known/` | Issuer metadata, DID document, JWKS |
 | `CredentialConfigController` | `/credential-configurations` | CRUD for credential type configs |
 | `OAuthController` | `/oauth/` | Token issuance and IAR (Interactive Auth Request) |
@@ -79,6 +80,8 @@ Certify uses a **runtime plugin model**. Two plugin modes exist, set via `mosip.
 | `CredentialLedgerController` | `/ledger-search` | Search issued credentials |
 | `RenderingTemplateController` | `/rendering-template` | SVG/HTML templates for credential display |
 | `SystemInfoController` | `/system-info/certificate` | Fetch signing certificates (key export) |
+
+> **Note:** The vd11 and vd12 versioned issuance endpoints (`/issuance/vd11/credential`, `/issuance/vd12/credential`) and `CredentialConfigControllerV2` have been removed as part of the OpenID4VCI 1.0 cleanup.
 
 ---
 
@@ -159,7 +162,8 @@ Switch to Redis by setting `spring.cache.type=redis` and configuring `spring.dat
 - Credential config validation is done at the API level (`CredentialConfigController`) and enforced again at issuance time.
 - `didUrl` in `credential_config` can differ from `mosip.certify.data-provider-plugin.did-url` — the former is per-credential-type, the latter is the issuer-level DID.
 - Velocity templates are stored in DB (`rendering_template` table) and referenced by UUID in `credential_config`.
-- The `kid` prefix in SD-JWT credentials is configurable via `mosip.kernel.keymanager.signature.kid.prepend`.
+- The `kid` prefix in SD-JWT (`dc+sd-jwt`) credentials is configurable via `mosip.kernel.keymanager.signature.kid.prepend`.
+- c_nonce is **no longer returned in the access token response** (OpenID4VCI 1.0); clients must fetch it explicitly via `POST /nonce` (`NonceController` / `NonceServiceImpl`).
 - DID document is auto-generated at `/.well-known/did.json` — copy and host it externally for VC verification.
 
 ---
