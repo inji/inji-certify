@@ -838,7 +838,7 @@
     ],
     "TC_InjiCertify_Update_Credential_Status_V2_06": [],
     "TC_InjiCertify_GetCredentialForLandRegistry_20": [
-        "TC_esignetDependent_GenerateToken_17",
+        "TC_esignetDependent_GenerateToken_16",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonceNeg_01"

@@ -675,6 +675,16 @@ public static void configureOtp() {
 			jsonString = normalizeIndexedAttributes(jsonString);
 		}
 
+		if (jsonString.contains("\"credential_configuration_id\"")) {
+			try {
+				JSONObject request = new JSONObject(jsonString);
+				request.remove("c_nonce");
+				jsonString = request.toString();
+			} catch (Exception e) {
+				logger.error("Failed to strip c_nonce from credential request: " + e.getMessage());
+			}
+		}
+
 		return jsonString;
 	}
 
@@ -1026,7 +1036,8 @@ public static void configureOtp() {
 						|| testCaseName.contains("MosipID_GenerateNonce"))) {
 			return InjiCertifyConfigManager.getInjiCertifyBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYMOCKIDABASEURL$")
-				&& testCaseName.contains("_GetCredentialForMockIDA")) {
+				&& (testCaseName.contains("_GetCredentialForMockIDA")
+						|| testCaseName.contains("MockIDA_GenerateNonce"))) {
 			return InjiCertifyConfigManager.getInjiCertifyBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$SUNBIRDBASEURL$")
 				&& testCaseName.contains("Policy_")) {
