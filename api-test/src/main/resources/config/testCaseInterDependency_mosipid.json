@@ -20,13 +20,15 @@
     "TC_injicertify_Mosipidcredentialissuance_02": [
         "TC_pms_dependency_01",
         "TC_esignetDependent_GenerateToken_28",
-        "TC_esignetDependent_GenerateNonce_01"
+        "TC_esignetDependent_GenerateNonce_01",
+        "TC_InjiCertify_MosipID_AddCredentialConfig_01"
     ],
     "TC_InjiCertify_Delete_Credential_Config_Mosipid_03": ["TC_InjiCertify_MosipID_AddCredentialConfig_03"],
     "TC_injicertify_Mosipidcredentialissuance_01": [
         "TC_pms_dependency_01",
         "TC_esignetDependent_GenerateToken_27",
-        "TC_esignetDependent_GenerateNonce_01"
+        "TC_esignetDependent_GenerateNonce_01",
+        "TC_InjiCertify_MosipID_AddCredentialConfig_01"
     ],
     "TC_InjiCertify_Delete_Credential_Config_Mosipid_02": ["TC_InjiCertify_MosipID_AddCredentialConfig_02"],
     "TC_esignetDependent_GenerateToken_28": [
