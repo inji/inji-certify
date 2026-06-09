@@ -1120,6 +1120,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
+	<test name="GenerateNonceFormDocvp">
+		<parameter name="ymlFile"
+			value="injicertify/PresentationDuringIssuance/GenerateNonceFormDocvp/GenerateNonceFormDocvp.yml" />
+		<parameter name="idKeyName" value="c_nonce" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialPresentationDuringIssuance">
 		<parameter name="ymlFile"
 			value="injicertify/PresentationDuringIssuance/GetCredential/GetCredential.yml" />
