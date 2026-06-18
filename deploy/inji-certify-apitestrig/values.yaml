@@ -10,7 +10,7 @@ modules:
   injicertify:
     enabled: true
     image:
-      repository: injistackdev/apitest-inji-certify
+      repository: injistackqa/apitest-inji-certify
       tag: develop
       pullPolicy: Always
 
