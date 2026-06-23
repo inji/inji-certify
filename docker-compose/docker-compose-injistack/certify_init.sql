@@ -345,3 +345,37 @@ CREATE INDEX IF NOT EXISTS idx_iar_session_expires_at ON certify.iar_session(exp
 CREATE INDEX IF NOT EXISTS idx_iar_session_authorization_code_used ON certify.iar_session(authorization_code, is_code_used) WHERE authorization_code IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_iar_session_scope ON certify.iar_session(scope);
 CREATE INDEX IF NOT EXISTS idx_iar_session_transaction_id ON certify.iar_session(transaction_id);
+
+-- =====================================================
+-- inji-verify library tables (embedded in certify-service)
+-- These tables support Presentation During Issuance (VP request/submission)
+-- =====================================================
+
+CREATE TABLE certify.authorization_request_details (
+    request_id character varying(40) NOT NULL,
+    transaction_id character varying(40) NOT NULL,
+    authorization_details text NOT NULL,
+    expires_at bigint NOT NULL
+);
+
+CREATE TABLE certify.presentation_definition(
+    id character varying(36) NOT NULL,
+    input_descriptors jsonb NOT NULL,
+    name character varying(500),
+    purpose character varying(500),
+    vp_format text,
+    submission_requirements text
+);
+
+CREATE TABLE certify.vc_submission(
+    transaction_id character varying(40) NOT NULL,
+    vc text NOT NULL
+);
+
+CREATE TABLE certify.vp_submission(
+    request_id character varying(40) NOT NULL,
+    vp_token VARCHAR NOT NULL,
+    presentation_submission text NOT NULL,
+    error character varying(100) NULL,
+    error_description character varying(200) NULL
+);
