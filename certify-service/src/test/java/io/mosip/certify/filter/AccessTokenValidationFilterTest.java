@@ -173,25 +173,43 @@ class AccessTokenValidationFilterTest {
     }
 
     @Test
-    public void whenDPoPAuthorizationHeader_shouldReturn401WithWWWAuthenticateHeader() throws ServletException, IOException {
+    public void whenDPoPAuthorizationHeader_shouldMarkTokenInactiveAndContinue() throws ServletException, IOException {
         request.addHeader("Authorization", "DPoP " + TOKEN);
         request.setRequestURI("/api/v1/secured");
 
         filter.doFilterInternal(request, response, filterChain);
 
-        assertEquals(401, response.getStatus());
-        assertEquals("Bearer error=\"invalid_token\"", response.getHeader("WWW-Authenticate"));
-        verify(filterChain, never()).doFilter(any(), any());
+        verify(parsedAccessToken).setActive(false);
+        assertEquals(AccessTokenValidationFilter.ERROR_DPOP_NOT_SUPPORTED,
+                request.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE));
+        verify(filterChain).doFilter(request, response);
     }
 
     @Test
-    public void whenDPoPAuthorizationHeader_shouldNotPropagateToFilterChain() throws ServletException, IOException {
-        request.addHeader("Authorization", "DPoP " + TOKEN);
+    public void whenExpiredToken_shouldSetExpiredReasonAttribute() throws ServletException, IOException {
+        request.addHeader("Authorization", "Bearer " + TOKEN);
+
+        when(jwtDecoder.decode(TOKEN)).thenThrow(
+                new JwtValidationException("Token expired",
+                        Arrays.asList(new OAuth2Error("invalid_token", "Jwt expired at...", null)))
+        );
 
         filter.doFilterInternal(request, response, filterChain);
 
-        verify(filterChain, never()).doFilter(request, response);
-        verify(parsedAccessToken, never()).setActive(any(Boolean.class));
+        verify(parsedAccessToken).setActive(false);
+        assertEquals(AccessTokenValidationFilter.ERROR_EXPIRED_TOKEN,
+                request.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    public void whenNoAuthorizationHeader_shouldSetMissingTokenReasonAttribute() throws ServletException, IOException {
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(parsedAccessToken).setActive(false);
+        assertEquals(AccessTokenValidationFilter.ERROR_MISSING_BEARER,
+                request.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE));
+        verify(filterChain).doFilter(request, response);
     }
 
     private Map<String, Object> createValidClaims() {

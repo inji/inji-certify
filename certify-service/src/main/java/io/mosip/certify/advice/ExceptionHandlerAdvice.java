@@ -5,6 +5,7 @@
  */
 package io.mosip.certify.advice;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.dto.Error;
 import io.mosip.certify.core.dto.ResponseWrapper;
 import io.mosip.certify.core.dto.VCError;
@@ -98,7 +99,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             return handleOAuthControllerExceptions(ex);
         }
         if (path != null && path.contains("/issuance/")) {
-            return handleVCIControllerExceptions(ex);
+            return handleVCIControllerExceptions(ex, servletRequest);
         }
 
         return handleInternalControllerException(ex);
@@ -151,7 +152,7 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         return new ResponseEntity<ResponseWrapper>(getResponseWrapper(UNKNOWN_ERROR, ex.getMessage()), HttpStatus.OK);
     }
 
-    public ResponseEntity<VCError> handleVCIControllerExceptions(Exception ex) {
+    public ResponseEntity<VCError> handleVCIControllerExceptions(Exception ex, HttpServletRequest request) {
         if(ex instanceof MethodArgumentNotValidException) {
             FieldError fieldError = ((MethodArgumentNotValidException) ex).getBindingResult().getFieldError();
             String message = fieldError != null ? fieldError.getDefaultMessage() : ex.getMessage();
@@ -164,7 +165,12 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         }
         if(ex instanceof NotAuthenticatedException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
-            return new ResponseEntity<>(getVCErrorDto(errorCode, getMessage(errorCode, errorCode)), HttpStatus.UNAUTHORIZED);
+            Object reason = request.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE);
+            String description = (reason instanceof String) ? (String) reason : getMessage(errorCode, errorCode);
+            HttpHeaders headers = new HttpHeaders();
+            // Server currently supports only Bearer; make this scheme-aware when DPoP is supported.
+            headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer error=\"invalid_token\"");
+            return new ResponseEntity<>(getVCErrorDto(errorCode, description), headers, HttpStatus.UNAUTHORIZED);
         }
         if(ex instanceof InvalidRequestException) {
             String errorCode = ((InvalidRequestException) ex).getErrorCode();
