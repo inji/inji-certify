@@ -172,6 +172,28 @@ class AccessTokenValidationFilterTest {
         verify(filterChain).doFilter(request, response);
     }
 
+    @Test
+    public void whenDPoPAuthorizationHeader_shouldReturn401WithWWWAuthenticateHeader() throws ServletException, IOException {
+        request.addHeader("Authorization", "DPoP " + TOKEN);
+        request.setRequestURI("/api/v1/secured");
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        assertEquals(401, response.getStatus());
+        assertEquals("Bearer error=\"invalid_token\"", response.getHeader("WWW-Authenticate"));
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    public void whenDPoPAuthorizationHeader_shouldNotPropagateToFilterChain() throws ServletException, IOException {
+        request.addHeader("Authorization", "DPoP " + TOKEN);
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain, never()).doFilter(request, response);
+        verify(parsedAccessToken, never()).setActive(any(Boolean.class));
+    }
+
     private Map<String, Object> createValidClaims() {
         Map<String, Object> claims = new HashMap<>();
         claims.put(JwtClaimNames.SUB, "test-subject");

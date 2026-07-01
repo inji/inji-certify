@@ -114,6 +114,15 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
             }
         }
 
+        if (authorizationHeader != null && authorizationHeader.startsWith("DPoP ")) {
+            log.error("DPoP token received but only Bearer tokens are supported");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setHeader("WWW-Authenticate", "Bearer error=\"invalid_token\"");
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\":\"invalid_token\",\"error_description\":\"DPoP tokens are not supported. Use Bearer token.\"}");
+            return;
+        }
+
         log.error("No Bearer / Opaque token provided, continue with the request chain");
         parsedAccessToken.setActive(false);
         filterChain.doFilter(request, response);
