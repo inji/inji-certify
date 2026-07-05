@@ -2,7 +2,7 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 -- -------------------------------------------------------------------------------------------------
--- Database Name: inji_certify
+-- Database Name: :mosipdbname
 -- Table Name : rendering_template,credential_template, ca_cert_store
 -- Purpose    : To remove Certify v0.10.0 changes and make DB ready for Certify v0.9.1
 --

@@ -2,7 +2,7 @@
 -- License, v. 2.0. If a copy of the MPL was not distributed with this
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 -- -------------------------------------------------------------------------------------------------
--- Database Name: inji_certify
+-- Database Name: :mosipdbname
 -- Table Name : rendering_template,credential_template, ca_cert_store
 -- Purpose    : To upgrade Certify v0.11.0 changes and make it compatible with v0.12.0
 --
@@ -287,7 +287,7 @@ INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,
 
 GRANT USAGE, SELECT
    ON ALL SEQUENCES IN SCHEMA certify
-   TO certifyuser;
+   TO :dbuname;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA certify
-   GRANT USAGE, SELECT ON SEQUENCES TO certifyuser;
+   GRANT USAGE, SELECT ON SEQUENCES TO :dbuname;
