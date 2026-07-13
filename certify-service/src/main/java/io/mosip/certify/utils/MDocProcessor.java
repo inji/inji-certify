@@ -465,6 +465,7 @@ public class MDocProcessor {
             signRequest.setApplicationId(appID);
             signRequest.setReferenceId(refID);
             signRequest.setAlgorithm(signAlgorithm);
+            signRequest.setIncludeCOSETag(false);
 
             // Set unprotected header in request
             signRequest.setUnprotectedHeader(Map.of("includeCertificate", true));

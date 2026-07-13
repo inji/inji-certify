@@ -717,6 +717,7 @@ public class MDocProcessorTest {
         assertEquals("Application ID should match", "testApp", requestDto.getApplicationId());
         assertEquals("Reference ID should match", "testRef", requestDto.getReferenceId());
         assertEquals("Algorithm should match", "ES256", requestDto.getAlgorithm());
+        assertEquals("Untagged COSE_Sign1 is expected", false, requestDto.getIncludeCOSETag());
     }
 
     @Test(expected = CertifyException.class)
