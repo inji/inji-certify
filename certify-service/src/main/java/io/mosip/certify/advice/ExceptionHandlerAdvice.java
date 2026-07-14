@@ -12,6 +12,9 @@ import io.mosip.certify.core.dto.OAuthTokenError;
 import io.mosip.certify.core.exception.*;
 import io.mosip.certify.core.util.CommonUtil;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
@@ -152,6 +155,22 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     }
 
     public ResponseEntity<VCError> handleVCIControllerExceptions(Exception ex) {
+        if(ex instanceof HttpMessageNotReadableException) {
+            String message = "Invalid request format";
+            Throwable cause = ex.getCause();
+
+            if (cause instanceof UnrecognizedPropertyException) {
+                UnrecognizedPropertyException propEx = (UnrecognizedPropertyException) cause;
+                message = String.format("Unrecognized field '%s' in request", propEx.getPropertyName());
+            } else if (cause instanceof InvalidFormatException) {
+                message = "Invalid field format in request";
+            } else if (cause instanceof JsonParseException) {
+                message = "Malformed JSON in request body";
+            }
+
+            log.debug("JSON parse error details: {}", ex.getMessage(), ex);
+            return new ResponseEntity<VCError>(getVCErrorDto(INVALID_REQUEST, message), HttpStatus.BAD_REQUEST);
+        }
         if(ex instanceof MethodArgumentNotValidException) {
             FieldError fieldError = ((MethodArgumentNotValidException) ex).getBindingResult().getFieldError();
             String message = fieldError != null ? fieldError.getDefaultMessage() : ex.getMessage();
@@ -180,6 +199,23 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
     }
 
     public ResponseEntity<Object> handleOAuthControllerExceptions(Exception ex) {
+        if(ex instanceof HttpMessageNotReadableException) {
+            String message = "Invalid request format";
+            Throwable cause = ex.getCause();
+
+            if (cause instanceof UnrecognizedPropertyException) {
+                UnrecognizedPropertyException propEx = (UnrecognizedPropertyException) cause;
+                message = String.format("Unrecognized field '%s' in request", propEx.getPropertyName());
+            } else if (cause instanceof InvalidFormatException) {
+                message = "Invalid field format in request";
+            } else if (cause instanceof JsonParseException) {
+                message = "Malformed JSON in request body";
+            }
+
+            log.debug("JSON parse error details: {}", ex.getMessage(), ex);
+            OAuthTokenError oauthError = new OAuthTokenError("invalid_request", message);
+            return new ResponseEntity<Object>(oauthError, HttpStatus.BAD_REQUEST);
+        }
         if(ex instanceof IllegalArgumentException) {
             OAuthTokenError oauthError = new OAuthTokenError("invalid_request", ex.getMessage());
             return new ResponseEntity<Object>(oauthError, HttpStatus.BAD_REQUEST);
