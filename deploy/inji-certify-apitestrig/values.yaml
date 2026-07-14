@@ -11,7 +11,7 @@ modules:
     enabled: true
     image:
       repository: injistackqa/apitest-inji-certify
-      tag: 1.0.x
+      tag: develop
       pullPolicy: Always
 
 extraEnvVarsCM:

@@ -51,4 +51,6 @@ public class Constants {
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
     public static final String PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code";
     public static final String AS_METADATA_PREFIX = "as_metadata:";
+    // Request attribute used by the access token filter to pass the auth-failure reason to the exception handler.
+    public static final String AUTH_ERROR_ATTRIBUTE = "certify.authError";
 }

@@ -16,8 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.security.oauth2.jwt.JwtClaimNames;
 import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
@@ -40,6 +42,11 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Profile("!local")
 public class AccessTokenValidationFilter extends OncePerRequestFilter {
+
+    static final String ERROR_INVALID_TOKEN = "The access token is invalid.";
+    static final String ERROR_EXPIRED_TOKEN = "The access token has expired.";
+    static final String ERROR_DPOP_NOT_SUPPORTED = "DPoP tokens are not supported. Use a Bearer token.";
+    static final String ERROR_MISSING_BEARER = "Authorization header with a Bearer token is required.";
 
     @Value("${mosip.certify.authn.issuer-uri}")
     private String issuerUri;
@@ -110,12 +117,33 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
 
                 } catch (Exception e) {
                     log.error("Access token validation failed", e);
+                    request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, resolveJwtErrorDescription(e));
                 }
+            } else {
+                request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, ERROR_INVALID_TOKEN);
             }
+        } else if (authorizationHeader != null && authorizationHeader.startsWith("DPoP ")) {
+            log.error("DPoP token received but only Bearer tokens are supported");
+            request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, ERROR_DPOP_NOT_SUPPORTED);
+        } else {
+            request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, ERROR_MISSING_BEARER);
         }
 
-        log.error("No Bearer / Opaque token provided, continue with the request chain");
+        log.error("No valid Bearer / Opaque token provided, continue with the request chain");
         parsedAccessToken.setActive(false);
         filterChain.doFilter(request, response);
+    }
+
+    private String resolveJwtErrorDescription(Exception e) {
+        if (e instanceof JwtValidationException) {
+            boolean expired = ((JwtValidationException) e).getErrors().stream()
+                    .map(OAuth2Error::getDescription)
+                    .filter(Objects::nonNull)
+                    .anyMatch(description -> description.toLowerCase().contains("expired"));
+            if (expired) {
+                return ERROR_EXPIRED_TOKEN;
+            }
+        }
+        return ERROR_INVALID_TOKEN;
     }
 }
