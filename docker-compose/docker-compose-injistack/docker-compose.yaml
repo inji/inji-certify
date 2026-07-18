@@ -37,7 +37,7 @@ services:
       # modify the below file to change the identity fields in the VC
       - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
       - ./config/vp_request_config.json:/home/mosip/config/vp_request_config.json
-      - ./config/farmer-context.json:/home/mosip/config/farmer-context.json
+      - ./context/farmer-context.json:/home/mosip/context/farmer-context.json
     networks:
       - network
     depends_on:
