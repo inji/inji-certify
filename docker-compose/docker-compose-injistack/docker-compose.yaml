@@ -15,7 +15,7 @@ services:
       - "5433:5432"
 
   certify:
-    image: injistack/inji-certify-with-plugins:0.14.0
+    image: injistackdev/inji-certify-with-plugins:release-1.0.x
     user: root
     ports:
       - 8090:8090
@@ -37,6 +37,7 @@ services:
       # modify the below file to change the identity fields in the VC
       - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
       - ./config/vp_request_config.json:/home/mosip/config/vp_request_config.json
+      - ./config/farmer-context.json:/home/mosip/config/farmer-context.json
     networks:
       - network
     depends_on:
@@ -60,7 +61,7 @@ services:
 
   mimoto-service:
     container_name: 'mimoto-service'
-    image: injistack/mimoto:0.21.0
+    image: injistackdev/mimoto:develop
     user: root
     ports:
       - '8099:8099'
@@ -85,12 +86,13 @@ services:
       - ./config/mimoto-issuers-config.json:/home/mosip/mimoto-issuers-config.json
       - ./config/mimoto-trusted-verifiers.json:/home/mosip/mimoto-trusted-verifiers.json
       - ./certs/oidckeystore.p12:/home/mosip/certs/oidckeystore.p12
+      - ./config/mosip-cbeff.xsd:/home/mosip/mosip-cbeff.xsd
     depends_on:
       - database
 
   inji-web:
     container_name: 'inji-web'
-    image: injistack/inji-web:0.16.0
+    image: injistackdev/inji-web:develop
     ports:
       - '3004:3004'
     environment:
