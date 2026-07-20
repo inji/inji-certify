@@ -62,46 +62,48 @@ public class MDocProcessor {
             JsonNode templateNode = objectMapper.readTree(templatedJSON);
             Map<String, Object> finalMDoc = new HashMap<>();
 
-            if (templateNode.has(Constants.VALIDITY_INFO)) {
-                JsonNode validityInfo = templateNode.get(Constants.VALIDITY_INFO);
-                Map<String, Object> validity = objectMapper.convertValue(validityInfo, Map.class);
-                ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-                String formattedCurrentTime = currentTime
-                        .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+            JsonNode validityInfo = Objects.requireNonNull(
+                    templateNode.get(Constants.VALIDITY_INFO),
+                    "Missing validity info"
+            );
 
-                if (validity.containsKey(VCDM2Constants.VALID_FROM)) {
-                    String validFromValue = (String) validity.get(VCDM2Constants.VALID_FROM);
-                    if ("${_validFrom}".equals(validFromValue)) {
-                        validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-                    }
-                }
+            Map<String, Object> validity = objectMapper.convertValue(validityInfo, Map.class);
 
-                if (validity.containsKey("signed")) {
-                    String signedValue = (String) validity.get("signed");
-                    if ("${_signed}".equals(signedValue)) {
-                        validity.put("signed", createCBORTaggedDateTime(formattedCurrentTime));
-                    }
-                }
-                if (validity.containsKey(VCDM2Constants.VALID_UNTIL)) {
-                    String validUntilValue = (String) validity.get(VCDM2Constants.VALID_UNTIL);
-                    if ("${_validUntil}".equals(validUntilValue)) {
-                        String futureTime = currentTime
-                                .plusYears(mDocConfig.getValidityPeriodYears())
-                                .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
-                        validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-                    }
-                }
+            String validFromValue = Objects.requireNonNull(
+                    (String) validity.get(VCDM2Constants.VALID_FROM),
+                    "Missing validFrom"
+            );
+            String signedValue = Objects.requireNonNull(
+                    (String) validity.get(Constants.SIGNED),
+                    "Missing signed"
+            );
+            String validUntilValue = Objects.requireNonNull(
+                    (String) validity.get(VCDM2Constants.VALID_UNTIL),
+                    "Missing validUntil"
+            );
 
+            ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
+            String formattedCurrentTime = currentTime.format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
 
-                finalMDoc.put(Constants.VALIDITY_INFO, validity);
+            if ("${_validFrom}".equals(validFromValue)) {
+                validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
             }
+            if ("${_signed}".equals(signedValue)) {
+                validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
+            }
+            if ("${_validUntil}".equals(validUntilValue)) {
+                String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
+                        .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+                validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
+            }
+
+            finalMDoc.put(Constants.VALIDITY_INFO, validity);
 
             if (templateParams.containsKey(Constants.DID_URL)) {
                 finalMDoc.put("_issuer", templateParams.get(Constants.DID_URL));
             }
-            if (templateNode.has(Constants.DOCTYPE)) {
-                finalMDoc.put("_docType", templateNode.get(Constants.DOCTYPE).asText());
-            }
+            String docType = Objects.requireNonNull(templateNode.get(Constants.DOCTYPE), "Missing docType").asText();
+            finalMDoc.put("_docType", docType);
             if (templateParams.containsKey(Constants._HOLDER_ID)) {
                 finalMDoc.put(Constants._HOLDER_ID, templateParams.get(Constants._HOLDER_ID));
             }
@@ -430,7 +432,7 @@ public class MDocProcessor {
             Map<String, Object> originalValidity = (Map<String, Object>) mDocJson.get(Constants.VALIDITY_INFO);
             validityInfo.put(VCDM2Constants.VALID_FROM, originalValidity.get(VCDM2Constants.VALID_FROM));
             validityInfo.put(VCDM2Constants.VALID_UNTIL, originalValidity.get(VCDM2Constants.VALID_UNTIL));
-            validityInfo.put("signed", originalValidity.get("signed"));
+            validityInfo.put(Constants.SIGNED, originalValidity.get(Constants.SIGNED));
         }
         mso.put(Constants.VALIDITY_INFO, validityInfo);
 
@@ -451,6 +453,7 @@ public class MDocProcessor {
         String deviceKeyEncoded = deviceInfo.toString();
         if (deviceKeyEncoded.startsWith(Constants.DID_JWK_PREFIX)) {
             deviceKeyEncoded = deviceKeyEncoded.substring(Constants.DID_JWK_PREFIX.length());
+            deviceKeyEncoded = deviceKeyEncoded.replace("#0","");
         }
 
         byte[] decodedBytes = Base64.getUrlDecoder().decode(deviceKeyEncoded);

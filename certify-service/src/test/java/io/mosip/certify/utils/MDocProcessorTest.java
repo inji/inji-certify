@@ -15,6 +15,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.runner.RunWith;
 import org.mockito.*;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -23,11 +24,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.Serializable;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.Base64;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -50,6 +53,20 @@ public class MDocProcessorTest {
 
     private static MockedStatic<ZonedDateTime> mockedZonedDateTime;
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
+    private static final Map<String, Map<String, ? extends Serializable>> expectedValidityInfo = Map.of(
+            "signed", Map.of(
+                    Constants.__CBOR_TAG, 0,
+                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+            ),
+            "validFrom", Map.of(
+                    Constants.__CBOR_TAG, 0,
+                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+            ),
+            "validUntil", Map.of(
+                    Constants.__CBOR_TAG, 0,
+                    Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+            )
+    );
 
     @BeforeClass
     public static void setUpZonedDateTimeMock() {
@@ -114,20 +131,7 @@ public class MDocProcessorTest {
         assertEquals("Doe", items.getFirst().get("elementValue"));
         assertEquals(0, items.getFirst().get("digestID"));
 
-        assertEquals("ValidityInfo should match",  Map.of(
-                "signed", Map.of(
-                        Constants.__CBOR_TAG, 0,
-                        Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-                ),
-                "validFrom", Map.of(
-                        Constants.__CBOR_TAG, 0,
-                        Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-                ),
-                "validUntil", Map.of(
-                        Constants.__CBOR_TAG, 0,
-                        Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
-                )
-        ), result.get("validityInfo"));
+        assertEquals("ValidityInfo should match", expectedValidityInfo, result.get("validityInfo"));
     }
 
     @Test
@@ -168,6 +172,8 @@ public class MDocProcessorTest {
     @Test
     public void should_preserveStructure_when_complexElementValueProcessed() throws Exception {
         String templatedJSON = "{"
+                + getValidityInfoTemplate()+","
+                +"\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"nameSpaces\": {"
                 + "  \"org.iso.18013.5.1\": ["
                 + "    {"
@@ -209,11 +215,46 @@ public class MDocProcessorTest {
         assertTrue("Result should be empty", result.isEmpty());
     }
 
+    @Test
+    public void should_throwException_when_validityInfoInvalid() {
+        provideValidityInfoTestCases().forEach(args -> {
+            String testName = (String) args.get()[0];
+            String templatedJSON = (String) args.get()[1];
+            String expectedErrorMessage = (String) args.get()[2];
+
+            Map<String, Object> templateParams = new HashMap<>();
+            templateParams.put("didUrl", "https://issuer.example.com/did");
+            templateParams.put("_holderId", "did:jwk:test123");
+
+            CertifyException exception = assertThrows(CertifyException.class, () ->
+                    mDocProcessor.processTemplatedJson(templatedJSON, templateParams));
+
+            assertEquals("Test case [" + testName + "] failed", "Error processing templated JSON: "+expectedErrorMessage, exception.getMessage());
+        });
+    }
+
+    @Test
+    public void should_throwException_when_docTypeMissing() {
+        String templatedJSON = "{"
+                + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {}"
+                + "}";
+
+        Map<String, Object> templateParams = new HashMap<>();
+        templateParams.put("didUrl", "https://issuer.example.com/did");
+        templateParams.put("_holderId", "did:jwk:test123");
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                mDocProcessor.processTemplatedJson(templatedJSON, templateParams));
+
+        assertEquals("Error processing templated JSON: Missing docType", exception.getMessage());
+    }
 
     @Test
     public void should_handleAllNamespaces_when_multipleNamespacesProcessed() throws Exception {
         String templatedJSON = "{"
                 + "\"docType\": \"org.mosip.credential\","
+                + getValidityInfoTemplate()+","
                 + "\"nameSpaces\": {"
                 + "  \"org.iso.18013.5.1\": ["
                 + "    {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}"
@@ -524,7 +565,7 @@ public class MDocProcessorTest {
 
             // These should be encoded as regular strings without tag 1004
             List<DataItem> decoded = new CborDecoder(new ByteArrayInputStream(encoded)).decode();
-            co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) decoded.get(0);
+            co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) decoded.getFirst();
             DataItem textItem = map.get(new UnicodeString("text"));
             assertNotNull("Text item should exist", textItem);
         }
@@ -568,7 +609,7 @@ public class MDocProcessorTest {
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
                 + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
         String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey;
+        String didJwk = "did:jwk:" + encodedKey+"#0";
 
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_holderId", didJwk);
@@ -641,12 +682,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
-
-        Map<String, Object> validityInfo = new HashMap<>();
-        validityInfo.put(VCDM2Constants.VALID_FROM, "2024-01-01T00:00:00Z");
-        validityInfo.put(VCDM2Constants.VALID_UNTIL, "2025-01-01T00:00:00Z");
-        validityInfo.put(Constants.SIGNED, "2024-01-01T00:00:00Z");
-        mDocJson.put("validityInfo", validityInfo);
+        mDocJson.put("validityInfo", expectedValidityInfo);
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
         Map<Integer, byte[]> digests = new HashMap<>();
@@ -662,19 +698,7 @@ public class MDocProcessorTest {
         assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get(Constants.DOCTYPE));
 
         Map<String, Object> actualValidityInfo = (Map<String, Object>) result.get("validityInfo");
-        assertNotNull("Should have validityInfo", actualValidityInfo);
-        assertEquals("ValidFrom should match", Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        ), actualValidityInfo.get(VCDM2Constants.VALID_FROM));
-        assertEquals("ValidUntil should match", Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
-        ), actualValidityInfo.get(VCDM2Constants.VALID_UNTIL));
-        assertEquals("Signed should match", Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        ), actualValidityInfo.get("signed"));
+        assertEquals(expectedValidityInfo, actualValidityInfo);
         assertNotNull("Should have valueDigests", result.get("valueDigests"));
         assertNotNull("Should have deviceKeyInfo", result.get("deviceKeyInfo"));
     }
@@ -713,26 +737,12 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.test.doc");
         mDocJson.put("_holderId", createTestDidJwk());
-
-        Map<String, Object> validFrom = Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        );
-        Map<String, Object> signed = Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        );
-        Map<String, Object> validUntil = Map.of(
-                Constants.__CBOR_TAG, 0,
-                Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
-        );
+        mDocJson.put("validityInfo", expectedValidityInfo);
 
         Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
 
         Map<String, Object> resultValidity = (Map<String, Object>) result.get("validityInfo");
-        assertEquals("ValidFrom should match", validFrom, resultValidity.get(VCDM2Constants.VALID_FROM));
-        assertEquals("ValidUntil should match", validUntil, resultValidity.get(VCDM2Constants.VALID_UNTIL));
-        assertEquals("Signed should match", signed, resultValidity.get("signed"));
+        assertEquals(expectedValidityInfo, resultValidity);
     }
 
     // ==================== COSE Signing Tests ====================
@@ -1011,7 +1021,7 @@ public class MDocProcessorTest {
     public void should_addValidityPeriod_asPer_MdocConfig() throws Exception {
         when(mDocConfig.getValidityPeriodYears()).thenReturn(10);
 
-        String template = "{\"validityInfo\": {\"validFrom\": \"${_validFrom}\",\"signed\": \"${_signed}\", \"validUntil\": \"${_validUntil}\"}}";
+        String template = "{\"validityInfo\": {\"validFrom\": \"${_validFrom}\",\"signed\": \"${_signed}\", \"validUntil\": \"${_validUntil}\"}, \"docType\": \"${_docType}\"}";
         Map<String, Object> result = mDocProcessor.processTemplatedJson(template, new HashMap<>());
 
         Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
@@ -1133,11 +1143,7 @@ public class MDocProcessorTest {
     private String createFullmDLTemplate() {
         return "{"
                 + "\"docType\": \"org.iso.18013.5.1.mDL\","
-                + "\"validityInfo\": {"
-                + "  \"validFrom\": \"${_validFrom}\","
-                + "  \"validUntil\": \"${_validUntil}\","
-                + "  \"signed\": \"${_signed}\""
-                + "},"
+                + getValidityInfoTemplate()+","
                 + "\"nameSpaces\": {"
                 + "  \"org.iso.18013.5.1\": ["
                 + "    {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
@@ -1145,6 +1151,14 @@ public class MDocProcessorTest {
                 + "    {\"digestID\": 2, \"elementIdentifier\": \"birth_date\", \"elementValue\": \"1990-08-25\"}"
                 + "  ]"
                 + "}"
+                + "}";
+    }
+
+    private static String getValidityInfoTemplate() {
+        return "\"validityInfo\": {"
+                + "  \"validFrom\": \"${_validFrom}\","
+                + "  \"validUntil\": \"${_validUntil}\","
+                + "  \"signed\": \"${_signed}\""
                 + "}";
     }
 
@@ -1168,5 +1182,53 @@ public class MDocProcessorTest {
         return sb.toString();
     }
 
+    private static Stream<Arguments> provideValidityInfoTestCases() {
+        return Stream.of(
+                Arguments.of(
+                        "Missing validFrom field",
+                        "{"
+                                + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                                + "\"holderId\": \"${_holderId}\","
+                                + "\"validityInfo\": {"
+                                + "\"signed\": \"${_signed}\","
+                                + "\"validUntil\": \"${_validUntil}\""
+                                + "}"
+                                + "}",
+                        "Missing validFrom"
+                ),
+                Arguments.of(
+                        "Missing signed field",
+                        "{"
+                                + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                                + "\"holderId\": \"${_holderId}\","
+                                + "\"validityInfo\": {"
+                                + "\"validFrom\": \"${_validFrom}\","
+                                + "\"validUntil\": \"${_validUntil}\""
+                                + "}"
+                                + "}",
+                        "Missing signed"
+                ),
+                Arguments.of(
+                        "Missing validUntil field",
+                        "{"
+                                + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                                + "\"holderId\": \"${_holderId}\","
+                                + "\"validityInfo\": {"
+                                + "\"validFrom\": \"${_validFrom}\","
+                                + "\"signed\": \"${_signed}\""
+                                + "}"
+                                + "}",
+                        "Missing validUntil"
+                ),
+                Arguments.of(
+                        "Validity info entirely missing",
+                        "{"
+                                + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                                + "\"holderId\": \"${_holderId}\""
+                                + "}",
+                        "Missing validity info"
+                )
+        );
+    }
 
 }
