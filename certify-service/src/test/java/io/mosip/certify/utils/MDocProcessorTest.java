@@ -12,6 +12,8 @@ import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.dto.CoseSignResponseDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.*;
@@ -46,6 +48,23 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class MDocProcessorTest {
 
+    private static MockedStatic<ZonedDateTime> mockedZonedDateTime;
+    private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
+
+    @BeforeClass
+    public static void setUpZonedDateTimeMock() {
+        mockedZonedDateTime = mockStatic(ZonedDateTime.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
+        mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC))
+                .thenReturn(FIXED_NOW);
+    }
+
+    @AfterClass
+    public static void tearDownZonedDateTimeMock() {
+        if (mockedZonedDateTime != null) {
+            mockedZonedDateTime.close();
+        }
+    }
+
     @Mock
     private MDocConfig mDocConfig;
 
@@ -72,99 +91,28 @@ public class MDocProcessorTest {
 
     @Test
     public void processTemplatedJson_ValidmDLTemplate_MapsToISO18013Elements() {
-        // Mock ZonedDateTime.now() to return a fixed date for consistent testing
-        ZonedDateTime fixedDateTime = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
-        
-        try (MockedStatic<ZonedDateTime> mockedZonedDateTime = mockStatic(ZonedDateTime.class, CALLS_REAL_METHODS)) {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC))
-                    .thenReturn(fixedDateTime);
+        String templatedJSON = createFullmDLTemplate();
 
-            String templatedJSON = "{"
-                    + "\"docType\": \"org.iso.18013.5.1.mDL\","
-                    + "\"validityInfo\": {"
-                    + "  \"validFrom\": \"${_validFrom}\","
-                    + "  \"validUntil\": \"${_validUntil}\","
-                    + "  \"signed\": \"${_signed}\""
-                    + "},"
-                    + "\"nameSpaces\": {"
-                    + "  \"org.iso.18013.5.1\": ["
-                    + "    {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
-                    + "    {\"digestID\": 1, \"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
-                    + "    {\"digestID\": 2, \"elementIdentifier\": \"birth_date\", \"elementValue\": \"1990-08-25\"}"
-                    + "  ]"
-                    + "}"
-                    + "}";
+        Map<String, Object> templateParams = new HashMap<>();
+        templateParams.put("didUrl", "https://issuer.example.com/did");
+        templateParams.put("_holderId", "did:jwk:test123");
 
-            Map<String, Object> templateParams = new HashMap<>();
-            templateParams.put("didUrl", "https://issuer.example.com/did");
-            templateParams.put("_holderId", "did:jwk:test123");
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams);
 
-            Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams);
+        assertNotNull("Result should not be null", result);
+        assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get("_docType"));
+        assertEquals("HolderId should match", "did:jwk:test123", result.get("_holderId"));
+        assertEquals("Issuer should match", "https://issuer.example.com/did", result.get("_issuer"));
 
-            assertNotNull("Result should not be null", result);
-            assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get("_docType"));
-            assertEquals("HolderId should match", "did:jwk:test123", result.get("_holderId"));
-            assertEquals("Issuer should match", "https://issuer.example.com/did", result.get("_issuer"));
-            assertEquals("ValidityInfo should match",  Map.of(
-                    "signed", Map.of(
-                            Constants.__CBOR_TAG, 0,
-                            Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-                    ),
-                    "validFrom", Map.of(
-                            Constants.__CBOR_TAG, 0,
-                            Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-                    ),
-                    "validUntil", Map.of(
-                            Constants.__CBOR_TAG, 0,
-                            Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
-                    )
-            ), result.get("validityInfo"));
+        Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
+        assertNotNull("NameSpaces should not be null", nameSpaces);
 
-            Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
-            assertNotNull("NameSpaces should not be null", nameSpaces);
+        List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
+        assertEquals("Should have 3 elements", 3, items.size());
 
-            List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
-            assertEquals("Should have 3 elements", 3, items.size());
-
-            assertEquals("family_name", items.getFirst().get("elementIdentifier"));
-            assertEquals("Doe", items.getFirst().get("elementValue"));
-            assertEquals(0, items.getFirst().get("digestID"));
-        }
-    }
-
-    @Test
-    public void processTemplatedJson_ValidityInfoPlaceholders_ReplacedWithTimestamps() {
-        String templatedJSON = "{"
-                + "\"docType\": \"org.iso.18013.5.1.mDL\","
-                + "\"validityInfo\": {"
-                + "  \"validFrom\": \"${_validFrom}\","
-                + "  \"validUntil\": \"${_validUntil}\","
-                + "  \"signed\": \"${_signed}\""
-                + "},"
-                + "\"nameSpaces\": {}"
-                + "}";
-
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
-
-        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
-        assertNotNull("ValidityInfo should not be null", validityInfo);
-
-        String validFrom =  (String)((Map<String,Object>) validityInfo.get(VCDM2Constants.VALID_FROM)).get(Constants.__CBOR_VALUE);
-        String validUntil =  (String)((Map<String,Object>) validityInfo.get(VCDM2Constants.VALID_UNTIL)).get(Constants.__CBOR_VALUE);
-        String signed =  (String)((Map<String,Object>) validityInfo.get(Constants.SIGNED)).get(Constants.__CBOR_VALUE);
-
-        assertNotNull("ValidFrom should be set", validFrom);
-        assertNotNull("ValidUntil should be set", validUntil);
-        assertNotEquals("${_validFrom}", validFrom);
-        assertNotEquals("${_signed}", signed);
-        assertNotEquals("${_validUntil}", validUntil);
-
-        // Verify timestamp format (ISO 8601)
-        assertTrue("ValidFrom should match ISO 8601",
-                validFrom.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
-        assertTrue(signed.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
-        assertTrue("ValidUntil should match ISO 8601",
-                validUntil.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
+        assertEquals("family_name", items.getFirst().get("elementIdentifier"));
+        assertEquals("Doe", items.getFirst().get("elementValue"));
+        assertEquals(0, items.getFirst().get("digestID"));
     }
 
     @Test
@@ -644,12 +592,6 @@ public class MDocProcessorTest {
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
 
-        Map<String, Object> validityInfo = new HashMap<>();
-        validityInfo.put(VCDM2Constants.VALID_FROM, "2024-01-01T00:00:00Z");
-        validityInfo.put(VCDM2Constants.VALID_UNTIL, "2025-01-01T00:00:00Z");
-        validityInfo.put(Constants.SIGNED, "2024-01-01T00:00:00Z");
-        mDocJson.put("validityInfo", validityInfo);
-
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
         Map<Integer, byte[]> digests = new HashMap<>();
         digests.put(0, new byte[32]);
@@ -663,11 +605,20 @@ public class MDocProcessorTest {
         assertEquals("Digest algorithm should match", "SHA-256", result.get("digestAlgorithm"));
         assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get(Constants.DOCTYPE));
 
-        Map<String, Object> actualValidityInfo = (Map<String, Object>) result.get("validityInfo");
-        assertNotNull("Should have validityInfo", actualValidityInfo);
-        assertEquals("ValidFrom should match", "2024-01-01T00:00:00Z", actualValidityInfo.get(VCDM2Constants.VALID_FROM));
-        assertEquals("ValidUntil should match", "2025-01-01T00:00:00Z", actualValidityInfo.get(VCDM2Constants.VALID_UNTIL));
-        assertEquals("Signed should match", "2024-01-01T00:00:00Z", actualValidityInfo.get(Constants.SIGNED));
+        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
+        assertNotNull("Should have validityInfo", validityInfo);
+        assertEquals("ValidFrom should match", Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+        ), validityInfo.get(VCDM2Constants.VALID_FROM));
+        assertEquals("ValidUntil should match", Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+        ), validityInfo.get(VCDM2Constants.VALID_UNTIL));
+        assertEquals("Signed should match", Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+        ), validityInfo.get("signed"));
         assertNotNull("Should have valueDigests", result.get("valueDigests"));
         assertNotNull("Should have deviceKeyInfo", result.get("deviceKeyInfo"));
     }
@@ -702,17 +653,19 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createMobileSecurityObject_ValidityInfo_PreservesValues() throws Exception {
+    public void createMobileSecurityObject_Adds_ValidityInfo() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.test.doc");
         mDocJson.put("_holderId", createTestDidJwk());
 
-        String validFrom = "2024-06-15T10:30:00Z";
-        String validUntil = "2025-06-15T10:30:00Z";
-        Map<String, Object> validityInfo = new HashMap<>();
-        validityInfo.put(VCDM2Constants.VALID_FROM, validFrom);
-        validityInfo.put(VCDM2Constants.VALID_UNTIL, validUntil);
-        mDocJson.put("validityInfo", validityInfo);
+        Map<String, Object> validFrom = Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+        );
+        Map<String, Object> validUntil = Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+        );
 
         Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
 
@@ -992,21 +945,6 @@ public class MDocProcessorTest {
     }
 
     // ==================== Configuration Tests ====================
-
-    @Test
-    public void mDocConfig_ValidityPeriod_UsedInTemplate() throws Exception {
-        when(mDocConfig.getValidityPeriodYears()).thenReturn(10);
-
-        String template = "{\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\"}}";
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(template, new HashMap<>());
-
-        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
-        String validUntil = (String) ((Map<String, Object>) validityInfo.get("validUntil")).get(Constants.__CBOR_VALUE);
-
-        assertNotNull("ValidUntil should be set", validUntil);
-        // Verify it's approximately 10 years in the future (allowing for execution time)
-        assertTrue("ValidUntil should be in the future", validUntil.compareTo("2030-01-01") > 0);
-    }
 
     @Test
     public void mDocConfig_MsoVersion_UsedInMSO() throws Exception {
