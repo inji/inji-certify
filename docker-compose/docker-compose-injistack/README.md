@@ -47,6 +47,7 @@ docker-compose-injistack/
 ├── config/ (default setup should work as is for csvplugin, any other config changes user can make as per their setup)
 │   ├── certify-default.properties
 │   ├── certify-csvdp-farmer.properties
+│   ├── certify-mock-mdl.properties
 │   ├── mimoto-default.properties
 │   ├── mimoto-issuers-config.json
 │   ├── mimoto-trusted-verifiers.json
@@ -143,62 +144,7 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 
 ### Registering a custom JSON-LD `@context`
 
-If your credential's VC template (in `certify_init.sql` or added via the Credential Config API) references its own custom `@context` URL — i.e. anything other than the standard `https://www.w3.org/2018/credentials/v1` / `https://www.w3.org/ns/credentials/v2` / `https://w3id.org/security/suites/ed25519-2020/v1` contexts that Certify already knows about — Certify needs to be told how to resolve it. Certify signs every VC by canonicalizing it, which requires resolving each `@context` URL into an actual JSON-LD document; if Certify doesn't know how to resolve your custom URL, issuance fails with an error like:
-
-```
-JsonLdError: No configured mapping for context: <your-context-url> and its host is not in the allowed hosts list.
-```
-
-There are two ways to fix this — pick whichever fits your setup:
-
-**Option A: Allow-list the host for remote resolution**
-
-If your context is already hosted reliably at a stable public URL (e.g. GitHub Pages), add its host to `certify-default.properties`:
-
-```properties
-mosip.certify.jsonld.remote.allowUnknown=true
-mosip.certify.jsonld.remote.allowedHosts[0]=www.w3.org
-mosip.certify.jsonld.remote.allowedHosts[1]=w3id.org
-mosip.certify.jsonld.remote.allowedHosts[2]=inji.github.io
-mosip.certify.jsonld.remote.allowedHosts[3]=api.released.mosip.net
-```
-
-- `allowUnknown=true` lets Certify fetch context URLs that aren't explicitly registered (Option B below), as long as their host passes the allow-list check.
-- `allowedHosts` restricts which hosts remote fetches are permitted from — the check applies host-wide, so add your own hosted context's domain to this list (or reuse an existing entry like `inji.github.io` if that's where it's hosted).
-- Nothing else to configure — Certify resolves the context over the network on demand and caches it per `mosip.certify.jsonld.cache.*` below. This is the simpler option, but issuance now depends on that host being reachable from the certify container at request time.
-
-**Option B: Register a local static mapping**
-
-For contexts you want to resolve without any network dependency (recommended for fully offline/local setups, or if the URL isn't reliably hosted):
-
-1. Save your context document as a local JSON file (see [farmer-context.json](./context/farmer-context.json) for an example) and place it under a directory of your choice inside `docker-compose-injistack/` (e.g. `context/`).
-2. Mount that file into the `certify` service in [docker-compose.yaml](./docker-compose.yaml):
-   ```yaml
-   services:
-     certify:
-       volumes:
-         - ./context/<your-context>.json:/home/mosip/context/<your-context>.json
-   ```
-3. Register the mapping in your usecase's properties file (e.g. `certify-csvdp-farmer.properties`), keyed by the exact `@context` URL your VC template/credential config uses (escape the colon in the URL scheme with `\:`):
-   ```properties
-   mosip.certify.jsonld.contexts[https\://your-domain.example/path/to/context.json].resource=file:/home/mosip/context/<your-context>.json
-   mosip.certify.jsonld.contexts[https\://your-domain.example/path/to/context.json].preload=true
-   mosip.certify.jsonld.contexts[https\://your-domain.example/path/to/context.json].cache=true
-   ```
-   - `.resource` points Certify at the local file instead of fetching the URL over the network — this is the actual mapping and is required.
-   - `.preload=true` loads the context at application startup so a bad/missing file fails fast in the boot logs instead of on a user's first credential request.
-   - `.cache=true` keeps the resolved context in memory after first use (governed by `mosip.certify.jsonld.cache.*` in `certify-default.properties`) instead of re-reading the file on every issuance.
-4. Restart certify: `docker compose up -d certify`.
-
-**Note**: A local static mapping (Option B) always takes precedence over the allow-list — Certify only falls through to a remote fetch when a URL has no static mapping registered. If both are configured for the same URL, the local file wins.
-
-```properties
-# Context Caching
-mosip.certify.jsonld.cache.enabled=true
-mosip.certify.jsonld.cache.maxEntries=512
-mosip.certify.jsonld.cache.ttl=24h
-```
-
+- Refer the document for custom @context registartion https://github.com/inji/inji-certify/blob/release-1.0.x/docs/JSON-LD-context-loader.md
 
 ## Other configurations
 
@@ -342,9 +288,6 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
    docker network create mosip_network
    ```
    Then re-run `docker compose up -d`.
-
-9. VC issuance fails with `Error occurred during canonicalization` / `JsonLdError: No configured mapping for context: ... and its host is not in the allowed hosts list`.
-    - Your credential type's VC template uses a custom `@context` URL that Certify doesn't know how to resolve. Register it locally as described in [Registering a custom JSON-LD `@context`](#registering-a-custom-jsonld-context).
 
 
 # Explanation of NGINX Directives
