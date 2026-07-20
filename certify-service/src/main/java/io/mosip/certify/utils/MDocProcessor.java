@@ -62,6 +62,40 @@ public class MDocProcessor {
             JsonNode templateNode = objectMapper.readTree(templatedJSON);
             Map<String, Object> finalMDoc = new HashMap<>();
 
+            if (templateNode.has(Constants.VALIDITY_INFO)) {
+                JsonNode validityInfo = templateNode.get(Constants.VALIDITY_INFO);
+                Map<String, Object> validity = objectMapper.convertValue(validityInfo, Map.class);
+                ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
+                String formattedCurrentTime = currentTime
+                        .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+
+                if (validity.containsKey(VCDM2Constants.VALID_FROM)) {
+                    String validFromValue = (String) validity.get(VCDM2Constants.VALID_FROM);
+                    if ("${_validFrom}".equals(validFromValue)) {
+                        validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
+                    }
+                }
+
+                if (validity.containsKey("signed")) {
+                    String signedValue = (String) validity.get("signed");
+                    if ("${_signed}".equals(signedValue)) {
+                        validity.put("signed", createCBORTaggedDateTime(formattedCurrentTime));
+                    }
+                }
+                if (validity.containsKey(VCDM2Constants.VALID_UNTIL)) {
+                    String validUntilValue = (String) validity.get(VCDM2Constants.VALID_UNTIL);
+                    if ("${_validUntil}".equals(validUntilValue)) {
+                        String futureTime = currentTime
+                                .plusYears(mDocConfig.getValidityPeriodYears())
+                                .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+                        validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
+                    }
+                }
+
+
+                finalMDoc.put(Constants.VALIDITY_INFO, validity);
+            }
+
             if (templateParams.containsKey(Constants.DID_URL)) {
                 finalMDoc.put("_issuer", templateParams.get(Constants.DID_URL));
             }
@@ -389,18 +423,15 @@ public class MDocProcessor {
         mso.put("valueDigests", nameSpacesDigests);
         mso.put(Constants.DOCTYPE, mDocJson.get("_docType"));
 
+        // Create validity info with current timestamp
         Map<String, Object> validityInfo = new HashMap<>();
-        ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-        String formattedCurrentTime = currentTime
-                .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
-        String futureTime = currentTime
-                .plusYears(mDocConfig.getValidityPeriodYears())
-                .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
 
-        validityInfo.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
-        validityInfo.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-        validityInfo.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-
+        if (mDocJson.containsKey(Constants.VALIDITY_INFO)) {
+            Map<String, Object> originalValidity = (Map<String, Object>) mDocJson.get(Constants.VALIDITY_INFO);
+            validityInfo.put(VCDM2Constants.VALID_FROM, originalValidity.get(VCDM2Constants.VALID_FROM));
+            validityInfo.put(VCDM2Constants.VALID_UNTIL, originalValidity.get(VCDM2Constants.VALID_UNTIL));
+            validityInfo.put("signed", originalValidity.get("signed"));
+        }
         mso.put(Constants.VALIDITY_INFO, validityInfo);
 
         // Add device key info (placeholder - should be from wallet's PoP)
@@ -420,7 +451,6 @@ public class MDocProcessor {
         String deviceKeyEncoded = deviceInfo.toString();
         if (deviceKeyEncoded.startsWith(Constants.DID_JWK_PREFIX)) {
             deviceKeyEncoded = deviceKeyEncoded.substring(Constants.DID_JWK_PREFIX.length());
-            deviceKeyEncoded = deviceKeyEncoded.replace("#0", "");
         }
 
         byte[] decodedBytes = Base64.getUrlDecoder().decode(deviceKeyEncoded);

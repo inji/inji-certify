@@ -113,6 +113,56 @@ public class MDocProcessorTest {
         assertEquals("family_name", items.getFirst().get("elementIdentifier"));
         assertEquals("Doe", items.getFirst().get("elementValue"));
         assertEquals(0, items.getFirst().get("digestID"));
+
+        assertEquals("ValidityInfo should match",  Map.of(
+                "signed", Map.of(
+                        Constants.__CBOR_TAG, 0,
+                        Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                ),
+                "validFrom", Map.of(
+                        Constants.__CBOR_TAG, 0,
+                        Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                ),
+                "validUntil", Map.of(
+                        Constants.__CBOR_TAG, 0,
+                        Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+                )
+        ), result.get("validityInfo"));
+    }
+
+    @Test
+    public void processTemplatedJson_ValidityInfoPlaceholders_ReplacedWithTimestamps() {
+        String templatedJSON = "{"
+                + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {"
+                + "  \"validFrom\": \"${_validFrom}\","
+                + "  \"validUntil\": \"${_validUntil}\","
+                + "  \"signed\": \"${_signed}\""
+                + "},"
+                + "\"nameSpaces\": {}"
+                + "}";
+
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+
+        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
+        assertNotNull("ValidityInfo should not be null", validityInfo);
+
+        String validFrom =  (String)((Map<String,Object>) validityInfo.get(VCDM2Constants.VALID_FROM)).get(Constants.__CBOR_VALUE);
+        String validUntil =  (String)((Map<String,Object>) validityInfo.get(VCDM2Constants.VALID_UNTIL)).get(Constants.__CBOR_VALUE);
+        String signed =  (String)((Map<String,Object>) validityInfo.get(Constants.SIGNED)).get(Constants.__CBOR_VALUE);
+
+        assertNotNull("ValidFrom should be set", validFrom);
+        assertNotNull("ValidUntil should be set", validUntil);
+        assertNotEquals("${_validFrom}", validFrom);
+        assertNotEquals("${_signed}", signed);
+        assertNotEquals("${_validUntil}", validUntil);
+
+        // Verify timestamp format (ISO 8601)
+        assertTrue("ValidFrom should match ISO 8601",
+                validFrom.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
+        assertTrue(signed.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
+        assertTrue("ValidUntil should match ISO 8601",
+                validUntil.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
     }
 
     @Test
@@ -592,6 +642,12 @@ public class MDocProcessorTest {
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
 
+        Map<String, Object> validityInfo = new HashMap<>();
+        validityInfo.put(VCDM2Constants.VALID_FROM, "2024-01-01T00:00:00Z");
+        validityInfo.put(VCDM2Constants.VALID_UNTIL, "2025-01-01T00:00:00Z");
+        validityInfo.put(Constants.SIGNED, "2024-01-01T00:00:00Z");
+        mDocJson.put("validityInfo", validityInfo);
+
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
         Map<Integer, byte[]> digests = new HashMap<>();
         digests.put(0, new byte[32]);
@@ -605,20 +661,20 @@ public class MDocProcessorTest {
         assertEquals("Digest algorithm should match", "SHA-256", result.get("digestAlgorithm"));
         assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get(Constants.DOCTYPE));
 
-        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
-        assertNotNull("Should have validityInfo", validityInfo);
+        Map<String, Object> actualValidityInfo = (Map<String, Object>) result.get("validityInfo");
+        assertNotNull("Should have validityInfo", actualValidityInfo);
         assertEquals("ValidFrom should match", Map.of(
                 Constants.__CBOR_TAG, 0,
                 Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        ), validityInfo.get(VCDM2Constants.VALID_FROM));
+        ), actualValidityInfo.get(VCDM2Constants.VALID_FROM));
         assertEquals("ValidUntil should match", Map.of(
                 Constants.__CBOR_TAG, 0,
                 Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
-        ), validityInfo.get(VCDM2Constants.VALID_UNTIL));
+        ), actualValidityInfo.get(VCDM2Constants.VALID_UNTIL));
         assertEquals("Signed should match", Map.of(
                 Constants.__CBOR_TAG, 0,
                 Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
-        ), validityInfo.get("signed"));
+        ), actualValidityInfo.get("signed"));
         assertNotNull("Should have valueDigests", result.get("valueDigests"));
         assertNotNull("Should have deviceKeyInfo", result.get("deviceKeyInfo"));
     }
@@ -662,6 +718,10 @@ public class MDocProcessorTest {
                 Constants.__CBOR_TAG, 0,
                 Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
         );
+        Map<String, Object> signed = Map.of(
+                Constants.__CBOR_TAG, 0,
+                Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+        );
         Map<String, Object> validUntil = Map.of(
                 Constants.__CBOR_TAG, 0,
                 Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
@@ -672,6 +732,7 @@ public class MDocProcessorTest {
         Map<String, Object> resultValidity = (Map<String, Object>) result.get("validityInfo");
         assertEquals("ValidFrom should match", validFrom, resultValidity.get(VCDM2Constants.VALID_FROM));
         assertEquals("ValidUntil should match", validUntil, resultValidity.get(VCDM2Constants.VALID_UNTIL));
+        assertEquals("Signed should match", signed, resultValidity.get("signed"));
     }
 
     // ==================== COSE Signing Tests ====================
@@ -947,6 +1008,21 @@ public class MDocProcessorTest {
     // ==================== Configuration Tests ====================
 
     @Test
+    public void should_addValidityPeriod_asPer_MdocConfig() throws Exception {
+        when(mDocConfig.getValidityPeriodYears()).thenReturn(10);
+
+        String template = "{\"validityInfo\": {\"validFrom\": \"${_validFrom}\",\"signed\": \"${_signed}\", \"validUntil\": \"${_validUntil}\"}}";
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+
+        Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
+        String validUntil = (String) ((Map<String, Object>) validityInfo.get("validUntil")).get(Constants.__CBOR_VALUE);
+
+        assertNotNull("ValidUntil should be set", validUntil);
+        // Verify it's approximately 10 years in the future (allowing for execution time)
+        assertTrue("ValidUntil should be in the future", validUntil.compareTo("2030-01-01") > 0);
+    }
+
+    @Test
     public void should_useMsoVersion_when_mDocConfigApplied() throws Exception {
         when(mDocConfig.getMsoVersion()).thenReturn("2.0");
 
@@ -1059,7 +1135,8 @@ public class MDocProcessorTest {
                 + "\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {"
                 + "  \"validFrom\": \"${_validFrom}\","
-                + "  \"validUntil\": \"${_validUntil}\""
+                + "  \"validUntil\": \"${_validUntil}\","
+                + "  \"signed\": \"${_signed}\""
                 + "},"
                 + "\"nameSpaces\": {"
                 + "  \"org.iso.18013.5.1\": ["
