@@ -14,16 +14,17 @@ import io.mosip.kernel.signature.service.CoseSignatureService;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
+import java.util.Base64;
 import java.util.Map;
 
 import static org.junit.Assert.*;
@@ -70,42 +71,65 @@ public class MDocProcessorTest {
     // ==================== Template Processing Tests ====================
 
     @Test
-    public void processTemplatedJson_ValidmDLTemplate_MapsToISO18013Elements() throws Exception {
-        String templatedJSON = "{"
-                + "\"docType\": \"org.iso.18013.5.1.mDL\","
-                + "\"validityInfo\": {"
-                + "  \"validFrom\": \"${_validFrom}\","
-                + "  \"validUntil\": \"${_validUntil}\""
-                + "},"
-                + "\"nameSpaces\": {"
-                + "  \"org.iso.18013.5.1\": ["
-                + "    {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
-                + "    {\"digestID\": 1, \"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
-                + "    {\"digestID\": 2, \"elementIdentifier\": \"birth_date\", \"elementValue\": \"1990-08-25\"}"
-                + "  ]"
-                + "}"
-                + "}";
+    public void processTemplatedJson_ValidmDLTemplate_MapsToISO18013Elements() {
+        // Mock ZonedDateTime.now() to return a fixed date for consistent testing
+        ZonedDateTime fixedDateTime = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
+        
+        try (MockedStatic<ZonedDateTime> mockedZonedDateTime = mockStatic(ZonedDateTime.class, CALLS_REAL_METHODS)) {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC))
+                    .thenReturn(fixedDateTime);
 
-        Map<String, Object> templateParams = new HashMap<>();
-        templateParams.put("didUrl", "https://issuer.example.com/did");
-        templateParams.put("_holderId", "did:jwk:test123");
+            String templatedJSON = "{"
+                    + "\"docType\": \"org.iso.18013.5.1.mDL\","
+                    + "\"validityInfo\": {"
+                    + "  \"validFrom\": \"${_validFrom}\","
+                    + "  \"validUntil\": \"${_validUntil}\","
+                    + "  \"signed\": \"${_signed}\""
+                    + "},"
+                    + "\"nameSpaces\": {"
+                    + "  \"org.iso.18013.5.1\": ["
+                    + "    {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                    + "    {\"digestID\": 1, \"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
+                    + "    {\"digestID\": 2, \"elementIdentifier\": \"birth_date\", \"elementValue\": \"1990-08-25\"}"
+                    + "  ]"
+                    + "}"
+                    + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams);
+            Map<String, Object> templateParams = new HashMap<>();
+            templateParams.put("didUrl", "https://issuer.example.com/did");
+            templateParams.put("_holderId", "did:jwk:test123");
 
-        assertNotNull("Result should not be null", result);
-        assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get("_docType"));
-        assertEquals("HolderId should match", "did:jwk:test123", result.get("_holderId"));
-        assertEquals("Issuer should match", "https://issuer.example.com/did", result.get("_issuer"));
+            Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams);
 
-        Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
-        assertNotNull("NameSpaces should not be null", nameSpaces);
+            assertNotNull("Result should not be null", result);
+            assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get("_docType"));
+            assertEquals("HolderId should match", "did:jwk:test123", result.get("_holderId"));
+            assertEquals("Issuer should match", "https://issuer.example.com/did", result.get("_issuer"));
+            assertEquals("ValidityInfo should match",  Map.of(
+                    "signed", Map.of(
+                            Constants.__CBOR_TAG, 0,
+                            Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                    ),
+                    "validFrom", Map.of(
+                            Constants.__CBOR_TAG, 0,
+                            Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                    ),
+                    "validUntil", Map.of(
+                            Constants.__CBOR_TAG, 0,
+                            Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+                    )
+            ), result.get("validityInfo"));
 
-        List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
-        assertEquals("Should have 3 elements", 3, items.size());
+            Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
+            assertNotNull("NameSpaces should not be null", nameSpaces);
 
-        assertEquals("family_name", items.get(0).get("elementIdentifier"));
-        assertEquals("Doe", items.get(0).get("elementValue"));
-        assertEquals(0, items.get(0).get("digestID"));
+            List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
+            assertEquals("Should have 3 elements", 3, items.size());
+
+            assertEquals("family_name", items.get(0).get("elementIdentifier"));
+            assertEquals("Doe", items.get(0).get("elementValue"));
+            assertEquals(0, items.get(0).get("digestID"));
+        }
     }
 
     @Test
@@ -619,6 +643,7 @@ public class MDocProcessorTest {
         Map<String, Object> validityInfo = new HashMap<>();
         validityInfo.put(VCDM2Constants.VALID_FROM, "2024-01-01T00:00:00Z");
         validityInfo.put(VCDM2Constants.VALID_UNTIL, "2025-01-01T00:00:00Z");
+        validityInfo.put(Constants.SIGNED, "2024-01-01T00:00:00Z");
         mDocJson.put("validityInfo", validityInfo);
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
@@ -634,7 +659,11 @@ public class MDocProcessorTest {
         assertEquals("Digest algorithm should match", "SHA-256", result.get("digestAlgorithm"));
         assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get(Constants.DOCTYPE));
 
-        assertNotNull("Should have validityInfo", result.get("validityInfo"));
+        Map<String, Object> actualValidityInfo = (Map<String, Object>) result.get("validityInfo");
+        assertNotNull("Should have validityInfo", actualValidityInfo);
+        assertEquals("ValidFrom should match", "2024-01-01T00:00:00Z", actualValidityInfo.get(VCDM2Constants.VALID_FROM));
+        assertEquals("ValidUntil should match", "2025-01-01T00:00:00Z", actualValidityInfo.get(VCDM2Constants.VALID_UNTIL));
+        assertEquals("Signed should match", "2024-01-01T00:00:00Z", actualValidityInfo.get(Constants.SIGNED));
         assertNotNull("Should have valueDigests", result.get("valueDigests"));
         assertNotNull("Should have deviceKeyInfo", result.get("deviceKeyInfo"));
     }

@@ -22,7 +22,6 @@ import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDate;
@@ -66,22 +65,30 @@ public class MDocProcessor {
             if (templateNode.has(Constants.VALIDITY_INFO)) {
                 JsonNode validityInfo = templateNode.get(Constants.VALIDITY_INFO);
                 Map<String, Object> validity = objectMapper.convertValue(validityInfo, Map.class);
+                ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
+                String formattedCurrentTime = currentTime
+                        .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
 
                 if (validity.containsKey(VCDM2Constants.VALID_FROM)) {
                     String validFromValue = (String) validity.get(VCDM2Constants.VALID_FROM);
                     if ("${_validFrom}".equals(validFromValue)) {
-                        String currentTime = ZonedDateTime.now(ZoneOffset.UTC)
-                                .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
-                        validity.put(VCDM2Constants.VALID_FROM, currentTime);
+                        validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
+                    }
+                }
+
+                if (validity.containsKey("signed")) {
+                    String signedValue = (String) validity.get("signed");
+                    if ("${_signed}".equals(signedValue)) {
+                        validity.put("signed", createCBORTaggedDateTime(formattedCurrentTime));
                     }
                 }
                 if (validity.containsKey(VCDM2Constants.VALID_UNTIL)) {
                     String validUntilValue = (String) validity.get(VCDM2Constants.VALID_UNTIL);
                     if ("${_validUntil}".equals(validUntilValue)) {
-                        String futureTime = ZonedDateTime.now(ZoneOffset.UTC)
+                        String futureTime = currentTime
                                 .plusYears(mDocConfig.getValidityPeriodYears())
                                 .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
-                        validity.put(VCDM2Constants.VALID_UNTIL, futureTime);
+                        validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
                     }
                 }
 
@@ -234,6 +241,24 @@ public class MDocProcessor {
         }
     }
 
+    public static byte[] encodeToTaggedCBOR(Object obj) throws Exception {
+        try {
+            byte[] innerCborBytes = encodeToCBOR(obj);
+
+            // Format: #6.24(bstr .cbor convertToDataItem(preprocessedData))
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            CborEncoder encoder = new CborEncoder(baos);
+            ByteString taggedCbor = new ByteString(innerCborBytes);
+            taggedCbor.setTag(24);
+            encoder.encode(taggedCbor);
+
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Error encoding to CBOR: {}", e.getMessage(), e);
+            throw new Exception("CBOR encoding failed: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Preprocesses objects for CBOR encoding (handles dates, byte arrays, etc.)
      */
@@ -370,6 +395,18 @@ public class MDocProcessor {
     }
 
     /**
+     * Creates a CBOR tagged datetime (tag 0) for datetime strings (RFC 3339 format)
+     * RFC 8610: tdate = #6.0(tstr) where tstr = #3
+     * This wraps full datetime timestamps in Tag 0 as per mso_mdoc specification
+     */
+    private static Map<String, Object> createCBORTaggedDateTime(String dateTimeStr) {
+        Map<String, Object> taggedDate = new HashMap<>();
+        taggedDate.put(Constants.__CBOR_TAG, 0);
+        taggedDate.put(Constants.__CBOR_VALUE, dateTimeStr);
+        return taggedDate;
+    }
+
+    /**
      * Creates the Mobile Security Object (MSO) structure
      */
     public Map<String, Object> createMobileSecurityObject
@@ -393,6 +430,7 @@ public class MDocProcessor {
             Map<String, Object> originalValidity = (Map<String, Object>) mDocJson.get(Constants.VALIDITY_INFO);
             validityInfo.put(VCDM2Constants.VALID_FROM, originalValidity.get(VCDM2Constants.VALID_FROM));
             validityInfo.put(VCDM2Constants.VALID_UNTIL, originalValidity.get(VCDM2Constants.VALID_UNTIL));
+            validityInfo.put("signed", originalValidity.get("signed"));
         }
         mso.put(Constants.VALIDITY_INFO, validityInfo);
 
