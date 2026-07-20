@@ -90,7 +90,7 @@ public class MDocProcessorTest {
     // ==================== Template Processing Tests ====================
 
     @Test
-    public void processTemplatedJson_ValidmDLTemplate_MapsToISO18013Elements() {
+    public void should_mapToISO18013Elements_when_validmDLTemplateIsProcessed() {
         String templatedJSON = createFullmDLTemplate();
 
         Map<String, Object> templateParams = new HashMap<>();
@@ -116,7 +116,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void processTemplatedJson_ComplexElementValue_PreservesStructure() throws Exception {
+    public void should_preserveStructure_when_complexElementValueProcessed() throws Exception {
         String templatedJSON = "{"
                 + "\"nameSpaces\": {"
                 + "  \"org.iso.18013.5.1\": ["
@@ -147,7 +147,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void processTemplatedJson_InvalidJson_ReturnsEmptyMap() {
+    public void should_returnEmptyMap_when_invalidJsonProcessed() {
         String invalidJSON = "{invalid json}";
         Map<String, Object> result;
         try {
@@ -161,7 +161,7 @@ public class MDocProcessorTest {
 
 
     @Test
-    public void processTemplatedJson_MultipleNamespaces_HandlesAll() throws Exception {
+    public void should_handleAllNamespaces_when_multipleNamespacesProcessed() throws Exception {
         String templatedJSON = "{"
                 + "\"docType\": \"org.mosip.credential\","
                 + "\"nameSpaces\": {"
@@ -184,7 +184,7 @@ public class MDocProcessorTest {
     // ==================== Random Salt Generation Tests ====================
 
     @Test
-    public void addRandomSalts_AddsRandomBytesToAllElements() {
+    public void should_addRandomBytes_when_addRandomSaltsCalled() {
         Map<String, Object> mDocJson = createTestMDocJson();
 
         Map<String, Object> result = MDocProcessor.addRandomSalts(mDocJson);
@@ -201,7 +201,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void addRandomSalts_GeneratesUniqueSalts() {
+    public void should_generateUniqueSalts_when_addRandomSaltsCalled() {
         Map<String, Object> mDocJson = new HashMap<>();
         Map<String, Object> nameSpaces = new HashMap<>();
         List<Map<String, Object>> elements = new ArrayList<>();
@@ -225,7 +225,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void addRandomSalts_PreservesOriginalData() {
+    public void should_preserveOriginalData_when_addRandomSaltsCalled() {
         Map<String, Object> mDocJson = createTestMDocJson();
 
         Map<String, Object> result = MDocProcessor.addRandomSalts(mDocJson);
@@ -239,7 +239,7 @@ public class MDocProcessorTest {
     // ==================== Digest Calculation Tests ====================
 
     @Test
-    public void calculateDigests_GeneratesCorrectSHA256Digests() throws Exception {
+    public void should_generateCorrectSHA256Digests_when_calculateDigestsCalled() throws Exception {
         Map<String, Object> saltedNamespaces = new HashMap<>();
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(createSaltedElement(0, "family_name", "Doe"));
@@ -258,7 +258,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void calculateDigests_MultipleElements_MapsDigestsByID() throws Exception {
+    public void should_mapDigestsByID_when_multipleElementsProvided() throws Exception {
         Map<String, Object> saltedNamespaces = new HashMap<>();
         List<Map<String, Object>> elements = new ArrayList<>();
 
@@ -280,7 +280,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void calculateDigests_WrapsWithCBORTag24() throws Exception {
+    public void should_wrapWithCBORTag24_when_calculateDigestsCalled() throws Exception {
         Map<String, Object> saltedNamespaces = new HashMap<>();
         List<Map<String, Object>> elements = new ArrayList<>();
         elements.add(createSaltedElement(0, "test", "value"));
@@ -301,7 +301,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void calculateDigests_VerifyDigestCalculation() throws Exception {
+    public void should_verifyDigestCalculation_when_calculateDigestsCalled() throws Exception {
         // Create element with known data
         Map<String, Object> element = new HashMap<>();
         element.put("digestID", 0);
@@ -328,7 +328,7 @@ public class MDocProcessorTest {
     // ==================== CBOR Encoding Tests ====================
 
     @Test
-    public void encodeToCBOR_SimpleMap_EncodesSuccessfully() throws Exception {
+    public void should_encodeSuccessfully_when_simpleMapEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("key", "value");
         data.put("number", 42);
@@ -345,7 +345,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_WithByteArray_PreservesBytes() throws Exception {
+    public void should_preserveBytes_when_byteArrayEncoded() throws Exception {
         byte[] testBytes = new byte[]{1, 2, 3, 4, 5};
         Map<String, Object> data = new HashMap<>();
         data.put("bytes", testBytes);
@@ -362,7 +362,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_NestedStructures_EncodesRecursively() throws Exception {
+    public void should_encodeRecursively_when_nestedStructuresEncoded() throws Exception {
         Map<String, Object> nested = new HashMap<>();
         nested.put("inner", "value");
         nested.put("innerNumber", 123);
@@ -378,7 +378,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_DateString_AppliesTag1004() throws Exception {
+    public void should_applyTag1004_when_dateStringEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("birthDate", "1990-08-25");
 
@@ -397,7 +397,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_AllDataTypes_HandlesCorrectly() throws Exception {
+    public void should_handleCorrectly_when_allDataTypesEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("string", "test");
         data.put("integer", 42);
@@ -416,7 +416,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_NullInput_HandlesGracefully() throws Exception {
+    public void should_handleGracefully_when_nullInputEncoded() throws Exception {
         // Null is handled by preprocessForCBOR and converted to SimpleValue.NULL
         byte[] result = MDocProcessor.encodeToCBOR(Collections.singletonMap("nullKey", null));
 
@@ -427,7 +427,7 @@ public class MDocProcessorTest {
     // ==================== Date Handling Tests ====================
 
     @Test
-    public void dateHandling_ValidDates_RecognizedCorrectly() throws Exception {
+    public void should_recognizeCorrectly_when_validDatesHandled() throws Exception {
         String[] validDates = {
                 "2025-01-15",
                 "1990-12-31",
@@ -456,7 +456,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void dateHandling_NonDateStrings_NotTagged() throws Exception {
+    public void should_notTag_when_nonDateStringsHandled() throws Exception {
         String[] nonDates = {
                 "2025-13-01", // Invalid month
                 "2025/01/15", // Wrong format
@@ -483,7 +483,7 @@ public class MDocProcessorTest {
     // ==================== DeviceKeyInfo Tests ====================
 
     @Test
-    public void createDeviceKeyInfo_ValidDidJwkEC_ParsesCorrectly() throws Exception {
+    public void should_parseCorrectly_when_validDidJwkECProvided() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
                 + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
@@ -513,7 +513,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createDeviceKeyInfo_P384Curve_MapsCorrectly() throws Exception {
+    public void should_mapCorrectly_when_p384CurveUsed() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-384\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
                 + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
@@ -531,7 +531,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createDeviceKeyInfo_P521Curve_MapsCorrectly() throws Exception {
+    public void should_mapCorrectly_when_p521CurveUsed() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-521\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
                 + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
@@ -549,7 +549,7 @@ public class MDocProcessorTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void createDeviceKeyInfo_UnsupportedCurve_ThrowsException() throws Exception {
+    public void should_throwException_when_unsupportedCurveUsed() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"secp256k1\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
                 + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
@@ -563,7 +563,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createDeviceKeyInfo_WithKeyId_PreservesKid() throws Exception {
+    public void should_preserveKid_when_keyIdProvided() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
                 + "\"kid\":\"test-key-123\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
@@ -587,7 +587,7 @@ public class MDocProcessorTest {
     // ==================== MSO Structure Tests ====================
 
     @Test
-    public void createMobileSecurityObject_ValidInput_CreatesCompleteStructure() throws Exception {
+    public void should_createCompleteStructure_when_validInputProvided() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
@@ -624,7 +624,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createMobileSecurityObject_ValueDigests_StructureCorrect() throws Exception {
+    public void should_structureCorrectly_when_valueDigestsProcessed() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.test.doc");
         mDocJson.put("_holderId", createTestDidJwk());
@@ -653,7 +653,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createMobileSecurityObject_Adds_ValidityInfo() throws Exception {
+    public void should_addValidityInfo_when_createMobileSecurityObjectIsCalled() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.test.doc");
         mDocJson.put("_holderId", createTestDidJwk());
@@ -677,7 +677,7 @@ public class MDocProcessorTest {
     // ==================== COSE Signing Tests ====================
 
     @Test
-    public void signMSO_ValidInput_ReturnsSignedBytes() throws Exception {
+    public void should_returnSignedBytes_when_validInputProvided() throws Exception {
         Map<String, Object> mso = new HashMap<>();
         mso.put("version", "1.0");
         mso.put("digestAlgorithm", "SHA-256");
@@ -722,7 +722,7 @@ public class MDocProcessorTest {
     }
 
     @Test(expected = CertifyException.class)
-    public void signMSO_SigningFails_ThrowsException() throws Exception {
+    public void should_throwException_when_signingFails() throws Exception {
         Map<String, Object> mso = new HashMap<>();
         mso.put("version", "1.0");
 
@@ -735,7 +735,7 @@ public class MDocProcessorTest {
     // ==================== IssuerSigned Structure Tests ====================
 
     @Test
-    public void createIssuerSignedStructure_ValidInput_CreatesStructure() throws Exception {
+    public void should_createStructure_when_validInputProvided() throws Exception {
         Map<String, Object> processedNamespaces = new HashMap<>();
         List<Object> elements = new ArrayList<>();
 
@@ -767,7 +767,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void createIssuerSignedStructure_EmptyNamespaces_HandlesGracefully() throws Exception {
+    public void should_handleGracefully_when_emptyNamespacesProvided() throws Exception {
         Map<String, Object> processedNamespaces = new HashMap<>();
 
         co.nstant.in.cbor.model.Array coseArray = new co.nstant.in.cbor.model.Array();
@@ -788,7 +788,7 @@ public class MDocProcessorTest {
     }
 
     @Test(expected = IOException.class)
-    public void createIssuerSignedStructure_InvalidCBOR_ThrowsException() throws Exception {
+    public void should_throwException_when_invalidCBOREncountered() throws Exception {
         Map<String, Object> processedNamespaces = new HashMap<>();
 
         // Use bytes that will cause CborException - incomplete CBOR structure
@@ -799,7 +799,7 @@ public class MDocProcessorTest {
     // ==================== Integration Tests ====================
 
     @Test
-    public void multipleNamespacesWorkflow_HandlesCorrectly() throws Exception {
+    public void should_handleCorrectly_when_multipleNamespacesProcessed() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.multi.credential");
         mDocJson.put("_holderId", createTestDidJwk());
@@ -825,7 +825,7 @@ public class MDocProcessorTest {
     // ==================== Edge Cases and Error Handling ====================
 
     @Test
-    public void addRandomSalts_EmptyNamespace_HandlesGracefully() {
+    public void should_handleGracefully_when_emptyNamespaceEncountered() {
         Map<String, Object> mDocJson = new HashMap<>();
         Map<String, Object> nameSpaces = new HashMap<>();
         nameSpaces.put("org.iso.18013.5.1", new ArrayList<>());
@@ -840,7 +840,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void calculateDigests_EmptyElements_HandlesGracefully() throws Exception {
+    public void should_handleGracefully_when_emptyElementsEncountered() throws Exception {
         Map<String, Object> saltedNamespaces = new HashMap<>();
         saltedNamespaces.put("org.iso.18013.5.1", new ArrayList<>());
 
@@ -854,7 +854,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_NullValue_HandlesCorrectly() throws Exception {
+    public void should_handleCorrectly_when_nullValueEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("nullField", null);
         data.put("normalField", "value");
@@ -871,7 +871,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_LargeNumbers_HandlesCorrectly() throws Exception {
+    public void should_handleCorrectly_when_largeNumbersEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("maxInt", Integer.MAX_VALUE);
         data.put("minInt", Integer.MIN_VALUE);
@@ -885,7 +885,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void encodeToCBOR_SpecialFloats_HandlesCorrectly() throws Exception {
+    public void should_handleCorrectly_when_specialFloatsEncoded() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("pi", 3.14159);
         data.put("negative", -2.5);
@@ -900,7 +900,7 @@ public class MDocProcessorTest {
     // ==================== CBOR Type Conversion Tests ====================
 
     @Test
-    public void convertToDataItem_Integer_ConvertsCorrectly() throws Exception {
+    public void should_convertCorrectly_when_integerConverted() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("positive", 42);
         data.put("negative", -42);
@@ -914,7 +914,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void convertToDataItem_Boolean_ConvertsCorrectly() throws Exception {
+    public void should_convertCorrectly_when_booleanConverted() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("trueValue", true);
         data.put("falseValue", false);
@@ -932,7 +932,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void convertToDataItem_List_ConvertsToArray() throws Exception {
+    public void should_convertToArray_when_listConverted() throws Exception {
         Map<String, Object> data = new HashMap<>();
         data.put("list", Arrays.asList("a", "b", "c"));
 
@@ -947,7 +947,7 @@ public class MDocProcessorTest {
     // ==================== Configuration Tests ====================
 
     @Test
-    public void mDocConfig_MsoVersion_UsedInMSO() throws Exception {
+    public void should_useMsoVersion_when_mDocConfigApplied() throws Exception {
         when(mDocConfig.getMsoVersion()).thenReturn("2.0");
 
         Map<String, Object> mDocJson = new HashMap<>();
@@ -960,7 +960,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void mDocConfig_DigestAlgorithm_UsedInMSO() throws Exception {
+    public void should_useDigestAlgorithm_when_mDocConfigApplied() throws Exception {
         when(mDocConfig.getDigestAlgorithm()).thenReturn("SHA-512");
 
         Map<String, Object> mDocJson = new HashMap<>();
@@ -975,7 +975,7 @@ public class MDocProcessorTest {
     // ==================== Compliance Tests (ISO 18013-5) ====================
 
     @Test
-    public void iso18013_IssuerSignedStructure_HasRequiredFields() throws Exception {
+    public void should_haveRequiredFields_when_issuerSignedStructureCreated() throws Exception {
         Map<String, Object> processedNamespaces = new HashMap<>();
         processedNamespaces.put("org.iso.18013.5.1", new ArrayList<>());
 
@@ -988,7 +988,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void iso18013_MSO_HasRequiredFields() throws Exception {
+    public void should_haveRequiredFields_when_msoCreated() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
@@ -1004,7 +1004,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void iso18013_IssuerSignedItem_Structure() throws Exception {
+    public void should_structureCorrectly_when_issuerSignedItemCreated() throws Exception {
         Map<String, Object> element = createSaltedElement(0, "family_name", "Doe");
 
         // Verify element has required fields
