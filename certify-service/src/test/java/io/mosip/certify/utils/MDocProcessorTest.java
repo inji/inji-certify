@@ -746,6 +746,7 @@ public class MDocProcessorTest {
         assertEquals("Application ID should match", "testApp", requestDto.getApplicationId());
         assertEquals("Reference ID should match", "testRef", requestDto.getReferenceId());
         assertEquals("Algorithm should match", "ES256", requestDto.getAlgorithm());
+        assertEquals("Include COSE Tag should match", false, requestDto.getIncludeCOSETag());
     }
 
     @Test(expected = CertifyException.class)
