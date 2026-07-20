@@ -747,6 +747,21 @@ public class MDocProcessorTest {
         assertEquals("Reference ID should match", "testRef", requestDto.getReferenceId());
         assertEquals("Algorithm should match", "ES256", requestDto.getAlgorithm());
         assertEquals("Include COSE Tag should match", false, requestDto.getIncludeCOSETag());
+
+        // Assert the request dto payload is B64 encoded - tagged mso #6.24(bstr .cbor mso)
+        String payload = requestDto.getPayload();
+        try {
+            byte[] decodedPayload = Base64.getUrlDecoder().decode(payload);
+            assertTrue("Decoded payload should contain data", decodedPayload.length > 0);
+            // Verify the decoded payload is a CBOR-encoded tag-24 wrapped ByteString (bstr .cbor mso)
+            List<DataItem> cborItems = new CborDecoder(new ByteArrayInputStream(decodedPayload)).decode();
+            assertFalse("Should decode to CBOR items", cborItems.isEmpty());
+            DataItem item = cborItems.get(0);
+            assertTrue("Payload should be a ByteString", item instanceof ByteString);
+            assertEquals("Payload should have CBOR tag 24", 24, item.getTag().getValue());
+        } catch (IllegalArgumentException e) {
+            fail("Payload should be valid Base64 encoded: " + e.getMessage());
+        }
     }
 
     @Test(expected = CertifyException.class)

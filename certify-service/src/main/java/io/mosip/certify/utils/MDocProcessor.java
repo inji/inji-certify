@@ -445,7 +445,7 @@ public class MDocProcessor {
      * Creates device key info structure (placeholder implementation)
      */
     private static Map<String, Object> createDeviceKeyInfo(Object deviceInfo) throws Exception {
-        if(deviceInfo == null) {
+        if (deviceInfo == null) {
             throw new IllegalArgumentException("Device info (holder ID) is required for mDoc credential");
         }
         String deviceKeyEncoded = deviceInfo.toString();
@@ -493,7 +493,7 @@ public class MDocProcessor {
      */
     public byte[] signMSO(Map<String, Object> mso, String appID, String refID, String signAlgorithm) throws Exception {
         try {
-            byte[] msoCbor = encodeToCBOR(mso);
+            byte[] msoCbor = encodeToTaggedCBOR(mso);
 
             CoseSignRequestDto signRequest = new CoseSignRequestDto();
 
