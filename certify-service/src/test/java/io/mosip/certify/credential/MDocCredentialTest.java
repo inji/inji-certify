@@ -126,7 +126,7 @@ public class MDocCredentialTest {
     }
 
     @Test(expected = CertifyException.class)
-    public void testCreateCredentialThrowsExceptionWhenFormatterFails() throws Exception {
+    public void testCreateCredentialThrowsExceptionWhenFormatterFails() {
         String templateName = "badTemplate";
         Map<String, Object> templateParams = new HashMap<>();
 
@@ -137,7 +137,7 @@ public class MDocCredentialTest {
     }
 
     @Test(expected = CertifyException.class)
-    public void testCreateCredentialThrowsExceptionWhenProcessingFails() throws Exception {
+    public void testCreateCredentialThrowsExceptionWhenProcessingFails() {
         String templateName = "badTemplate";
         Map<String, Object> templateParams = new HashMap<>();
         String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\"}";
@@ -176,7 +176,6 @@ public class MDocCredentialTest {
 
         Map<String, Object> mDocJson = createTestMDocJson();
         Map<String, Object> saltedNamespaces = createTestSaltedNamespaces();
-        Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
         Map<String, Object> taggedNamespaces = createTestTaggedNamespaces();
         Map<String, Object> mso = createTestMSO();
         byte[] signedMSO = new byte[]{1, 2, 3, 4};
@@ -208,6 +207,10 @@ public class MDocCredentialTest {
 
             verify(mDocProcessor).createMobileSecurityObject(eq(mDocJson), any());
             verify(mDocProcessor).signMSO(mso, appID, refID, signAlgorithm);
+            // Issuer signed is CBOR encoded and base64 url encoded
+            mockedStatic.verify(() -> MDocProcessor.encodeToCBOR(issuerSigned));
+            byte[] decodedMdoc = Base64.getUrlDecoder().decode(result.getCredential().toString());
+            assertArrayEquals(decodedMdoc, cborIssuerSigned);
         }
     }
 
