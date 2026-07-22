@@ -36,15 +36,13 @@ public class SDJWTTest {
     @Mock
     private SignatureService mockSignatureService;
 
-    @Mock
-    private ObjectMapper objectMapper;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private SDJWT sdjwt;
 
     @Before
     public void setup() {
-        // MockitoJUnitRunner takes care of injecting mocks
         MockitoAnnotations.openMocks(this);
         ReflectionTestUtils.setField(sdjwt, "objectMapper", objectMapper);
     }
@@ -65,16 +63,32 @@ public class SDJWTTest {
         Map<String, Object> templateParams = new HashMap<>();
 
         String templateJson = "{\"name\": \"John\", \"age\": 30}";
-        JsonNode mockJsonNode =  mock(JsonNode.class);
         when(mockFormatter.format(any(Map.class))).thenReturn(templateJson);
         when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
                 .thenReturn(Arrays.asList("$.name"));
-        when(objectMapper.readTree(templateJson)).thenReturn(mockJsonNode);
 
         String result = sdjwt.createCredential(templateParams, mockTemplateName);
 
         assertNotNull(result);
         assertTrue(result.contains("~"));
+    }
+
+    @Test
+    public void testCreateCredential_WithInvalidSDClaim_ThrowsCertifyException() throws JsonProcessingException {
+        String mockTemplateName = "mockTemplate";
+        Map<String, Object> templateParams = new HashMap<>();
+
+        String templateJson = "{\"name\": \"John\", \"age\": 30}";
+        when(mockFormatter.format(any(Map.class))).thenReturn(templateJson);
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
+                .thenReturn(Arrays.asList("$.invalid_claim"));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            sdjwt.createCredential(templateParams, mockTemplateName);
+        });
+
+        assertEquals(ErrorConstants.SD_CLAIMS_PARSE_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("SD-Claim path '$.invalid_claim' not found in the credential template."));
     }
 
     @Test
@@ -84,7 +98,6 @@ public class SDJWTTest {
 
         when(mockFormatter.format(any(Map.class))).thenReturn("{invalid json}");
         when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName)).thenReturn(Arrays.asList("$.invalid"));
-        when(objectMapper.readTree("{invalid json}")).thenThrow(new JsonProcessingException("Invalid JSON") {});
 
         CertifyException exception = assertThrows(CertifyException.class, () -> {
             sdjwt.createCredential(templateParams, mockTemplateName);
