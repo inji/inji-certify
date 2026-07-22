@@ -169,6 +169,8 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
                 message = String.format("Unrecognized field '%s' in request", propEx.getPropertyName());
             } else if (cause instanceof InvalidFormatException) {
                 message = "Invalid field format in request";
+            } else if (cause instanceof JsonParseException) {
+                message = "Malformed JSON syntax error";
             } else if (cause instanceof JsonMappingException) {
                 message = "Invalid request structure";
             }

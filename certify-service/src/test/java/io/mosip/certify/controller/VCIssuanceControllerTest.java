@@ -130,4 +130,14 @@ public class VCIssuanceControllerTest {
                 .andExpect(jsonPath("$.error").value(exception.getErrorCode()))
                 .andExpect(jsonPath("$.error_description").value(exception.getMessage()));
     }
+
+    @Test
+    public void getVerifiableCredential_withMalformedJson_thenFail() throws Exception {
+        mockMvc.perform(post("/issuance/credential")
+                        .content("{invalid-json}")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("Malformed JSON syntax error"));
+    }
 }

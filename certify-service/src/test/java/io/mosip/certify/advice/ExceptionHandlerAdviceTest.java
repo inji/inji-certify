@@ -1,0 +1,87 @@
+package io.mosip.certify.advice;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.mosip.certify.core.dto.VCError;
+import jakarta.servlet.http.HttpServletRequest;
+import org.junit.Assert;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+
+public class ExceptionHandlerAdviceTest {
+
+    private final ExceptionHandlerAdvice advice = new ExceptionHandlerAdvice();
+    private final HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
+
+    @Test
+    public void testHandleVCIControllerExceptions_UnrecognizedPropertyException() {
+        com.fasterxml.jackson.core.JsonParser parser = Mockito.mock(com.fasterxml.jackson.core.JsonParser.class);
+        Mockito.when(parser.getCurrentLocation()).thenReturn(com.fasterxml.jackson.core.JsonLocation.NA);
+        UnrecognizedPropertyException cause = UnrecognizedPropertyException.from(
+                parser, Object.class, "unrecognized_field", null
+        );
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        Assert.assertEquals("invalid_request", response.getBody().getError());
+        Assert.assertEquals("Unrecognized field 'unrecognized_field' in request", response.getBody().getError_description());
+    }
+
+    @Test
+    public void testHandleVCIControllerExceptions_InvalidFormatException() {
+        InvalidFormatException cause = InvalidFormatException.from(
+                null, "msg", "value", String.class
+        );
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        Assert.assertEquals("invalid_request", response.getBody().getError());
+        Assert.assertEquals("Invalid field format in request", response.getBody().getError_description());
+    }
+
+    @Test
+    public void testHandleVCIControllerExceptions_JsonParseException() {
+        JsonParseException cause = new JsonParseException(null, "msg");
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        Assert.assertEquals("invalid_request", response.getBody().getError());
+        Assert.assertEquals("Malformed JSON syntax error", response.getBody().getError_description());
+    }
+
+    @Test
+    public void testHandleVCIControllerExceptions_JsonMappingException() {
+        JsonMappingException cause = JsonMappingException.from(
+                (com.fasterxml.jackson.core.JsonParser) null, "msg"
+        );
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        Assert.assertEquals("invalid_request", response.getBody().getError());
+        Assert.assertEquals("Invalid request structure", response.getBody().getError_description());
+    }
+
+    @Test
+    public void testHandleVCIControllerExceptions_GenericReadableException() {
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", (Throwable) null, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        Assert.assertEquals("invalid_request", response.getBody().getError());
+        Assert.assertEquals("Invalid JSON request body", response.getBody().getError_description());
+    }
+}
