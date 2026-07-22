@@ -261,4 +261,24 @@ public class SDJsonUtilsTest extends TestCase {
     assertTrue(mobilePhoneObject.containsKey("type"));
     assertFalse(mobilePhoneObject.containsKey("number"));
   }
+
+  public void testIsPathValid() {
+      ObjectNode node = JsonNodeFactory.instance.objectNode();
+      node.put("name", "John");
+      ObjectNode addressNode = JsonNodeFactory.instance.objectNode();
+      addressNode.put("city", "Coimbatore");
+      node.set("address", addressNode);
+
+      // Valid paths
+      assertTrue(SDJsonUtils.isPathValid(node, "$.name"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.address.city"));
+
+      // Invalid paths
+      assertFalse(SDJsonUtils.isPathValid(node, "$.invalidKey"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address.invalidKey"));
+
+      // Duplicate dot paths
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address..city"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address...city"));
+  }
 }

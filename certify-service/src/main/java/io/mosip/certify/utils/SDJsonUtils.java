@@ -233,6 +233,9 @@ public class SDJsonUtils {
             return false;
         }
         path = path.trim();
+        if (path.contains("..")) {
+            return false;
+        }
         if (path.startsWith("$")) {
             path = path.substring(1);
         }
@@ -243,7 +246,7 @@ public class SDJsonUtils {
             return true;
         }
 
-        String normalizedPath = path.replace("[", ".[").replace("..", ".");
+        String normalizedPath = path.replace("[", ".[");
         if (normalizedPath.startsWith(".")) {
             normalizedPath = normalizedPath.substring(1);
         }
