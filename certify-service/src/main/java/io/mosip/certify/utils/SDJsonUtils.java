@@ -256,11 +256,11 @@ public class SDJsonUtils {
     }
 
     private static boolean checkSegments(JsonNode node, String[] segments, int index) {
-        if (node == null || node.isMissingNode()) {
-            return false;
-        }
         if (index >= segments.length) {
             return true;
+        }
+        if (node == null || node.isMissingNode()) {
+            return false;
         }
         if (node.isNull()) {
             return false;

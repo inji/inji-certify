@@ -265,6 +265,7 @@ public class SDJsonUtilsTest extends TestCase {
   public void testIsPathValid() {
       ObjectNode node = JsonNodeFactory.instance.objectNode();
       node.put("name", "John");
+      node.putNull("middleName");
       ObjectNode addressNode = JsonNodeFactory.instance.objectNode();
       addressNode.put("city", "Coimbatore");
       node.set("address", addressNode);
@@ -272,10 +273,12 @@ public class SDJsonUtilsTest extends TestCase {
       // Valid paths
       assertTrue(SDJsonUtils.isPathValid(node, "$.name"));
       assertTrue(SDJsonUtils.isPathValid(node, "$.address.city"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.middleName"));
 
       // Invalid paths
       assertFalse(SDJsonUtils.isPathValid(node, "$.invalidKey"));
       assertFalse(SDJsonUtils.isPathValid(node, "$.address.invalidKey"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.middleName.lastName"));
 
       // Duplicate dot paths
       assertFalse(SDJsonUtils.isPathValid(node, "$.address..city"));
