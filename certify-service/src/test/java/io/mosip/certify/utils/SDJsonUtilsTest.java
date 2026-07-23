@@ -270,15 +270,24 @@ public class SDJsonUtilsTest extends TestCase {
       addressNode.put("city", "Coimbatore");
       node.set("address", addressNode);
 
+      ArrayNode emptyArray = JsonNodeFactory.instance.arrayNode();
+      node.set("emptyList", emptyArray);
+
+      ObjectNode emptyObj = JsonNodeFactory.instance.objectNode();
+      node.set("emptyObj", emptyObj);
+
       // Valid paths
       assertTrue(SDJsonUtils.isPathValid(node, "$.name"));
       assertTrue(SDJsonUtils.isPathValid(node, "$.address.city"));
       assertTrue(SDJsonUtils.isPathValid(node, "$.middleName"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.address.*"));
 
       // Invalid paths
       assertFalse(SDJsonUtils.isPathValid(node, "$.invalidKey"));
       assertFalse(SDJsonUtils.isPathValid(node, "$.address.invalidKey"));
       assertFalse(SDJsonUtils.isPathValid(node, "$.middleName.lastName"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.emptyList[*].someField"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.emptyObj.*"));
 
       // Duplicate dot paths
       assertFalse(SDJsonUtils.isPathValid(node, "$.address..city"));

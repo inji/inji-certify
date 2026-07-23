@@ -274,7 +274,7 @@ public class SDJsonUtils {
             String indexStr = segment.substring(1, segment.length() - 1);
             if (indexStr.equals("*")) {
                 if (node.size() == 0) {
-                    return true;
+                    return false;
                 }
                 for (JsonNode element : node) {
                     if (checkSegments(element, segments, index + 1)) {
@@ -295,6 +295,17 @@ public class SDJsonUtils {
             }
         } else {
             if (!node.isObject()) {
+                return false;
+            }
+            if (segment.equals("*")) {
+                if (node.size() == 0) {
+                    return false;
+                }
+                for (JsonNode child : node) {
+                    if (checkSegments(child, segments, index + 1)) {
+                        return true;
+                    }
+                }
                 return false;
             }
             if (!node.has(segment)) {

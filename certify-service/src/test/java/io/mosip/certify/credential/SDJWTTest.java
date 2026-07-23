@@ -74,7 +74,7 @@ public class SDJWTTest {
     }
 
     @Test
-    public void testCreateCredential_WithInvalidSDClaim_ThrowsCertifyException() throws JsonProcessingException {
+    public void should_throwCertifyException_when_sdClaimPathIsMissing() throws JsonProcessingException {
         String mockTemplateName = "mockTemplate";
         Map<String, Object> templateParams = new HashMap<>();
 
@@ -92,7 +92,7 @@ public class SDJWTTest {
     }
 
     @Test
-    public void testCreateCredential_WithInvalidJson_ReturnsFallbackJwt() throws JsonProcessingException {
+    public void should_throwCertifyException_when_templatedJsonIsMalformed() throws JsonProcessingException {
         String mockTemplateName = "badTemplate";
         Map<String, Object> templateParams = new HashMap<>();
 
