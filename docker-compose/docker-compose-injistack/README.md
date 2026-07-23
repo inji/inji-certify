@@ -144,7 +144,7 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 
 ### Registering a custom JSON-LD `@context`
 
-- Refer the document for custom @context registartion https://github.com/inji/inji-certify/blob/release-1.0.x/docs/JSON-LD-context-loader.md
+Refer to the document for custom `@context` registration: https://github.com/inji/inji-certify/blob/release-1.0.x/docs/JSON-LD-context-loader.md
 
 ## Other configurations
 
