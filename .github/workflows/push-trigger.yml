@@ -174,7 +174,7 @@ jobs:
   sonar_analysis:
     needs: build-maven-inji-certify
     if: "${{  github.event_name != 'pull_request' }}"
-    uses: mosip/kattu/.github/workflows/maven-sonar-analysis-new.yml@develop
+    uses: mahesh-binayak/kattu/.github/workflows/maven-sonar-analysis.yml@gupmasterj21-certify
     with:
       SERVICE_LOCATION: ./
     secrets:
