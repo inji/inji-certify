@@ -1,6 +1,7 @@
 package io.mosip.certify.advice;
 
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -20,7 +21,7 @@ public class ExceptionHandlerAdviceTest {
 
     @Test
     public void testHandleVCIControllerExceptions_UnrecognizedPropertyException() {
-        com.fasterxml.jackson.core.JsonParser parser = Mockito.mock(com.fasterxml.jackson.core.JsonParser.class);
+        JsonParser parser = Mockito.mock(JsonParser.class);
         Mockito.when(parser.getCurrentLocation()).thenReturn(com.fasterxml.jackson.core.JsonLocation.NA);
         UnrecognizedPropertyException cause = UnrecognizedPropertyException.from(
                 parser, Object.class, "unrecognized_field", null
@@ -63,7 +64,7 @@ public class ExceptionHandlerAdviceTest {
     @Test
     public void testHandleVCIControllerExceptions_JsonMappingException() {
         JsonMappingException cause = JsonMappingException.from(
-                (com.fasterxml.jackson.core.JsonParser) null, "msg"
+                (JsonParser) null, "msg"
         );
         HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
 
