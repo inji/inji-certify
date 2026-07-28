@@ -11,7 +11,7 @@ on:
 
 jobs:
   maven-build-inji-certify-with-plugins:
-    uses: mosip/kattu/.github/workflows/maven-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/maven-build.yml@v0.0.1
     with:
       SERVICE_LOCATION: ./certify-service-with-plugins
       BUILD_ARTIFACT: certify-service-with-plugins
@@ -34,7 +34,7 @@ jobs:
             BUILD_ARTIFACT: 'certify-service-with-plugins'
       fail-fast: false
     name: ${{ matrix.SERVICE_NAME }}
-    uses: mosip/kattu/.github/workflows/docker-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/docker-build.yml@v0.0.1
     with:
       SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
       SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
