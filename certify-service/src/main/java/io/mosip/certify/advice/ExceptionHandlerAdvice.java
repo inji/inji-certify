@@ -175,7 +175,10 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             } else if (cause instanceof JsonParseException) {
                 message = "Malformed JSON syntax error";
             } else if (cause instanceof JsonMappingException) {
-                message = "Invalid request structure";
+                JsonMappingException mappingEx = (JsonMappingException) cause;
+                String fieldName = mappingEx.getPath().isEmpty() ? "unknown"
+                    : mappingEx.getPath().get(mappingEx.getPath().size() - 1).getFieldName();
+                message = String.format("Invalid request structure for field '%s'", fieldName);
             }
 
             return new ResponseEntity<>(getVCErrorDto(INVALID_REQUEST, message), HttpStatus.BAD_REQUEST);
