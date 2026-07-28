@@ -262,7 +262,8 @@ public class SDJsonUtilsTest extends TestCase {
     assertFalse(mobilePhoneObject.containsKey("number"));
   }
 
-  public void testIsPathValid() {
+  @org.junit.Test
+  public void should_validatePath_when_validAndInvalidPaths() {
       ObjectNode node = JsonNodeFactory.instance.objectNode();
       node.put("name", "John");
       node.putNull("middleName");
