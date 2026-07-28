@@ -168,7 +168,10 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
                     (UnrecognizedPropertyException) cause;
                 message = String.format("Unrecognized field '%s' in request", propEx.getPropertyName());
             } else if (cause instanceof InvalidFormatException) {
-                message = "Invalid field format in request";
+                InvalidFormatException formatEx = (InvalidFormatException) cause;
+                String fieldName = formatEx.getPath().isEmpty() ? "unknown"
+                    : formatEx.getPath().get(formatEx.getPath().size() - 1).getFieldName();
+                message = String.format("Invalid format for field '%s' in request", fieldName);
             } else if (cause instanceof JsonParseException) {
                 message = "Malformed JSON syntax error";
             } else if (cause instanceof JsonMappingException) {
