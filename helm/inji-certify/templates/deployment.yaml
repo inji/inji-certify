@@ -90,7 +90,7 @@ spec:
           {{- end }}
           env:
             - name: container_user
-              value: {{ .Values.containerSecurityContext.runAsUser }}
+            value: {{ .Values.containerSecurityContext.runAsUser | quote }}
             {{- if .Values.additionalResources.javaOpts }}
             - name: JDK_JAVA_OPTIONS
               value: {{ .Values.additionalResources.javaOpts }}
