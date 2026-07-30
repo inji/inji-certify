@@ -94,7 +94,7 @@
 		<maven-shade-plugin.version>4.4.3</maven-shade-plugin.version>
 
 		<spring.boot.version>3.2.3</spring.boot.version>
-		<central.publishing.maven.plugin.version>0.7.0</central.publishing.maven.plugin.version>
+		<central.publishing.maven.plugin.version>0.8.0</central.publishing.maven.plugin.version>
 
 		<java.version>21</java.version>
 		<jose4j.version>0.6.5</jose4j.version>
