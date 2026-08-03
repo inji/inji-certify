@@ -5,6 +5,8 @@
  */
 package io.mosip.certify.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
@@ -79,6 +81,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+
     @Override
     public CredentialConfigResponse addCredentialConfiguration(CredentialConfigurationDTO credentialConfigurationDTO) {
         validateCredentialConfiguration(credentialConfigurationDTO, true);
@@ -108,10 +113,19 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private void validateCredentialConfiguration(CredentialConfigurationDTO credentialConfig, boolean shouldCheckDuplicate) {
 
-        validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate(),credentialConfig.getQrSettings(),credentialConfig.getQrSignatureAlgo());
-
+        validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate());
         switch (credentialConfig.getCredentialFormat()) {
             case VCFormats.LDP_VC:
+                if ((credentialConfig.getQrSettings() == null || credentialConfig.getQrSettings().isEmpty())
+                        && credentialConfig.getQrSignatureAlgo() != null && !credentialConfig.getQrSignatureAlgo().isEmpty()) {
+                    throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED,
+                            "QR signature algorithm is not allowed when QR settings are not set.");
+                }
+                if (credentialConfig.getQrSignatureAlgo() != null && !credentialConfig.getQrSignatureAlgo().isEmpty()
+                        && !keyAliasMapper.containsKey(credentialConfig.getQrSignatureAlgo())) {
+                    throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM,
+                            "The algorithm " + credentialConfig.getQrSignatureAlgo() + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
+                }
                 if (!LdpVcCredentialConfigValidator.isValidCheck(credentialConfig)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_MANDATORY_FIELDS_MISSING, "Fields context, credentialType, and signatureCryptoSuite are mandatory for the ldp_vc format.");
                 }
@@ -127,6 +141,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
+                rejectQrSettingsIfPresent(credentialConfig.getQrSettings(), credentialConfig.getQrSignatureAlgo(), credentialConfig.getCredentialFormat());
                 break;
             case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig)) {
@@ -135,6 +150,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && SdJwtCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.DC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
+                rejectQrSettingsIfPresent(credentialConfig.getQrSettings(), credentialConfig.getQrSignatureAlgo(), credentialConfig.getCredentialFormat());
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
@@ -143,9 +159,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private void validateCommonCredentialConfig(
             List<String> credentialStatusPurposes,
-            String vcTemplate,
-            List<Map<String, Object>> qrSettings,
-            String qrSignatureAlgo){
+            String vcTemplate){
         if (credentialStatusPurposes != null && credentialStatusPurposes.size() > 1){
             throw new CertifyException(ErrorConstants.MULTIPLE_STATUS_PURPOSES_NOT_SUPPORTED, "Multiple credential status purposes are not supported. Please specify only one.");
         }
@@ -157,19 +171,18 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         if(pluginMode.equals("DataProvider") && (vcTemplate == null || vcTemplate.isEmpty())) {
             throw new CertifyException(ErrorConstants.CREDENTIAL_TEMPLATE_REQUIRED, "A Credential Template is required for issuers using the Data Provider plugin.");
         }
-
-        if(qrSettings == null || qrSettings.isEmpty()) {
-            if(qrSignatureAlgo != null) {
-                throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED, "QR signature algorithm is not allowed when QR settings are not set.");
-
-            }
-        } else {
-            if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && !keyAliasMapper.containsKey(qrSignatureAlgo)) {
-                throw new CertifyException(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, "The algorithm " + qrSignatureAlgo + " is not supported for QR signing. The supported values are: " + keyAliasMapper.keySet());
-            }
-        }
     }
 
+    private void rejectQrSettingsIfPresent(List<Map<String, Object>> qrSettings, String qrSignatureAlgo, String credentialFormat) {
+        if (qrSettings != null && !qrSettings.isEmpty()) {
+            throw new CertifyException(ErrorConstants.QR_SETTINGS_NOT_SUPPORTED,
+                    "qrSettings is not supported for " + credentialFormat + " format.");
+        }
+        if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty()) {
+            throw new CertifyException(ErrorConstants.QR_SETTINGS_NOT_SUPPORTED,
+                    "qrSignatureAlgo is not supported for " + credentialFormat + " format.");
+        }
+    }
 
     private void validateKeyAliasMapperConfiguration(CredentialConfigurationDTO credentialConfig) {
         if(pluginMode.equals("VCIssuance")) {
