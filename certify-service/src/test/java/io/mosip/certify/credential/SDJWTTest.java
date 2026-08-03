@@ -1,7 +1,6 @@
 package io.mosip.certify.credential;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.core.constants.ErrorConstants;
