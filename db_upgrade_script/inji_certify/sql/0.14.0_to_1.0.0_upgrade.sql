@@ -94,6 +94,7 @@ COMMENT ON COLUMN certify.vp_submission.response_code_expiry_at IS 'Expiry of th
 COMMENT ON COLUMN certify.vp_submission.response_code_used IS 'Whether the response code has been consumed';
 
 CREATE INDEX IF NOT EXISTS idx_vp_submission_response_code ON certify.vp_submission (response_code);
+
 UPDATE certify.credential_config
 SET proof_types_supported = '{"jwt": {"proof_signing_alg_values_supported": ["RS256", "ES256", "PS256", "EdDSA"]}}'::jsonb
 WHERE proof_types_supported = '{}'::jsonb;
@@ -101,20 +102,20 @@ WHERE proof_types_supported = '{}'::jsonb;
 -- Replace legacy Ed25519 with EdDSA in existing JWT proof algorithm lists
 UPDATE certify.credential_config
 SET proof_types_supported = jsonb_set(
-    proof_types_supported,
-    '{jwt,proof_signing_alg_values_supported}',
-    (
-      SELECT COALESCE(jsonb_agg(DISTINCT val), '[]'::jsonb)
-      FROM (
-        SELECT
-          CASE
-            WHEN alg = '"Ed25519"'::jsonb THEN '"EdDSA"'::jsonb
-            ELSE alg
-          END AS val
-        FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
-      ) sub
-    )
-)
+        proof_types_supported,
+        '{jwt,proof_signing_alg_values_supported}',
+        (
+            SELECT COALESCE(jsonb_agg(DISTINCT val), '[]'::jsonb)
+            FROM (
+                     SELECT
+                         CASE
+                             WHEN alg = '"Ed25519"'::jsonb THEN '"EdDSA"'::jsonb
+                             ELSE alg
+                             END AS val
+                     FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
+                 ) sub
+        )
+                            )
 WHERE proof_types_supported #> '{jwt,proof_signing_alg_values_supported}' IS NOT NULL
   AND EXISTS (
       SELECT 1

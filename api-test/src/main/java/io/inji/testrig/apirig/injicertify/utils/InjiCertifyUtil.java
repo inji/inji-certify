@@ -1582,7 +1582,7 @@ public static void configureOtp() {
 
 		try {
 			OctetKeyPair edJWK = new OctetKeyPairGenerator(Curve.Ed25519).generate();
-			
+
 			if(testCaseName.contains("_Did_Key_Sign_")) {
 				
 				byte[] rawPublicKey = edJWK.getX().decode();
@@ -1592,10 +1592,10 @@ public static void configureOtp() {
 					didKey = "did:key:zINVALIDDIDKEYFORPROOFTEST";
 				}
 				
-				header = new JWSHeader.Builder(JWSAlgorithm.Ed25519)
+				header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
 						.type(new JOSEObjectType("openid4vci-proof+jwt")).keyID(didKey).build();
 			}else {
-				header = new JWSHeader.Builder(JWSAlgorithm.Ed25519)
+				header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
 						.type(new JOSEObjectType("openid4vci-proof+jwt")).jwk(edJWK.toPublicJWK()).build();
 			}
 

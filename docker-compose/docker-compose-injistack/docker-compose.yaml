@@ -15,7 +15,7 @@ services:
       - "5433:5432"
 
   certify:
-    image: injistack/inji-certify-with-plugins:0.14.0
+    image: injistack/inji-certify-with-plugins:1.0.0-alpha.1
     user: root
     ports:
       - 8090:8090
@@ -31,12 +31,16 @@ services:
       - ./config/certify-default.properties:/home/mosip/config/certify-default.properties
       - ./config/certify-csvdp-farmer.properties:/home/mosip/config/certify-csvdp-farmer.properties
       - ./config/certify-mock-mdl.properties:/home/mosip/config/certify-mock-mdl.properties
+      - ./config/certify-mdl-pdi.properties:/home/mosip/config/certify-mdl-pdi.properties
       - ./data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
       # This can be disabled if one uses plugins included in inji-certify-with-plugins docker image.
       #      - ./loader_path/certify/:/home/mosip/additional_jars/
       # modify the below file to change the identity fields in the VC
       - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
+      - ./config/driving_license_mosipid.csv:/home/mosip/config/driving_license_mosipid.csv
       - ./config/vp_request_config.json:/home/mosip/config/vp_request_config.json
+      - ./context/farmer-context.json:/home/mosip/context/farmer-context.json
+      - ./context/mdl-pdi-context.json:/home/mosip/context/mdl-pdi-context.json
     networks:
       - network
     depends_on:
@@ -60,7 +64,7 @@ services:
 
   mimoto-service:
     container_name: 'mimoto-service'
-    image: injistack/mimoto:0.21.0
+    image: injistackint/mimoto:1.0.x
     user: root
     ports:
       - '8099:8099'
@@ -85,12 +89,13 @@ services:
       - ./config/mimoto-issuers-config.json:/home/mosip/mimoto-issuers-config.json
       - ./config/mimoto-trusted-verifiers.json:/home/mosip/mimoto-trusted-verifiers.json
       - ./certs/oidckeystore.p12:/home/mosip/certs/oidckeystore.p12
+      - ./config/mosip-cbeff.xsd:/home/mosip/mosip-cbeff.xsd
     depends_on:
       - database
 
   inji-web:
     container_name: 'inji-web'
-    image: injistack/inji-web:0.16.0
+    image: injistackint/inji-web:1.0.x
     ports:
       - '3004:3004'
     environment:
