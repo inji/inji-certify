@@ -233,7 +233,7 @@ public class SDJsonUtils {
             return false;
         }
         path = path.trim();
-        if (!path.matches("^\\$(?:\\.[^.\\[\\]]+|\\[(?:\\*|\\d+)\\])*$")) {
+        if (!path.matches("^\\$(?:\\.[^.\\[\\]]+|\\[(?:\\*|0|[1-9]\\d*)\\])*$")) {
             return false;
         }
         if (path.contains("..")) {
