@@ -46,7 +46,7 @@ public class ExceptionHandlerAdviceTest {
 
         Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         Assert.assertEquals("invalid_request", response.getBody().getError());
-        Assert.assertEquals("Invalid field format in request", response.getBody().getError_description());
+        Assert.assertEquals("Invalid format for field 'unknown' in request", response.getBody().getError_description());
     }
 
     @Test
@@ -72,7 +72,7 @@ public class ExceptionHandlerAdviceTest {
 
         Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         Assert.assertEquals("invalid_request", response.getBody().getError());
-        Assert.assertEquals("Invalid request structure", response.getBody().getError_description());
+        Assert.assertEquals("Invalid request structure for field 'unknown'", response.getBody().getError_description());
     }
 
     @Test
