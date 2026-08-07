@@ -228,13 +228,33 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
         updatedTemplateParams.put("_esc", new EscapeTool());
         // add the issuer value
         updatedTemplateParams.put("_issuer", issuer);
-        if (updatedTemplateParams.containsKey(Constants.RENDERING_TEMPLATE_ID) && templateName.contains(VCDM2Constants.URL)) {
+        if (templateName.contains(VCDM2Constants.URL)) {
             try {
-                updatedTemplateParams.put("_renderMethodSVGdigest",
-                        CredentialUtils.getDigestMultibase(renderingTemplateService.getTemplate(
-                                (String) updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID)).getTemplate()));
+                CredentialConfig credentialConfig = getCachedCredentialConfig(templateName);
+                String credConfigKeyId = credentialConfig.getCredentialConfigKeyId();
+                List<io.mosip.certify.core.dto.RenderingTemplateDTO> allTemplates =
+                        renderingTemplateService.getAllTemplates(credConfigKeyId);
+                if (!allTemplates.isEmpty()) {
+                    List<Map<String, String>> renderMethods = new ArrayList<>();
+                    for (io.mosip.certify.core.dto.RenderingTemplateDTO t : allTemplates) {
+                        Map<String, String> entry = new HashMap<>();
+                        entry.put("id", t.getId());
+                        entry.put("digest", CredentialUtils.getDigestMultibase(t.getTemplate()));
+                        entry.put("name", t.getLanguage() + "-" + t.getSide());
+                        renderMethods.add(entry);
+                    }
+                    updatedTemplateParams.put("_renderMethods", renderMethods);
+                    // Backward compatibility: keep single digest for old-style Velocity templates
+                    updatedTemplateParams.put("_renderMethodSVGdigest",
+                            CredentialUtils.getDigestMultibase(allTemplates.get(0).getTemplate()));
+                } else if (updatedTemplateParams.containsKey(Constants.RENDERING_TEMPLATE_ID)) {
+                    // Fallback to legacy single rendering-template-id property
+                    updatedTemplateParams.put("_renderMethodSVGdigest",
+                            CredentialUtils.getDigestMultibase(renderingTemplateService.getTemplate(
+                                    (String) updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID)).getTemplate()));
+                }
             } catch (RenderingTemplateException e) {
-                log.error("Template: " + updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID) + " not available in DB", e);
+                log.error("Rendering template not available in DB for template: {}", templateName, e);
             }
         }
         VelocityContext context = new VelocityContext(updatedTemplateParams);

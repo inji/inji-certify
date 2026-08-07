@@ -11,6 +11,8 @@ public class RenderingTemplateDTO implements Serializable {
 
     private String id;
     private String template;
+    private String language;
+    private String side;
     private LocalDateTime createdTimes;
     private LocalDateTime updatedTimes;
 }

@@ -1,6 +1,7 @@
 package io.mosip.certify.services;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.Assert;
@@ -55,6 +56,57 @@ public class RenderingTemplateServiceImplTest {
             renderingTemplateService.getTemplate("fake-id");
         });
         Assert.assertEquals(ErrorConstants.INVALID_TEMPLATE_ID, templateException.getErrorCode());
+    }
+
+    @Test
+    public void getAllTemplates_withValidCredentialConfigKeyId_returnsAllTemplates() {
+        RenderingTemplate template1 = new RenderingTemplate();
+        template1.setId("tmpl-en-front");
+        template1.setTemplate("<svg>front-en</svg>");
+        template1.setLanguage("en");
+        template1.setSide("front");
+        template1.setCredentialConfigKeyId("FarmerCredential_VCDM2.0");
+        template1.setCreatedtimes(LocalDateTime.now());
+
+        RenderingTemplate template2 = new RenderingTemplate();
+        template2.setId("tmpl-en-back");
+        template2.setTemplate("<svg>back-en</svg>");
+        template2.setLanguage("en");
+        template2.setSide("back");
+        template2.setCredentialConfigKeyId("FarmerCredential_VCDM2.0");
+        template2.setCreatedtimes(LocalDateTime.now());
+
+        RenderingTemplate template3 = new RenderingTemplate();
+        template3.setId("tmpl-hi-front");
+        template3.setTemplate("<svg>front-hi</svg>");
+        template3.setLanguage("hi");
+        template3.setSide("front");
+        template3.setCredentialConfigKeyId("FarmerCredential_VCDM2.0");
+        template3.setCreatedtimes(LocalDateTime.now());
+
+        Mockito.when(svgRenderTemplateRepository.findByCredentialConfigKeyId("FarmerCredential_VCDM2.0"))
+                .thenReturn(List.of(template1, template2, template3));
+
+        List<RenderingTemplateDTO> result = renderingTemplateService.getAllTemplates("FarmerCredential_VCDM2.0");
+
+        Assert.assertNotNull(result);
+        Assert.assertEquals(3, result.size());
+        Assert.assertEquals("tmpl-en-front", result.get(0).getId());
+        Assert.assertEquals("en", result.get(0).getLanguage());
+        Assert.assertEquals("front", result.get(0).getSide());
+        Assert.assertEquals("tmpl-en-back", result.get(1).getId());
+        Assert.assertEquals("tmpl-hi-front", result.get(2).getId());
+    }
+
+    @Test
+    public void getAllTemplates_withNoMatchingKey_returnsEmptyList() {
+        Mockito.when(svgRenderTemplateRepository.findByCredentialConfigKeyId("unknown-key"))
+                .thenReturn(List.of());
+
+        List<RenderingTemplateDTO> result = renderingTemplateService.getAllTemplates("unknown-key");
+
+        Assert.assertNotNull(result);
+        Assert.assertTrue(result.isEmpty());
     }
 
 }

@@ -7,6 +7,9 @@ package io.mosip.certify.core.spi;
 
 import io.mosip.certify.core.dto.RenderingTemplateDTO;
 
+import java.util.List;
+
 public interface RenderingTemplateService {
     RenderingTemplateDTO getTemplate(String id);
+    List<RenderingTemplateDTO> getAllTemplates(String credentialConfigKeyId);
 }

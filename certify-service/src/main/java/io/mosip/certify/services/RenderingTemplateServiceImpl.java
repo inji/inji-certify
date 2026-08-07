@@ -5,7 +5,9 @@
  */
 package io.mosip.certify.services;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -30,12 +32,24 @@ public class RenderingTemplateServiceImpl implements RenderingTemplateService {
     public RenderingTemplateDTO getTemplate(String id) {
         Optional<RenderingTemplate> optional = renderTemplateRepository.findById(id);
         RenderingTemplate renderingTemplate = optional.orElseThrow(() -> new RenderingTemplateException(ErrorConstants.INVALID_TEMPLATE_ID));
-        RenderingTemplateDTO renderingTemplateDTO = new RenderingTemplateDTO();
-        renderingTemplateDTO.setId(renderingTemplate.getId());
-        renderingTemplateDTO.setTemplate(renderingTemplate.getTemplate());
-        renderingTemplateDTO.setCreatedTimes(renderingTemplate.getCreatedtimes());
-        renderingTemplateDTO.setUpdatedTimes(renderingTemplate.getUpdatedtimes());
+        return toDTO(renderingTemplate);
+    }
 
-        return renderingTemplateDTO;
+    @Override
+    @Cacheable(cacheNames="renderTemplates", key="#credentialConfigKeyId")
+    public List<RenderingTemplateDTO> getAllTemplates(String credentialConfigKeyId) {
+        List<RenderingTemplate> templates = renderTemplateRepository.findByCredentialConfigKeyId(credentialConfigKeyId);
+        return templates.stream().map(this::toDTO).collect(Collectors.toList());
+    }
+
+    private RenderingTemplateDTO toDTO(RenderingTemplate renderingTemplate) {
+        RenderingTemplateDTO dto = new RenderingTemplateDTO();
+        dto.setId(renderingTemplate.getId());
+        dto.setTemplate(renderingTemplate.getTemplate());
+        dto.setLanguage(renderingTemplate.getLanguage());
+        dto.setSide(renderingTemplate.getSide());
+        dto.setCreatedTimes(renderingTemplate.getCreatedtimes());
+        dto.setUpdatedTimes(renderingTemplate.getUpdatedtimes());
+        return dto;
     }
 }

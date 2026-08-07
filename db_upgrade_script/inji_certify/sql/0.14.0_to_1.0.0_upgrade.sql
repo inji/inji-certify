@@ -121,3 +121,14 @@ WHERE proof_types_supported #> '{jwt,proof_signing_alg_values_supported}' IS NOT
       FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
       WHERE alg = '"Ed25519"'::jsonb
   );
+ALTER TABLE certify.rendering_template
+    ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'en',
+    ADD COLUMN IF NOT EXISTS side VARCHAR(10) DEFAULT 'front',
+    ADD COLUMN IF NOT EXISTS credential_config_key_id VARCHAR(2048),
+    ADD CONSTRAINT fk_rendering_template_credential_config
+    FOREIGN KEY (credential_config_key_id)
+    REFERENCES certify.credential_config(credential_config_key_id)
+    ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_rendering_template_credential_config_key_id
+    ON certify.rendering_template(credential_config_key_id);

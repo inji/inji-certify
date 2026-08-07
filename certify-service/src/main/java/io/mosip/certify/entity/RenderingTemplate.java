@@ -27,6 +27,15 @@ public class RenderingTemplate {
     @Column(name = "template")
     private String template;
 
+    @Column(name = "language")
+    private String language;
+
+    @Column(name = "side")
+    private String side;
+
+    @Column(name = "credential_config_key_id")
+    private String credentialConfigKeyId;
+
     @Column(name = "cr_dtimes")
     private LocalDateTime createdtimes;
 

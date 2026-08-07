@@ -64,3 +64,13 @@ WHERE proof_types_supported #> '{jwt,proof_signing_alg_values_supported}' IS NOT
       FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
       WHERE alg = '"EdDSA"'::jsonb
   );
+
+DROP INDEX IF EXISTS certify.idx_rendering_template_credential_config_key_id;
+
+ALTER TABLE certify.rendering_template
+    DROP CONSTRAINT IF EXISTS fk_rendering_template_credential_config;
+
+ALTER TABLE certify.rendering_template
+    DROP COLUMN IF EXISTS credential_config_key_id,
+    DROP COLUMN IF EXISTS side,
+    DROP COLUMN IF EXISTS language;

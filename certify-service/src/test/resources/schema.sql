@@ -72,6 +72,9 @@ CREATE TABLE IF NOT EXISTS ca_cert_store(
 CREATE TABLE IF NOT EXISTS rendering_template (
     id VARCHAR(128) NOT NULL,
     template VARCHAR NOT NULL,
+    language VARCHAR(10) DEFAULT 'en',
+    side VARCHAR(10) DEFAULT 'front',
+    credential_config_key_id VARCHAR(2048),
     cr_dtimes timestamp NOT NULL,
     upd_dtimes timestamp,
     CONSTRAINT pk_rendertmp_id PRIMARY KEY (id)
@@ -106,3 +109,8 @@ CREATE TABLE IF NOT EXISTS credential_config (
     upd_dtimes TIMESTAMP,
     CONSTRAINT pk_config_id PRIMARY KEY (context, credential_type, credential_format)
 );
+
+
+CREATE INDEX IF NOT EXISTS idx_rendering_template_credential_config_key_id
+    ON rendering_template(credential_config_key_id);
+
