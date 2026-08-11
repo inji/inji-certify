@@ -132,7 +132,7 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
-    public void getVerifiableCredential_withMalformedJson_thenFail() throws Exception {
+    public void should_returnInvalidRequest_when_credentialRequestJsonIsMalformed() throws Exception {
         mockMvc.perform(post("/issuance/credential")
                         .content("{invalid-json}")
                         .contentType(MediaType.APPLICATION_JSON))

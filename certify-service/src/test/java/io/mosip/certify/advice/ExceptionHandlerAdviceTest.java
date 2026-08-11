@@ -20,7 +20,7 @@ public class ExceptionHandlerAdviceTest {
     private final HttpServletRequest request = Mockito.mock(HttpServletRequest.class);
 
     @Test
-    public void testHandleVCIControllerExceptions_UnrecognizedPropertyException() {
+    public void should_returnInvalidRequest_when_unrecognizedPropertyIsProvided() {
         JsonParser parser = Mockito.mock(JsonParser.class);
         Mockito.when(parser.getCurrentLocation()).thenReturn(com.fasterxml.jackson.core.JsonLocation.NA);
         UnrecognizedPropertyException cause = UnrecognizedPropertyException.from(
@@ -36,7 +36,7 @@ public class ExceptionHandlerAdviceTest {
     }
 
     @Test
-    public void testHandleVCIControllerExceptions_InvalidFormatException() {
+    public void should_returnInvalidRequest_when_fieldFormatIsInvalid() {
         InvalidFormatException cause = InvalidFormatException.from(
                 null, "msg", "value", String.class
         );
@@ -50,7 +50,7 @@ public class ExceptionHandlerAdviceTest {
     }
 
     @Test
-    public void testHandleVCIControllerExceptions_JsonParseException() {
+    public void should_returnInvalidRequest_when_jsonSyntaxIsMalformed() {
         JsonParseException cause = new JsonParseException(null, "msg");
         HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", cause, null);
 
@@ -62,7 +62,7 @@ public class ExceptionHandlerAdviceTest {
     }
 
     @Test
-    public void testHandleVCIControllerExceptions_JsonMappingException() {
+    public void should_returnInvalidRequest_when_requestStructureIsInvalid() {
         JsonMappingException cause = JsonMappingException.from(
                 (JsonParser) null, "msg"
         );
@@ -76,7 +76,7 @@ public class ExceptionHandlerAdviceTest {
     }
 
     @Test
-    public void testHandleVCIControllerExceptions_GenericReadableException() {
+    public void should_returnInvalidRequest_when_requestBodyIsUnreadable() {
         HttpMessageNotReadableException ex = new HttpMessageNotReadableException("msg", (Throwable) null, null);
 
         ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(ex, request);
