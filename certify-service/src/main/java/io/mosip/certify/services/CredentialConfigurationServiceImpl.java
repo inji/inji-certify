@@ -304,14 +304,21 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         credentialConfigList.forEach(credentialConfig -> {
             CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
+            List<String> algs;
             if (credentialConfig.getSignatureCryptoSuite() != null) {
-                dto.setCredentialSigningAlgValuesSupported(
-                        credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite())
-                );
+                algs = credentialSigningAlgValuesSupportedMap.get(credentialConfig.getSignatureCryptoSuite());
             } else {
-                dto.setCredentialSigningAlgValuesSupported(
-                        Collections.singletonList(credentialConfig.getSignatureAlgo())
-                );
+                algs = Collections.singletonList(credentialConfig.getSignatureAlgo());
+            }
+
+            if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat()) && algs != null) {
+                List<Object> coseAlgs = new ArrayList<>();
+                for (String alg : algs) {
+                    coseAlgs.add(getCoseAlgorithm(alg));
+                }
+                dto.setCredentialSigningAlgValuesSupported(coseAlgs);
+            } else {
+                dto.setCredentialSigningAlgValuesSupported(algs != null ? new ArrayList<>(algs) : null);
             }
             credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
         });
@@ -319,6 +326,17 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
         populateCommonMetadataFields(credentialIssuerMetadata);
         return credentialIssuerMetadata;
+    }
+
+    public Object getCoseAlgorithm(String signAlgorithm) {
+        if (signAlgorithm == null) return null;
+        return switch (signAlgorithm) {
+            case "ES256" -> -7;
+            case "EdDSA" -> -8;
+            case "ES256K" -> -47;
+            case "RS256" -> -257;
+            default -> signAlgorithm;
+        };
     }
 
     private void populateCommonMetadataFields(CredentialIssuerMetadataDTO metadata) {
