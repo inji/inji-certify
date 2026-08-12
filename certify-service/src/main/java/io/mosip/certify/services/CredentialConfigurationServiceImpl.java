@@ -328,14 +328,16 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return credentialIssuerMetadata;
     }
 
-    public Object getCoseAlgorithm(String signAlgorithm) {
-        if (signAlgorithm == null) return null;
+    public Integer getCoseAlgorithm(String signAlgorithm) {
+        if (signAlgorithm == null) {
+            throw new IllegalArgumentException("Missing COSE signing algorithm");
+        }
         return switch (signAlgorithm) {
             case "ES256" -> -7;
             case "EdDSA" -> -8;
             case "ES256K" -> -47;
             case "RS256" -> -257;
-            default -> signAlgorithm;
+            default -> throw new IllegalArgumentException("Unsupported COSE signing algorithm for mso_mdoc: " + signAlgorithm);
         };
     }
 

@@ -393,6 +393,25 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
+    public void should_throwException_when_msoMdocAlgorithmIsUnsupported() {
+        CredentialConfig config = new CredentialConfig();
+        config.setConfigId(UUID.randomUUID().toString());
+        config.setCredentialConfigKeyId("mdoc-invalid-alg");
+        config.setStatus("active");
+        config.setCredentialFormat("mso_mdoc");
+        config.setDocType("org.iso.18013.5.1.mDL");
+        config.setSignatureAlgo("UNSUPPORTED_ALG");
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
+        CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
+        dto.setCredentialFormat("mso_mdoc");
+        dto.setDocType("org.iso.18013.5.1.mDL");
+        when(credentialConfigMapper.toDto(config)).thenReturn(dto);
+
+        assertThrows(IllegalArgumentException.class, () -> credentialConfigurationService.fetchCredentialIssuerMetadata());
+    }
+
+    @Test
     public void addNewCredentialConfig_MsoMdoc_Success(){
         CredentialConfig mdocConfig = new CredentialConfig();
         mdocConfig.setConfigId(UUID.randomUUID().toString());
