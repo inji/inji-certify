@@ -400,7 +400,14 @@ public class CredentialConfigurationSupportedServiceImplTest {
         config.setStatus("active");
         config.setCredentialFormat("mso_mdoc");
         config.setDocType("org.iso.18013.5.1.mDL");
-        config.setSignatureAlgo("UNSUPPORTED_ALG");
+        config.setSignatureCryptoSuite("EcdsaSecp256r1Signature2019");
+
+        LinkedHashMap<String, List<String>> unsupportedAlgorithms = new LinkedHashMap<>();
+        unsupportedAlgorithms.put("EcdsaSecp256r1Signature2019", List.of("UNSUPPORTED_ALG"));
+        ReflectionTestUtils.setField(
+                credentialConfigurationService,
+                "credentialSigningAlgValuesSupportedMap",
+                unsupportedAlgorithms);
 
         when(credentialConfigRepository.findAll()).thenReturn(List.of(config));
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();

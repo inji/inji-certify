@@ -338,15 +338,15 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     public Integer getCoseAlgorithm(String signAlgorithm) {
-    if (signAlgorithm == null) {
-        throw new IllegalArgumentException("Missing COSE signing algorithm");
+        if (signAlgorithm == null) {
+            throw new IllegalArgumentException("Missing COSE signing algorithm");
+        }
+        Integer coseAlg = COSE_ALGORITHM_INTEGER_MAP.get(signAlgorithm);
+        if (coseAlg == null) {
+            throw new IllegalArgumentException("Unsupported COSE signing algorithm for mso_mdoc: " + signAlgorithm);
+        }
+        return coseAlg;
     }
-    Integer coseAlg = COSE_ALGORITHM_INTEGER_MAP.get(signAlgorithm);
-    if (coseAlg == null) {
-        throw new IllegalArgumentException("Unsupported COSE signing algorithm for mso_mdoc: " + signAlgorithm);
-    }
-    return coseAlg;
-}
 
 
     private void populateCommonMetadataFields(CredentialIssuerMetadataDTO metadata) {
