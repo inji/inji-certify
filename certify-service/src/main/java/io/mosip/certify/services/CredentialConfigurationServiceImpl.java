@@ -28,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.authlete.cose.constants.COSEAlgorithms;
 
 @Slf4j
 @Component
@@ -78,6 +80,13 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
 
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
+
+    private static final Map<String, Integer> COSE_ALGORITHM_INTEGER_MAP = Map.of(
+        JWSAlgorithm.ES256.getName(), COSEAlgorithms.ES256,
+        JWSAlgorithm.EdDSA.getName(), COSEAlgorithms.EdDSA,                
+        JWSAlgorithm.ES256K.getName(), COSEAlgorithms.ES256K,
+        JWSAlgorithm.RS256.getName(), COSEAlgorithms.RS256         
+    );
 
     @Override
     public CredentialConfigResponse addCredentialConfiguration(CredentialConfigurationDTO credentialConfigurationDTO) {
@@ -329,17 +338,16 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     public Integer getCoseAlgorithm(String signAlgorithm) {
-        if (signAlgorithm == null) {
-            throw new IllegalArgumentException("Missing COSE signing algorithm");
-        }
-        return switch (signAlgorithm) {
-            case "ES256" -> -7;
-            case "EdDSA" -> -8;
-            case "ES256K" -> -47;
-            case "RS256" -> -257;
-            default -> throw new IllegalArgumentException("Unsupported COSE signing algorithm for mso_mdoc: " + signAlgorithm);
-        };
+    if (signAlgorithm == null) {
+        throw new IllegalArgumentException("Missing COSE signing algorithm");
     }
+    Integer coseAlg = COSE_ALGORITHM_INTEGER_MAP.get(signAlgorithm);
+    if (coseAlg == null) {
+        throw new IllegalArgumentException("Unsupported COSE signing algorithm for mso_mdoc: " + signAlgorithm);
+    }
+    return coseAlg;
+}
+
 
     private void populateCommonMetadataFields(CredentialIssuerMetadataDTO metadata) {
         metadata.setCredentialIssuer(credentialIssuer);
