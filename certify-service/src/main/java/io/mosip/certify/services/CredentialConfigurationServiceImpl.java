@@ -127,6 +127,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
+                if (credentialConfig.getQrSignatureAlgo() != null && !credentialConfig.getQrSignatureAlgo().isEmpty()
+                        && (credentialConfig.getSignatureAlgo() == null || credentialConfig.getSignatureAlgo().isEmpty())) {
+                    throw new CertifyException(ErrorConstants.QR_SIGNATURE_ALGO_REQUIRES_SIGNATURE_ALGO,
+                            "signatureAlgo is required when qrSignatureAlgo is set.");
+                }
                 validateKeyAliasMapperConfiguration(credentialConfig);
                 break;
             case VCFormats.MSO_MDOC:
