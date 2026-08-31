@@ -97,4 +97,27 @@ public class QrSettingsValidatorTest {
         assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
         assertTrue(ex.getMessage().contains("Field 'name'"));
     }
+
+    @Test
+    public void should_throwException_when_vcTemplateHasNoVariablesButQrSettingsHasField() {
+        String emptyVcTemplate = "{\"credentialSubject\": {}}";
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Field", "${unknownField}")
+        );
+
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> QrSettingsValidator.validateQrSettings(qrSettings, emptyVcTemplate));
+
+        assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_validateSuccessfully_when_compositeFieldMatchesTerminalFieldInTemplate() {
+        String templateWithTerminal = "{\"credentialSubject\": {\"country\": \"${country}\"}}";
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Country", "${address#en.country}")
+        );
+
+        assertDoesNotThrow(() -> QrSettingsValidator.validateQrSettings(qrSettings, templateWithTerminal));
+    }
 }

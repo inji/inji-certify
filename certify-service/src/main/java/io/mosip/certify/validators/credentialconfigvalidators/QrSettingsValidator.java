@@ -45,7 +45,7 @@ public class QrSettingsValidator {
         try {
             byte[] decoded = Base64.getDecoder().decode(vcTemplate.trim());
             return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (Exception ignored) {
+        } catch (IllegalArgumentException ignored) {
             // If not base64 encoded or fails decoding, return raw vcTemplate
             return vcTemplate;
         }
@@ -89,8 +89,8 @@ public class QrSettingsValidator {
                     );
                 }
 
-                // 2. Check if field exists in templateVariables (if templateVariables is not empty)
-                if (templateVariables != null && !templateVariables.isEmpty()) {
+                // 2. Check if field exists in templateVariables (if templateVariables is provided)
+                if (templateVariables != null) {
                     if (!isFieldPresentInTemplate(varName, templateVariables)) {
                         throw new CertifyException(
                                 ErrorConstants.QR_INVALID_FIELD_REFERENCE,
@@ -108,8 +108,10 @@ public class QrSettingsValidator {
         }
         // Handle composite key like address#en.country -> check base field 'address' or 'country'
         if (varName.contains("#") || varName.contains(".")) {
-            String baseField = varName.split("[#.]")[0];
-            return templateVariables.contains(baseField);
+            String[] parts = varName.split("[#.]");
+            String rootField = parts[0];
+            String terminalField = parts[parts.length - 1];
+            return templateVariables.contains(rootField) || templateVariables.contains(terminalField);
         }
         return false;
     }
