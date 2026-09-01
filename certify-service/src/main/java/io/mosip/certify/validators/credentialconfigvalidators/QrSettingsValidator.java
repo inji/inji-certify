@@ -38,6 +38,13 @@ public class QrSettingsValidator {
         }
     }
 
+    /**
+     * Decodes a Base64-encoded VC template string.
+     * If the template is already raw JSON or invalid Base64, returns the raw input.
+     *
+     * @param vcTemplate The input VC template string (Base64 or raw JSON)
+     * @return Decoded UTF-8 JSON string or raw input
+     */
     private static String decodeVcTemplate(String vcTemplate) {
         if (vcTemplate == null || vcTemplate.isEmpty()) {
             return vcTemplate;
@@ -51,6 +58,13 @@ public class QrSettingsValidator {
         }
     }
 
+    /**
+     * Extracts all Velocity variable names (e.g. ${fullName} -> "fullName")
+     * from a decoded VC template.
+     *
+     * @param decodedVcTemplate The decoded JSON template string
+     * @return Set of unique variable names found in the template
+     */
     private static Set<String> extractTemplateVariables(String decodedVcTemplate) {
         Set<String> variables = new HashSet<>();
         if (decodedVcTemplate == null || decodedVcTemplate.isEmpty()) {
@@ -63,6 +77,15 @@ public class QrSettingsValidator {
         return variables;
     }
 
+    /**
+     * Recursively traverses a QR settings block structure (maps, lists, strings),
+     * checking for duplicate field references within the block and verifying
+     * that referenced variables exist in the VC template.
+     *
+     * @param obj The element to traverse (Map, List, or String)
+     * @param seenInBlock Set tracking variable names already encountered in the current block
+     * @param templateVariables Set of valid variable names extracted from the VC template
+     */
     private static void extractAndValidateBlockVariables(Object obj, Set<String> seenInBlock, Set<String> templateVariables) {
         if (obj == null) {
             return;
@@ -102,6 +125,14 @@ public class QrSettingsValidator {
         }
     }
 
+    /**
+     * Checks if a variable name or its base/terminal field in composite notation
+     * exists within the set of valid template variables.
+     *
+     * @param varName The variable name referenced in QR settings
+     * @param templateVariables Set of valid template variable names
+     * @return true if the field or composite component exists in the template, false otherwise
+     */
     private static boolean isFieldPresentInTemplate(String varName, Set<String> templateVariables) {
         if (templateVariables.contains(varName)) {
             return true;
