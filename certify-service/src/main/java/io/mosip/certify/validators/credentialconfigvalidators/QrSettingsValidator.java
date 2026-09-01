@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 @Slf4j
 public class QrSettingsValidator {
 
-    private static final Pattern VELOCITY_VAR_PATTERN = Pattern.compile("\\$!?\\{?([a-zA-Z0-9_\\-#\\.]+)\\}?");
+    private static final Pattern VELOCITY_VAR_PATTERN = Pattern.compile("\\$!?\\{?([a-zA-Z_][a-zA-Z0-9_\\-#\\.]*)\\}?");
 
     /**
      * Validates qrSettings blocks for duplicate fields within a single block

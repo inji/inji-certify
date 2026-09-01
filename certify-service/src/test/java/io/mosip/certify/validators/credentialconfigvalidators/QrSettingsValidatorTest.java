@@ -120,4 +120,13 @@ public class QrSettingsValidatorTest {
 
         assertDoesNotThrow(() -> QrSettingsValidator.validateQrSettings(qrSettings, templateWithTerminal));
     }
+
+    @Test
+    public void should_ignoreCurrencyLiterals_when_qrSettingsContainsDollarAmount() {
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Full Name", "${fullName}", "Price", "Amount: $2.50")
+        );
+
+        assertDoesNotThrow(() -> QrSettingsValidator.validateQrSettings(qrSettings, sampleVcTemplate));
+    }
 }
