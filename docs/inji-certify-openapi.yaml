@@ -2545,9 +2545,11 @@ components:
             type: string
         credential_signing_alg_values_supported:
           type: array
-          description: 'List of supported credential signing algorithms (e.g., ES256, EdDSA).'
+          description: 'List of supported credential signing algorithms (e.g., ES256, EdDSA for JWT/LDP formats, or integer values like -7 for mso_mdoc format).'
           items:
-            type: string
+            anyOf:
+              - type: string
+              - type: integer
         proof_types_supported:
           type: object
           description: 'Map of supported proof types and their parameters (e.g., jwt, ldp).'
