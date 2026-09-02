@@ -191,9 +191,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
      * @param credentialConfig the credential configuration DTO to validate
      */
     private void validateKeyAliasMapperAndSignatureConfiguration(CredentialConfigurationDTO credentialConfig) {
-        if (pluginMode.equals("VCIssuance")) {
-            return;
-        }
         String signatureCryptoSuite = credentialConfig.getSignatureCryptoSuite();
         String signatureAlgo = credentialConfig.getSignatureAlgo();
         String qrSignatureAlgo = credentialConfig.getQrSignatureAlgo();
@@ -214,6 +211,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && credentialConfig.getSignatureAlgo() == null) {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "signatureAlgo is required when qrSignatureAlgo is provided.");
+        }
+
+        if (pluginMode.equals("VCIssuance")) {
+            return;
         }
 
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat()) && credentialConfig.getSignatureAlgo() != null) {
