@@ -98,8 +98,10 @@ public class InjiTestRunner {
 			Thread trigger = new Thread(healthcheck);
 			trigger.start();
 
-			KeycloakUserManager.removeUser();
-			KeycloakUserManager.createUsers();
+			if (!"true".equals(System.getenv("CI"))) {
+				KeycloakUserManager.removeUser();
+				KeycloakUserManager.createUsers();
+			}
 			KeycloakUserManager.closeKeycloakInstance();
 			AdminTestUtil.getRequiredField();
 
