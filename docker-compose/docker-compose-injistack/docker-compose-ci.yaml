@@ -6,6 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inji_certify  # ✅ ADD THIS LINE - Create the database on startup
     ports:
       - "5433:5432"
     volumes:
@@ -30,6 +31,13 @@ services:
       - enable_certify_artifactory=false
       - download_hsm_client=false
       - mosip_certify_domain_url=http://certify-nginx:80
+      # ✅ ADD DATABASE CONNECTION ENVIRONMENT VARIABLES
+      - DATABASE_HOST=database
+      - DATABASE_PORT=5432
+      - DATABASE_NAME=inji_certify
+      - DATABASE_SCHEMA=certify
+      - DATABASE_USERNAME=postgres
+      - DATABASE_PASSWORD=postgres
     volumes:
       - ./config/certify-default.properties:/home/mosip/config/certify-default.properties
       - ./config/certify-csvdp-farmer.properties:/home/mosip/config/certify-csvdp-farmer.properties
