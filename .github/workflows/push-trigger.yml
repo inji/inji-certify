@@ -461,7 +461,8 @@ jobs:
           mkdir -p ci-reports
           CONTAINER_ID=$(docker ps -a --filter "name=apitest" --format "{{.ID}}" | head -n 1)
           if [ -n "$CONTAINER_ID" ]; then
-            docker cp $CONTAINER_ID:/home/inji/testng-report/. ci-reports || echo "No reports found"
+            docker cp $CONTAINER_ID:/home/inji/test-output/. ci-reports 2>/dev/null || true
+            docker cp $CONTAINER_ID:/home/inji/testng-report/. ci-reports 2>/dev/null || true
           else
             echo "Apitest container not found"
           fi
@@ -482,6 +483,7 @@ jobs:
         with:
           name: inji-certify-test-report
           path: ci-reports/
+          if-no-files-found: warn
 
       - name: Print certify logs
         if: always()
