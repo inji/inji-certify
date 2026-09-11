@@ -244,6 +244,25 @@ public class VCICacheServiceTest {
     }
 
     @Test
+    public void claimPreAuthCodeIfUnexpired_WhenExpired_ReturnsExpiredWithoutClaiming() {
+        String code = "expired-code";
+        long currentTime = System.currentTimeMillis();
+        PreAuthCodeData data = PreAuthCodeData.builder()
+                .expiresAt(currentTime - 1)
+                .build();
+        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
+        when(wrapper.get()).thenReturn(data);
+        when(cache.get(Constants.PRE_AUTH_CODE_PREFIX + code)).thenReturn(wrapper);
+
+        VCICacheService.PreAuthCodeClaimResult result =
+                vciCacheService.claimPreAuthCodeIfUnexpired(code, currentTime);
+
+        assertEquals(VCICacheService.PreAuthCodeClaimResult.EXPIRED, result);
+        verify(cache, never()).put("used:" + code, true);
+        verify(cache, never()).evict(Constants.PRE_AUTH_CODE_PREFIX + code);
+    }
+
+    @Test
     public void markPreAuthCodeAsUsed_Success() {
         String code = "code-to-mark";
         String usedKey = "used:" + code;
