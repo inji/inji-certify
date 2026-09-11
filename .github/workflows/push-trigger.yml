@@ -324,7 +324,7 @@ jobs:
 
       - name: Bundle plugins into certify image
         run: |
-          printf 'FROM inji-certify:ci\nCOPY target/*.jar ${loader_path_env}\n' \
+          printf 'FROM inji-certify:ci\nCOPY target/*.jar /home/inji/additional_jars/\n' \
             > certify-service-with-plugins/Dockerfile.ci
           docker build -t inji-certify:ci \
             -f certify-service-with-plugins/Dockerfile.ci \
@@ -454,6 +454,10 @@ jobs:
           EXIT_CODE=$?
           echo "EXIT_CODE=$EXIT_CODE" >> $GITHUB_ENV
           set -e
+
+      - name: Dump apitest logs
+        if: always()
+        run: docker logs apitest 2>&1 || true
 
       - name: Copy reports from container
         if: always()
