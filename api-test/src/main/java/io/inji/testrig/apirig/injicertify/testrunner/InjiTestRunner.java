@@ -226,12 +226,6 @@ public class InjiTestRunner {
 		}
 		File[] files = homeDir.listFiles();
 		if (files != null) {
-			String useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
-			if (useCaseToExecute != null) {
-				useCaseToExecute = useCaseToExecute.trim();
-			} else {
-				useCaseToExecute = "";
-			}
 			InjiCertifyUtil.currentUseCase = useCaseToExecute;
 
 			for (File file : files) {
