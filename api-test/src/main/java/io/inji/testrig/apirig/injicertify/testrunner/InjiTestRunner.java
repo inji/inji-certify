@@ -87,6 +87,10 @@ public class InjiTestRunner {
 			setLogLevels();
 
 			useCaseToExecute = InjiCertifyConfigManager.getproperty("useCaseToExecute");
+			String envUseCase = System.getenv("ENV_USECASE");
+			if (envUseCase != null && !envUseCase.isBlank()) {
+				useCaseToExecute = envUseCase;
+			}
 			if (useCaseToExecute != null) {
 				useCaseToExecute = useCaseToExecute.trim();
 			} else {
@@ -101,9 +105,9 @@ public class InjiTestRunner {
 			if (!"true".equals(System.getenv("CI"))) {
 				KeycloakUserManager.removeUser();
 				KeycloakUserManager.createUsers();
+				KeycloakUserManager.closeKeycloakInstance();
+				AdminTestUtil.getRequiredField();
 			}
-			KeycloakUserManager.closeKeycloakInstance();
-			AdminTestUtil.getRequiredField();
 
 			BaseTestCase.getLanguageList();
 			InjiCertifyUtil.getSupportedCredentialSigningAlg();
@@ -146,8 +150,10 @@ public class InjiTestRunner {
 			InjiCertifyUtil.landRegistryDBCleanup();
 		}
 
-		KeycloakUserManager.removeUser();
-		KeycloakUserManager.closeKeycloakInstance();
+		if (!"true".equals(System.getenv("CI"))) {
+			KeycloakUserManager.removeUser();
+			KeycloakUserManager.closeKeycloakInstance();
+		}
 
 		OTPListener.bTerminate = true;
 

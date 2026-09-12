@@ -80,4 +80,5 @@ services:
       - ENV_ENDPOINT=http://certify:8090
       - ENV_TESTLEVEL=smokeAndRegression
       - ENV_USER=certify:8090
+      - ENV_USECASE=mock
       - CI=true
