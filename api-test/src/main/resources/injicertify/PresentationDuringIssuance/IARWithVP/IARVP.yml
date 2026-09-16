@@ -4,12 +4,12 @@ IARWithVP:
       uniqueIdentifier: TC_InjiCertify_IARInitialRequest_With_VP_01
       description: get Auth code with verifiable presentation response
       role: noauth
-      checkErrorsOnlyInResponse: true
       restMethod: post
       inputTemplate: injicertify/PresentationDuringIssuance/IARWithVP/IARVP
       outputTemplate: injicertify/PresentationDuringIssuance/IARWithVP/IARVPResult
       input: '{
 		"auth_session":	"$ID:IAR_initial_Request_mdocvp_all_Valid_Smoke_sid_auth_session$",
+		"client_id": "$ID:ESignet_CreateOIDCClientV2_Formdocvp_all_Valid_Smoke_sid_clientId$",
 		"openid4vp_response": "$OPENID4VP_RESPONSE$"
 }'
       output: '{

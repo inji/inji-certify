@@ -117,44 +117,54 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 		sendOtpEndPoint = otpReqJson.getString("sendOtpEndPoint");
 		otpReqJson.remove("sendOtpEndPoint");
 
-		String input = getJsonFromTemplate(otpReqJson.toString(), sendOtpReqTemplate);
+		String otpReqTemplateJson = otpReqJson.toString();
+
+		String otpBaseUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
+		String otpPath = sendOtpEndPoint;
+		if (otpPath != null && otpPath.contains("BASEURL$")) {
+			otpBaseUrl = InjiCertifyUtil.getTempURL(testCaseDTO, otpPath);
+			String endPointKeyWord = InjiCertifyUtil.getKeyWordFromEndPoint(otpPath);
+			if (!endPointKeyWord.isBlank() && otpPath.startsWith(endPointKeyWord)) {
+				otpPath = otpPath.replace(endPointKeyWord, "");
+			}
+		}
 		
 		Response otpResponse = null;
-		int maxLoopCount = Integer.parseInt(properties.getProperty("uinGenMaxLoopCount"));
+		int maxLoopCount = InjiCertifyUtil.parsePositiveInt(properties.getProperty("uinGenMaxLoopCount"), 20);
+		long uinGenDelayMs = InjiCertifyUtil.parsePositiveLong(properties.getProperty("uinGenDelayTime"), 10000L);
 		int currLoopCount = 0;
 		while (currLoopCount < maxLoopCount) {
+			// Rebuild from the template each attempt. eSignet rejects a stale requestTime
+			// (~2 minutes) with invalid_request; mutating the already-substituted body
+			// left $TIMESTAMP$ gone so retries reused the first attempt's clock.
+			String input = getJsonFromTemplate(otpReqTemplateJson, sendOtpReqTemplate);
 			input = inputStringKeyWordHandeler(input, testCaseName);
+			input = InjiCertifyUtil.refreshEsignetRequestTime(input);
 			NotificationListener.markRequestStart();
 			if (testCaseName.contains(GlobalConstants.ESIGNET_)) {
 				if (InjiCertifyConfigManager.isInServiceNotDeployedList(GlobalConstants.ESIGNET)) {
 					throw new SkipException("esignet is not deployed hence skipping the testcase");
 				}
-				String tempUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
-				String endPointKeyWord = "";
-				if (sendOtpEndPoint.contains("BASEURL$")) {
-					tempUrl = InjiCertifyUtil.getTempURL(testCaseDTO);
-					endPointKeyWord = InjiCertifyUtil.getKeyWordFromEndPoint(sendOtpEndPoint);
-					sendOtpEndPoint = !endPointKeyWord.isBlank() && sendOtpEndPoint.startsWith(endPointKeyWord)
-							? sendOtpEndPoint.replace(endPointKeyWord, "")
-							: sendOtpEndPoint;
-				}
+				InjiCertifyUtil.fetchMosipIdCsrfTokenIfNeeded(testCaseName);
 
-				otpResponse = postRequestWithCookieAuthHeaderAndXsrfToken(tempUrl + sendOtpEndPoint, input, COOKIENAME,
+				otpResponse = postRequestWithCookieAuthHeaderAndXsrfToken(otpBaseUrl + otpPath, input, COOKIENAME,
 						testCaseDTO.getTestCaseName());
+				InjiCertifyUtil.captureEsignetCsrf(otpResponse);
 			} else {
-				otpResponse = postWithBodyAndCookie(ApplnURI + sendOtpEndPoint, input, COOKIENAME,
+				otpResponse = postWithBodyAndCookie(ApplnURI + otpPath, input, COOKIENAME,
 						GlobalConstants.RESIDENT, testCaseDTO.getTestCaseName());
 			}
 
-			if (otpResponse != null && otpResponse.asString().contains("IDA-MLC-018")) {
-				logger.info("waiting for: " + properties.getProperty("uinGenDelayTime")
-						+ " as UIN not available in database");
+			if (shouldRetrySendOtp(otpResponse)) {
+				logger.info("waiting for: " + uinGenDelayMs
+						+ " as UIN not available in IDA yet ("
+						+ InjiCertifyUtil.describeMosipIdSendOtpFailure(otpResponse) + ")");
 				try {
-					Thread.sleep(Long.parseLong(properties.getProperty("uinGenDelayTime")));
-
-				} catch (NumberFormatException | InterruptedException e) {
+					Thread.sleep(uinGenDelayMs);
+				} catch (InterruptedException e) {
 					logger.error(e.getMessage());
 					Thread.currentThread().interrupt();
+					break;
 				}
 			} else {
 				break;
@@ -183,6 +193,15 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 				if (otpResponse.asString().contains("IDA-OTA-001")) {
 					throw new AdminTestException(
 							"Exceeded number of OTP requests in a given time, Increase otp.request.flooding.max-count");
+				} else if (shouldRetrySendOtp(otpResponse)) {
+					throw new AdminTestException(
+							"IDA rejected send-otp after retries ("
+									+ InjiCertifyUtil.describeMosipIdSendOtpFailure(otpResponse)
+									+ "). IDA-MLC-018 means the UIN is not in IDA yet. IDA-MLC-007 is a generic "
+									+ "IDA failure. eSignet 1.8.0 calls IDA as /otp/{misp-lk}/{relyingPartyId}/"
+									+ "{clientId}; clientId must be a PMS-issued API key from "
+									+ "/v1/partnermanager/oidc/client, not an eSignet-only oauth-client. Also "
+									+ "check ID-repo to IDA credential sync and CBEFF face.");
 				} else
 					throw new AdminTestException("Failed at otp output validation");
 			}
@@ -209,8 +228,10 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 					testCaseDTO.setEndPoint(testCaseDTO.getEndPoint().replace(endPointKeyWord, ""));
 				}
 			}
+			InjiCertifyUtil.fetchMosipIdCsrfTokenIfNeeded(testCaseName);
 			response = postRequestWithCookieAuthHeaderAndXsrfTokenForAutoGenId(tempUrl + testCaseDTO.getEndPoint(),
 					reqJson, COOKIENAME, testCaseDTO.getTestCaseName(), idKeyName);
+			InjiCertifyUtil.captureEsignetCsrf(response);
 		} else {
 			response = postWithBodyAndCookieForAutoGeneratedId(ApplnURI + testCaseDTO.getEndPoint(), reqJson,
 					auditLogCheck, COOKIENAME, testCaseDTO.getRole(), testCaseDTO.getTestCaseName(), idKeyName);
@@ -223,6 +244,22 @@ public class PostWithAutogenIdWithOtpGenerate extends InjiCertifyUtil implements
 
 		if (!OutputValidationUtil.publishOutputResult(ouputValid))
 			throw new AdminTestException("Failed at output validation");
+	}
+
+	/**
+	 * Released IDA returns IDA-MLC-018 while a newly created UIN is still being
+	 * indexed. Some deployments return IDA-MLC-007 for the same window. The MOSIP ID
+	 * stack can also wrap that window as eSignet {@code send_otp_failed}.
+	 */
+	private boolean shouldRetrySendOtp(Response otpResponse) {
+		if (otpResponse == null) {
+			return false;
+		}
+		if (testCaseName != null && testCaseName.toUpperCase().contains("MOSIPID")) {
+			return InjiCertifyUtil.isRetryableMosipIdSendOtpFailure(otpResponse);
+		}
+		String body = otpResponse.asString();
+		return body.contains("IDA-MLC-018") || body.contains("IDA-MLC-007");
 	}
 
 	/**

@@ -121,19 +121,23 @@ public class InjiTestRunner {
 			// Needed for every use case, not just mosipid, else eSignet returns 403 Forbidden
 			AdminTestUtil.fetchAndStoreCsrfToken();
 			
-			if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+			if (useCaseToExecute.equalsIgnoreCase("mosipid")
+					|| useCaseToExecute.equalsIgnoreCase("mdocvp")) {
 
-				InjiCertifyUtil.dBCleanup();
+				if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+					InjiCertifyUtil.dBCleanup();
+				}
 
-				// Generate device certificates to be consumed by Mock-MDS
+				// mdocvp also AddIdentity's a MOSIP UIN, so IDA needs the same CBEFF face.
 				PartnerRegistration.deleteCertificates();
 				PartnerRegistration.deviceGeneration();
-
 				BiometricDataProvider.generateBiometricTestData("Registration");
 
 				startTestRunner();
 
-				InjiCertifyUtil.dBCleanup();
+				if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+					InjiCertifyUtil.dBCleanup();
+				}
 			} else {
 
 				startTestRunner();

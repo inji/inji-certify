@@ -158,6 +158,7 @@ public class SimplePostForAutoGenIdForUrlEncoded extends InjiCertifyUtil impleme
 			Reporter.log(ReportUtil.getOutputValidationReport(ouputValid));
 			if (!OutputValidationUtil.publishOutputResult(ouputValid))
 				throw new AdminTestException("Failed at output validation");
+			InjiCertifyUtil.rewriteMdocvpIarSessionIdentityToCsvId(testCaseDTO, jsonInput);
 		}
 
 	}
