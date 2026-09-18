@@ -738,6 +738,18 @@
 			"script": {
 				"type": "text/javascript",
 				"exec": [
+					"// This collection keeps its own environment. Selecting the other one would not",
+					"// fail immediately - the two share 20 variable names - it would run partway and",
+					"// write this flow's state into the wrong file. From OIDC Client Mgmt that costs",
+					"// a registered client: pm.environment.set CREATES privateKey_jwk in whichever",
+					"// environment is active, and eSignet cannot re-key or read back a client.",
+					"var flavor = pm.environment.get('env_flavor');",
+					"if (flavor !== 'bearer') {",
+					"    var got = pm.environment.name",
+					"        ? '\"' + pm.environment.name + '\" (env_flavor=' + (flavor || 'unset') + ')'",
+					"        : 'no environment selected';",
+					"    throw new Error('Wrong environment: this collection needs \"ENV Mock Identity Bearer\" (env_flavor=bearer), got ' + got + '.');",
+					"}",
 					""
 				]
 			}

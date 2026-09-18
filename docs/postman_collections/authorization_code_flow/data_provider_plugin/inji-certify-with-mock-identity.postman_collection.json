@@ -1,17 +1,17 @@
 {
 	"info": {
 		"_postman_id": "3494bbcf-2868-42c5-8f74-236e952f8e1e",
-		"name": "Inji Certify With Mock Identity",
+		"name": "Inji Certify With Mock Identity Bearer",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "41350892",
-		"description": "Bearer credential issuance against the mock identity system.\n\nEnvironment ships pointing at a LOCAL deployment. To run the VCI flow against MOSIP's released/collab deployment change these four variables only: authServerUrl, aud, mockIdentitySystemUrl, relayingPartyId. Leave certifyUrl and audUrl as they are - both describe certify itself, which stays local whichever eSignet you point at, and dragging audUrl along with authServerUrl fails every credential request with 400 invalid_proof. Registering your own clients on a hosted deployment additionally needs internalUrl and partnerSecret. See docs/postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md.\n\nUses the shared environment \"ENV Mock Identity\". Run the VCI folder top to bottom; Authorize / OAuthdetails request V2 must run before Send OTP. Its Get Tokens V2 also publishes unbound_access_token, which the DPoP scenarios in \"Inji Certify With Mock Identity DPoP\" consume.\n\nDEMO KEYS: the RSA private keys in the shared environment are committed to a public repository and must be treated as compromised. They are for the local mock-identity demo only - never register them with an authorization server issuing tokens for anything real."
+		"description": "Bearer credential issuance against the mock identity system.\n\nUses its own environment, \"ENV Mock Identity Bearer\" - shared with \"Inji Certify With Mock Mdoc VCI\", but NOT with the DPoP collection. Select it before running anything: a collection-level pre-request script checks env_flavor and aborts if the DPoP environment is loaded. The two environments still share 20 variable names, so a wrong-environment run would not fail on the first request - it would get partway and write this flow's state into the other file. From OIDC Client Mgmt that costs a registered client, because pm.environment.set CREATES privateKey_jwk in whichever environment is active and eSignet can neither re-key a client nor read its key back.\n\nEnvironment ships pointing at a LOCAL deployment. To run the VCI flow against MOSIP's released/collab deployment change these four variables only: authServerUrl, aud, mockIdentitySystemUrl, relayingPartyId. Leave certifyUrl and audUrl as they are - both describe certify itself, which stays local whichever eSignet you point at, and dragging audUrl along with authServerUrl fails every credential request with 400 invalid_proof. Registering your own clients on a hosted deployment additionally needs internalUrl and partnerSecret.\n\nRun the VCI folder top to bottom; Authorize / OAuthdetails request V2 must run before Send OTP. Its Get Tokens V2 also publishes unbound_access_token, the \"token with no cnf.jkt\" fixture that one DPoP scenario needs - since the environments are separate, copy that value across by hand when you want to run it.\n\nDEMO KEYS: the RSA private keys in this environment are committed to a public repository and must be treated as compromised. They are for the local mock-identity demo only - never register them with an authorization server issuing tokens for anything real.\n\nSee docs/postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md."
 	},
 	"item": [
 		{
 			"name": "OIDC Client Mgmt",
 			"item": [
 				{
-					"name": "Auth Copy",
+					"name": "1. Authenticate (partner)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -23,7 +23,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"id\": \"string\",\r\n  \"metadata\": {},\r\n  \"request\": {\r\n    \"appId\": \"partner\",\r\n    \"clientId\": \"mosip-pms-client\",\r\n    \"secretKey\": \"5Qj8vn989OL1Vlu6\"\r\n  },\r\n  \"requesttime\": \"2018-12-10T06:12:52.994Z\",\r\n  \"version\": \"string\"\r\n}\r\n"
+							"raw": "{\n    \"id\": \"string\",\n    \"metadata\": {},\n    \"request\": {\n        \"appId\": \"partner\",\n        \"clientId\": \"mosip-pms-client\",\n        \"secretKey\": \"{{partnerSecret}}\"\n    },\n    \"requesttime\": \"{{$isoTimestamp}}\",\n    \"version\": \"string\"\n}"
 						},
 						"url": {
 							"raw": "{{internalUrl}}/v1/authmanager/authenticate/clientidsecretkey",
@@ -36,12 +36,84 @@
 								"authenticate",
 								"clientidsecretkey"
 							]
-						}
+						},
+						"description": "Only needed on a hosted deployment. A local eSignet leaves client-mgmt unauthenticated, so requests 2 and 3 work on their own and this one has nothing to talk to - internalUrl ships empty.\n\npartnerSecret is deployment-specific and deliberately not committed: set it in your own environment.\n\nThis collection keeps its own environment (ENV Mock Identity Bearer), so authToken must be minted here - the DPoP collection writes its copy into a different environment."
 					},
-					"response": []
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"eval(pm.environment.get('pmlib_code'));",
+									"",
+									"// The token comes back as a Set-Cookie, not in the body: the body carries only",
+									"// {status, message} and answers 200 whether or not a token was minted, so a",
+									"// green response here proves nothing. The cookie is the only evidence.",
+									"var token = null;",
+									"pm.response.headers.each(function (h) {",
+									"    if (!token && h.key.toLowerCase() === 'set-cookie' && h.value.indexOf('Authorization=') === 0) {",
+									"        token = h.value.split(';')[0].substring('Authorization='.length);",
+									"    }",
+									"});",
+									"",
+									"var body = null;",
+									"try { body = pm.response.json(); } catch (e) { body = null; }",
+									"",
+									"pm.test('partner token issued', function () {",
+									"    pm.expect(JSON.stringify((body && body.errors) || []), 'authmanager rejected the credentials - partnerSecret is deployment-specific').to.equal('[]');",
+									"    pm.expect(token, 'no Authorization cookie in the response').to.be.a('string');",
+									"});",
+									"",
+									"if (token) {",
+									"    // Cleared before validation, not after: client-mgmt rejects a stale, expired or",
+									"    // wrong-scope token exactly as it does a missing one - 'Full authentication is",
+									"    // required to access this resource' at HTTP 200 - so a token left behind after",
+									"    // failing its checks looks correctly populated while every registration fails.",
+									"    pm.environment.unset('authToken');",
+									"",
+									"    var claims = {};",
+									"    try {",
+									"        var parsed = JSON.parse(pmlib.rs.b64utoutf8(token.split('.')[1]));",
+									"        if (parsed && typeof parsed === 'object') claims = parsed;",
+									"    } catch (e) {",
+									"        // Malformed token: both checks below fail on the empty claims and report it.",
+									"    }",
+									"",
+									"    // scope is space-delimited, so membership rather than substring - a scope such as",
+									"    // add_oidc_client_readonly must not pass. A token minted for the wrong appId",
+									"    // authenticates perfectly and still cannot register a client; its scope is the",
+									"    // only thing that says so, and the failure it causes later does not mention it.",
+									"    var hasScope = typeof claims.scope === 'string' &&",
+									"        claims.scope.split(/\\s+/).indexOf('add_oidc_client') !== -1;",
+									"",
+									"    // These tokens are short-lived. Authenticating once and registering some minutes",
+									"    // later fails exactly like never authenticating at all.",
+									"    var notExpired = typeof claims.exp === 'number' && isFinite(claims.exp) &&",
+									"        claims.exp * 1000 > Date.now();",
+									"",
+									"    pm.test('token carries add_oidc_client', function () {",
+									"        pm.expect(hasScope, 'wrong appId, or the token could not be decoded - it cannot register clients').to.equal(true);",
+									"    });",
+									"",
+									"    pm.test('token is not already expired', function () {",
+									"        pm.expect(notExpired, 'authToken has no usable exp, or has already expired - re-run this request immediately before creating the client').to.equal(true);",
+									"    });",
+									"",
+									"    // Stored only once both checks pass, so the environment never holds a token that",
+									"    // client-mgmt will refuse.",
+									"    if (hasScope && notExpired) pm.environment.set('authToken', token);",
+									"} else {",
+									"    pm.environment.unset('authToken');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
 				},
 				{
-					"name": "Get CSRF token",
+					"name": "2. Get CSRF token",
 					"event": [
 						{
 							"listen": "test",
@@ -85,13 +157,21 @@
 					"response": []
 				},
 				{
-					"name": "Create OIDC client",
+					"name": "3. Create OIDC client",
 					"event": [
 						{
 							"listen": "prerequest",
 							"script": {
 								"exec": [
 									"eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'))",
+									"",
+									"// Kept so a failed registration can put it back. The new key is written below",
+									"// before the request is sent, so without this a rejected registration leaves the",
+									"// environment holding a key eSignet never saw - and the only symptom is",
+									"// invalid_client at the token step, six requests later.",
+									"pm.collectionVariables.set('privateKey_jwk_prev', pm.environment.get('privateKey_jwk') || '');",
+									"pm.collectionVariables.set('publicKey_jwk_prev', pm.environment.get('publicKey_jwk') || '');",
+									"",
 									"kp = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
 									"privateKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.prvKeyObj);",
 									"publicKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.pubKeyObj);",
@@ -106,14 +186,50 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Validate clientId\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.clientId).to.eql(pm.collectionVariables.get(\"clientId\"));",
+									"var body = null;",
+									"try { body = pm.response.json(); } catch (e) { body = null; }",
+									"",
+									"var errors = (body && body.errors) || [];",
+									"var registered = pm.response.code === 200 && errors.length === 0 &&",
+									"                 body && body.response && body.response.status === 'ACTIVE';",
+									"",
+									"// The new key went into the environment before the request was sent. If eSignet",
+									"// did not take it, the registered client is still the old one - put its private",
+									"// half back rather than leaving the environment holding a key that exists nowhere.",
+									"if (!registered) {",
+									"    var prevPriv = pm.collectionVariables.get('privateKey_jwk_prev');",
+									"    var prevPub = pm.collectionVariables.get('publicKey_jwk_prev');",
+									"    // unset, not skip, when there was no previous key: on a first registration",
+									"    // prevPriv is '' and leaving the freshly generated pair in place would keep a",
+									"    // key eSignet never registered - exactly what this restore exists to prevent.",
+									"    if (prevPriv) pm.environment.set('privateKey_jwk', prevPriv);",
+									"    else pm.environment.unset('privateKey_jwk');",
+									"    if (prevPub) pm.environment.set('publicKey_jwk', prevPub);",
+									"    else pm.environment.unset('publicKey_jwk');",
+									"}",
+									"",
+									"// A 401 here has an EMPTY body - the reason is in WWW-Authenticate, which",
+									"// distinguishes 'Malformed token' from expired from insufficient_scope.",
+									"pm.test('request was authorised', function () {",
+									"    pm.expect(pm.response.code, pm.response.headers.get('WWW-Authenticate') || 'no WWW-Authenticate header').to.equal(200);",
 									"});",
 									"",
-									"pm.test(\"Validate status\", function () {",
-									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");",
+									"// MOSIP reports registration failures at HTTP 200 with an errors array, so the",
+									"// status code above is not enough on its own.",
+									"// The two failures worth telling apart, named from the error actually returned",
+									"// rather than listed together in one hint.",
+									"var hint = 'registration failed';",
+									"if (/Full authentication is required/.test(JSON.stringify(errors))) {",
+									"    hint = 'authToken is missing, stale or expired - re-run 1. Authenticate (partner) immediately before this request';",
+									"} else if (/duplicate_client_id/.test(JSON.stringify(errors))) {",
+									"    hint = 'this clientId already exists with a different key; it cannot be re-keyed, so use a new clientId';",
+									"}",
+									"",
+									"pm.test('client registered', function () {",
+									"    pm.expect(body, 'no JSON body - read WWW-Authenticate').to.not.equal(null);",
+									"    pm.expect(JSON.stringify(errors), hint).to.equal('[]');",
+									"    pm.expect(body.response.clientId).to.equal(pm.environment.get('clientId'));",
+									"    pm.expect(body.response.status).to.equal('ACTIVE');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -158,12 +274,12 @@
 								"oidc-client"
 							]
 						},
-						"description": "The partner token comes from the runtime authToken variable, published by \"1. Authenticate (partner)\" in the OIDC Client Mgmt (DPoP) folder of \"Inji Certify With Mock Identity DPoP\" - both collections share one environment. Run that request first on collab and released; a local eSignet leaves client-mgmt unauthenticated and ignores this header."
+						"description": "The partner token comes from the runtime authToken variable, published by \"1. Authenticate (partner)\" in this OIDC Client Mgmt folder. The DPoP collection writes its own authToken into its own environment, so that one is not interchangeable with this. Run that request first on collab and released; a local eSignet leaves client-mgmt unauthenticated and ignores this header."
 					},
 					"response": []
 				},
 				{
-					"name": "Update OIDC",
+					"name": "4. Update OIDC",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -198,7 +314,7 @@
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{authorizationToken}}",
+									"value": "{{authToken}}",
 									"type": "string"
 								}
 							]
@@ -437,7 +553,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"mock_identity_vc_ldp\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code\",\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
+							"raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"{{scope}}\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code\",\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -751,7 +867,7 @@
 					"response": []
 				},
 				{
-					"name": "8. Get Farmer Credential",
+					"name": "8. Get Credential",
 					"event": [
 						{
 							"listen": "prerequest",
@@ -824,7 +940,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"credential_configuration_id\":\"FarmerCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
+							"raw": "{\n    \"credential_configuration_id\":\"{{configId}}\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1038,7 +1154,21 @@
 			"listen": "prerequest",
 			"script": {
 				"type": "text/javascript",
-				"exec": []
+				"exec": [
+					"// This collection keeps its own environment. Selecting the other one would not",
+					"// fail immediately - the two share 20 variable names - it would run partway and",
+					"// write this flow's state into the wrong file. From OIDC Client Mgmt that costs",
+					"// a registered client: pm.environment.set CREATES privateKey_jwk in whichever",
+					"// environment is active, and eSignet cannot re-key or read back a client.",
+					"var flavor = pm.environment.get('env_flavor');",
+					"if (flavor !== 'bearer') {",
+					"    var got = pm.environment.name",
+					"        ? '\"' + pm.environment.name + '\" (env_flavor=' + (flavor || 'unset') + ')'",
+					"        : 'no environment selected';",
+					"    throw new Error('Wrong environment: this collection needs \"ENV Mock Identity Bearer\" (env_flavor=bearer), got ' + got + '.');",
+					"}",
+					""
+				]
 			}
 		},
 		{

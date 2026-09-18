@@ -17,9 +17,9 @@ Ready-to-import collections and environments under [postman_collections/](./post
 Collections that exercise the OAuth authorization code grant, split by which Certify plugin architecture they demonstrate (see [VCIssuance vs DataProvider](./technical_docs/VCIssuance_Vs_DataProvider.md) for the distinction):
 
 - **[data_provider_plugin/](./postman_collections/authorization_code_flow/data_provider_plugin/)** – exercises the **DataProviderPlugin** architecture.
-  - `inji-certify-with-mock-identity.postman_collection.json` + `.postman_environment.json` – Bearer credential issuance against the mock identity system (CSV data-provider "farmer" credential).
-  - `inji-certify-with-mock-identity-dpop.postman_collection.json` – DPoP-constrained credential issuance (RFC 9449); shares the environment above.
-  - `inji-certify-with-mock-mdoc-vci.postman_collection.json` – mock mDoc/mDL VCI collection.
+  - `inji-certify-with-mock-identity.postman_collection.json` + `.postman_environment.json` (`ENV Mock Identity Bearer`) – Bearer credential issuance against the mock identity system (CSV data-provider "farmer" credential).
+  - `inji-certify-with-mock-identity-dpop.postman_collection.json` + `inji-certify-with-mock-identity-dpop.postman_environment.json` (`ENV Mock Identity DPoP`) – DPoP-constrained credential issuance (RFC 9449). It has its own environment: the two flows write the same variable names, so sharing one lets either run silently clobber the other's client keys and tokens.
+  - `inji-certify-with-mock-mdoc-vci.postman_collection.json` – mock mDoc/mDL VCI collection; uses `ENV Mock Identity Bearer`.
   - [README-mock-identity-dpop.md](./postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md) – 26-scenario DPoP conformance suite covering the two mock-identity collections above.
 - **[vc_issuance_plugin/](./postman_collections/authorization_code_flow/vc_issuance_plugin/)** – exercises the **VCIssuancePlugin** architecture ("Sunbird VCI Plugin Mode"), using Sunbird RC as the sample integration.
   - `inji-certify-with-sunbird-insurance.postman_collection.json` + `.postman_environment.json`

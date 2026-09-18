@@ -145,7 +145,7 @@ mvn clean install -Dgpg.skip=true
 
 ## VC Issuance With Local Setup
 1. Use the Postman collection and environment located at [Inji Certify Mock Collection](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_collection.json) and [Inji Certify Mock Environment](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_environment.json) to test the VC issuance flow.
-2. Locate the `8. Get Farmer Credential` POST request inside the VCI folder
+2. Locate the `8. Get Credential` POST request inside the VCI folder
 3. Send the VC request and the response will be farmer credential json.
 4. Try verification with [Univerifier](https://univerifier.io)
 
