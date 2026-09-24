@@ -2,7 +2,10 @@ package io.mosip.certify.proof;
 
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -92,21 +95,55 @@ public class DIDjwkProofManagerTest {
 
     @Test
     void getDID_didjwk() throws NoSuchAlgorithmException {
-        RSAKey rsaJWK = getRsaKey();
+        RSAKey rsaJWK = getRsaKey().toPublicJWK();
         when(header.getJWK()).thenReturn(rsaJWK);
         Optional<String> did = manager.getDID(header);
         assertTrue(did.isPresent());
-        assertTrue(did.get().startsWith("did:jwk"));
+        assertTrue(did.get().startsWith("did:jwk:"));
+        assertFalse(did.get().contains("="), "did:jwk must not contain base64 padding");
     }
     @Test
     void getDID_didjwk_keyid() throws NoSuchAlgorithmException {
         RSAKey rsaJWK = getRsaKey();
-        byte[] keyBytes = rsaJWK.toJSONString().getBytes(StandardCharsets.UTF_8);
-        String didJWK = "did:jwk:" + Base64.getUrlEncoder().encodeToString(keyBytes);
+        byte[] keyBytes = rsaJWK.toPublicJWK().toJSONString().getBytes(StandardCharsets.UTF_8);
+        String didJWK = "did:jwk:" + Base64.getUrlEncoder().withoutPadding().encodeToString(keyBytes);
         // convert the rsaJWK to a did:jwk and remove the JWK
         when(header.getKeyID()).thenReturn(didJWK);
         assertEquals(didJWK, manager.getDID(header).get());
         assertTrue(didJWK.startsWith("did:jwk:"));
+    }
+
+    @Test
+    void getDID_fromJwkHeader_isUnpaddedAndRoundTrips() throws Exception {
+        ECKey baseKey = new ECKeyGenerator(Curve.P_256).generate().toPublicJWK();
+        // Vary kid length so at least one serialized JWK length is not a multiple of 3,
+        // i.e. the case where a padded encoder would append '='.
+        for (String kid : new String[]{"k", "kk", "kkk"}) {
+            ECKey jwk = new ECKey.Builder(baseKey).keyID(kid).build();
+            when(header.getJWK()).thenReturn(jwk);
+
+            String did = manager.getDID(header).orElseThrow();
+
+            assertTrue(did.startsWith("did:jwk:"));
+            String encoded = did.substring("did:jwk:".length());
+            assertFalse(encoded.contains("="), "did:jwk must not contain base64 padding: " + did);
+            String decoded = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
+            assertEquals(jwk, JWK.parse(decoded));
+        }
+    }
+
+    @Test
+    void getKeyFromHeader_acceptsLegacyPaddedDidJwk() throws Exception {
+        ECKey jwk = new ECKeyGenerator(Curve.P_256).generate().toPublicJWK();
+        String padded = Base64.getUrlEncoder().encodeToString(jwk.toJSONString().getBytes(StandardCharsets.UTF_8));
+        when(header.getJWK()).thenReturn(null);
+        when(header.getKeyID()).thenReturn("did:jwk:" + padded + "#0");
+
+        Optional<JWK> key = manager.getKeyFromHeader(header);
+
+        assertTrue(key.isPresent());
+        assertEquals(jwk.getX(), ((ECKey) key.get()).getX());
+        assertEquals(jwk.getY(), ((ECKey) key.get()).getY());
     }
 
     // TODO: implement this for did:key:<RSA-pub-key>
