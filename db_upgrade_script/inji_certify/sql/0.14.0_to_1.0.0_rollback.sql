@@ -34,7 +34,6 @@ DROP INDEX IF EXISTS certify.idx_ard_transaction_id;
 
 DROP TABLE IF EXISTS certify.vp_submission;
 DROP TABLE IF EXISTS certify.vc_submission;
-DROP TABLE IF EXISTS certify.presentation_definition;
 DROP TABLE IF EXISTS certify.authorization_request_details;
 
 UPDATE certify.credential_config

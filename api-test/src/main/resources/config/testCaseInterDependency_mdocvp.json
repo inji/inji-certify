@@ -37,7 +37,64 @@
     "TC_InjiCertify_IARInitialRequest_08": ["TC_esignetDependent_CreateOidc_mdocvp_01"],
     "TC_InjiCertify_IARInitialRequest_07": ["TC_esignetDependent_CreateOidc_mdocvp_01"],
     "TC_InjiCertify_IARInitialRequest_With_VP_03": ["TC_InjiCertify_IARInitialRequest_01"],
-    "TC_InjiCertify_IARInitialRequest_With_VP_01": ["TC_InjiCertify_IARInitialRequest_01"],
+    "TC_injicertify_Mosipidcredentialissuance_pdi_01": [
+        "TC_pms_dependency_01",
+        "TC_idrepo_dependency_01",
+        "TC_InjiCertify_MosipID_AddCredentialConfig_01",
+        "TC_esignetDependent_GenerateToken_27",
+        "TC_esignetDependent_GenerateNonce_01"
+    ],
+    "TC_pms_dependency_10": [
+        "TC_pms_dependency_03",
+        "TC_pms_dependency_09"
+    ],
+    "TC_pms_dependency_09": ["TC_pms_dependency_03"],
+    "TC_pms_dependency_08": [
+        "TC_pms_dependency_03",
+        "TC_pms_dependency_09",
+        "TC_pms_dependency_10"
+    ],
+    "TC_pms_dependency_07": [
+        "TC_pms_dependency_04",
+        "TC_pms_dependency_03",
+        "TC_pms_dependency_08"
+    ],
+    "TC_pms_dependency_06": [
+        "TC_pms_dependency_04",
+        "TC_pms_dependency_05"
+    ],
+    "TC_pms_dependency_04": ["TC_pms_dependency_05"],
+    "TC_pms_dependency_03": [
+        "TC_pms_dependency_06",
+        "TC_pms_dependency_05"
+    ],
+    "TC_pms_dependency_02": ["TC_pms_dependency_07"],
+    "TC_pms_dependency_01": [
+        "TC_pms_dependency_04",
+        "TC_pms_dependency_03",
+        "TC_pms_dependency_02",
+        "TC_pms_dependency_10",
+        "TC_pms_dependency_09",
+        "TC_pms_dependency_08",
+        "TC_pms_dependency_07"
+    ],
+    "TC_esignetDependent_OAuthdetailsRequestNeg_26": ["TC_pms_dependency_01"],
+    "TC_esignetDependent_AuthenticateUser_26": [
+        "TC_idrepo_dependency_01",
+        "TC_esignetDependent_OAuthdetailsRequestNeg_26"
+    ],
+    "TC_esignetDependent_AuthorizationCode_27": [
+        "TC_esignetDependent_OAuthdetailsRequestNeg_26",
+        "TC_esignetDependent_AuthenticateUser_26"
+    ],
+    "TC_esignetDependent_GenerateToken_27": [
+        "TC_pms_dependency_01",
+        "TC_esignetDependent_AuthorizationCode_27"
+    ],
+    "TC_InjiCertify_IARInitialRequest_With_VP_01": [
+        "TC_InjiCertify_IARInitialRequest_01",
+        "TC_injicertify_Mosipidcredentialissuance_pdi_01"
+    ],
     "TC_mdocvpDependent_GenerateNonce_01": [
         "TC_InjiCertify_oAuthTokenExchange_PresentationDuringIssuance_01"
     ]

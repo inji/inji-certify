@@ -22,10 +22,17 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
-import junit.framework.TestCase;
+import org.junit.Test;
 
-public class SDJsonUtilsTest extends TestCase {
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
+public class SDJsonUtilsTest {
+
+    @Test
     public void testGetLeafNodeName() {
 
       String path1 = "$.store.book[0].author";  // Should return "author"
@@ -39,6 +46,7 @@ public class SDJsonUtilsTest extends TestCase {
         assertEquals("book", SDJsonUtils.getLeafNodeName(path4));      
     }
 
+    @Test
     public void testCompareJsonPaths() {
       String path1 = "$.store.book.author";
       String path2 = "$.store.book.author";
@@ -79,6 +87,7 @@ public class SDJsonUtilsTest extends TestCase {
       assertTrue(SDJsonUtils.compareJsonPaths(path1, path2));
     }
 
+    @Test
     public void testConstructSDPayload(){
       // Create the input JSONNode from the provided JSON
       ObjectNode node = JsonNodeFactory.instance.objectNode();
@@ -192,6 +201,7 @@ public class SDJsonUtilsTest extends TestCase {
       assertTrue(mobilePhoneObject.containsKey("number"));
     }
 
+  @Test
   public void testConstructSDPayload_WildcardPatterns(){
     // Create the input JSONNode from the provided JSON
     ObjectNode node = JsonNodeFactory.instance.objectNode();
@@ -260,5 +270,107 @@ public class SDJsonUtilsTest extends TestCase {
     assertFalse(homePhoneObject.containsKey("number"));
     assertTrue(mobilePhoneObject.containsKey("type"));
     assertFalse(mobilePhoneObject.containsKey("number"));
+  }
+
+  @Test
+  public void should_validatePath_when_validAndInvalidPaths() {
+      ObjectNode node = JsonNodeFactory.instance.objectNode();
+      node.put("name", "John");
+      node.putNull("middleName");
+      ObjectNode addressNode = JsonNodeFactory.instance.objectNode();
+      addressNode.put("city", "Coimbatore");
+      node.set("address", addressNode);
+
+      ArrayNode emptyArray = JsonNodeFactory.instance.arrayNode();
+      node.set("emptyList", emptyArray);
+
+      ObjectNode emptyObj = JsonNodeFactory.instance.objectNode();
+      node.set("emptyObj", emptyObj);
+
+      ArrayNode listWithItems = JsonNodeFactory.instance.arrayNode();
+      listWithItems.add("item1");
+      listWithItems.add("item2");
+      node.set("listWithItems", listWithItems);
+
+      // Valid paths
+      assertTrue(SDJsonUtils.isPathValid(node, "$.name"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.address.city"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.middleName"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.address.*"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.listWithItems[0]"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$.listWithItems[1]"));
+
+      // Invalid paths
+      assertFalse(SDJsonUtils.isPathValid(node, "$.invalidKey"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address.invalidKey"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.middleName.lastName"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.emptyList[*].someField"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.emptyObj.*"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.listWithItems[01]"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.listWithItems[00]"));
+
+      // Duplicate dot paths
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address..city"));
+      assertFalse(SDJsonUtils.isPathValid(node, "$.address...city"));
+  }
+
+  @Test
+  public void should_returnNull_when_leafNodeNameInputIsNullOrEmpty() {
+      assertNull(SDJsonUtils.getLeafNodeName(null));
+      assertNull(SDJsonUtils.getLeafNodeName("   "));
+  }
+
+  @Test
+  public void should_returnFalse_when_pathIsNullEmptyOrMalformed() {
+      ObjectNode node = JsonNodeFactory.instance.objectNode();
+      node.put("name", "x");
+      assertFalse(SDJsonUtils.isPathValid(node, null));
+      assertFalse(SDJsonUtils.isPathValid(node, "  "));
+      assertFalse(SDJsonUtils.isPathValid(node, "name.without.dollar"));
+      assertTrue(SDJsonUtils.isPathValid(node, "$"));
+  }
+
+  @Test
+  public void should_matchPatterns_when_anyMatchEvaluated() {
+      assertFalse(SDJsonUtils.anyMatch("$.a.b", Arrays.asList("$.x.y", "$.p.q")));
+      assertTrue(SDJsonUtils.anyMatch("$.a.b", Arrays.asList("$.x.y", "$.a.*")));
+  }
+
+  @Test
+  public void should_discloseWholeArray_when_arrayPathIsSelectivelyDisclosable() {
+      ObjectNode node = JsonNodeFactory.instance.objectNode();
+      ArrayNode numbers = JsonNodeFactory.instance.arrayNode();
+      numbers.add(1);
+      numbers.add(2);
+      node.set("nums", numbers);
+
+      SDObjectBuilder builder = new SDObjectBuilder();
+      List<Disclosure> disclosures = new ArrayList<>();
+      // Mark the whole array as selectively disclosable
+      SDJsonUtils.constructSDPayload(node, builder, disclosures, Arrays.asList("$.nums"), "$");
+
+      Map<String, Object> claims = builder.build();
+      // When an entire array is SD, the raw key must not remain in the digest claims
+      assertFalse(claims.containsKey("nums"));
+      assertFalse(disclosures.isEmpty());
+  }
+
+  @Test
+  public void should_discloseNestedField_when_arrayOfObjectsHasSdPath() {
+      ObjectNode node = JsonNodeFactory.instance.objectNode();
+      ArrayNode people = JsonNodeFactory.instance.arrayNode();
+      ObjectNode p1 = JsonNodeFactory.instance.objectNode();
+      p1.put("name", "A");
+      p1.put("secret", "s1");
+      people.add(p1);
+      node.set("people", people);
+
+      SDObjectBuilder builder = new SDObjectBuilder();
+      List<Disclosure> disclosures = new ArrayList<>();
+      SDJsonUtils.constructSDPayload(node, builder, disclosures,
+              Arrays.asList("$.people[0].secret"), "$");
+
+      Map<String, Object> claims = builder.build();
+      assertTrue(claims.containsKey("people"));
   }
 }

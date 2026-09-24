@@ -2,6 +2,7 @@ package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.mosip.certify.core.constants.Constants;
 import lombok.Data;
 
 import java.util.List;
@@ -20,16 +21,16 @@ public class CredentialConfigurationSupportedDTO {
 
     private String id;
 
-    @JsonProperty("cryptographic_binding_methods_supported")
+    @JsonProperty(Constants.CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED)
     private List<String> cryptographicBindingMethodsSupported;
 
     @JsonProperty("cryptographic_suites_supported")
     private List<String> cryptographicSuitesSupported;
 
-    @JsonProperty("credential_signing_alg_values_supported")
-    private List<String> credentialSigningAlgValuesSupported;
+    @JsonProperty(Constants.CREDENTIAL_SIGNING_ALG_VALUES_SUPPORTED)
+    private List<Object> credentialSigningAlgValuesSupported;
 
-    @JsonProperty("proof_types_supported")
+    @JsonProperty(Constants.PROOF_TYPES_SUPPORTED)
     private Map<String, Object> proofTypesSupported;
 
     @JsonProperty("credential_definition")

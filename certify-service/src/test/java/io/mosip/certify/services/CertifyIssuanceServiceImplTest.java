@@ -12,6 +12,7 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
 import io.mosip.certify.api.spi.AuditPlugin;
@@ -127,7 +128,7 @@ public class CertifyIssuanceServiceImplTest {
         credDefMapForTestMeta.put("type", Arrays.asList("VerifiableCredential", "TestCredential"));
         vcConfigForTestMeta.put("credential_definition", credDefMapForTestMeta);
         credentialConfigurationsSupportedMapForTestMeta.put("test-credential-id", vcConfigForTestMeta);
-        latestMetadataConfig.put("credential_configurations_supported", credentialConfigurationsSupportedMapForTestMeta);
+        latestMetadataConfig.put(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED, credentialConfigurationsSupportedMapForTestMeta);
         latestMetadataConfig.put("credential_issuer", "https://localhost:9090");
         latestMetadataConfig.put("credential_endpoint", "https://localhost:9090/v1/certify/issuance/credential");
         testIssuerMetadataMap.put("latest", latestMetadataConfig);

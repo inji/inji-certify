@@ -7,6 +7,7 @@ import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.dto.PreAuthCodeData;
 import io.mosip.certify.core.dto.PreAuthTransaction;
 import io.mosip.certify.core.dto.VCIssuanceTransaction;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.services.VCICacheService;
 import org.junit.Before;
 import org.junit.Test;
@@ -21,6 +22,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -254,6 +259,87 @@ public class VCICacheServiceTest {
 
         verify(cache).put(eq(usedKey), eq(true));
         verify(cache).evict(eq(codeKey));
+    }
+
+    @Test
+    public void should_returnTransaction_when_preAuthTransactionExists() {
+        PreAuthTransaction tx = new PreAuthTransaction();
+        when(cache.get("h", PreAuthTransaction.class)).thenReturn(tx);
+        assertEquals(tx, vciCacheService.getPreAuthTransaction("h"));
+    }
+
+    @Test
+    public void should_returnNull_when_preAuthCacheIsNull() {
+        when(cacheManager.getCache("preAuthCacheTxn")).thenReturn(null);
+        assertNull(vciCacheService.getPreAuthTransaction("h"));
+    }
+
+    @Test
+    public void should_returnSameTransaction_when_preAuthTransactionSet() {
+        PreAuthTransaction tx = new PreAuthTransaction();
+        assertEquals(tx, vciCacheService.setPreAuthTransaction("h", tx));
+    }
+
+    @Test
+    public void should_returnSameTransaction_when_nonceTransactionSet() {
+        VCIssuanceTransaction tx = new VCIssuanceTransaction();
+        assertEquals(tx, vciCacheService.setNonceTransaction("nonce", tx));
+    }
+
+    @Test
+    public void should_returnTransaction_when_nonceTransactionExists() {
+        VCIssuanceTransaction tx = new VCIssuanceTransaction();
+        when(cache.get("txn:nonce", VCIssuanceTransaction.class)).thenReturn(tx);
+        assertEquals(tx, vciCacheService.getNonceTransaction("nonce"));
+    }
+
+    @Test
+    public void should_throwCertifyException_when_nonceCacheIsNull() {
+        when(cacheManager.getCache("nonce")).thenReturn(null);
+        assertThrows(CertifyException.class, () -> vciCacheService.getNonceTransaction("nonce"));
+    }
+
+    @Test
+    public void should_doNothing_when_preAuthCodeCacheIsNullOnMark() {
+        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
+        vciCacheService.markPreAuthCodeAsUsed("code");
+    }
+
+    @Test
+    public void should_returnFalse_when_preAuthCodeCacheIsNull() {
+        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
+        assertFalse(vciCacheService.isPreAuthCodeUsed("code"));
+    }
+
+    @Test
+    public void should_returnFalse_when_preAuthCodeDataMissing() {
+        when(cache.get("pre_auth_code:code")).thenReturn(null);
+        assertFalse(vciCacheService.claimPreAuthCode("code"));
+    }
+
+    @Test
+    public void should_markAndReturnTrue_when_preAuthCodeIsValidAndUnused() {
+        PreAuthCodeData data = new PreAuthCodeData();
+        Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
+        when(dataWrapper.get()).thenReturn(data);
+        when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
+        when(cache.get("used:code")).thenReturn(null);
+
+        assertTrue(vciCacheService.claimPreAuthCode("code"));
+        verify(cache).put("used:code", true);
+    }
+
+    @Test
+    public void should_returnFalse_when_preAuthCodeAlreadyUsed() {
+        PreAuthCodeData data = new PreAuthCodeData();
+        Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
+        when(dataWrapper.get()).thenReturn(data);
+        Cache.ValueWrapper usedWrapper = mock(Cache.ValueWrapper.class);
+        when(usedWrapper.get()).thenReturn(Boolean.TRUE);
+        when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
+        when(cache.get("used:code")).thenReturn(usedWrapper);
+
+        assertFalse(vciCacheService.claimPreAuthCode("code"));
     }
 }
 

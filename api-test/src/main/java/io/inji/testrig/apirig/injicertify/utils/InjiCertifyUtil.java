@@ -16,10 +16,12 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECPoint;
 import java.time.LocalDate;
@@ -36,6 +38,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
@@ -64,6 +70,7 @@ import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
+import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
@@ -85,6 +92,7 @@ import io.mosip.testrig.apirig.dto.TestCaseDTO;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;
 import io.mosip.testrig.apirig.testrunner.OTPListener;
+import io.mosip.testrig.apirig.utils.AdminTestException;
 import io.mosip.testrig.apirig.utils.AdminTestUtil;
 import io.mosip.testrig.apirig.utils.CryptoCoreUtil;
 import io.mosip.testrig.apirig.utils.GlobalConstants;
@@ -108,6 +116,26 @@ public class InjiCertifyUtil extends AdminTestUtil {
 	
 public static List<String> testCasesInRunScope = new ArrayList<>();
 
+	private static final String SAMPLE_MOSIP_IDENTITY_VC_CACHE_KEY = "PresentationDuringIssuance_sampleMosipIdentityVc";
+	private static final String MOSIP_ID_PARTNER_ID_KEYWORD =
+			"$ID:PartnerSelfRegistration_MOSIPID_All_Valid_Smoke_sid_partnerId$";
+	/** Mock eSignet partner. Valid for mdl/mdocvp mock OIDC, not for released IDA. */
+	private static final String MOCK_ESIGNET_RELYING_PARTY_ID = "Bharathi-Inc";
+	/**
+	 * Default IDA auth partner on a standard MOSIP stack. eSignet passes
+	 * relyingPartyId to IDA on send-otp; IDA-MLC-007 is the generic failure when
+	 * that partner is unknown (for example Bharathi-Inc).
+	 */
+	private static final String DEFAULT_MOSIP_ID_ESIGNET_RELYING_PARTY_ID = "mpartner-default-mobile";
+	private static final Set<String> MDOCVP_MOSIP_ID_VCI_PREREQUISITE_IDS = Collections.unmodifiableSet(new HashSet<>(
+			Arrays.asList("TC_idrepo_dependency_01", "TC_pms_dependency_01", "TC_pms_dependency_02",
+					"TC_pms_dependency_03", "TC_pms_dependency_04", "TC_pms_dependency_05", "TC_pms_dependency_06",
+					"TC_pms_dependency_07", "TC_pms_dependency_08", "TC_pms_dependency_09", "TC_pms_dependency_10",
+					"TC_InjiCertify_MosipID_AddCredentialConfig_01", "TC_esignetDependent_OAuthdetailsRequestNeg_26",
+					"TC_esignetDependent_AuthenticateUser_26", "TC_esignetDependent_AuthorizationCode_27",
+					"TC_esignetDependent_GenerateToken_27", "TC_esignetDependent_GenerateNonce_01",
+					"TC_injicertify_Mosipidcredentialissuance_pdi_01")));
+
 private static String trimLowerUseCase() {
 	if (currentUseCase == null || currentUseCase.isBlank()) {
 		return "";
@@ -126,8 +154,8 @@ public static void configureOtp() {
 	// For mock, mdoc and landregistry usecase also the OTP value is hard coded and not configurable.
 
 	String cu = currentUseCase != null ? currentUseCase.trim() : "";
-	if (!cu.isEmpty() && (cu.equals("mock")
-			|| cu.equals("landregistry") || cu.equals("mdl"))) {
+	if (!cu.isEmpty() && (cu.equals("mock") || cu.equals("landregistry") || cu.equals("mdl")
+			|| cu.equals("mdocvp"))) {
 
 		Map<String, Object> additionalPropertiesMap = new HashMap<>();
 			additionalPropertiesMap.put(InjiCertifyConstants.USE_PRE_CONFIGURED_OTP_STRING,
@@ -138,7 +166,7 @@ public static void configureOtp() {
 		}
 		// else do nothing
 	}
-	
+
 	public static String extractAndEncodeVcTemplate(String requestJsonStr) {
 		JSONObject requestJson = new JSONObject(requestJsonStr);
 		Object vcTemplateObj = requestJson.opt("vcTemplate");
@@ -189,75 +217,555 @@ public static void configureOtp() {
 	}
 
 	public static String smtpOtpHandler(String inputJson, TestCaseDTO testCaseDTO) {
-		JSONObject request = new JSONObject(inputJson);
-		String emailId = null;
-		String otp = null;
-
-		if (request.has("otp")) {
-			String challengeKey = request.getString("otp");
-			if (challengeKey.endsWith(GlobalConstants.MOSIP_NET)
-					|| challengeKey.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-				emailId = challengeKey;
-				if (emailId.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-					emailId = emailId.replace(GlobalConstants.OTP_AS_PHONE, "");
-					emailId = removeLeadingPlusSigns(emailId);
-				}
-				logger.info(emailId);
-				otp = NotificationListener.getOtp(emailId);
-				request.put("otp", otp);
-				inputJson = request.toString();
-				return inputJson;
+		boolean restorePreconfiguredOtp = false;
+		String previousPreconfiguredOtp = null;
+		if (isMosipIdOtpTest(testCaseDTO)
+				&& InjiCertifyConstants.TRUE_STRING
+						.equalsIgnoreCase(InjiCertifyConfigManager.getUsePreConfiguredOtp())) {
+			previousPreconfiguredOtp = InjiCertifyConfigManager.getUsePreConfiguredOtp();
+			Map<String, Object> mosipIdOtpProperties = new HashMap<>();
+			mosipIdOtpProperties.put(InjiCertifyConstants.USE_PRE_CONFIGURED_OTP_STRING, "false");
+			InjiCertifyConfigManager.add(mosipIdOtpProperties);
+			restorePreconfiguredOtp = true;
+			logger.info("Using email OTP for Mosip ID authenticate; preconfigured OTP is ignored");
+		}
+		try {
+			return replaceChallengeWithEmailOtp(inputJson);
+		} finally {
+			if (restorePreconfiguredOtp) {
+				Map<String, Object> restore = new HashMap<>();
+				restore.put(InjiCertifyConstants.USE_PRE_CONFIGURED_OTP_STRING, previousPreconfiguredOtp);
+				InjiCertifyConfigManager.add(restore);
 			}
-		} else if (request.has(GlobalConstants.REQUEST)) {
-			if (request.getJSONObject(GlobalConstants.REQUEST).has("otp")) {
-				String challengeKey = request.getJSONObject(GlobalConstants.REQUEST).getString("otp");
-				if (challengeKey.endsWith(GlobalConstants.MOSIP_NET)
-						|| challengeKey.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-					emailId = challengeKey;
-					if (emailId.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-						emailId = emailId.replace(GlobalConstants.OTP_AS_PHONE, "");
-						emailId = removeLeadingPlusSigns(emailId);
-					}
-					logger.info(emailId);
-					otp = NotificationListener.getOtp(emailId);
-					request.getJSONObject(GlobalConstants.REQUEST).put("otp", otp);
-					inputJson = request.toString();
-					return inputJson;
-				}
-			} else if (request.getJSONObject(GlobalConstants.REQUEST).has(GlobalConstants.CHALLENGELIST)) {
-				if (request.getJSONObject(GlobalConstants.REQUEST).getJSONArray(GlobalConstants.CHALLENGELIST)
-						.length() > 0) {
-					if (request.getJSONObject(GlobalConstants.REQUEST).getJSONArray(GlobalConstants.CHALLENGELIST)
-							.getJSONObject(0).has(GlobalConstants.CHALLENGE)) {
+		}
+	}
 
-						String challengeKey = request.getJSONObject(GlobalConstants.REQUEST)
-								.getJSONArray(GlobalConstants.CHALLENGELIST).getJSONObject(0)
-								.getString(GlobalConstants.CHALLENGE);
+	private static boolean isMosipIdOtpTest(TestCaseDTO testCaseDTO) {
+		return testCaseDTO != null && isMosipIdTestName(testCaseDTO.getTestCaseName());
+	}
 
-						if (challengeKey.endsWith(GlobalConstants.MOSIP_NET)
-								|| challengeKey.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-							emailId = challengeKey;
-							if (emailId.endsWith(GlobalConstants.OTP_AS_PHONE)) {
-								emailId = emailId.replace(GlobalConstants.OTP_AS_PHONE, "");
-								emailId = removeLeadingPlusSigns(emailId);
-							}
-							logger.info(emailId);
-							otp = NotificationListener.getOtp(emailId);
-							request.getJSONObject(GlobalConstants.REQUEST).getJSONArray(GlobalConstants.CHALLENGELIST)
-									.getJSONObject(0).put(GlobalConstants.CHALLENGE, otp);
-							inputJson = request.toString();
-						}
-					}
-				}
+	private static boolean isMdocvpUseCase() {
+		return "mdocvp".equals(trimLowerUseCase());
+	}
+
+	/**
+	 * First row of inji-config {@code driving_license_mosipid.csv} (dev-int).
+	 * MockCSVDataProviderPlugin looks up the IAR token {@code sub} against that
+	 * column. AddIdentity still uses a fresh idgenerator UIN so IDA can send OTP;
+	 * after IAR-with-VP succeeds we rewrite {@code iar_session.identity_data} to
+	 * this id so the subsequent token {@code sub} matches the CSV.
+	 */
+	public static final String DEFAULT_MDOCVP_CSV_IDENTITY_ID = "6039071423";
+	public static final String MDOCVP_IAR_VP_SMOKE_UNIQUE_ID = "TC_InjiCertify_IARInitialRequest_With_VP_01";
+	private static final Pattern SAFE_IAR_SESSION_TOKEN = Pattern.compile("[A-Za-z0-9._:-]+");
+
+	public static String mdocvpCsvIdentityId() {
+		try {
+			String configured = InjiCertifyConfigManager.getproperty("mdocvpCsvIdentityId");
+			if (configured != null && !configured.isBlank() && !"null".equalsIgnoreCase(configured.trim())) {
+				return configured.trim();
+			}
+		} catch (RuntimeException ignored) {
+			// Unit tests may call this before ConfigManager.init().
+		}
+		return DEFAULT_MDOCVP_CSV_IDENTITY_ID;
+	}
+
+	public static boolean shouldRewriteMdocvpIarSessionIdentity(TestCaseDTO testCaseDTO) {
+		if (!isMdocvpUseCase() || testCaseDTO == null) {
+			return false;
+		}
+		String uniqueIdentifier = testCaseDTO.getUniqueIdentifier();
+		return uniqueIdentifier != null && MDOCVP_IAR_VP_SMOKE_UNIQUE_ID.equals(uniqueIdentifier.trim());
+	}
+
+	public static String mdocvpIarSessionIdentityUpdateSql(String authSession, String csvIdentityId)
+			throws AdminTestException {
+		if (!isSafeIarSessionToken(authSession) || !isSafeIarSessionToken(csvIdentityId)) {
+			throw new AdminTestException(
+					"Refusing IAR session identity rewrite: auth_session or CSV id is not a safe token");
+		}
+		return "UPDATE iar_session SET identity_data = '" + csvIdentityId + "' WHERE auth_session = '"
+				+ authSession + "'";
+	}
+
+	static boolean isSafeIarSessionToken(String value) {
+		return value != null && !value.isBlank() && SAFE_IAR_SESSION_TOKEN.matcher(value.trim()).matches();
+	}
+
+	public static void rewriteMdocvpIarSessionIdentityToCsvId(TestCaseDTO testCaseDTO, String requestJson)
+			throws AdminTestException {
+		if (!shouldRewriteMdocvpIarSessionIdentity(testCaseDTO)) {
+			return;
+		}
+		if (requestJson == null || requestJson.isBlank()) {
+			throw new AdminTestException("IAR VP request body is missing; cannot rewrite iar_session.identity_data");
+		}
+		String authSession;
+		try {
+			authSession = new JSONObject(requestJson).optString("auth_session", "").trim();
+		} catch (JSONException e) {
+			throw new AdminTestException("IAR VP request is not JSON; cannot rewrite iar_session.identity_data");
+		}
+		String csvIdentityId = mdocvpCsvIdentityId();
+		String sql = mdocvpIarSessionIdentityUpdateSql(authSession, csvIdentityId);
+		String selectSql = "SELECT auth_session FROM iar_session WHERE auth_session = '" + authSession + "'";
+		logger.error("Rewriting mdocvp IAR session identity_data to the configured CSV identity");
+		try {
+			String dbUrl = resolveInjiCertifyJdbcUrl();
+			String dbUser = InjiCertifyConfigManager.getproperty("db-su-user");
+			String dbPass = InjiCertifyConfigManager.getproperty("postgres-password");
+			String dbSchema = InjiCertifyConfigManager.getproperty("inji_certify_schema");
+			List<Map<String, Object>> rows = ExtendedDBManager.executeSelectQuery(dbUrl, dbUser, dbPass, dbSchema,
+					selectSql);
+			if (rows == null || rows.isEmpty()) {
+				throw new AdminTestException(
+						"iar_session not found for the IAR auth_session. Check mdocvpCertifyDbName.");
+			}
+			ExtendedDBManager.executeDBWithQueries(dbUrl, dbUser, dbPass, dbSchema, sql);
+		} catch (AdminTestException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new AdminTestException(
+					"Failed to rewrite iar_session.identity_data to the CSV identity so GetCredential "
+							+ "can look up driving_license_mosipid.csv: " + e.getMessage());
+		}
+	}
+
+	static String resolveInjiCertifyJdbcUrl() {
+		if (isMdocvpUseCase()) {
+			String mdocDb = null;
+			try {
+				mdocDb = InjiCertifyConfigManager.getproperty("mdocvpCertifyDbName");
+			} catch (RuntimeException ignored) {
+				// Unit tests may call this before ConfigManager.init().
+			}
+			if (mdocDb != null && !mdocDb.isBlank() && !"null".equalsIgnoreCase(mdocDb.trim())) {
+				return "jdbc:postgresql://" + InjiCertifyConfigManager.getproperty("db-server") + ":"
+						+ InjiCertifyConfigManager.getproperty("db-port") + "/" + mdocDb.trim();
+			}
+		}
+		return InjiCertifyConfigManager.getInjiCertifyDBURL();
+	}
+
+	public static final String MDOCVP_DRIVING_LICENSE_CONFIG_KEY = "DrivingLicenseCredential";
+	private static boolean mdocDrivingLicenseSignedEnsured;
+
+	public static boolean shouldEnsureMdocValiditySigned(TestCaseDTO testCaseDTO) {
+		if (!isMdocvpUseCase() || testCaseDTO == null || testCaseDTO.getUniqueIdentifier() == null) {
+			return false;
+		}
+		return "TC_InjiCertify_GetCredentialFormDocvp_01".equals(testCaseDTO.getUniqueIdentifier().trim());
+	}
+
+	/**
+	 * Seeded mDoc templates are Velocity, not JSON ({@code ${drivingPrivileges}} is
+	 * unquoted). Do not parse them with {@link JSONObject}.
+	 */
+	public static String addSignedPlaceholderToMdocVcTemplate(String vcTemplate) {
+		if (vcTemplate == null || vcTemplate.isBlank()) {
+			return vcTemplate;
+		}
+		String decoded = decodePossiblyBase64Json(vcTemplate);
+		if (decoded.contains("\"signed\":")) {
+			return decoded;
+		}
+		java.util.regex.Matcher validUntil = Pattern
+				.compile("(\"validUntil\"\\s*:\\s*\"\\$\\{_validUntil}\")").matcher(decoded);
+		if (!validUntil.find()) {
+			return decoded;
+		}
+		return decoded.substring(0, validUntil.end()) + ",\n    \"signed\": \"${_signed}\""
+				+ decoded.substring(validUntil.end());
+	}
+
+	static String decodePossiblyBase64Json(String value) {
+		String trimmed = value.trim();
+		if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+			return trimmed;
+		}
+		try {
+			String decoded = new String(Base64.getDecoder().decode(trimmed), StandardCharsets.UTF_8).trim();
+			if (decoded.startsWith("{") || decoded.startsWith("[")) {
+				return decoded;
+			}
+		} catch (IllegalArgumentException ignored) {
+			// Not base64; treat as raw JSON below.
+		}
+		return trimmed;
+	}
+
+	public static void ensureMdocDrivingLicenseTemplateHasSigned(TestCaseDTO testCaseDTO) {
+		if (!shouldEnsureMdocValiditySigned(testCaseDTO) || mdocDrivingLicenseSignedEnsured) {
+			return;
+		}
+		String certifyBase = InjiCertifyConfigManager.getInjiCertifyBaseUrl();
+		if (certifyBase == null || certifyBase.isBlank()) {
+			return;
+		}
+		String url = certifyBase.replaceAll("/+$", "") + "/v1/certify/credential-configurations/"
+				+ MDOCVP_DRIVING_LICENSE_CONFIG_KEY;
+		try {
+			Response existing = RestClient.getRequest(url, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
+			if (existing == null || existing.getStatusCode() != 200) {
+				logger.error("Could not load " + MDOCVP_DRIVING_LICENSE_CONFIG_KEY
+						+ " to add validityInfo.signed; HTTP "
+						+ (existing == null ? "null" : existing.getStatusCode()));
+				return;
+			}
+			JSONObject config = new JSONObject(existing.asString());
+			String original = config.optString("vcTemplate", "");
+			String updated = addSignedPlaceholderToMdocVcTemplate(original);
+			if (updated == null || updated.equals(decodePossiblyBase64Json(original))) {
+				mdocDrivingLicenseSignedEnsured = updated != null && updated.contains("\"signed\":");
+				return;
+			}
+			// Stored templates are Base64; VelocityTemplatingEngineImpl decodes them.
+			config.put("vcTemplate", AdminTestUtil.encodeBase64(updated));
+			logger.error("Updating " + MDOCVP_DRIVING_LICENSE_CONFIG_KEY
+					+ " vcTemplate to include validityInfo.signed=${_signed}");
+			Response put = io.restassured.RestAssured.given().relaxedHTTPSValidation()
+					.contentType("application/json").body(config.toString()).put(url);
+			if (put == null || put.getStatusCode() >= 300) {
+				logger.error("Failed to patch " + MDOCVP_DRIVING_LICENSE_CONFIG_KEY
+						+ " with signed validityInfo: HTTP "
+						+ (put == null ? "null" : put.getStatusCode()) + " "
+						+ (put == null ? "" : put.asString()));
+				return;
+			}
+			mdocDrivingLicenseSignedEnsured = true;
+		} catch (Exception e) {
+			logger.error("Could not add validityInfo.signed to " + MDOCVP_DRIVING_LICENSE_CONFIG_KEY
+					+ "; GetCredential will use the seeded template. " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Relying party eSignet sends to IDA for MOSIP ID OTP/KYC. Configurable via
+	 * mosipIdEsignetRelyingPartyId; defaults to mpartner-default-mobile.
+	 */
+	static String mosipIdEsignetRelyingPartyId() {
+		try {
+			String configured = InjiCertifyConfigManager.getproperty("mosipIdEsignetRelyingPartyId");
+			if (configured != null && !configured.isBlank() && !"null".equalsIgnoreCase(configured.trim())) {
+				return configured.trim();
+			}
+		} catch (RuntimeException ignored) {
+			// Unit tests may call this before ConfigManager.init().
+		}
+		return DEFAULT_MOSIP_ID_ESIGNET_RELYING_PARTY_ID;
+	}
+
+	static boolean isMosipIdTestName(String testCaseName) {
+		return testCaseName != null && testCaseName.toUpperCase(Locale.ROOT).contains("MOSIPID");
+	}
+
+	/**
+	 * Released IDA returns IDA-MLC-018 while a newly created UIN is still being
+	 * indexed. This MOSIP ID stack often wraps the same window as IDA-MLC-007 or
+	 * eSignet {@code send_otp_failed} without the IDA code on later attempts.
+	 */
+	public static boolean isRetryableMosipIdSendOtpFailure(Response otpResponse) {
+		if (otpResponse == null) {
+			return false;
+		}
+		try {
+			return isRetryableMosipIdSendOtpFailure(otpResponse.asString());
+		} catch (Exception e) {
+			logger.warn("Could not read send-otp body: " + e.getMessage());
+			return false;
+		}
+	}
+
+	static boolean isRetryableMosipIdSendOtpFailure(String body) {
+		if (body == null || body.isBlank()) {
+			return false;
+		}
+		return body.contains("IDA-MLC-018") || body.contains("IDA-MLC-007") || body.contains("send_otp_failed");
+	}
+
+	public static String describeMosipIdSendOtpFailure(Response otpResponse) {
+		if (otpResponse == null) {
+			return "empty send-otp response";
+		}
+		try {
+			return describeMosipIdSendOtpFailure(otpResponse.asString());
+		} catch (Exception e) {
+			return "unreadable send-otp response";
+		}
+	}
+
+	static String describeMosipIdSendOtpFailure(String body) {
+		if (body == null) {
+			return "empty send-otp response";
+		}
+		if (body.contains("IDA-MLC-018")) {
+			return "IDA-MLC-018";
+		}
+		if (body.contains("IDA-MLC-007")) {
+			return "IDA-MLC-007";
+		}
+		if (body.contains("send_otp_failed")) {
+			return "send_otp_failed";
+		}
+		return "unknown send-otp error";
+	}
+
+	private static String firstNonBlank(String... values) {
+		if (values == null) {
+			return null;
+		}
+		for (String value : values) {
+			if (value != null && !value.isBlank()) {
+				return value.trim();
+			}
+		}
+		return null;
+	}
+
+	public static int parsePositiveInt(String raw, int defaultValue) {
+		if (raw == null || raw.isBlank()) {
+			return defaultValue;
+		}
+		try {
+			int parsed = Integer.parseInt(raw.trim());
+			return parsed > 0 ? parsed : defaultValue;
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	public static long parsePositiveLong(String raw, long defaultValue) {
+		if (raw == null || raw.isBlank()) {
+			return defaultValue;
+		}
+		try {
+			long parsed = Long.parseLong(raw.trim());
+			return parsed > 0 ? parsed : defaultValue;
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	public static String refreshMosipRequestTimestamp(String json) {
+		if (json == null || json.isBlank()) {
+			return json;
+		}
+		try {
+			JSONObject body = new JSONObject(json);
+			String now = generateCurrentUTCTimeStamp();
+			if (body.has("requesttime")) {
+				body.put("requesttime", now);
+			}
+			if (body.has("requestTime")) {
+				body.put("requestTime", now);
+			}
+			return body.toString();
+		} catch (JSONException e) {
+			return json;
+		}
+	}
+
+	public static boolean isStaleMosipRequestTime(Response response) {
+		if (response == null) {
+			return false;
+		}
+		try {
+			return isStaleMosipRequestTime(response.asString());
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	static boolean isStaleMosipRequestTime(String body) {
+		return body != null && (body.contains("IDR-IDC-002")
+				|| body.contains("the timestamp value can be at most"));
+	}
+
+	public static final int PMS_PARTNER_ID_MAX_LENGTH = 36;
+
+	public static String uniquePmsPartnerId() {
+		return uniquePmsPartnerId(BaseTestCase.runContext, UUID.randomUUID().toString());
+	}
+
+	static String uniquePmsPartnerId(String runContext, String uuid) {
+		String prefix = runContext == null ? "" : runContext.replaceAll("[^A-Za-z0-9]", "");
+		if (prefix.length() > 4) {
+			prefix = prefix.substring(0, 4);
+		}
+		String hex = uuid == null ? "" : uuid.replace("-", "");
+		String id = prefix + hex;
+		if (id.length() > PMS_PARTNER_ID_MAX_LENGTH) {
+			return id.substring(0, PMS_PARTNER_ID_MAX_LENGTH);
+		}
+		return id.isEmpty() ? "p" + System.currentTimeMillis() : id;
+	}
+
+	public static String sanitizePmsPartnerSelfRegistration(String json) {
+		if (json == null || json.isBlank() || !json.contains("\"partnerId\"")) {
+			return json;
+		}
+		try {
+			JSONObject body = new JSONObject(json);
+			JSONObject request = body.optJSONObject("request");
+			if (request == null || !request.has("partnerId")) {
+				return json;
+			}
+			String partnerId = request.optString("partnerId", "");
+			if (!partnerId.contains("$PARTNERID$") && partnerId.length() <= PMS_PARTNER_ID_MAX_LENGTH) {
+				return json;
+			}
+			String pid = uniquePmsPartnerId();
+			String organizationName = request.optString("organizationName", "");
+			request.put("partnerId", pid);
+			if (organizationName.contains("$PARTNERID$") || organizationName.equals(partnerId)) {
+				request.put("organizationName", pid);
+			}
+			logger.info("Using PMS partnerId '" + pid + "' (max " + PMS_PARTNER_ID_MAX_LENGTH + ")");
+			return body.toString();
+		} catch (JSONException e) {
+			return json;
+		}
+	}
+
+	public static String refreshEsignetRequestTime(String json) {
+		if (json == null || json.isBlank()) {
+			return json;
+		}
+		try {
+			JSONObject body = new JSONObject(json);
+			body.put("requestTime", generateCurrentUTCTimeStamp());
+			return body.toString();
+		} catch (JSONException e) {
+			return json;
+		}
+	}
+
+	private static String replaceChallengeWithEmailOtp(String inputJson) {
+		JSONObject request = new JSONObject(inputJson);
+		if (request.has("otp")) {
+			String otp = resolveEmailOtp(request.getString("otp"));
+			if (otp != null) {
+				request.put("otp", otp);
+				return request.toString();
 			}
 			return inputJson;
 		}
+		if (!request.has(GlobalConstants.REQUEST)) {
+			return inputJson;
+		}
+		JSONObject innerRequest = request.getJSONObject(GlobalConstants.REQUEST);
+		if (innerRequest.has("otp")) {
+			String otp = resolveEmailOtp(innerRequest.getString("otp"));
+			if (otp != null) {
+				innerRequest.put("otp", otp);
+			}
+			return request.toString();
+		}
+		if (innerRequest.has(GlobalConstants.CHALLENGELIST) && innerRequest.getJSONArray(GlobalConstants.CHALLENGELIST)
+				.length() > 0
+				&& innerRequest.getJSONArray(GlobalConstants.CHALLENGELIST).getJSONObject(0)
+						.has(GlobalConstants.CHALLENGE)) {
+			String otp = resolveEmailOtp(innerRequest.getJSONArray(GlobalConstants.CHALLENGELIST).getJSONObject(0)
+					.getString(GlobalConstants.CHALLENGE));
+			if (otp != null) {
+				innerRequest.getJSONArray(GlobalConstants.CHALLENGELIST).getJSONObject(0).put(GlobalConstants.CHALLENGE,
+						otp);
+			}
+		}
+		return request.toString();
+	}
 
-		return inputJson;
+	private static final ThreadLocal<String> lastOtpMailbox = new ThreadLocal<>();
+
+	private static String resolveEmailOtp(String challengeKey) {
+		if (challengeKey == null) {
+			return null;
+		}
+		if (!(challengeKey.endsWith(GlobalConstants.MOSIP_NET)
+				|| challengeKey.endsWith(GlobalConstants.OTP_AS_PHONE))) {
+			return null;
+		}
+		String emailId = challengeKey;
+		if (emailId.endsWith(GlobalConstants.OTP_AS_PHONE)) {
+			emailId = removeLeadingPlusSigns(emailId.replace(GlobalConstants.OTP_AS_PHONE, ""));
+		}
+		logger.info(emailId);
+		lastOtpMailbox.set(emailId);
+		return NotificationListener.getOtp(emailId);
+	}
+
+	static boolean hasEmptyOtpChallenge(String json) {
+		if (json == null || json.isBlank()) {
+			return false;
+		}
+		try {
+			JSONObject body = new JSONObject(json);
+			if (body.has("otp") && body.getString("otp").isEmpty()) {
+				return true;
+			}
+			if (!body.has(GlobalConstants.REQUEST)) {
+				return false;
+			}
+			JSONObject request = body.getJSONObject(GlobalConstants.REQUEST);
+			if (request.has("otp") && request.getString("otp").isEmpty()) {
+				return true;
+			}
+			if (!request.has(GlobalConstants.CHALLENGELIST)) {
+				return false;
+			}
+			JSONArray challenges = request.getJSONArray(GlobalConstants.CHALLENGELIST);
+			for (int i = 0; i < challenges.length(); i++) {
+				JSONObject challenge = challenges.getJSONObject(i);
+				if (challenge.has(GlobalConstants.CHALLENGE)
+						&& challenge.getString(GlobalConstants.CHALLENGE).isEmpty()) {
+					return true;
+				}
+			}
+			return false;
+		} catch (JSONException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Mock-SMTP endpoint {@code OTPListener} derives from the IAM host, repeated
+	 * here so a missing OTP names the mailbox server the operator has to check.
+	 */
+	static String mockSmtpWebSocketUrl() {
+		try {
+			String host = URI.create(InjiCertifyConfigManager.getIAMUrl()).getHost();
+			int firstDot = host == null ? -1 : host.indexOf('.');
+			if (firstDot > -1 && firstDot < host.length() - 1) {
+				return "wss://smtp." + host.substring(firstDot + 1) + "/mocksmtp/websocket";
+			}
+		} catch (RuntimeException ignored) {
+			// Unit tests may call this before ConfigManager.init().
+		}
+		return "the mock-SMTP websocket";
+	}
+
+	/**
+	 * eSignet answers {@code invalid_challenge} for an empty OTP, which buries the
+	 * real cause and still burns the oauth-details transaction that the auth-code
+	 * tests downstream depend on. Fail here instead, naming the mailbox.
+	 */
+	public static void requireResolvedOtpChallenge(String inputJson) throws AdminTestException {
+		if (!hasEmptyOtpChallenge(inputJson)) {
+			return;
+		}
+		String mailbox = lastOtpMailbox.get();
+		throw new AdminTestException("No OTP arrived for "
+				+ (mailbox == null || mailbox.isBlank() ? "the test mailbox" : mailbox)
+				+ " within the OTP expiry window. send-otp succeeded, so IDA accepted the request and reported"
+				+ " delivery; the notification never reached " + mockSmtpWebSocketUrl()
+				+ ". Check the notification service and mock-SMTP on that cluster. Posting an empty challenge"
+				+ " would only surface as invalid_challenge.");
 	}
 	
 	protected static final String OIDCJWK1 = "oidcJWK1";
 	protected static final String OIDCJWK4 = "oidcJWK4";
+	private static final Map<String, String> oidcJwkStore = new HashMap<>();
 	
 	protected static boolean triggerESignetKeyGen1 = true;
 	protected static boolean triggerESignetKeyGen13 = true;
@@ -282,7 +790,53 @@ public static void configureOtp() {
 	private static boolean gettriggerESignetKeyGen13() {
 		return triggerESignetKeyGen13;
 	}
-	
+
+	static String generateUniqueOidcJwkKey(String keyName) {
+		try {
+			KeyPairGenerator keyGenerator = KeyPairGenerator.getInstance("RSA");
+			keyGenerator.initialize(2048, new SecureRandom());
+			KeyPair keyPair = keyGenerator.generateKeyPair();
+			RSAKey unique = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+					.privateKey(keyPair.getPrivate())
+					.keyUse(KeyUse.SIGNATURE)
+					.algorithm(JWSAlgorithm.RS256)
+					.keyID(keyName + "-" + UUID.randomUUID())
+					.build();
+			String json = unique.toJSONString();
+			oidcJwkStore.put(keyName, json);
+			logger.info("Generated unique OIDC JWK kid for " + keyName + ": " + unique.getKeyID());
+			return json;
+		} catch (Exception e) {
+			logger.warn("Could not generate unique OIDC JWK for " + keyName + ": " + e.getMessage());
+			String generated = JWKKeyUtil.generateAndCacheJWKKey(keyName);
+			oidcJwkStore.put(keyName, generated);
+			return generated;
+		}
+	}
+
+	static String getOidcJwkKey(String keyName) {
+		String stored = oidcJwkStore.get(keyName);
+		return stored != null ? stored : JWKKeyUtil.getJWKKey(keyName);
+	}
+
+	static String toPublicOidcJwkJson(String jwkJson) {
+		if (jwkJson == null || jwkJson.isBlank()) {
+			return jwkJson;
+		}
+		try {
+			RSAKey parsed = RSAKey.parse(jwkJson);
+			return new RSAKey.Builder(parsed.toRSAPublicKey())
+					.keyUse(KeyUse.SIGNATURE)
+					.algorithm(JWSAlgorithm.RS256)
+					.keyID(parsed.getKeyID())
+					.build()
+					.toJSONString();
+		} catch (Exception e) {
+			logger.warn("Could not convert OIDC JWK to public-only JSON: " + e.getMessage());
+			return jwkJson;
+		}
+	}
+
 	protected static final String BINDINGJWK1 = "bindingJWK1";
 
 	public String inputStringKeyWordHandeler(String jsonString, String testCaseName) {
@@ -322,7 +876,7 @@ public static void configureOtp() {
 			}
 			jsonString = replaceKeywordValue(jsonString, "$CA_CERT$", signedCert);
 		}
-		
+
 		if (jsonString.contains("$ID:")) {
 			jsonString = replaceIdWithAutogeneratedId(jsonString, "$ID:");
 		}
@@ -358,10 +912,6 @@ public static void configureOtp() {
 		}
 			
 		
-		if (jsonString.contains(GlobalConstants.TIMESTAMP)) {
-			jsonString = replaceKeywordValue(jsonString, GlobalConstants.TIMESTAMP, generateCurrentUTCTimeStamp());
-		}
-		
 		if (jsonString.contains("$SUNBIRDINSURANCEAUTHFACTORTYPE$")) {
 			String authFactorType = InjiCertifyConfigManager
 					.getproperty(InjiCertifyConstants.SUNBIRD_INSURANCE_AUTH_FACTOR_TYPE_STRING);
@@ -389,10 +939,8 @@ public static void configureOtp() {
 		}
 
 		if (jsonString.contains("$KYCEXCHANGE_LOCALES$")) {
-			String key = getValueFromCertifyActuator(
-					InjiCertifyConfigManager.getproperty("certifyActuatorPropertySection"),
-					"mosip.certify.ida.kyc-exchange.accepted-locales");
-			jsonString = replaceKeywordValue(jsonString, "$KYCEXCHANGE_LOCALES$", key);
+			jsonString = replaceKeywordValue(jsonString, "$KYCEXCHANGE_LOCALES$",
+					resolveKycExchangeLocales(testCaseName));
 		}
 
 		if (jsonString.contains("$POLICYNUMBERFORSUNBIRDRC$")) {
@@ -430,24 +978,24 @@ public static void configureOtp() {
 			JSONObject request = new JSONObject(jsonString);
 			request.remove("openid4vp_request");
 			JSONObject openId4VpResponse = PresentationDuringIssuanceVpUtil.buildOpenId4VpResponse(openId4VpRequest);
-			request.put("openid4vp_response", openId4VpResponse);
-			jsonString = request.toString();
+			jsonString = buildMdocvpIarRequestWire(request.getString("auth_session"),
+					serializeJson(openId4VpResponse), request.optString("client_id", null));
 		}
 
 		if (jsonString.contains("$OIDCJWKKEY$")) {
 			String jwkKey = "";
 			if (gettriggerESignetKeyGen1()) {
-				jwkKey = JWKKeyUtil.generateAndCacheJWKKey(OIDCJWK1);
+				jwkKey = generateUniqueOidcJwkKey(OIDCJWK1);
 				settriggerESignetKeyGen1(false);
 			} else {
-				jwkKey = JWKKeyUtil.getJWKKey(OIDCJWK1);
+				jwkKey = getOidcJwkKey(OIDCJWK1);
 			}
-			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY$", jwkKey);
+			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY$", toPublicOidcJwkJson(jwkKey));
 		}
 		
 		if (jsonString.contains("$PROOF_JWT$")) {
 			JWKKeyUtil.generateAndCacheJWKKey(BINDINGJWK1);
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK1);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK1);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey1 = RSAKey.parse(oidcJWKKeyString);
@@ -481,16 +1029,16 @@ public static void configureOtp() {
 		if (jsonString.contains("$OIDCJWKKEY4$")) {
 			String jwkKey = "";
 			if (gettriggerESignetKeyGen13()) {
-				jwkKey = JWKKeyUtil.generateAndCacheJWKKey(OIDCJWK4);
+				jwkKey = generateUniqueOidcJwkKey(OIDCJWK4);
 				settriggerESignetKeyGen13(false);
 			} else {
-				jwkKey = JWKKeyUtil.getJWKKey(OIDCJWK4);
+				jwkKey = getOidcJwkKey(OIDCJWK4);
 			}
-			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY4$", jwkKey);
+			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY4$", toPublicOidcJwkJson(jwkKey));
 		}
 		if (jsonString.contains("$PROOF_JWT_3$")) {
 			JWKKeyUtil.generateAndCacheJWKKey(BINDINGJWK1);
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK4);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey4 = RSAKey.parse(oidcJWKKeyString);
@@ -545,6 +1093,34 @@ public static void configureOtp() {
 			jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_ED25519$",
 					signED25519JWT(clientId, accessToken, cNonce, testCaseName, tempUrl));
 		}
+
+		if (jsonString.contains("$PROOF_JWT_PDI_HOLDER$")) {
+			JSONObject request = new JSONObject(jsonString);
+			String clientId = "";
+			String accessToken = "";
+			String cNonce = "";
+			if (request.has("client_id")) {
+				clientId = request.getString("client_id");
+				request.remove("client_id");
+			}
+			if (request.has("idpAccessToken")) {
+				accessToken = request.getString("idpAccessToken");
+			}
+			if (request.has("c_nonce")) {
+				cNonce = request.getString("c_nonce");
+				request.remove("c_nonce");
+			}
+			jsonString = request.toString();
+			try {
+				OctetKeyPair holderKey = PresentationDuringIssuanceVpUtil.pdiHolderOctetKeyPair();
+				String tempUrl = getValueFromInjiCertifyWellKnownEndPoint("credential_issuer",
+						getMosipIdCertifyBaseUrl());
+				jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_PDI_HOLDER$",
+						signED25519JWTWithHolderJwk(clientId, accessToken, cNonce, tempUrl, holderKey));
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to sign PDI holder proof JWT for Mosip ID GetCredential", e);
+			}
+		}
 		
 		if (jsonString.contains("$PROOF_JWT_ES256$")) {
 			JSONObject request = new JSONObject(jsonString);
@@ -595,7 +1171,7 @@ public static void configureOtp() {
 		}
 
 		if (jsonString.contains("$CLIENT_ASSERTION_JWT$")) {
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK1);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK1);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey1 = RSAKey.parse(oidcJWKKeyString);
@@ -614,7 +1190,7 @@ public static void configureOtp() {
 		}
 
 		if (jsonString.contains("$CLIENT_ASSERTION_USER4_JWT$")) {
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK4);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey4 = RSAKey.parse(oidcJWKKeyString);
@@ -634,7 +1210,7 @@ public static void configureOtp() {
 		}
 
 		if (jsonString.contains("$CLIENT_ASSERTION_USER4_JWK$")) {
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK4);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey4 = RSAKey.parse(oidcJWKKeyString);
@@ -653,7 +1229,7 @@ public static void configureOtp() {
 
 		if (jsonString.contains("$PROOF_JWT_2$")) {
 			JWKKeyUtil.generateAndCacheJWKKey(BINDINGJWK1);
-			String oidcJWKKeyString = JWKKeyUtil.getJWKKey(OIDCJWK4);
+			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
 			try {
 				oidcJWKKey4 = RSAKey.parse(oidcJWKKeyString);
@@ -700,6 +1276,15 @@ public static void configureOtp() {
 			} catch (Exception e) {
 				logger.error("Failed to strip c_nonce from credential request: " + e.getMessage());
 			}
+		}
+
+		jsonString = sanitizePmsPartnerSelfRegistration(jsonString);
+
+		if (jsonString.contains(GlobalConstants.TIMESTAMP)) {
+			jsonString = replaceKeywordValue(jsonString, GlobalConstants.TIMESTAMP, generateCurrentUTCTimeStamp());
+		}
+		if (testCaseName == null || !testCaseName.contains("RequestTime_Neg")) {
+			jsonString = refreshMosipRequestTimestamp(jsonString);
 		}
 
 		return jsonString;
@@ -767,9 +1352,364 @@ public static void configureOtp() {
 	
 	public static Map<String, List<String>> proofSigningAlgorithmsMap = new HashMap<>();
 	
+	public static String getMosipIdCertifyBaseUrl() {
+		String configured = InjiCertifyConfigManager.getproperty("injiCertifyMosipIdBaseURL");
+		if (configured != null && !configured.isBlank()) {
+			return configured.trim();
+		}
+		String baseUrl = InjiCertifyConfigManager.getInjiCertifyBaseUrl();
+		if (baseUrl.contains("-mdoc.")) {
+			return baseUrl.replace("-mdoc.", "-mosipid.");
+		}
+		if (baseUrl.contains("-mdocvp.")) {
+			return baseUrl.replace("-mdocvp.", "-mosipid.");
+		}
+		return baseUrl;
+	}
+
+	public static String getMosipIdEsignetBaseUrl() {
+		String configured = InjiCertifyConfigManager.getproperty("eSignetMosipIdBaseUrl");
+		if (configured != null && !configured.isBlank()) {
+			return configured.trim();
+		}
+		String baseUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
+		if (baseUrl.contains("esignet-mock")) {
+			return baseUrl.replace("esignet-mock", "esignet-mosipid");
+		}
+		return baseUrl;
+	}
+
+	public static void captureEsignetCsrf(Response response) {
+		if (response == null) {
+			return;
+		}
+		String cookie = response.getCookie(GlobalConstants.XSRF_TOKEN);
+		String headerToken = response.getHeader("X-XSRF-TOKEN");
+		String bodyToken = null;
+		try {
+			bodyToken = response.jsonPath().getString("token");
+		} catch (Exception ignored) {
+			// body may not be JSON or may omit token
+		}
+		if ((cookie == null || cookie.isBlank()) && (bodyToken == null || bodyToken.isBlank())
+				&& (headerToken == null || headerToken.isBlank())) {
+			return;
+		}
+		applyEsignetCsrfTokens(cookie, headerToken, bodyToken);
+	}
+
+	/**
+	 * Spring Security 6 XOR CSRF uses two different values: the raw UUID in the
+	 * {@code XSRF-TOKEN} cookie and the deferred token from {@code /csrf/token}
+	 * JSON {@code token} in the {@code X-XSRF-TOKEN} header. Copying the cookie
+	 * into the header is rejected with HTTP 403.
+	 */
+	public static void applyEsignetCsrfTokens(String cookie, String headerToken, String bodyToken) {
+		if (bodyToken != null && !bodyToken.isBlank()) {
+			BaseTestCase.CSRF_TOKEN = bodyToken;
+		} else if (headerToken != null && !headerToken.isBlank()) {
+			BaseTestCase.CSRF_TOKEN = headerToken;
+		}
+		if (cookie != null && !cookie.isBlank()) {
+			BaseTestCase.CSRF_COOKIE = cookie;
+		}
+	}
+
+	public static void fetchMosipIdCsrfTokenIfNeeded(String testCaseName) {
+		if (isMosipIdTestName(testCaseName)) {
+			fetchMosipIdCsrfToken();
+		}
+	}
+
+	static final String DEFAULT_CSRF_TOKEN_ENDPOINT = "/v1/esignet/csrf/token";
+
+	/**
+	 * {@code ConfigManager.getproperty} answers "" for an absent key, so an unset
+	 * {@code csrfTokenEndpoint} leaves the library concatenating nothing onto the
+	 * eSignet base URL and fetching the UI root, which returns 200 text/html and
+	 * then fails as JSON. Default the path so the property being missing cannot
+	 * silently retarget the request at the UI.
+	 */
+	static String csrfTokenEndpointPath() {
+		String endpoint = InjiCertifyConfigManager.getproperty("csrfTokenEndpoint");
+		if (endpoint == null || endpoint.isBlank()) {
+			endpoint = DEFAULT_CSRF_TOKEN_ENDPOINT;
+		}
+		if (!endpoint.startsWith("/")) {
+			endpoint = "/" + endpoint;
+		}
+		return endpoint;
+	}
+
+	/**
+	 * Every use case needs this, not just mosipid, else eSignet answers 403. Failing
+	 * to get a token is worth an error but not an abort: the library version throws
+	 * on a non-JSON body or a missing XSRF-TOKEN cookie, and thrown from the runner
+	 * that ends the process before a single test runs, so the run produces no report
+	 * at all rather than a report showing which tests the missing token broke.
+	 */
+	public static void fetchEsignetCsrfToken() {
+		String url = InjiCertifyConfigManager.getEsignetBaseUrl().replaceAll("/+$", "") + csrfTokenEndpointPath();
+		try {
+			Response response = RestClient.getRequest(url, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
+			extractAndStoreCsrfToken(response);
+			logger.info("Fetched eSignet CSRF cookie and XOR header token from " + url);
+		} catch (Exception e) {
+			logger.error("Could not fetch eSignet CSRF token from " + url
+					+ "; eSignet may answer 403 Forbidden for tests that need one", e);
+		}
+	}
+
+	public static void fetchMosipIdCsrfToken() {
+		String url = getMosipIdEsignetBaseUrl().replaceAll("/+$", "") + csrfTokenEndpointPath();
+		try {
+			Response response = RestClient.getRequest(url, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
+			extractAndStoreCsrfToken(response);
+			logger.info("Fetched Mosip ID eSignet CSRF cookie and XOR header token from " + url);
+		} catch (Exception e) {
+			logger.warn("Could not fetch Mosip ID eSignet CSRF token from " + url + ": " + e.getMessage());
+		}
+	}
+
+	public static final String MOSIP_ID_FIXED_CREDENTIAL_CONFIG_KEY_ID = "MOSIPVerifiableCredential";
+	public static boolean shouldReplaceExistingMosipIdCredentialConfig(TestCaseDTO testCaseDTO) {
+		return testCaseDTO != null
+				&& "TC_InjiCertify_MosipID_AddCredentialConfig_01".equals(testCaseDTO.getUniqueIdentifier());
+	}
+
+	public static boolean shouldUpdateExistingMosipIdCredentialConfig(TestCaseDTO testCaseDTO, Response response) {
+		return shouldReplaceExistingMosipIdCredentialConfig(testCaseDTO)
+				&& isDuplicateMosipIdCredentialConfig(response);
+	}
+
+	public static boolean isDuplicateMosipIdCredentialConfig(Response response) {
+		if (response == null) {
+			return false;
+		}
+		String body = "";
+		try {
+			body = response.getBody() != null ? response.getBody().asString() : "";
+		} catch (Exception e) {
+			logger.warn("Could not read Certify response body: " + e.getMessage());
+		}
+		return isDuplicateMosipIdCredentialConfigBody(body);
+	}
+
+	static boolean isDuplicateMosipIdCredentialConfigBody(String body) {
+		if (body == null || body.isBlank()) {
+			return false;
+		}
+		try {
+			JSONArray errors = new JSONObject(body).optJSONArray("errors");
+			if (errors == null) {
+				return false;
+			}
+			for (int i = 0; i < errors.length(); i++) {
+				JSONObject error = errors.getJSONObject(i);
+				String errorCode = error.optString("errorCode");
+				if ("ldp_vc_config_exists".equals(errorCode)) {
+					return true;
+				}
+				if ("unknown_error".equals(errorCode) && looksLikeDuplicateCredentialConfigKey(error)) {
+					return true;
+				}
+				logger.warn("AddCredentialConfig errorCode=" + errorCode + " message="
+						+ error.optString("errorMessage"));
+			}
+		} catch (Exception e) {
+			logger.warn("Could not parse Certify duplicate-config body: " + e.getMessage());
+		}
+		return false;
+	}
+
+	static boolean looksLikeDuplicateCredentialConfigKey(JSONObject error) {
+		if (error == null) {
+			return false;
+		}
+		String message = (error.optString("errorMessage") + " " + error.optString("message")).toLowerCase(Locale.ROOT);
+		return message.contains("uk_credential_config_key_id") || message.contains("duplicate key")
+				|| message.contains("already exists");
+	}
+
+	public static String alignMosipIdCredentialTypeForPresentationDuringIssuance(TestCaseDTO testCaseDTO,
+			String requestJson) {
+		if (requestJson == null || requestJson.isBlank() || !isMdocvpMosipIdPrerequisite(testCaseDTO)
+				|| !shouldReplaceExistingMosipIdCredentialConfig(testCaseDTO)) {
+			return requestJson;
+		}
+		logger.info("Aligning Mosip ID credential type and config id to MOSIPVerifiableCredential for Presentation During Issuance");
+		String aligned = replaceMosipIdCredentialType(requestJson, "MOSIPVerifiableCredential_automation",
+				"MOSIPVerifiableCredential");
+		aligned = applyMosipIdPdiCredentialConfigKeyId(aligned);
+		aligned = replaceMosipIdV1DateFields(aligned);
+		return alignMosipIdDidUrlForPresentationDuringIssuance(aligned);
+	}
+
+	static String applyMosipIdPdiCredentialConfigKeyId(String requestJson) {
+		JSONObject request = new JSONObject(requestJson);
+		request.put("credentialConfigKeyId", MOSIP_ID_FIXED_CREDENTIAL_CONFIG_KEY_ID);
+		return request.toString();
+	}
+
+	static String replaceMosipIdV1DateFields(String requestJson) {
+		JSONObject request = new JSONObject(requestJson);
+		replaceVcTemplateJsonPropertyName(request, "validFrom", "issuanceDate");
+		replaceVcTemplateJsonPropertyName(request, "validUntil", "expirationDate");
+		logger.info("Aligned Mosip ID VC template dates to issuanceDate/expirationDate for credentials v1");
+		return request.toString();
+	}
+
+	static String alignMosipIdDidUrlForPresentationDuringIssuance(String requestJson) {
+		String issuerDid = resolveMosipIdIssuerDid();
+		if (issuerDid == null || issuerDid.isBlank()) {
+			logger.warn("Could not resolve Mosip ID issuer DID; leaving credential config didUrl unchanged");
+			return requestJson;
+		}
+		logger.info("Aligning Mosip ID credential config didUrl to issuer DID " + issuerDid);
+		return replaceMosipIdDidUrl(requestJson, issuerDid);
+	}
+
+	static String replaceMosipIdDidUrl(String requestJson, String didUrl) {
+		JSONObject request = new JSONObject(requestJson);
+		request.put("didUrl", didUrl);
+		return request.toString();
+	}
+
+	static String resolveMosipIdIssuerDid() {
+		String baseUrl = getMosipIdCertifyBaseUrl();
+		if (baseUrl == null || baseUrl.isBlank()) {
+			return "";
+		}
+		String trimmed = baseUrl.replaceAll("/+$", "");
+		for (String url : List.of(trimmed + "/.well-known/did.json", trimmed + "/v1/certify/.well-known/did.json")) {
+			try {
+				Response response = RestClient.getRequest(url, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
+				if (response != null && response.getStatusCode() == 200 && response.getBody() != null) {
+					String did = new JSONObject(response.getBody().asString()).optString("id", "");
+					if (did.startsWith("did:")) {
+						return did;
+					}
+				}
+			} catch (Exception e) {
+				logger.warn("Could not load Mosip ID DID document from " + url + ": " + e.getMessage());
+			}
+		}
+		try {
+			String host = URI.create(trimmed).getHost();
+			if (host != null && !host.isBlank()) {
+				return "did:web:" + host;
+			}
+		} catch (Exception e) {
+			logger.warn("Could not derive Mosip ID did:web from " + trimmed + ": " + e.getMessage());
+		}
+		return "";
+	}
+
+	static String replaceMosipIdCredentialType(String requestJson, String oldType, String newType) {
+		JSONObject request = new JSONObject(requestJson);
+		replaceCredentialTypeValue(request, "credentialTypes", oldType, newType);
+		replaceCredentialTypeValue(request, "type", oldType, newType);
+		replaceVcTemplateCredentialType(request, oldType, newType);
+		return request.toString();
+	}
+
+	private static void replaceCredentialTypeValue(JSONObject request, String arrayField, String oldType,
+			String newType) {
+		if (!request.has(arrayField)) {
+			return;
+		}
+		JSONArray types = request.getJSONArray(arrayField);
+		JSONArray updated = new JSONArray();
+		for (int i = 0; i < types.length(); i++) {
+			Object item = types.get(i);
+			if (item instanceof String) {
+				updated.put(oldType.equals(item) ? newType : item);
+			} else if (item instanceof JSONObject) {
+				JSONObject obj = (JSONObject) item;
+				if (oldType.equals(obj.optString("credentialTypes"))) {
+					obj.put("credentialTypes", newType);
+				}
+				if (oldType.equals(obj.optString("type_value"))) {
+					obj.put("type_value", newType);
+				}
+				updated.put(obj);
+			} else {
+				updated.put(item);
+			}
+		}
+		request.put(arrayField, updated);
+	}
+
+	private static void replaceVcTemplateCredentialType(JSONObject request, String oldType, String newType) {
+		if (!request.has("vcTemplate")) {
+			return;
+		}
+		Object templateObj = request.get("vcTemplate");
+		if (templateObj instanceof JSONObject) {
+			String quotedOld = "\"" + oldType + "\"";
+			String quotedNew = "\"" + newType + "\"";
+			String patched = templateObj.toString().replace(quotedOld, quotedNew);
+			request.put("vcTemplate", new JSONObject(patched));
+			return;
+		}
+		String raw = String.valueOf(templateObj);
+		String decoded = maybeDecodeVcTemplate(raw);
+		String quotedOld = "\"" + oldType + "\"";
+		String quotedNew = "\"" + newType + "\"";
+		String patched = decoded.replace(quotedOld, quotedNew);
+		if (!decoded.equals(raw)) {
+			request.put("vcTemplate", AdminTestUtil.encodeBase64(patched));
+		} else {
+			request.put("vcTemplate", patched);
+		}
+	}
+
+	private static void replaceVcTemplateJsonPropertyName(JSONObject request, String oldName, String newName) {
+		if (!request.has("vcTemplate")) {
+			return;
+		}
+		String oldKey = "\"" + oldName + "\":";
+		String newKey = "\"" + newName + "\":";
+		Object templateObj = request.get("vcTemplate");
+		if (templateObj instanceof JSONObject) {
+			String patched = templateObj.toString().replace(oldKey, newKey);
+			request.put("vcTemplate", new JSONObject(patched));
+			return;
+		}
+		String raw = String.valueOf(templateObj);
+		String decoded = maybeDecodeVcTemplate(raw);
+		String patched = decoded.replace(oldKey, newKey);
+		if (!decoded.equals(raw)) {
+			request.put("vcTemplate", AdminTestUtil.encodeBase64(patched));
+		} else {
+			request.put("vcTemplate", patched);
+		}
+	}
+
+	private static String maybeDecodeVcTemplate(String value) {
+		if (value == null) {
+			return "";
+		}
+		String trimmed = value.trim();
+		if (trimmed.startsWith("{") || trimmed.contains("MOSIPVerifiableCredential_automation")) {
+			return value;
+		}
+		try {
+			String decoded = new String(Base64.getDecoder().decode(trimmed), StandardCharsets.UTF_8);
+			if (decoded.contains("MOSIPVerifiableCredential") || decoded.trim().startsWith("{")) {
+				return decoded;
+			}
+		} catch (IllegalArgumentException ignored) {
+		}
+		return value;
+	}
+
 	public static String getJsonFromInjiCertifyWellKnownEndPoint() {
-		String url = InjiCertifyConfigManager.getInjiCertifyBaseUrl()
-				+ InjiCertifyConfigManager.getproperty("injiCertifyWellKnownEndPoint");
+		return getJsonFromInjiCertifyWellKnownEndPoint(InjiCertifyConfigManager.getInjiCertifyBaseUrl());
+	}
+
+	public static String getJsonFromInjiCertifyWellKnownEndPoint(String certifyBaseUrl) {
+		String url = certifyBaseUrl + InjiCertifyConfigManager.getproperty("injiCertifyWellKnownEndPoint");
 
 		Response response = null;
 		try {
@@ -996,13 +1936,16 @@ public static void configureOtp() {
 	public static String getBaseURL(String testCaseName, String baseURL) {
 		String tempURL = "";
 
+		if (testCaseName.contains("_GetCredentialMosipID") || testCaseName.contains("MosipID_GenerateNonce")) {
+			baseURL = getMosipIdCertifyBaseUrl();
+		}
+
 		if (testCaseName.contains("_GetCredentialSunBirdC")) {
 			tempURL = getValueFromInjiCertifyWellKnownEndPoint("credential_issuer", baseURL);
 		} else if (testCaseName.contains("_GetCredentialMosipID")) {
 			tempURL = getValueFromInjiCertifyWellKnownEndPoint("credential_issuer", baseURL);
 		} else if (testCaseName.contains("_GenerateTokenVCIMOSIPID")) {
-			tempURL = getValueFromEsignetWellKnownEndPoint("token_endpoint",
-					InjiCertifyConfigManager.getEsignetBaseUrl());
+			tempURL = getValueFromEsignetWellKnownEndPoint("token_endpoint", getMosipIdEsignetBaseUrl());
 		} else if (testCaseName.contains("_GenerateToken_ForMockIDA")) {
 			tempURL = getValueFromEsignetWellKnownEndPoint("token_endpoint",
 					InjiCertifyConfigManager.getEsignetBaseUrl());
@@ -1032,11 +1975,11 @@ public static void configureOtp() {
 
 			return InjiCertifyConfigManager.getEsignetBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$ESIGNETMOSIPIDBASEURL$")) {
-			return InjiCertifyConfigManager.getEsignetBaseUrl();
+			return getMosipIdEsignetBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$ESIGNETMOCKIDABASEURL$")) {
 			return InjiCertifyConfigManager.getEsignetBaseUrl();
 		} else if (endPoint != null && endPoint.startsWith("$ESIGNETMOSIPIDBASEURL$")) {
-			return InjiCertifyConfigManager.getEsignetBaseUrl();
+			return getMosipIdEsignetBaseUrl();
 		} else if (endPoint != null && endPoint.startsWith("$ESIGNETMOCKIDABASEURL$")) {
 			return InjiCertifyConfigManager.getEsignetBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYINSURANCEBASEURL$")
@@ -1048,10 +1991,8 @@ public static void configureOtp() {
 		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYINSURANCEBASEURL$")
 				&& testCaseName.contains("CredentialConfig")) {
 			return InjiCertifyConfigManager.getInjiCertifyBaseUrl();
-		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYMOSIPIDBASEURL$")
-				&& (testCaseName.contains("_GetCredentialMosipID")
-						|| testCaseName.contains("MosipID_GenerateNonce"))) {
-			return InjiCertifyConfigManager.getInjiCertifyBaseUrl();
+		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYMOSIPIDBASEURL$")) {
+			return getMosipIdCertifyBaseUrl();
 		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYMOCKIDABASEURL$")
 				&& (testCaseName.contains("_GetCredentialForMockIDA")
 						|| testCaseName.contains("MockIDA_GenerateNonce"))) {
@@ -1060,6 +2001,9 @@ public static void configureOtp() {
 				&& testCaseName.contains("Policy_")) {
 			return InjiCertifyConfigManager.getSunBirdBaseURL();
 		} else if (testCaseDTO.getEndPoint().startsWith("$INJICERTIFYBASEURL$")) {
+			if (isMosipIdTestName(testCaseName)) {
+				return getMosipIdCertifyBaseUrl();
+			}
 			return InjiCertifyConfigManager.getInjiCertifyBaseUrl();
 		}
 		
@@ -1098,9 +2042,14 @@ public static void configureOtp() {
 		String modifiedTestCaseName = testCaseName.substring(indexof + 1);
 
 		addTestCaseDetailsToMap(modifiedTestCaseName, testCaseDTO.getUniqueIdentifier());
-		
-		if (!testCasesInRunScope.isEmpty()
-				&& testCasesInRunScope.contains(testCaseDTO.getUniqueIdentifier()) == false) {
+
+		String uniqueId = testCaseDTO.getUniqueIdentifier();
+		String uniqueIdTrimmed = uniqueId == null ? "" : uniqueId.trim();
+		boolean inRunScope = !testCasesInRunScope.isEmpty()
+				&& testCasesInRunScope.contains(uniqueIdTrimmed);
+		boolean mdocvpMosipIdPrerequisite = isMdocvpMosipIdPrerequisite(testCaseDTO);
+
+		if (!testCasesInRunScope.isEmpty() && !inRunScope && !mdocvpMosipIdPrerequisite) {
 			throw new SkipException(GlobalConstants.NOT_IN_RUN_SCOPE_MESSAGE);
 		}
 		
@@ -1160,7 +2109,8 @@ public static void configureOtp() {
 				throw new SkipException(GlobalConstants.FEATURE_NOT_SUPPORTED_MESSAGE);
 			}
 		}
-		if (uc.equals("mdocvp") && testCaseName.toLowerCase().contains("mdocvp") == false) {
+		if (uc.equals("mdocvp") && testCaseName.toLowerCase().contains("mdocvp") == false
+				&& !isMdocvpMosipIdPrerequisite(testCaseDTO)) {
 			throw new SkipException(GlobalConstants.FEATURE_NOT_SUPPORTED_MESSAGE);
 		}
 		if (uc.equals("preauthcode") && testCaseName.toLowerCase().contains("preauthcode") == false) {
@@ -1172,14 +2122,24 @@ public static void configureOtp() {
 		if (uc.equals("svgtemplate") && testCaseName.toLowerCase().contains("svgtemplate") == false) {
 			throw new SkipException(GlobalConstants.FEATURE_NOT_SUPPORTED_MESSAGE);
 		}
-		
-		// Handle extra workflow dependencies
+
 		if (testCaseDTO != null && testCaseDTO.getAdditionalDependencies() != null
 				&& AdminTestUtil.generateDependency == true) {
 			addAdditionalDependencies(testCaseDTO);
 		}
 
 		return testCaseDTO;
+	}
+
+	static boolean isMdocvpMosipIdPrerequisite(TestCaseDTO testCaseDTO) {
+		if (testCaseDTO == null || !"mdocvp".equals(trimLowerUseCase())) {
+			return false;
+		}
+		String uniqueIdentifier = testCaseDTO.getUniqueIdentifier();
+		if (uniqueIdentifier == null || uniqueIdentifier.isBlank()) {
+			return false;
+		}
+		return MDOCVP_MOSIP_ID_VCI_PREREQUISITE_IDS.contains(uniqueIdentifier.trim());
 	}
 	
 	public static boolean isSignatureSupportedForTheTestCase(TestCaseDTO testCaseDTO) {
@@ -1627,6 +2587,39 @@ public static void configureOtp() {
 		}
 		return proofJWT;
 	}
+
+	static JWSHeader pdiHolderProofHeader(OctetKeyPair holderKey) {
+		// Embedded jwk, no kid: same shape as $PROOF_JWT_ED25519$ that MOSIP ID already
+		// accepts. kid+jwk together is rejected as PROOF_HEADER_AMBIGUOUS_KEY, and a
+		// kid-only did:jwk is not accepted by every deployed MOSIP ID build.
+		return new JWSHeader.Builder(JWSAlgorithm.EdDSA).type(new JOSEObjectType("openid4vci-proof+jwt"))
+				.jwk(holderKey.toPublicJWK()).build();
+	}
+
+	public static String signED25519JWTWithHolderJwk(String clientId, String accessToken, String cNonce, String tempUrl,
+			OctetKeyPair holderKey) {
+		int idTokenExpirySecs = Integer
+				.parseInt(getValueFromEsignetActuator(InjiCertifyConfigManager.getEsignetActuatorPropertySection(),
+						GlobalConstants.MOSIP_ESIGNET_ID_TOKEN_EXPIRE_SECONDS));
+		try {
+			JWSHeader header = pdiHolderProofHeader(holderKey);
+			Date currentTime = new Date();
+			Calendar calendar = Calendar.getInstance();
+			calendar.setTime(currentTime);
+			calendar.add(Calendar.HOUR_OF_DAY, (idTokenExpirySecs / 3600));
+			Date expirationTime = calendar.getTime();
+			String nonce = resolveCNonce(accessToken, cNonce);
+			JWTClaimsSet claimsSet = new JWTClaimsSet.Builder().audience(tempUrl).claim("nonce", nonce)
+					.issuer(clientId).issueTime(currentTime).expirationTime(expirationTime)
+					.jwtID(UUID.randomUUID().toString()).build();
+			SignedJWT signedJWT = new SignedJWT(header, claimsSet);
+			signedJWT.sign(new Ed25519Signer(holderKey));
+			return signedJWT.serialize();
+		} catch (Exception e) {
+			logger.error("Exception while signing proof_jwt with holder JWK: " + e.getMessage());
+			throw new RuntimeException("Failed to sign proof JWT with holder JWK", e);
+		}
+	}
 	
 	public static String generateFullNameForSunBirdR() {
 		return faker.name().fullName();
@@ -1640,68 +2633,139 @@ public static void configureOtp() {
 	}
 	
 	public static JSONArray certifyActuatorResponseArray = null;
-	
+	private static final Map<String, JSONArray> certifyActuatorResponseByUrl = new HashMap<>();
+	private static final String KYC_EXCHANGE_LOCALES_KEY = "mosip.certify.ida.kyc-exchange.accepted-locales";
+	private static final String DEFAULT_MOSIPID_ACTUATOR_SECTION = "certify-mosipid";
+	private static final String DEFAULT_MOSIPID_KYC_LOCALES = "en";
+
 	public static String getValueFromCertifyActuator(String section, String key) {
-		// Backward compatible property key: injiCertify.properties historically used actuatorcertifyEndpoint
+		return getValueFromCertifyActuator(section, key, InjiCertifyConfigManager.getInjiCertifyBaseUrl());
+	}
+
+	public static String getValueFromCertifyActuator(String section, String key, String certifyBaseUrl) {
+		if (certifyBaseUrl == null || certifyBaseUrl.isBlank() || key == null || key.isBlank()) {
+			return null;
+		}
 		String actuatorPath = InjiCertifyConfigManager.getproperty("actuatorCertifyEndpoint");
 		if (actuatorPath == null || actuatorPath.isBlank()) {
 			actuatorPath = InjiCertifyConfigManager.getproperty("actuatorcertifyEndpoint");
 		}
-		String url = InjiCertifyConfigManager.getInjiCertifyBaseUrl() + actuatorPath;
-		// Combine the cache key to uniquely identify each request
-		String actuatorCacheKey = url + section + key;
+		if (actuatorPath == null || actuatorPath.isBlank()) {
+			actuatorPath = "/v1/certify/actuator/env";
+		}
+		String url = certifyBaseUrl.replaceAll("/+$", "") + actuatorPath;
+		String actuatorCacheKey = url + String.valueOf(section) + key;
 
-		// Check if the value is already cached
 		String value = actuatorValueCache.get(actuatorCacheKey);
 		if (value != null) {
-			return value; // Return cached value if available
+			return value;
 		}
 
 		try {
-			// Fetch the actuator response array if it's not already populated
-			if (certifyActuatorResponseArray == null) {
+			JSONArray propertySources = certifyActuatorResponseByUrl.get(url);
+			if (propertySources == null) {
 				Response response = RestClient.getRequest(url, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
 				JSONObject responseJson = new JSONObject(response.getBody().asString());
-				certifyActuatorResponseArray = responseJson.getJSONArray("propertySources");
-			}
-
-			// Loop through the "propertySources" to find the matching section and key
-			for (int i = 0, size = certifyActuatorResponseArray.length(); i < size; i++) {
-				JSONObject eachJson = certifyActuatorResponseArray.getJSONObject(i);
-				// Check if the section matches
-				if (eachJson.get("name").toString().contains(section)) {
-					// Get the value from the properties object
-					JSONObject properties = eachJson.getJSONObject(GlobalConstants.PROPERTIES);
-					if (properties.has(key)) {
-						value = properties.getJSONObject(key).get(GlobalConstants.VALUE).toString();
-						// Log the value if debug is enabled
-						if (InjiCertifyConfigManager.IsDebugEnabled()) {
-							logger.info("Actuator: " + url + " key: " + key + " value: " + value);
-						}
-						break; // Exit the loop once the value is found
-					} else {
-						logger.warn("Key '" + key + "' not found in section '" + section + "'.");
+				propertySources = responseJson.optJSONArray("propertySources");
+				if (propertySources != null && propertySources.length() > 0) {
+					certifyActuatorResponseByUrl.put(url, propertySources);
+					if (certifyActuatorResponseArray == null) {
+						certifyActuatorResponseArray = propertySources;
 					}
+				} else {
+					propertySources = propertySources == null ? new JSONArray() : propertySources;
 				}
 			}
 
-			// Cache the retrieved value for future lookups
+			value = findValueInCertifyActuatorSources(propertySources, section, key);
 			if (value != null) {
 				actuatorValueCache.put(actuatorCacheKey, value);
+				logger.info("Actuator: " + url + " key: " + key + " value: " + value);
 			} else {
-				logger.warn("No value found for section: " + section + ", key: " + key);
+				logger.warn("No value found for section: " + section + ", key: " + key + " url: " + url);
 			}
 
 			return value;
 		} catch (JSONException e) {
-			// Handle JSON parsing exceptions separately
 			logger.error("JSON parsing error for section: " + section + ", key: " + key + " - " + e.getMessage());
-			return null; // Return null if JSON parsing fails
+			return null;
 		} catch (Exception e) {
-			// Catch any other exceptions (e.g., network issues)
 			logger.error("Error fetching value for section: " + section + ", key: " + key + " - " + e.getMessage());
-			return null; // Return null if any other exception occurs
+			return null;
 		}
+	}
+
+	static String resolveKycExchangeLocales(String testCaseName) {
+		boolean mosipId = isMosipIdTestName(testCaseName);
+		String certifyBaseUrl = mosipId ? getMosipIdCertifyBaseUrl()
+				: InjiCertifyConfigManager.getInjiCertifyBaseUrl();
+		String section = mosipId
+				? firstNonBlank(InjiCertifyConfigManager.getproperty("mosipIdCertifyActuatorPropertySection"),
+						DEFAULT_MOSIPID_ACTUATOR_SECTION)
+				: InjiCertifyConfigManager.getproperty("certifyActuatorPropertySection");
+		String locales = getValueFromCertifyActuator(section, KYC_EXCHANGE_LOCALES_KEY, certifyBaseUrl);
+		if (locales != null && !locales.isBlank()) {
+			return locales.trim();
+		}
+		if (mosipId) {
+			String fallback = firstNonBlank(InjiCertifyConfigManager.getproperty("mosipIdKycExchangeLocales"),
+					DEFAULT_MOSIPID_KYC_LOCALES);
+			logger.warn("Mosip ID kyc-exchange locales missing from actuator; using fallback '" + fallback + "'");
+			return fallback;
+		}
+		return locales;
+	}
+
+	static String findValueInCertifyActuatorSources(JSONArray propertySources, String section, String key) {
+		if (propertySources == null || key == null || key.isBlank()) {
+			return null;
+		}
+		String fromPreferredSection = readActuatorProperty(propertySources, key, section, true);
+		if (fromPreferredSection != null && !fromPreferredSection.isBlank()) {
+			return fromPreferredSection;
+		}
+		return readActuatorProperty(propertySources, key, section, false);
+	}
+
+	private static String readActuatorProperty(JSONArray propertySources, String key, String section,
+			boolean requireSectionMatch) {
+		if (requireSectionMatch && (section == null || section.isBlank())) {
+			return null;
+		}
+		for (int i = 0, size = propertySources.length(); i < size; i++) {
+			try {
+				JSONObject eachJson = propertySources.getJSONObject(i);
+				String name = eachJson.optString("name", "");
+				if (requireSectionMatch && !name.contains(section)) {
+					continue;
+				}
+				JSONObject properties = eachJson.optJSONObject(GlobalConstants.PROPERTIES);
+				if (properties == null || !properties.has(key)) {
+					continue;
+				}
+				String value = extractActuatorPropertyValue(properties.get(key));
+				if (value != null && !value.isBlank()) {
+					return value;
+				}
+			} catch (Exception e) {
+				logger.warn("Skipping actuator property source at index " + i + ": " + e.getMessage());
+			}
+		}
+		return null;
+	}
+
+	private static String extractActuatorPropertyValue(Object raw) {
+		if (raw == null || raw == JSONObject.NULL) {
+			return null;
+		}
+		if (raw instanceof JSONObject) {
+			JSONObject rawObject = (JSONObject) raw;
+			if (!rawObject.has(GlobalConstants.VALUE) || rawObject.isNull(GlobalConstants.VALUE)) {
+				return null;
+			}
+			return String.valueOf(rawObject.get(GlobalConstants.VALUE));
+		}
+		return String.valueOf(raw);
 	}
 	
 	public void updateCacheFromRow(Map<String, Object> row, String idKeyName, String testCaseName) {
@@ -1780,6 +2844,7 @@ public static void configureOtp() {
 	protected void writeAutoGeneratedId(Response response, String idKeyName, String testCaseName) {
 		super.writeAutoGeneratedId(response, idKeyName, testCaseName);
 		persistOpenId4VpRequestFromIarResponse(response, testCaseName);
+		cacheMosipIdentityVcFromCredentialResponse(response, testCaseName);
 	}
 
 	private void persistOpenId4VpRequestFromIarResponse(Response response, String testCaseName) {
@@ -1813,9 +2878,88 @@ public static void configureOtp() {
 	}
 
 	public static JSONObject getPresentationDuringIssuanceVpTestData(String key) {
+		if ("sampleMosipIdentityVc".equals(key)) {
+			return resolveSampleMosipIdentityVc();
+		}
 		JSONObject template = loadJsonFromHbsTemplate(
 				"injicertify/PresentationDuringIssuance/GetCredential/GetCredential");
 		return template.getJSONObject("vpTestData").getJSONObject(key);
+	}
+
+	public static void cacheMosipIdentityVcFromCredentialResponse(Response response, String testCaseName) {
+		if (response == null || testCaseName == null || !testCaseName.contains("_mdocvp_holder")) {
+			return;
+		}
+		try {
+			JSONObject vc = extractMosipIdentityVcFromCredentialResponse(response.getBody().asString());
+			autoGeneratedIDValueCache.put(SAMPLE_MOSIP_IDENTITY_VC_CACHE_KEY, vc.toString());
+			logger.info("Cached Mosip identity VC from " + testCaseName + " for Presentation During Issuance VP");
+		} catch (Exception e) {
+			logger.error("Failed to cache Mosip identity VC from credential response: " + e.getMessage(), e);
+		}
+	}
+
+	private static JSONObject resolveSampleMosipIdentityVc() {
+		String cachedVc = autoGeneratedIDValueCache.get(SAMPLE_MOSIP_IDENTITY_VC_CACHE_KEY);
+		if (cachedVc != null && !cachedVc.isBlank()) {
+			logger.info("Reusing Mosip identity VC cached by GetCredential Mosip ID PDI prerequisite");
+			return new JSONObject(cachedVc);
+		}
+		throw new SkipException(
+				"Mosip identity VC is not cached. Ensure mdocvp Mosip ID prerequisites ran: "
+						+ "AddIdentity, OIDC on eSignet, OAuthDetails, AuthenticateUser, AuthorizationCode, "
+						+ "GenerateToken, GenerateNonce, and GetCredentialMosipID mdocvp holder "
+						+ "(TC_injicertify_Mosipidcredentialissuance_pdi_01).");
+	}
+
+	private static JSONObject extractMosipIdentityVcFromCredentialResponse(String responseBody) {
+		JSONObject responseJson = new JSONObject(responseBody);
+		if (!responseJson.has("credentials")) {
+			throw new RuntimeException("Mosip identity VC response does not contain credentials array");
+		}
+		JSONArray credentials = responseJson.getJSONArray("credentials");
+		if (credentials.length() == 0) {
+			throw new RuntimeException("Mosip identity VC response credentials array is empty");
+		}
+		JSONObject credentialEntry = credentials.getJSONObject(0);
+		if (!credentialEntry.has("credential")) {
+			throw new RuntimeException("Mosip identity VC response does not contain credential object");
+		}
+		return credentialEntry.getJSONObject("credential");
+	}
+
+	public static String serializeJson(Object jsonObject) {
+		if (jsonObject == null) {
+			return "{}";
+		}
+		return normalizeLiteralEqualsInJsonWire(jsonObject.toString());
+	}
+
+	public static String normalizeLiteralEqualsInJsonWire(String jsonWire) {
+		if (jsonWire == null) {
+			return null;
+		}
+		return jsonWire.replace("\\u003d", "=");
+	}
+
+	public static String buildMdocvpIarRequestWire(String authSession, String openId4VpResponseJson) {
+		return buildMdocvpIarRequestWire(authSession, openId4VpResponseJson, null);
+	}
+
+	public static String buildMdocvpIarRequestWire(String authSession, String openId4VpResponseJson, String clientId) {
+		JSONObject request = new JSONObject();
+		request.put("auth_session", authSession);
+		if (clientId != null && !clientId.isBlank()) {
+			request.put("client_id", clientId);
+		}
+		request.put("openid4vp_response", openId4VpResponseJson);
+		return serializeJson(request);
+	}
+
+	public static String formatMosipVcAsGetCredentialResponse(JSONObject vc) {
+		JSONObject response = new JSONObject();
+		response.put("credential", vc);
+		return serializeJson(response);
 	}
 	
 	protected void writeAutoGeneratedIdWithResponse(Response response, String idKeyName, String testCaseName) {
@@ -1841,7 +2985,7 @@ public static void configureOtp() {
 			}
 
 			// 🔹 Decide which object to use based on testcase
-			if (jsonObject.has(GlobalConstants.RESPONSE)) {
+			if (jsonObject.has(GlobalConstants.RESPONSE) && jsonObject.optJSONObject(GlobalConstants.RESPONSE) != null) {
 				responseJson = jsonObject.getJSONObject(GlobalConstants.RESPONSE);
 			} else {
 				responseJson = jsonObject;

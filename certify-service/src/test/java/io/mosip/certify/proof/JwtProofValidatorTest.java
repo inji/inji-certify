@@ -11,6 +11,7 @@ import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,7 +41,7 @@ class JwtProofValidatorTest {
         MockitoAnnotations.openMocks(this);
         jwtProofValidator = new JwtProofValidator();
         proofConfiguration = Map.of("jwt", Map.of(
-                "proof_signing_alg_values_supported", List.of("RS256", "ES256K", "EdDSA")));
+                Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256", "ES256K", "EdDSA")));
         ReflectionTestUtils.setField(jwtProofValidator, "credentialIdentifier", "test-credential-id");
     }
 
@@ -475,14 +476,14 @@ class JwtProofValidatorTest {
     @Test
     void testValidateV2_NullJwt() {
         String credentialProof = null;
-        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256"))));
+        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256"))));
         assertFalse(result, "Expected validation to fail for null JWT in validateV2");
     }
 
     @Test
     void testValidateV2_BlankJwt() {
         String credentialProof = "";
-        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256"))));
+        boolean result = jwtProofValidator.validate("client-id", "nonce", credentialProof, Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256"))));
         assertFalse(result, "Expected validation to fail for blank JWT in validateV2");
     }
 
@@ -490,7 +491,7 @@ class JwtProofValidatorTest {
     void testValidateV2_UnsupportedAlgorithm() throws Exception {
         String credentialProof = createValidJWT();
         // proofConfiguration with unsupported algorithm
-        Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("ES384")));
+        Map<String, Object> proofConfig = Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("ES384")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertFalse(result, "Expected validation to fail for unsupported algorithm in validateV2");
     }
@@ -519,16 +520,16 @@ class JwtProofValidatorTest {
     @Test
     void testValidateV2_ValidJWT_RS256() throws Exception {
         String credentialProof = createValidJWT();
-        Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256")));
+        Map<String, Object> proofConfig = Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertTrue(result, "Expected validation to succeed for valid RS256 JWT");
     }
 
     @Test
-    void testValidateV2_ValidJWT_EdDSA() throws Exception {
+    void testValidateV2_ValidJWT_Ed25519() throws Exception {
         String keyId = "did:jwk:";
         String credentialProof = createValidEd25519JWT(keyId);
-        Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("EdDSA")));
+        Map<String, Object> proofConfig = Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("EdDSA")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertTrue(result, "Expected validation to succeed for valid Ed25519 JWT");
     }
@@ -536,7 +537,7 @@ class JwtProofValidatorTest {
     @Test
     void testValidateV2_InvalidJWT() {
         String credentialProof = "invalid.jwt.token";
-        Map<String, Object> proofConfig = Map.of("jwt", Map.of("proof_signing_alg_values_supported", List.of("RS256")));
+        Map<String, Object> proofConfig = Map.of("jwt", Map.of(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256")));
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, proofConfig);
         assertFalse(result, "Expected validation to fail for invalid JWT in validateV2");
     }

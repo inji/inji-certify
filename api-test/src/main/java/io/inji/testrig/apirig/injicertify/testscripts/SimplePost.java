@@ -122,6 +122,7 @@ public class SimplePost extends InjiCertifyUtil implements ITest {
 
 		else {
 			inputJson = inputStringKeyWordHandeler(inputJson, testCaseName);
+			InjiCertifyUtil.ensureMdocDrivingLicenseTemplateHasSigned(testCaseDTO);
 			String tempUrl = InjiCertifyConfigManager.getEsignetBaseUrl();
 			if (testCaseName.contains("ESignet_") || testCaseName.contains("InjiCertify")) {
 
@@ -164,6 +165,7 @@ public class SimplePost extends InjiCertifyUtil implements ITest {
 					else
 						throw new AdminTestException("Failed at otp output validation");
 				}
+				InjiCertifyUtil.cacheMosipIdentityVcFromCredentialResponse(response, testCaseName);
 			}
 
 		}

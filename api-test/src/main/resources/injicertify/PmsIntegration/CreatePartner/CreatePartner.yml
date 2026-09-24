@@ -12,8 +12,8 @@ createPartnerSelfRegistration:
     "address": "Bangalore",
     "contactNumber": "8553967372",
     "emailId": "$PARTNEREMAIL$",
-    "organizationName": "$PARTNERID$",
-    "partnerId": "$PARTNERID$",
+    "organizationName": "$PARTNERID$_$UNIQUENONCEVALUE$",
+    "partnerId": "$PARTNERID$_$UNIQUENONCEVALUE$",
     "partnerType": "Auth_Partner",
     "policyGroup": "$ID:DefinePolicyGroup_MOSIPID_All_Valid_Smoke_sid_name$",
     "requesttime": "$TIMESTAMP$"

@@ -70,6 +70,10 @@ public class ErrorConstants {
     public static final String UNSUPPORTED_SIGNATURE_ALGO = "unsupported_signature_algo";
     public static final String KEY_CHOOSER_CONFIG_NOT_FOUND = "key_chooser_config_not_found";
     public static final String KEY_CHOOSER_APP_REF_NOT_FOUND = "key_chooser_app_ref_not_found";
+    public static final String UNSUPPORTED_CRYPTOGRAPHIC_BINDING_METHOD = "unsupported_cryptographic_binding_method";
+    public static final String CRYPTOGRAPHIC_BINDING_CONFIG_NOT_FOUND = "cryptographic_binding_config_not_found";
+    public static final String UNSUPPORTED_CREDENTIAL_SIGNING_ALG = "unsupported_credential_signing_alg";
+    public static final String UNSUPPORTED_PROOF_SIGNING_ALG = "unsupported_proof_signing_alg";
     public static final String CONFIG_NOT_FOUND_BY_ID = "config_not_found_by_id";
     public static final String CONFIG_NOT_ACTIVE = "config_not_active";
     public static final String CONFIG_NOT_FOUND_FOR_UPDATE = "config_not_found_for_update";
@@ -81,6 +85,8 @@ public class ErrorConstants {
     public static final String ERROR_SIGNING_QR_ENTRY = "error_signing_qr_entry";
     public static final String ERROR_SIGNING_QR_DATA = "error_signing_qr_data";
     public static final String QR_CBOR_ENCODING_ERROR = "qr_cbor_encoding_error";
+    public static final String QR_INVALID_FIELD_REFERENCE = "qr_invalid_field_reference";
+    public static final String DUPLICATE_FIELDS_IN_QR_SETTINGS = "duplicate_fields_in_qr_settings";
     public static final String INVALID_CREDENTIAL_CONFIGURATION_ID = "invalid_credential_configuration_id";
     public static final String MISSING_MANDATORY_CLAIM = "missing_mandatory_claim";
     public static final String CREDENTIAL_OFFER_NOT_FOUND = "credential_offer_not_found";
@@ -93,4 +99,5 @@ public class ErrorConstants {
     public static final String INVALID_AUTHORIZATION_SERVER = "invalid_authorization_server";
     public static final String AUTHORIZATION_SERVER_NOT_CONFIGURED = "authorization_server_not_configured";
     public static final String INVALID_CREDENTIAL_REQUEST = "invalid_credential_request";
+    public static final String INVALID_DPOP_PROOF = "invalid_dpop_proof";
 }

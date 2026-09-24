@@ -43,6 +43,11 @@ public class VCIssuanceControllerTest {
     @MockBean
     ParsedAccessToken parsedAccessToken;
 
+    // AccessTokenValidationFilter is a @Component, so the web slice builds it
+    // and every collaborator it autowires has to exist here too.
+    @MockBean
+    io.mosip.certify.dpop.DpopProofValidator dpopProofValidator;
+
     @MockBean
     VCIssuanceService vcIssuanceService;
 
@@ -129,5 +134,15 @@ public class VCIssuanceControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(exception.getErrorCode()))
                 .andExpect(jsonPath("$.error_description").value(exception.getMessage()));
+    }
+
+    @Test
+    public void should_returnInvalidRequest_when_credentialRequestJsonIsMalformed() throws Exception {
+        mockMvc.perform(post("/issuance/credential")
+                        .content("{invalid-json}")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("invalid_request"))
+                .andExpect(jsonPath("$.error_description").value("Malformed JSON syntax error"));
     }
 }

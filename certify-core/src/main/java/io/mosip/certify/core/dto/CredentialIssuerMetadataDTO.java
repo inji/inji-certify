@@ -2,6 +2,7 @@ package io.mosip.certify.core.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.mosip.certify.core.constants.Constants;
 import lombok.Data;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public class CredentialIssuerMetadataDTO {
 
     private List<Map<String, Object>> display;
 
-    @JsonProperty("credential_configurations_supported")
+    @JsonProperty(Constants.CREDENTIAL_CONFIGURATIONS_SUPPORTED)
     private Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedDTO;
 
 }

@@ -118,26 +118,35 @@ public class InjiTestRunner {
 				}
 			}
 
-			if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+			// Needed for every use case, not just mosipid, else eSignet returns 403 Forbidden
+			AdminTestUtil.fetchAndStoreCsrfToken();
+			
+			if (useCaseToExecute.equalsIgnoreCase("mosipid")
+					|| useCaseToExecute.equalsIgnoreCase("mdocvp")) {
 
-				InjiCertifyUtil.dBCleanup();
+				if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+					InjiCertifyUtil.dBCleanup();
+				}
 
-				// Generate device certificates to be consumed by Mock-MDS
+				// mdocvp also AddIdentity's a MOSIP UIN, so IDA needs the same CBEFF face.
 				PartnerRegistration.deleteCertificates();
 				PartnerRegistration.deviceGeneration();
-
 				BiometricDataProvider.generateBiometricTestData("Registration");
 
 				startTestRunner();
 
-				InjiCertifyUtil.dBCleanup();
+				if (useCaseToExecute.equalsIgnoreCase("mosipid")) {
+					InjiCertifyUtil.dBCleanup();
+				}
 			} else {
 
 				startTestRunner();
 
 			}
 		} catch (Exception e) {
-			LOGGER.error("Exception " + e.getMessage());
+			LOGGER.error("Exception " + e.getMessage(), e);
+			// Fatal init/run failure: exit non-zero instead of falling through to the success path
+			System.exit(1);
 		}
 
 		if (useCaseToExecute.equalsIgnoreCase("landregistry")) {

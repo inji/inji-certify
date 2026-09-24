@@ -20,9 +20,9 @@ You have two options for the certify plugin which gives Verifiable Credentials o
 - Docker and Docker Compose installed on your system
 - Git (to clone the repository)
 - Basic understanding of Docker and container operations
-- Relevant Postman collections available from [here](../../docs/postman-collections/), please add the `mock` ones and install the [pmlib library](https://joolfe.github.io/postman-util-lib/) as per the steps given under the heading `Postman Collection` to the Postman setup
+- Relevant Postman collections available from [here](../../docs/postman_collections/), please add the `mock` ones and install the [pmlib library](https://joolfe.github.io/postman-util-lib/) as per the steps given under the heading `Postman Collection` to the Postman setup
 - Network Connectivity to access the AuthZ Service, in this example MOSIP Collab setup has been used
-  - We can set up AuthZ server locally as well or use the one deployed in any other environment. If we do so, we need to update following values in environment variable of [postman collection](../../docs/postman-collections/inji-certify-with-mock-identity.postman_environment.json)
+  - We can set up AuthZ server locally as well or use the one deployed in any other environment. If we do so, we need to update following values in environment variable of [postman collection](../../docs/postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_environment.json) (and, if you are running the DPoP collection, in its own [environment](../../docs/postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity-dpop.postman_environment.json) too — the two no longer share one)
     - authServerUrl - host of auth server. If it's esignet running locally then value will be http://localhost:8088/v1/esignet
     - aud - token audience. If it's esignet running locally then value will be http://localhost:8088/v1/esignet/oauth/v2/token
     - Create OIDC client if supporting `private_key_jwt` client authentication. While doing this, update following values
@@ -48,13 +48,21 @@ docker-compose-injistack/
 │   ├── certify-default.properties
 │   ├── certify-csvdp-farmer.properties
 │   ├── certify-mock-mdl.properties
+│   ├── farmer_identity_data.csv
+│   ├── vp_request_config.json
+│   ├── mimoto-bootstrap.properties
 │   ├── mimoto-default.properties
 │   ├── mimoto-issuers-config.json
 │   ├── mimoto-trusted-verifiers.json
+│   ├── mosip-cbeff.xsd
 │   └── credential-template.html
+├── context/
+│   └── farmer-context.json
 ├── nginx.conf
+├── certify-nginx.conf
 ├── certify_init.sql
-└── docker-compose.yml
+├── mimoto_init.sql
+└── docker-compose.yaml
 ```
 
 
@@ -150,10 +158,14 @@ Refer to the document for custom `@context` registration: https://github.com/inj
 
 **Note**: Refer the relevant config file based on use case to connect to the required environment.
 
-Ensure all configuration files are properly updated in the config directory if you have are making any changes suggested for any Advanced usecase:
+Ensure each of the following files is updated in its documented directory if you are making any changes suggested for any Advanced usecase. The `.properties`, `.csv` and `vp_request_config.json` files live under `config/`, while the JSON-LD `@context` files live under the separate `context/` directory:
 
-- certify-default.properties
-- certify-csvdp-farmer.properties
+- config/certify-default.properties
+- config/certify-csvdp-farmer.properties
+- config/certify-mock-mdl.properties
+- config/farmer_identity_data.csv
+- config/vp_request_config.json (drives the Presentation During Issuance flow)
+- context/farmer-context.json (JSON-LD `@context` file under the `context/` directory)
 
 Following files are optional and can be used to configure the Inji Web application for your usecase, if you are not using web application, you can skip these files:
 
@@ -191,7 +203,6 @@ The following services will be available:
 - Certify Nginx: `localhost:8091`
 - Mimoto Service: `localhost:8099`
 - Inji Web: `localhost:3004`
-- Inji Verify: `localhost:8095`
 
 ## Using the Application
 
@@ -206,7 +217,7 @@ The following services will be available:
 ### Running only certify service - Accessing the Credentials via the Postman Interface
 
 1. Open Postman
-2. Import the [Mock Collections & Environments](../../docs/postman-collections/) from here, make appropriate changes to the Credential Type and contexts as per your VerifiableCredential and the configured WellKnown.
+2. Import the [Mock Collections & Environments](../../docs/postman_collections/) from here, make appropriate changes to the Credential Type and contexts as per your VerifiableCredential and the configured WellKnown.
 3. You can
     - Download credentials
     - View credential status
@@ -235,14 +246,14 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 
 2. Deploying Inji Certify over a public URL, _using ngrok to demonstrate this_
 
-- change the value of the `mosipbox_public_url` to point to the public URL in ./docker-compose.yaml where Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8090`, which is the port for Certify and access the Inji Web at http://localhost:3004, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
+- change the value of the `mosip_certify_domain_url` environment variable under the `certify` service in ./docker-compose.yaml (currently `http://certify-nginx:80`) to point to the public URL where the Certify service will be accessible, when using locally with ngrok create an HTTP tunnel for the port `8091`, which is the certify-nginx port that exposes the root `/.well-known/...` discovery paths and proxies `/v1/certify/` to Certify and access the Inji Web at http://localhost:3004, to access Inji Web you may have to create another client with the Authorization service and more configuration should be required at Mimoto side
 
 3. While downloading credentials with `inji-web`, there are 2 modes supported. 
 - First is `Continue as guest` which does not require any auth setup and works out of the box. This is the recommended option for quick testing.
 - Second is `Sign in with Google` which requires Google OAuth credentials to be setup.
 ## To configure your own Google Auth Credentials:
 - Refer to the steps documented in the `mimoto` for the same. [GOOGLE_AUTH_SETUP](https://github.com/inji/mimoto/blob/master/docker-compose/README.md#how-to-create-google-client-credentials)
-- Replace the placeholders under the `mimoto-service` in the `docker-compose.yml` file with the generated credentials:
+- Replace the placeholders under the `mimoto-service` in the `docker-compose.yaml` file with the generated credentials:
 
    ```yaml
        environment:
@@ -333,7 +344,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
     - Replace certify:8090 with your actual backend service name and port.
     - If you're using Docker, ensure the backend and NGINX are on the same network.
     - For HTTPS, add SSL configuration (`listen 443 ssl;`, `ssl_certificate`, etc.).
-3. **Integrate with Docker Compose**: Update your docker-compose.yml:
+3. **Integrate with Docker Compose**: Update your docker-compose.yaml:
 ```yaml
     services:
         nginx:
@@ -401,7 +412,6 @@ docker-compose down -v
 - [Inji Documentation](https://docs.inji.io/)
 
 
-### Verify Service
+### Presentation During Issuance (PDI)
 
-The verify-service is commented out by default in the `docker-compose.yml`.  
-If you want to explore the Presentation During Issuance feature and test the end-to-end issuance + verification flow**, uncomment the `verify-service` and restart the stack.
+Certify supports the **Presentation During Issuance** flow using the embedded **verify-core** library, which is a dependency of the Certify service and runs in-process — there is no separate `verify-service` container to run.
