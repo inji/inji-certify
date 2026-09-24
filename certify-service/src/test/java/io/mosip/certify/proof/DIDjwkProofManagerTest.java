@@ -114,7 +114,7 @@ public class DIDjwkProofManagerTest {
     }
 
     @Test
-    void getDID_fromJwkHeader_isUnpaddedAndRoundTrips() throws Exception {
+    void should_returnUnpaddedRoundTrippableDidJwk_when_jwkPresentInHeader() throws Exception {
         ECKey baseKey = new ECKeyGenerator(Curve.P_256).generate().toPublicJWK();
         // Vary kid length so at least one serialized JWK length is not a multiple of 3,
         // i.e. the case where a padded encoder would append '='.
@@ -133,7 +133,7 @@ public class DIDjwkProofManagerTest {
     }
 
     @Test
-    void getKeyFromHeader_acceptsLegacyPaddedDidJwk() throws Exception {
+    void should_extractKey_when_kidIsLegacyPaddedDidJwk() throws Exception {
         ECKey jwk = new ECKeyGenerator(Curve.P_256).generate().toPublicJWK();
         String padded = Base64.getUrlEncoder().encodeToString(jwk.toJSONString().getBytes(StandardCharsets.UTF_8));
         when(header.getJWK()).thenReturn(null);
