@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -331,25 +330,28 @@ public class VCICacheServiceTest {
     }
 
     @Test
-    public void should_returnFalse_when_preAuthCodeDataMissing() {
+    public void should_returnInvalidOrUsed_when_preAuthCodeDataMissing() {
         when(cache.get("pre_auth_code:code")).thenReturn(null);
-        assertFalse(vciCacheService.claimPreAuthCode("code"));
+        assertEquals(VCICacheService.PreAuthCodeClaimResult.INVALID_OR_USED,
+                vciCacheService.claimPreAuthCodeIfUnexpired("code", System.currentTimeMillis()));
     }
 
     @Test
-    public void should_markAndReturnTrue_when_preAuthCodeIsValidAndUnused() {
+    public void should_markAndReturnClaimed_when_preAuthCodeIsValidAndUnused() {
         PreAuthCodeData data = new PreAuthCodeData();
+        data.setExpiresAt(Long.MAX_VALUE);
         Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
         when(dataWrapper.get()).thenReturn(data);
         when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
         when(cache.get("used:code")).thenReturn(null);
 
-        assertTrue(vciCacheService.claimPreAuthCode("code"));
+        assertEquals(VCICacheService.PreAuthCodeClaimResult.CLAIMED,
+                vciCacheService.claimPreAuthCodeIfUnexpired("code", System.currentTimeMillis()));
         verify(cache).put("used:code", true);
     }
 
     @Test
-    public void should_returnFalse_when_preAuthCodeAlreadyUsed() {
+    public void should_returnInvalidOrUsed_when_preAuthCodeAlreadyUsed() {
         PreAuthCodeData data = new PreAuthCodeData();
         Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
         when(dataWrapper.get()).thenReturn(data);
@@ -358,7 +360,8 @@ public class VCICacheServiceTest {
         when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
         when(cache.get("used:code")).thenReturn(usedWrapper);
 
-        assertFalse(vciCacheService.claimPreAuthCode("code"));
+        assertEquals(VCICacheService.PreAuthCodeClaimResult.INVALID_OR_USED,
+                vciCacheService.claimPreAuthCodeIfUnexpired("code", System.currentTimeMillis()));
     }
 }
 
