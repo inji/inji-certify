@@ -1,3 +1,16 @@
+-- 0.14.0 requires holder binding for every credential configuration. Give configurations without
+-- holder binding (NULL) the 1.0.0 defaults; the steps below convert them to the 0.14.0 form.
+UPDATE certify.credential_config
+SET cryptographic_binding_methods_supported = CASE
+        WHEN credential_format = 'mso_mdoc' THEN ARRAY['cose_key']
+        ELSE ARRAY['did:jwk', 'did:key']
+    END
+WHERE cryptographic_binding_methods_supported IS NULL;
+
+UPDATE certify.credential_config
+SET proof_types_supported = '{"jwt": {"proof_signing_alg_values_supported": ["RS256", "ES256", "PS256", "EdDSA"]}}'::jsonb
+WHERE proof_types_supported IS NULL;
+
 UPDATE certify.credential_config
 SET display = COALESCE((
     SELECT jsonb_agg(
@@ -63,3 +76,10 @@ WHERE proof_types_supported #> '{jwt,proof_signing_alg_values_supported}' IS NOT
       FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
       WHERE alg = '"EdDSA"'::jsonb
   );
+
+-- Restore NOT NULL on the holder binding columns
+ALTER TABLE certify.credential_config
+    ALTER COLUMN cryptographic_binding_methods_supported SET NOT NULL;
+
+ALTER TABLE certify.credential_config
+    ALTER COLUMN proof_types_supported SET NOT NULL;
