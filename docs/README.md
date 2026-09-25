@@ -6,6 +6,7 @@
 - [SD-JWT VC Support](./technical_docs/SD_JWT_Support.md)
 - [Data Integrity Proof Support](./technical_docs/Data_Integrity_Proof_Support.md)
 - [VC Revocation Support](./technical_docs/VC_Revocation_Support.md)
+- [DPoP Support](./technical_docs/DPoP_Support.md)
 
 # Integrator READMEs
 
@@ -17,10 +18,11 @@ Ready-to-import collections and environments under [postman_collections/](./post
 Collections that exercise the OAuth authorization code grant, split by which Certify plugin architecture they demonstrate (see [VCIssuance vs DataProvider](./technical_docs/VCIssuance_Vs_DataProvider.md) for the distinction):
 
 - **[data_provider_plugin/](./postman_collections/authorization_code_flow/data_provider_plugin/)** – exercises the **DataProviderPlugin** architecture.
-  - `inji-certify-with-mock-identity.postman_collection.json` + `.postman_environment.json` (`ENV Mock Identity Bearer`) – Bearer credential issuance against the mock identity system (CSV data-provider "farmer" credential).
-  - `inji-certify-with-mock-identity-dpop.postman_collection.json` + `inji-certify-with-mock-identity-dpop.postman_environment.json` (`ENV Mock Identity DPoP`) – DPoP-constrained credential issuance (RFC 9449). It has its own environment: the two flows write the same variable names, so sharing one lets either run silently clobber the other's client keys and tokens.
+  - `inji-certify-mock-identity.postman_collection.json` – credential issuance against the mock identity system (CSV data-provider "farmer" credential). Folders 1–3 (mock identity, credential configuration, well-known endpoints) run under either environment; folder 4 branches into **Bearer** and **DPoP** (RFC 9449, with a 26-scenario conformance suite), each tied to its own environment:
+    - `inji-certify-with-mock-identity.postman_environment.json` (`ENV Mock Identity Bearer`) – for the Bearer branch.
+    - `inji-certify-with-mock-identity-dpop.postman_environment.json` (`ENV Mock Identity DPoP`) – for the DPoP branch. The two flows write the same variable names, so sharing one environment would let either run silently clobber the other's client keys and tokens.
   - `inji-certify-with-mock-mdoc-vci.postman_collection.json` – mock mDoc/mDL VCI collection; uses `ENV Mock Identity Bearer`.
-  - [README-mock-identity-dpop.md](./postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md) – 26-scenario DPoP conformance suite covering the two mock-identity collections above.
+  - [README-mock-identity-dpop.md](./postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md) – run order, environment switching, client registration and the DPoP scenarios for the mock-identity collection above.
 - **[vc_issuance_plugin/](./postman_collections/authorization_code_flow/vc_issuance_plugin/)** – exercises the **VCIssuancePlugin** architecture ("Sunbird VCI Plugin Mode"), using Sunbird RC as the sample integration.
   - `inji-certify-with-sunbird-insurance.postman_collection.json` + `.postman_environment.json`
 

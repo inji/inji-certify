@@ -499,7 +499,7 @@ paths:
           required: false
           description: >-
             DPoP proof JWT (RFC 9449 section 4.1). Required when the Authorization header
-            uses the DPoP scheme, rejected as unnecessary when it does not. The proof is
+            uses the DPoP scheme, ignored when it uses Bearer. The proof is
             signed by the key the access token is bound to, and carries htm, htu, iat, jti
             and ath over this request.
           schema:

@@ -766,7 +766,7 @@
         "type": "text/javascript",
         "exec": [
           "// This collection keeps its own environment. Selecting the other one would not",
-          "// fail immediately - the two share 20 variable names - it would run partway and",
+          "// fail immediately - the two share 23 variable names - it would run partway and",
           "// write this flow's state into the wrong file. From OIDC Client Mgmt that costs",
           "// a registered client: pm.environment.set CREATES privateKey_jwk in whichever",
           "// environment is active, and eSignet cannot re-key or read back a client.",
