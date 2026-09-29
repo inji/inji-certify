@@ -6,6 +6,7 @@
 - [SD-JWT VC Support](./technical_docs/SD_JWT_Support.md)
 - [Data Integrity Proof Support](./technical_docs/Data_Integrity_Proof_Support.md)
 - [VC Revocation Support](./technical_docs/VC_Revocation_Support.md)
+- [Credentials Without Holder Binding](./technical_docs/Credentials_Without_Holder_Binding.md)
 
 # Integrator READMEs
 
