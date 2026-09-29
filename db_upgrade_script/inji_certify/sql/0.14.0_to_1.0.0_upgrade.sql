@@ -104,3 +104,11 @@ WHERE proof_types_supported #> '{jwt,proof_signing_alg_values_supported}' IS NOT
       FROM jsonb_array_elements(proof_types_supported #> '{jwt,proof_signing_alg_values_supported}') AS alg
       WHERE alg = '"Ed25519"'::jsonb
   );
+
+-- Holder binding is optional per credential configuration: NULL means no proof is required.
+
+ALTER TABLE certify.credential_config
+    ALTER COLUMN cryptographic_binding_methods_supported DROP NOT NULL;
+
+ALTER TABLE certify.credential_config
+    ALTER COLUMN proof_types_supported DROP NOT NULL;

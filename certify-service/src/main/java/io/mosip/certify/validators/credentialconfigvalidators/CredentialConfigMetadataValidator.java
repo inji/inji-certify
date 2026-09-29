@@ -26,6 +26,9 @@ import java.util.Set;
  */
 public class CredentialConfigMetadataValidator {
 
+    private static final String WITHOUT_HOLDER_BINDING_HINT = " To configure a credential without holder binding, "
+            + "send both cryptographicBindingMethodsSupported and proofTypesSupported empty.";
+
     private CredentialConfigMetadataValidator() {
     }
 
@@ -34,7 +37,7 @@ public class CredentialConfigMetadataValidator {
                                               List<Error> errors) {
         if (requested.isEmpty()) {
             errors.add(buildError(ErrorConstants.INVALID_REQUEST,
-                    "cryptographicBindingMethodsSupported was provided but is empty."));
+                    emptyHolderBindingAttributeMessage("cryptographicBindingMethodsSupported", credentialFormat)));
             return;
         }
 
@@ -115,11 +118,12 @@ public class CredentialConfigMetadataValidator {
         }
     }
 
-    public static void validateProofTypes(Map<String, Object> requested,
+    public static void validateProofTypes(Map<String, Object> requested, String credentialFormat,
                                           Map<String, Object> declaredProofTypes,
                                           List<Error> errors) {
         if (requested.isEmpty()) {
-            errors.add(buildError(ErrorConstants.INVALID_REQUEST, "proofTypesSupported was provided but is empty."));
+            errors.add(buildError(ErrorConstants.INVALID_REQUEST,
+                    emptyHolderBindingAttributeMessage("proofTypesSupported", credentialFormat)));
             return;
         }
 
@@ -183,6 +187,61 @@ public class CredentialConfigMetadataValidator {
                                 + proofType + ". The supported values are: " + declared));
             }
         }
+    }
+
+    /**
+     * A configuration without holder binding is not possible for mso_mdoc: ISO/IEC 18013-5 requires
+     * deviceKeyInfo in the mobile security object.
+     */
+    public static void validateWithoutHolderBinding(String credentialFormat, List<Error> errors) {
+        if (VCFormats.MSO_MDOC.equals(credentialFormat)) {
+            errors.add(buildError(ErrorConstants.INVALID_REQUEST,
+                    "mso_mdoc credentials are always holder-bound; cryptographicBindingMethodsSupported and proofTypesSupported must not be empty."));
+        }
+    }
+
+    /**
+     * A holder-bound configuration that names no binding methods takes the ones the deployment declares
+     * for its format. When the deployment declares none, the configuration would advertise an empty
+     * cryptographic_binding_methods_supported next to proof types and be issued without holder binding,
+     * so it is rejected instead.
+     */
+    public static void validateDerivedBindingMethods(List<String> derived, String credentialFormat, List<Error> errors) {
+        if (!derived.isEmpty()) {
+            return;
+        }
+        String message = "No cryptographic binding methods are declared for the credential format: " + credentialFormat
+                + ". Declare them in mosip.certify.credential-config.cryptographic-binding-methods-supported.";
+        if (!VCFormats.MSO_MDOC.equals(credentialFormat)) {
+            message += WITHOUT_HOLDER_BINDING_HINT;
+        }
+        errors.add(buildError(ErrorConstants.CRYPTOGRAPHIC_BINDING_CONFIG_NOT_FOUND, message));
+    }
+
+    /**
+     * A holder-bound configuration that names no proof types takes the ones the deployment declares. When
+     * the deployment declares none, the configuration would advertise binding methods with no way to prove
+     * possession of the key, so it is rejected instead.
+     */
+    public static void validateDerivedProofTypes(Map<String, Object> declaredProofTypes, String credentialFormat,
+                                                 List<Error> errors) {
+        if (declaredProofTypes != null && !declaredProofTypes.isEmpty()) {
+            return;
+        }
+        String message = "No proof types are declared. Declare them in mosip.certify.credential-config.proof-types-supported.";
+        if (!VCFormats.MSO_MDOC.equals(credentialFormat)) {
+            message += WITHOUT_HOLDER_BINDING_HINT;
+        }
+        errors.add(buildError(ErrorConstants.UNSUPPORTED_PROOF_TYPE, message));
+    }
+
+    /**
+     * One of the two holder-binding attributes sent empty on its own. Unless the format is always
+     * holder-bound, the message also says how to configure the credential without holder binding.
+     */
+    private static String emptyHolderBindingAttributeMessage(String attribute, String credentialFormat) {
+        String message = attribute + " was provided but is empty.";
+        return VCFormats.MSO_MDOC.equals(credentialFormat) ? message : message + WITHOUT_HOLDER_BINDING_HINT;
     }
 
     private static Error buildError(String errorCode, String errorMessage) {
