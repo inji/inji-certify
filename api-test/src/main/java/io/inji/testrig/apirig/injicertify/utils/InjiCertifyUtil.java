@@ -3064,5 +3064,60 @@ public static void configureOtp() {
 		// ----- TRIM / EXTRACT offer_id ----- // Only take the last segment after "%2F"
 		return credeuri.substring(credeuri.lastIndexOf("%2F") + 3);
 	}
+
+	public static void validateMdocCredentialResponse(Response response, String testCaseName) {
+		String body = response.asString();
+		JSONObject json;
+		try {
+			json = new JSONObject(body);
+		} catch (JSONException e) {
+			throw new RuntimeException("mDoc response is not valid JSON for " + testCaseName);
+		}
+
+		if (!json.has("credentials")) {
+			throw new RuntimeException(
+				"mDoc response missing 'credentials' array for " + testCaseName);
+		}
+
+		JSONArray credentials = json.getJSONArray("credentials");
+		if (credentials.length() == 0) {
+			throw new RuntimeException(
+				"mDoc response 'credentials' array is empty for " + testCaseName);
+		}
+
+		JSONObject firstEntry = credentials.getJSONObject(0);
+		if (!firstEntry.has("credential")) {
+			throw new RuntimeException(
+				"mDoc response first entry missing 'credential' field for " + testCaseName);
+		}
+
+		Object credentialField = firstEntry.get("credential");
+
+		if (!(credentialField instanceof String)) {
+			throw new RuntimeException(
+				"mDoc 'credential' must be a base64url string per OpenID4VCI v1.0, but got type: "
+				+ credentialField.getClass().getSimpleName()
+				+ " for " + testCaseName);
+		}
+
+		String credentialStr = (String) credentialField;
+		if (credentialStr.isBlank()) {
+			throw new RuntimeException(
+				"mDoc 'credential' field is blank for " + testCaseName);
+		}
+
+		try {
+			byte[] decoded = Base64.getUrlDecoder().decode(credentialStr);
+			if (decoded.length == 0) {
+				throw new RuntimeException(
+					"mDoc 'credential' base64url decodes to empty bytes for " + testCaseName);
+			}
+			logger.info(testCaseName + ": mDoc credential validated — base64url string, decoded size="
+				+ decoded.length + " bytes");
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(
+				"mDoc 'credential' is not valid base64url for " + testCaseName);
+		}
+	}
 	
 }
