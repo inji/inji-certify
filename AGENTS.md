@@ -9,7 +9,7 @@ conventions that agents need to work effectively in this codebase.
 
 Inji Certify is an **OpenID4VCI 1.0 compliant Verifiable Credential issuance service**. It signs and issues credentials
 in W3C JSON-LD (`ldp_vc`), SD-JWT (`dc+sd-jwt`), and mock mDL (`mso_mdoc`) formats. It is a Spring Boot 3.2.3 / Java 21
-multi-module Maven project licensed under MPL 2.0.
+multi-module Maven project licensed under Apache 2.0.
 
 - **GitHub**: https://github.com/inji/inji-certify
 - **Docs**: https://docs.inji.io/inji-certify/overview
