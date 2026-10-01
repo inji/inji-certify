@@ -9,6 +9,7 @@ import io.mosip.certify.entity.CredentialStatusTransaction;
 import io.mosip.certify.entity.StatusListCredential;
 import io.mosip.certify.repository.CredentialStatusTransactionRepository;
 import io.mosip.certify.repository.StatusListCredentialRepository;
+import io.mosip.certify.utils.BitStringStatusListUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,12 +36,12 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
         StatusListCredential statusListCredential = statusListCredentialRepository.findById(statusListCredentialId)
                 .orElseThrow(() -> new CertifyException(ErrorConstants.STATUS_LIST_NOT_FOUND, "Status List Credential not found for ID: " + statusListCredentialId));
 
+        // Validate statusPurpose and statusListIndex
+        String validatedPurpose = validateCredentialStatus(request.getCredentialStatus().getStatusPurpose(),
+                statusListIndex, statusListCredential);
+
         CredentialStatusTransaction transaction = new CredentialStatusTransaction();
-        if(StringUtils.isEmpty(request.getCredentialStatus().getStatusPurpose())) {
-            transaction.setStatusPurpose(statusListCredential.getStatusPurpose());
-        } else {
-            transaction.setStatusPurpose(request.getCredentialStatus().getStatusPurpose());
-        }
+        transaction.setStatusPurpose(validatedPurpose);
         transaction.setStatusValue(request.getStatus());
         transaction.setStatusListCredentialId(statusListCredentialId);
         transaction.setStatusListIndex(statusListIndex);
@@ -55,5 +56,44 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
             dto.setCredentialType(request.getCredentialStatus().getType());
         }
         return dto;
+    }
+
+    private String validateCredentialStatus(String requestedPurpose, Long statusListIndex,
+                                            StatusListCredential statusListCredential) {
+        // The controller's @Valid binding rejects a null index before it gets here, but this
+        // is a public service on an SPI interface: a direct caller skips bean validation, and
+        // the unboxing in the comparison below would turn a null into a NullPointerException.
+        if (statusListIndex == null) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "statusListIndex is required");
+        }
+
+        if (statusListIndex < 0) {
+            throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
+                "statusListIndex must be non-negative, received: " + statusListIndex);
+        }
+
+        // Validate statusListIndex using shared utility, after the cheap checks above so the
+        // KB->bits conversion only runs for an index that could be in range.
+        // This ensures the effective 16 KB minimum and overflow/maximum checks match batch processing
+        long maxCapacity = BitStringStatusListUtils.safeConvertKBToBits(statusListCredential.getCapacityInKB());
+
+        if (statusListIndex >= maxCapacity) {
+            throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
+                "statusListIndex " + statusListIndex + " exceeds maximum capacity " +
+                maxCapacity + " for status list '" + statusListCredential.getId() + "'");
+        }
+
+        // Validate and return statusPurpose
+        if(StringUtils.isEmpty(requestedPurpose)) {
+            return statusListCredential.getStatusPurpose();
+        } else {
+            if(!requestedPurpose.equals(statusListCredential.getStatusPurpose())) {
+                throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
+                    "statusPurpose mismatch: requested '" + requestedPurpose +
+                    "' but status list '" + statusListCredential.getId() + "' has purpose '" +
+                    statusListCredential.getStatusPurpose() + "'");
+            }
+            return requestedPurpose;
+        }
     }
 }
