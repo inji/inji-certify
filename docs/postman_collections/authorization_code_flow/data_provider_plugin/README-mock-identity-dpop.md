@@ -1,25 +1,45 @@
-# Mock-identity collections: Bearer and DPoP
+# Mock-identity collection: Bearer and DPoP
 
-Two collections, **one environment each**:
+One collection, **two environments**:
 
-| Postman name | File | What it does |
+| Postman name | File | What it is |
 |---|---|---|
-| `Inji Certify With Mock Identity` | `inji-certify-with-mock-identity.postman_collection.json` | Bearer credential issuance |
-| `ENV Mock Identity Bearer` | `inji-certify-with-mock-identity.postman_environment.json` | environment for the above (and for the mDoc collection) |
-| `Inji Certify With Mock Identity DPoP` | `inji-certify-with-mock-identity-dpop.postman_collection.json` | DPoP-constrained issuance (RFC 9449) |
-| `ENV Mock Identity DPoP` | `inji-certify-with-mock-identity-dpop.postman_environment.json` | environment for the above |
+| `Inji Certify - Mock Identity` | `inji-certify-mock-identity.postman_collection.json` | the collection: shared setup, then a Bearer branch and a DPoP branch |
+| `ENV Mock Identity Bearer` | `inji-certify-with-mock-identity.postman_environment.json` | environment for the Bearer branch (and for the mDoc collection) |
+| `ENV Mock Identity DPoP` | `inji-certify-with-mock-identity-dpop.postman_environment.json` | environment for the DPoP branch (RFC 9449) |
 
-They used to share one environment, and both wrote `csrf_token`, `access_token`, `transaction_id`, `oauth_details_key`, `oauth_details_hash` and `c_nonce` to it. Whichever collection ran last won, so a failure in one flow routinely came from the other flow's last run rather than from certify — most painfully via the client keys, which cannot be re-read or re-registered once lost. **Select the matching environment before running a collection.** Each collection checks this for itself: every environment carries `env_flavor` (`bearer` or `dpop`), and a collection-level pre-request script aborts the request if it does not match, naming the environment it found. Without that check a wrong-environment run would not fail at the first request — the two environments still share 20 variable names, so it would get some way in and write this flow's state into the wrong file. From **OIDC Client Mgmt** that costs a registered client: `pm.environment.set` *creates* `privateKey_jwk` in whichever environment is active, and eSignet can neither re-key a client nor hand the registered key back.
+The collection is laid out as:
+
+```
+1. Mock-Identity-System        create / get the mock identity             either environment
+2. Credential Configuration    add / get / update / delete, per format    either environment
+   ldp_vc, mso_mdoc, dc+sd-jwt
+3. Well-known endpoints        eSignet JWKS + discovery, issuer metadata  either environment
+4. VCI
+   Bearer
+     OIDC Client Mgmt          registers {{clientId}}                     ENV Mock Identity Bearer
+     Issuance                  steps 1-8, ends in a Bearer credential     ENV Mock Identity Bearer
+   DPoP
+     OIDC Client Mgmt (DPoP)   registers {{dpopClientId}}                 ENV Mock Identity DPoP
+     Issuance (DPoP)           steps 1-8, ends in a DPoP credential       ENV Mock Identity DPoP
+     DPoP scenarios            26 RFC 9449 checks                         ENV Mock Identity DPoP
+```
+
+Folders 1–3 are shared: they read only configuration both environments carry, so run them once under whichever environment is selected. Folder 1 talks to the mock identity system directly; skip it against a shared or released stack, where the identity already exists and the write endpoint may not be open. Folder 2 ends by deleting each configuration it added, so running it removes a configuration of the same id that was there before.
+
+The two branches of folder 4 used to be separate collections sharing one environment, and both wrote `csrf_token`, `access_token`, `transaction_id`, `oauth_details_key`, `oauth_details_hash` and `c_nonce` to it. Whichever flow ran last won, so a failure in one flow routinely came from the other flow's last run rather than from certify — most painfully via the client keys, which cannot be re-read or re-registered once lost. **Select the matching environment before running a branch.** Each branch checks this for itself: every environment carries `env_flavor` (`bearer` or `dpop`), and a pre-request script on the `Bearer` and `DPoP` folders aborts the request if it does not match, naming the environment it found. Without that check a wrong-environment run would not fail at the first request — the two environments still share 23 variable names, so it would get some way in and write this flow's state into the wrong file. From **OIDC Client Mgmt** that costs a registered client: `pm.environment.set` *creates* `privateKey_jwk` in whichever environment is active, and eSignet can neither re-key a client nor hand the registered key back.
 
 A hand-built environment with no `env_flavor` is refused too. Duplicating a shipped one carries the variable along, so only an environment assembled from scratch needs it added.
 
+In the Postman app a failed check stops the request from being sent. newman reports the same error but still sends the request, so pass `--bail` when running a branch from the command line.
+
 ### The one value that still crosses over
 
-`unbound_access_token` is a real eSignet token with **no `cnf.jkt`** — the fixture for *"a token that was never sender-constrained"*. Only the Bearer collection can mint it, because only `wallet-demo` is registered with `dpop_bound_access_tokens: false`, and its `6. Get Tokens V2` writes it into `ENV Mock Identity Bearer`.
+`unbound_access_token` is a real eSignet token with **no `cnf.jkt`** — the fixture for *"a token that was never sender-constrained"*. Only the Bearer branch can mint it, because only `wallet-demo` is registered with `dpop_bound_access_tokens: false`, and its `6. Get Tokens V2` writes it into `ENV Mock Identity Bearer`.
 
 One scenario needs it: **`Token binding / unbound token with a valid proof`**. To run that one, copy the value across by hand, once per token:
 
-1. Run the Bearer collection's **VCI** folder against the same eSignet.
+1. Run **4. VCI → Bearer → Issuance** with `ENV Mock Identity Bearer` selected, against the same eSignet.
 2. Copy `unbound_access_token` (the **Current** value) out of `ENV Mock Identity Bearer`.
 3. Paste it into `unbound_access_token` in `ENV Mock Identity DPoP`.
 
@@ -27,13 +47,14 @@ The scenario throws with those instructions if the variable is empty. Every othe
 
 ## Run order
 
-Clients first, if they are not registered yet: `Inji Certify With Mock Identity DPoP` → **OIDC Client Mgmt (DPoP)** for `dpop-wallet-demo`, and `Inji Certify With Mock Identity` → **OIDC Client Mgmt** for `wallet-demo`, once per deployment. Skip it against the local docker-compose stack — `setup-esignet.mjs` registers both clients there. See *Client registration*.
+Clients first, if they are not registered yet: **4. VCI → DPoP → OIDC Client Mgmt (DPoP)** for `dpop-wallet-demo` with `ENV Mock Identity DPoP`, and **4. VCI → Bearer → OIDC Client Mgmt** for `wallet-demo` with `ENV Mock Identity Bearer`, once per deployment. Against a local eSignet skip request 1 of each folder — see *Client registration*.
 
-1. `Inji Certify With Mock Identity` with `ENV Mock Identity Bearer` selected → **VCI** folder, top to bottom. `2. Authorize / OAuthdetails request V2` must run before `3. Send OTP` — it sets `transaction_id`, `oauth_details_key` and `oauth_details_hash`.
-2. Switch to `ENV Mock Identity DPoP`. `Inji Certify With Mock Identity DPoP` → **VCI (DPoP)** folder (steps 1–8, in order).
-3. `Inji Certify With Mock Identity DPoP` → **DPoP scenarios**. These run on `access_token` (bound, from step 2) alone, except `unbound token with a valid proof` — see *The one value that still crosses over*.
+1. With either environment selected: folders **1**, **2** and **3** as needed.
+2. `ENV Mock Identity Bearer` → **4. VCI → Bearer → Issuance**, top to bottom. `2. Authorize / OAuthdetails request V2` must run before `3. Send OTP` — it sets `transaction_id`, `oauth_details_key` and `oauth_details_hash`.
+3. Switch to `ENV Mock Identity DPoP`. **4. VCI → DPoP → Issuance (DPoP)** (steps 1–8, in order).
+4. **4. VCI → DPoP → DPoP scenarios**. These run on `access_token` (bound, from step 3) alone, except `unbound token with a valid proof` — see *The one value that still crosses over*.
 
-Step 1 is needed only for that one scenario. Skip it and the other 25 still run.
+Step 2 is needed for the DPoP suite only for that one scenario. Skip it and the other 25 still run.
 
 ## Switching deployments
 
@@ -53,7 +74,7 @@ Both environments ship pointing at a **local** deployment, and both carry the va
 
 Both describe **certify**. While certify runs locally they stay on `http://localhost:8091` no matter which eSignet you point at. Switching `authServerUrl` to a hosted host and dragging `audUrl` along with it is the single most common way to break this suite.
 
-The Bearer collection's `8. Get Credential` signs the OpenID4VCI proof with `"aud": audUrl`, and `JwtProofValidator` compares it as an exact string against certify's `mosip.certify.identifier`. It must equal the `credential_issuer` value certify advertises:
+The Bearer branch's `8. Get Credential` signs the OpenID4VCI proof with `"aud": audUrl`, and `JwtProofValidator` compares it as an exact string against certify's `mosip.certify.identifier`. It must equal the `credential_issuer` value certify advertises:
 
 ```bash
 curl -s $certifyUrl/.well-known/openid-credential-issuer \
@@ -85,11 +106,11 @@ Worked example — the land-registry deployment, verified end to end against rel
 | `configId` | `RegistrationReceiptCredential` |
 | `scope` | `land_registry_vc_ldp` |
 
-The DPoP environment has no `audUrl`: it derives `issuerIdentifier` from `certifyUrl` by stripping a trailing `/v1/certify`, which produces the same value. That derivation runs on every request, so setting `issuerIdentifier` by hand does not stick — and a deployment whose `credential_issuer` is not simply `certifyUrl` minus that suffix needs the collection-level pre-request changed, not the environment.
+The DPoP environment has no `audUrl`: it derives `issuerIdentifier` from `certifyUrl` by stripping a trailing `/v1/certify`, which produces the same value. That derivation runs on every request, so setting `issuerIdentifier` by hand does not stick — and a deployment whose `credential_issuer` is not simply `certifyUrl` minus that suffix needs the pre-request script on the `DPoP` folder changed, not the environment.
 
 Check the hosted certify's own `authorization_servers` matches the eSignet you point `authServerUrl` at, and that its `mosip.certify.authn.issuer-uri` equals the `iss` of a real token from that eSignet — released mints `iss: https://esignet-mock.released.mosip.net`.
 
-### Which deployments can run the DPoP collection
+### Which deployments can run the DPoP branch
 
 DPoP arrived in eSignet **1.8**, so this depends on the host's build:
 
@@ -99,7 +120,7 @@ DPoP arrived in eSignet **1.8**, so this depends on the host's build:
 | `esignet-mock.collab.mosip.net` | pre-1.8 | no — issues tokens with no `cnf.jkt` |
 | local eSignet 1.8+ | 1.8+ | yes |
 
-Against collab the **Bearer** collection works and every DPoP scenario fails by construction: without `cnf.jkt` certify can only ever answer "access token is not DPoP-bound".
+Against collab the **Bearer** branch works and every DPoP scenario fails by construction: without `cnf.jkt` certify can only ever answer "access token is not DPoP-bound".
 
 Note the advertised algorithms are RSA only. A wallet key on an EC curve is rejected at the token endpoint, and the error does not name the algorithm.
 
@@ -123,11 +144,11 @@ Two OIDC clients are expected, differing only in `dpop_bound_access_tokens`:
 | `clientId` | `wallet-demo` | `false` | Bearer flow; also the unbound-token fixture |
 | `dpopClientId` | `dpop-wallet-demo` | `true` | DPoP flow |
 
-Both authenticate with `private_key_jwt`, each with its own key, and each key now lives in its own environment — `dpop_privateKey_jwk` in `ENV Mock Identity DPoP`, `privateKey_jwk` in `ENV Mock Identity Bearer`. One collection can no longer overwrite the other's key.
+Both authenticate with `private_key_jwt`, each with its own key, and each key now lives in its own environment — `dpop_privateKey_jwk` in `ENV Mock Identity DPoP`, `privateKey_jwk` in `ENV Mock Identity Bearer`. One branch can no longer overwrite the other's key.
 
-Each is registered from its own collection: `dpop-wallet-demo` by **`OIDC Client Mgmt (DPoP)`** in the DPoP collection, `wallet-demo` by **`OIDC Client Mgmt`** in the Bearer one. Both **generate their own keypair** and write the private half back into the environment before sending, so nothing has to be present beforehand and nothing pasted in afterwards: register, then run the flow. Both `3. Create OIDC client` requests restore the previous private half if registration fails, rather than leaving the environment holding a key eSignet never saw — the new key is written before the request is sent, so without that a rejected registration costs you a working client and reports it only as `invalid_client` at the token step. `1. Authenticate (partner)` likewise clears `authToken` when authentication fails: client-mgmt answers "Full authentication is required to access this resource" at HTTP 200 for a stale token exactly as for a missing one, so a leftover value would look correctly populated while every registration silently failed. Against the local docker-compose stack `local-dev/dpop-test/setup-esignet.mjs` has already registered both and neither folder is needed.
+Each is registered from its own branch: `dpop-wallet-demo` by **`OIDC Client Mgmt (DPoP)`** under `4. VCI → DPoP`, `wallet-demo` by **`OIDC Client Mgmt`** under `4. VCI → Bearer`. Both **generate their own keypair** and write the private half back into the environment before sending, so nothing has to be present beforehand and nothing pasted in afterwards: register, then run the flow. Both `3. Create OIDC client` requests restore the previous private half if registration fails, rather than leaving the environment holding a key eSignet never saw — the new key is written before the request is sent, so without that a rejected registration costs you a working client and reports it only as `invalid_client` at the token step. `1. Authenticate (partner)` likewise clears `authToken` when authentication fails: client-mgmt answers "Full authentication is required to access this resource" at HTTP 200 for a stale token exactly as for a missing one, so a leftover value would look correctly populated while every registration silently failed. Against a local eSignet, run each folder once with request 1 skipped — see *Registering clients on a hosted deployment* for why that request is only needed on a hosted one.
 
-Note the two collections name these requests alike: `3. Create OIDC client` exists in both folders and they post to **different endpoints**. The DPoP one posts to `client-mgmt/client`, **not** `client-mgmt/oidc-client`. The v1 `oidc-client` endpoint drops `additionalConfig`, so a client registered through it is never DPoP-bound — and nothing says so: registration succeeds, the token comes back without `cnf.jkt`, and every scenario then fails with "access token is not DPoP-bound".
+Note the two branches name these requests alike: `3. Create OIDC client` exists in both folders and they post to **different endpoints**. The DPoP one posts to `client-mgmt/client`, **not** `client-mgmt/oidc-client`. The v1 `oidc-client` endpoint drops `additionalConfig`, so a client registered through it is never DPoP-bound — and nothing says so: registration succeeds, the token comes back without `cnf.jkt`, and every scenario then fails with "access token is not DPoP-bound".
 
 They cannot share one key: eSignet enforces a unique public key per client and rejects the second registration with `duplicate_public_key`.
 
@@ -141,7 +162,7 @@ Against a local eSignet container `client-mgmt` is unauthenticated: run requests
 2. **`2. Get CSRF token`** → the body value, not the cookie (see *CSRF* below).
 3. **`3. Create OIDC client`**.
 
-The Bearer collection's **OIDC Client Mgmt** folder now mirrors this one request for request — `1. Authenticate (partner)`, `2. Get CSRF token`, `3. Create OIDC client` — and mints its own `authToken` into its own environment. Run whichever folder registers the client you need; neither borrows the other's token any more.
+The Bearer branch's **OIDC Client Mgmt** folder mirrors this one request for request — `1. Authenticate (partner)`, `2. Get CSRF token`, `3. Create OIDC client` — and mints its own `authToken` into its own environment. Run whichever folder registers the client you need; neither borrows the other's token any more.
 
 Three things reliably go wrong here:
 
@@ -171,13 +192,13 @@ The request is optional; the VCI flow never needs it. Flipping `dpop_bound_acces
 
 `privateKey_jwk`, `dpop_privateKey_jwk`, `wallet_private_key` and `other_private_key` are complete RSA private keys, including `d`, `p` and `q`. They are committed to a public repository, so they are public from the moment they merge and must be treated as compromised.
 
-They exist so the collections run against a local mock-identity stack with no setup. **Never register them with an authorization server that issues tokens for anything real**, and never reuse them outside this demo. To rotate, generate a fresh keypair, re-register the client with the new public half, and replace the private half here.
+They exist so the collection runs against a local mock-identity stack with no setup. **Never register them with an authorization server that issues tokens for anything real**, and never reuse them outside this demo. To rotate, generate a fresh keypair, re-register the client with the new public half, and replace the private half here.
 
 ## Notes
 
 - **CSRF.** eSignet 1.8 (Spring Security 6, BREACH protection) puts the raw token in the `XSRF-TOKEN` cookie and a masked token in the response body. `X-XSRF-TOKEN` must carry the **body** value; sending the cookie value gives `403 Forbidden` with an empty `path`.
 - **DPoP nonce.** eSignet always rejects the first DPoP token request with `400 use_dpop_nonce` and a `DPoP-Nonce` header. Step 6 retries automatically with the nonce folded into the proof; this is expected, not a failure.
-- **PKCE.** `codeVerifier`, `codeChallenge`, `codeChallengeMethod`, `code` and `client_assertion` are collection-scoped in both collections and deliberately absent from the environment. An environment variable of the same name would shadow the collection value — an empty one breaks PKCE with `unsupported_pkce_challenge_method`.
-- **Initial vs Current value.** Postman stores two values per variable and `pm.environment.get()` reads only **Current**. Importing or syncing an environment routinely leaves Current blank while Initial still displays the data, so a variable looks populated and reads as `""`. Four variables are supplied by the environment file alone and no script ever rewrites them — `pmlib_code` (in both environments), and `dpop_lib`, `wallet_private_key`, `other_private_key` (DPoP only) — so for those a blank Current value never self-heals. The symptom is `JSONError: No data, empty input at 1:1` in a pre-request script, which does not name the variable. The client keys are not in that class: `dpop_privateKey_jwk` is written by the DPoP collection's `3. Create OIDC client` and `privateKey_jwk` by the Bearer collection's, so running those repairs a blank value. **Reset All** in the environment editor copies Initial into Current for every row. Note this also restores that environment's client key — `privateKey_jwk` in the Bearer environment, `dpop_privateKey_jwk` in the DPoP one — to the committed demo key, which will not match a client you registered yourself.
-- **Same names, separate files.** Twenty variables exist in both environments — `csrf_token`, `access_token`, `transaction_id`, `oauth_details_key`, `oauth_details_hash`, `c_nonce`, `state`, the URLs, `configId`. That is not the collision the split removed: an environment is a document, only one is active at a time, and `pm.environment.set` writes to the active one, so two files holding a `csrf_token` each can never overwrite one another. The shared names are shared *configuration* (point one environment at a different certify and the other is unaffected) and per-flow runtime state that happens to be called the same thing. Prefixing them `bearer_` / `dpop_` would buy nothing once the files are separate — it protects a *shared* environment, which is what this stopped being — and the residual risk it would not cover, running against the wrong file, is what `env_flavor` covers instead.
+- **PKCE.** `codeVerifier`, `codeChallenge`, `codeChallengeMethod`, `code` and `client_assertion` are collection-scoped, shared by both branches, and deliberately absent from the environment. An environment variable of the same name would shadow the collection value — an empty one breaks PKCE with `unsupported_pkce_challenge_method`.
+- **Initial vs Current value.** Postman stores two values per variable and `pm.environment.get()` reads only **Current**. Importing or syncing an environment routinely leaves Current blank while Initial still displays the data, so a variable looks populated and reads as `""`. Four variables are supplied by the environment file alone and no script ever rewrites them — `pmlib_code` (in both environments), and `dpop_lib`, `wallet_private_key`, `other_private_key` (DPoP only) — so for those a blank Current value never self-heals. The symptom is `JSONError: No data, empty input at 1:1` in a pre-request script, which does not name the variable. The client keys are not in that class: `dpop_privateKey_jwk` is written by the DPoP branch's `3. Create OIDC client` and `privateKey_jwk` by the Bearer branch's, so running those repairs a blank value. **Reset All** in the environment editor copies Initial into Current for every row. Note this also restores that environment's client key — `privateKey_jwk` in the Bearer environment, `dpop_privateKey_jwk` in the DPoP one — to the committed demo key, which will not match a client you registered yourself.
+- **Same names, separate files.** Twenty-three variables exist in both environments — `csrf_token`, `access_token`, `transaction_id`, `oauth_details_key`, `oauth_details_hash`, `c_nonce`, `state`, the URLs, `configId`, `mock_identity_individual_id`. That is not the collision the split removed: an environment is a document, only one is active at a time, and `pm.environment.set` writes to the active one, so two files holding a `csrf_token` each can never overwrite one another. The shared names are shared *configuration* (point one environment at a different certify and the other is unaffected) and per-flow runtime state that happens to be called the same thing. Prefixing them `bearer_` / `dpop_` would buy nothing once the files are separate — it protects a *shared* environment, which is what this stopped being — and the residual risk it would not cover, running against the wrong file, is what `env_flavor` covers instead.
 - **Exports carry Initial values.** Exporting an environment writes the Initial column, so a shared export cannot capture a working hosted configuration and must never be used to check what someone was actually running.

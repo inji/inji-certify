@@ -133,7 +133,7 @@ public class CredentialConfigControllerTest {
      * service receives, rather than being dropped between Jackson and the controller.
      */
     @Test
-    public void addCredentialConfiguration_BindsTheThreeMetadataAttributes() throws Exception {
+    public void should_bindAllThreeMetadataAttributes_when_addRequestCarriesThem() throws Exception {
         credentialConfigurationDTO.setCryptographicBindingMethodsSupported(List.of("did:jwk"));
         credentialConfigurationDTO.setCredentialSigningAlgValuesSupported(List.of("EdDSA"));
         credentialConfigurationDTO.setProofTypesSupported(
@@ -163,7 +163,7 @@ public class CredentialConfigControllerTest {
      * AC-6, AC-7 over the wire: the Get response carries all three attributes.
      */
     @Test
-    public void getCredentialConfigurationById_ReturnsTheThreeMetadataAttributes() throws Exception {
+    public void should_returnAllThreeMetadataAttributes_when_configurationIsFetchedById() throws Exception {
         credentialConfigurationDTO.setCryptographicBindingMethodsSupported(List.of("did:jwk", "did:key"));
         credentialConfigurationDTO.setCredentialSigningAlgValuesSupported(List.of("EdDSA"));
         credentialConfigurationDTO.setProofTypesSupported(
@@ -184,7 +184,7 @@ public class CredentialConfigControllerTest {
      * the caller in one errors array, so the whole payload can be corrected in a single pass.
      */
     @Test
-    public void addCredentialConfiguration_ReportsEveryValidationFailureTogether() throws Exception {
+    public void should_reportEveryValidationFailureTogether_when_multipleAttributesAreInvalid() throws Exception {
         Mockito.when(credentialConfigurationService.addCredentialConfiguration(Mockito.any()))
                 .thenThrow(new CredentialConfigValidationException(List.of(
                         new io.mosip.certify.core.dto.Error(ErrorConstants.UNSUPPORTED_CRYPTOGRAPHIC_BINDING_METHOD,
