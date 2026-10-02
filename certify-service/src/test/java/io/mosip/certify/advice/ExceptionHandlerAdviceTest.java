@@ -292,6 +292,22 @@ public class ExceptionHandlerAdviceTest {
     }
 
     @Test
+    public void should_returnServerErrorWithoutChallenge_when_tokenCouldNotBeJudgedForAConfigurationFault() {
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE)).thenReturn("server configuration error");
+        when(req.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE)).thenReturn(ErrorConstants.SERVER_ERROR);
+        when(req.getAttribute(Constants.AUTH_SCHEME_ATTRIBUTE)).thenReturn("DPoP");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(ErrorConstants.SERVER_ERROR, response.getBody().getError());
+        // No challenge: there is nothing the caller could change about its credentials.
+        Assert.assertNull(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
     public void should_returnUnauthorizedWithChallenge_when_vciNotAuthenticated() {
         HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
         when(req.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE)).thenReturn(null);

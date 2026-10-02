@@ -220,6 +220,11 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             Object code = request.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE);
             String errorCode = (code instanceof String) ? (String) code : ((CertifyException) ex).getErrorCode();
             String description = (reason instanceof String) ? (String) reason : getMessage(errorCode, errorCode);
+            // The token could not be judged because this deployment is misconfigured. A 401
+            // challenge would tell the caller to fix a credential that may be perfectly valid.
+            if(SERVER_ERROR.equals(errorCode)) {
+                return new ResponseEntity<>(getVCErrorDto(errorCode, description), HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             HttpHeaders headers = new HttpHeaders();
             // RFC 9449 §7.1: challenge in the scheme the caller used, so a DPoP client is
             // not told to retry with Bearer - which it must not do for a bound token. The

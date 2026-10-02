@@ -378,7 +378,34 @@ public class CredentialConfigMetadataAttributesTest {
 
         Assert.assertEquals(ErrorConstants.UNSUPPORTED_CREDENTIAL_SIGNING_ALG,
                 exception.getErrors().getFirst().getErrorCode());
-        Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage().contains("no COSE equivalent"));
+        // PS256 is named, and the reason is that mso_mdoc does not support it, not a missing COSE identifier.
+        Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage()
+                .contains("PS256 is not supported for the credential format mso_mdoc"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    /**
+     * ISO 18013-5 allows ES256, ES384, ES512 and EdDSA for an mdoc's issuerAuth. RS256 and ES256K have
+     * COSE identifiers but are outside that list, so an mso_mdoc configuration may not use them.
+     */
+    @Test
+    public void should_rejectConfiguration_when_msoMdocAlgorithmIsUnsupported() {
+        LinkedHashMap<String, List<String>> signingAlgs = new LinkedHashMap<>();
+        signingAlgs.put("Ed25519Signature2020", List.of("EdDSA", "RS256", "ES256K"));
+        ReflectionTestUtils.setField(credentialConfigurationService, "credentialSigningAlgValuesSupportedMap", signingAlgs);
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+
+        for (String alg : List.of("RS256", "ES256K")) {
+            CredentialConfigurationDTO request = msoMdocRequest();
+            request.setCredentialSigningAlgValuesSupported(List.of(alg));
+
+            CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                    () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+            Assert.assertEquals(ErrorConstants.UNSUPPORTED_CREDENTIAL_SIGNING_ALG,
+                    exception.getErrors().getFirst().getErrorCode());
+            Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage().contains(alg));
+        }
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
 
@@ -733,11 +760,58 @@ public class CredentialConfigMetadataAttributesTest {
     /**
      * A legacy mso_mdoc row stores the crypto suite name, which still expands to whatever the deployment
      * declares for it. Writes reject an algorithm with no COSE equivalent, so a row that still resolves to
-     * one is a stored value that has to be corrected: metadata generation fails rather than advertising
-     * something the format cannot carry.
+     * one is a stored value that has to be corrected. It is left out of the metadata rather than
+     * advertised with something the format cannot carry, and every other configuration is still served.
      */
     @Test
-    public void metadata_ForLegacyMsoMdocRowExpandingToUnmappableAlg_Fails() {
+    public void should_omitOnlyInvalidConfiguration_when_legacyMsoMdocAlgorithmIsUnmappable() {
+        LinkedHashMap<String, List<String>> signingAlgs = new LinkedHashMap<>();
+        signingAlgs.put("Ed25519Signature2020", List.of("EdDSA", "PS256"));
+        ReflectionTestUtils.setField(credentialConfigurationService, "credentialSigningAlgValuesSupportedMap", signingAlgs);
+        CredentialConfig legacy = msoMdocEntity();
+        legacy.setCredentialSigningAlgValuesSupported(List.of("Ed25519Signature2020"));
+        CredentialConfig healthy = ldpVcEntity();
+        healthy.setCredentialSigningAlgValuesSupported(List.of("EdDSA"));
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(legacy, healthy));
+        when(credentialConfigMapper.toDto(legacy)).thenReturn(msoMdocRequest());
+        when(credentialConfigMapper.toDto(healthy)).thenReturn(ldpVcRequest());
+
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata();
+
+        Assert.assertEquals(Set.of("test-credential"), metadata.getCredentialConfigurationSupportedDTO().keySet());
+    }
+
+    /**
+     * A stored proof type the deployment no longer declares any signing algorithm for cannot be advertised
+     * either. Before, the exception escaped and the endpoint failed for every credential type.
+     */
+    @Test
+    public void should_omitOnlyInvalidConfiguration_when_proofTypeHasNoSigningAlgorithms() {
+        LinkedHashMap<String, Object> proofTypes = new LinkedHashMap<>();
+        proofTypes.put("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("EdDSA")));
+        proofTypes.put("ldp_vp", Map.of(PROOF_SIGNING_ALGS, List.of()));
+        ReflectionTestUtils.setField(credentialConfigurationService, "proofTypesSupported", proofTypes);
+        CredentialConfig broken = sdJwtEntity();
+        broken.setProofTypesSupported(new LinkedHashMap<>(Map.of("ldp_vp", Map.of())));
+        CredentialConfig healthy = ldpVcEntity();
+        healthy.setProofTypesSupported(new LinkedHashMap<>(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("EdDSA")))));
+
+        when(credentialConfigRepository.findAll()).thenReturn(List.of(broken, healthy));
+        when(credentialConfigMapper.toDto(broken)).thenReturn(sdJwtRequest());
+        when(credentialConfigMapper.toDto(healthy)).thenReturn(ldpVcRequest());
+
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata();
+
+        Assert.assertEquals(Set.of("test-credential"), metadata.getCredentialConfigurationSupportedDTO().keySet());
+    }
+
+    /**
+     * The startup check reports a configuration that cannot be advertised without stopping the service:
+     * the metadata endpoint keeps serving every other configuration.
+     */
+    @Test
+    public void should_completeStartupValidation_when_configurationCannotBeAdvertised() {
         LinkedHashMap<String, List<String>> signingAlgs = new LinkedHashMap<>();
         signingAlgs.put("Ed25519Signature2020", List.of("EdDSA", "PS256"));
         ReflectionTestUtils.setField(credentialConfigurationService, "credentialSigningAlgValuesSupportedMap", signingAlgs);
@@ -747,10 +821,9 @@ public class CredentialConfigMetadataAttributesTest {
         when(credentialConfigRepository.findAll()).thenReturn(List.of(legacy));
         when(credentialConfigMapper.toDto(legacy)).thenReturn(msoMdocRequest());
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> credentialConfigurationService.fetchCredentialIssuerMetadata());
+        credentialConfigurationService.validateStoredConfigurations();
 
-        Assert.assertTrue(exception.getMessage().contains("PS256"));
+        verify(credentialConfigMapper).toDto(legacy);
     }
 
     /**

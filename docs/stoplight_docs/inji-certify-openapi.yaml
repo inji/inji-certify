@@ -645,6 +645,19 @@ paths:
             '*/*':
               schema:
                 $ref: '#/components/schemas/VCError'
+        '500':
+          description: >-
+            server_error. The access token or DPoP proof could not be validated because this
+            deployment is misconfigured, for example mosip.certify.domain.url is not an absolute
+            URL or the dpopJti replay cache is missing. No WWW-Authenticate challenge is sent,
+            since the caller's credentials may be valid. The details are logged on the server only.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/VCError'
+              example:
+                error: server_error
+                error_description: The DPoP proof could not be validated due to a server configuration error.
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
@@ -738,7 +751,7 @@ paths:
                 value:
                   credentialConfigKeyId: DrivingLicenseCredential12
                   credentialFormat: mso_mdoc
-                  signatureCryptoSuite: RsaSignature2018
+                  signatureCryptoSuite: EcdsaSecp256r1Signature2019
                   metaDataDisplay:
                     - name: Mobile Driving License
                       locale: en
@@ -1136,7 +1149,7 @@ paths:
       tags:
         - Well-known
       summary: Issuer metadata
-      description: 'This endpoint provides metadata about the credential issuer and the supported credential configurations. The response structure adapts based on the version query parameter, allowing clients to discover issuer capabilities and supported credential types for different OID4VCI versions. The response will be as per the applicable OID4VCI specification, for e.g. for draft 13 of OID4VCI, the specification to be referred is https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#name-credential-issuer-metadata-p'
+      description: 'This endpoint provides metadata about the credential issuer and the supported credential configurations. The response structure adapts based on the version query parameter, allowing clients to discover issuer capabilities and supported credential types for different OID4VCI versions. The response will be as per the applicable OID4VCI specification, for e.g. for draft 13 of OID4VCI, the specification to be referred is https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#name-credential-issuer-metadata-p A credential configuration that cannot be advertised, for example an mso_mdoc configuration whose signing algorithm has no supported COSE equivalent, is left out of credential_configurations_supported and logged on the server; the other configurations are still returned. Such configurations are also reported in the log at startup.'
       operationId: getCredentialIssuerMetadata
       responses:
         '200':
@@ -1568,7 +1581,7 @@ components:
           type: string
         sdClaim:
           type: string
-          description: Comma-separated list for selective disclosure claim configuration. Applicable for dc+sd-jwt credential type.
+          description: 'Comma-separated list of JSON paths (for example $.fullName, $.nationalities[*]) to issue as selectively disclosable claims. Applicable for dc+sd-jwt credential type. Each path is checked against the credential issued to the holder. A path missing from it is skipped for that holder when vcTemplate declares the same path, each field nested under the one before it, for example inside an #if block or as an empty array. A field of the same name under a different object does not count, and a * field matches any key at its level. Only data that is not there may be skipped: a path whose value is present with a different shape, for example $.name[*] when name is a string, fails issuance. Otherwise issuance fails with sd_claims_parse_error: SD-Claim path ''...'' not found in the issued credential.'
         metaDataDisplay:
           type: array
           description: 'To configure the display properties (e.g., logo, name, colors, and localization) for metadata associated with the Verifiable Credential type.'
@@ -1627,7 +1640,7 @@ components:
           description: 'List of purposes for which credential status is maintained, comma-separated values are supported here. Currently, the value for this field will be driven by following config - `mosip.certify.data-provider-plugin.credential-status.supported-purposes`. Value sent in the request will be ignored. '
         qrSettings:
           type: array
-          description: List of QR settings for credential configuration. Each item is a map of key-value pairs; values may be primitives or nested objects.
+          description: 'List of QR settings for credential configuration. Each item is a map of key-value pairs; values may be primitives or nested objects. Every field referenced as ${field} must exist in vcTemplate, and a field may appear only once per item. A composite reference such as ${address.pincode} or ${address#en.country} is accepted only when the whole path, or its last part (pincode, country), is in vcTemplate; the root alone (address) is not enough, and a reference with an empty part, such as ${address.} or ${address..city}, is rejected. A violation is rejected with qr_invalid_field_reference or duplicate_fields_in_qr_settings.'
           items:
             type: object
             additionalProperties:
@@ -1644,7 +1657,7 @@ components:
         credentialSigningAlgValuesSupported:
           type: array
           minItems: 1
-          description: 'Optional. Signing algorithms advertised for this credential configuration. Where signatureCryptoSuite is present every value must be declared for that suite in mosip.certify.credential-config.credential-signing-alg-values-supported; where the format carries no crypto suite, such as dc+sd-jwt, every value a request provides must be an algorithm the deployment holds a signing key for in mosip.certify.signature-algo.key-alias-mapper. Unlike the COSE constraint below, this key check applies only to the values a request provides: where the attribute is omitted, the algorithm derived from the configuration''s own signatureAlgo is stored without it, and a missing key surfaces at issuance rather than at configuration time. For the mso_mdoc format every value must additionally have a COSE equivalent (ES256, EdDSA, ES256K or RS256), since that format advertises COSE algorithm identifiers; this applies to the algorithms derived from the crypto suite when the attribute is omitted just as it does to the ones a request selects. An undeclared value is rejected with unsupported_credential_signing_alg. Omitted on Add, the algorithms declared for the crypto suite apply, or the configuration''s own signatureAlgo where there is no suite; omitted on Update, the stored value is retained. Always returned by the Get response. An empty array is rejected.'
+          description: 'Optional. Signing algorithms advertised for this credential configuration. Where signatureCryptoSuite is present every value must be declared for that suite in mosip.certify.credential-config.credential-signing-alg-values-supported; where the format carries no crypto suite, such as dc+sd-jwt, every value a request provides must be an algorithm the deployment holds a signing key for in mosip.certify.signature-algo.key-alias-mapper. Unlike the COSE constraint below, this key check applies only to the values a request provides: where the attribute is omitted, the algorithm derived from the configuration''s own signatureAlgo is stored without it, and a missing key surfaces at issuance rather than at configuration time. For the mso_mdoc format every value must additionally be ES256 or EdDSA: that format advertises COSE algorithm identifiers, and these are the ISO 18013-5 algorithms the keymanager can sign with; this applies to the algorithms derived from the crypto suite when the attribute is omitted just as it does to the ones a request selects. An undeclared value is rejected with unsupported_credential_signing_alg. Omitted on Add, the algorithms declared for the crypto suite apply, or the configuration''s own signatureAlgo where there is no suite; omitted on Update, the stored value is retained. Always returned by the Get response. An empty array is rejected.'
           items:
             type: string
         proofTypesSupported:

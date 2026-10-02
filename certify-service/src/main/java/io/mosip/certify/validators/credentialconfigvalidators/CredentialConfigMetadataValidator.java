@@ -108,9 +108,8 @@ public class CredentialConfigMetadataValidator {
         for (String signingAlg : effective) {
             if (!coseSigningAlgs.contains(signingAlg)) {
                 errors.add(buildError(ErrorConstants.UNSUPPORTED_CREDENTIAL_SIGNING_ALG,
-                        "The credential signing algorithm " + signingAlg + " has no COSE equivalent and cannot be used "
-                                + "with the credential format " + VCFormats.MSO_MDOC + ". The supported values are: "
-                                + coseSigningAlgs));
+                        "The credential signing algorithm " + signingAlg + " is not supported for the credential format "
+                                + VCFormats.MSO_MDOC + ". The supported values are: " + coseSigningAlgs));
             }
         }
     }

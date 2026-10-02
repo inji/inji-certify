@@ -56,15 +56,15 @@ public class MDocProcessorTest {
     private static final Map<String, Map<String, ? extends Serializable>> expectedValidityInfo = Map.of(
             "signed", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00Z"
             ),
             "validFrom", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00.000Z"
+                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00Z"
             ),
             "validUntil", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2031-07-20T10:00:00.000Z"
+                    Constants.__CBOR_VALUE, "2031-07-20T10:00:00Z"
             )
     );
 
@@ -161,12 +161,58 @@ public class MDocProcessorTest {
         assertNotEquals("${_signed}", signed);
         assertNotEquals("${_validUntil}", validUntil);
 
-        // Verify timestamp format (ISO 8601)
-        assertTrue("ValidFrom should match ISO 8601",
-                validFrom.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
-        assertTrue(signed.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
-        assertTrue("ValidUntil should match ISO 8601",
-                validUntil.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*"));
+        // ISO/IEC 18013-5: whole seconds, UTC offset written as "Z"
+        String validityInfoTimestamp = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z";
+        assertTrue("ValidFrom should be whole seconds in UTC: " + validFrom, validFrom.matches(validityInfoTimestamp));
+        assertTrue("Signed should be whole seconds in UTC: " + signed, signed.matches(validityInfoTimestamp));
+        assertTrue("ValidUntil should be whole seconds in UTC: " + validUntil, validUntil.matches(validityInfoTimestamp));
+    }
+
+    @Test
+    public void should_dropFractionsOfSeconds_when_clockHasSubSecondPrecision() {
+        ZonedDateTime justBeforeNextSecond = FIXED_NOW.withNano(999_999_999);
+        mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeNextSecond);
+        try {
+            String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                    + "\"nameSpaces\": {}}";
+
+            Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+
+            // Truncated, not rounded up to the next second
+            assertEquals(expectedValidityInfo, result.get("validityInfo"));
+        } finally {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
+        }
+    }
+
+    @Test
+    public void should_encodeValidityInfoAsTdate_when_msoEncoded() throws Exception {
+        String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {}}";
+        Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+        mDocJson.put("_holderId", createTestDidJwk());
+
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        byte[] msoCbor = MDocProcessor.encodeToCBOR(mso);
+
+        co.nstant.in.cbor.model.Map decodedMso = (co.nstant.in.cbor.model.Map)
+                new CborDecoder(new ByteArrayInputStream(msoCbor)).decode().getFirst();
+        co.nstant.in.cbor.model.Map validityInfo = (co.nstant.in.cbor.model.Map)
+                decodedMso.get(new UnicodeString("validityInfo"));
+
+        // The checks the OpenID4VP conformance suite applies to the raw CBOR
+        for (String name : List.of("signed", "validFrom", "validUntil")) {
+            DataItem timestamp = validityInfo.get(new UnicodeString(name));
+            assertNotNull(name + " should be present", timestamp);
+            assertTrue(name + " should be a text string", timestamp instanceof UnicodeString);
+            assertNotNull(name + " should be tagged", timestamp.getTag());
+            assertEquals(name + " should carry tdate tag 0", 0, timestamp.getTag().getValue());
+            String text = ((UnicodeString) timestamp).getString();
+            assertFalse(name + " should not use fractions of seconds: " + text, text.contains("."));
+            assertTrue(name + " should use the UTC offset Z: " + text, text.endsWith("Z"));
+        }
     }
 
     @Test
@@ -619,6 +665,26 @@ public class MDocProcessorTest {
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
         assertEquals("crv should be P-384", 2, deviceKey.get(-1));
+    }
+
+    @Test
+    public void should_dropAnyFragment_when_didJwkCarriesAFragmentOtherThan0() throws Exception {
+        // Only "#0" used to be removed, so any other fragment was decoded as part of the key.
+        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
+        String encodedKey = Base64.getUrlEncoder().withoutPadding().encodeToString(jwkJson.getBytes());
+
+        for (String fragment : List.of("#0", "#key-1", "#")) {
+            Map<String, Object> mDocJson = new HashMap<>();
+            mDocJson.put("_holderId", "did:jwk:" + encodedKey + fragment);
+
+            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+            Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
+            Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
+
+            assertEquals("crv should be P-256 for fragment " + fragment, 1, deviceKey.get(-1));
+        }
     }
 
     @Test

@@ -109,9 +109,9 @@ The downgrade guard is the point of the feature: accepting a sender-constrained 
 discard exactly the protection the binding provides, so a stolen token would work again.
 
 `DpopProofValidator` decides everything about the proof — structure, signature, `htm`/`htu` request binding, `ath` token
-binding, `cnf.jkt` key binding, freshness, and single use. The `jti` replay cache is `dpopJti`; its TTL **must** exceed
-`proof-max-age + clock-skew`, or a proof stays replayable after its jti is evicted. Replay is checked last, so a request
-rejected for any other reason does not burn a valid jti.
+binding, `cnf.jkt` key binding, freshness, and single use. The `jti` replay cache is `dpopJti`; its TTL **must** be at
+least `proof-max-age + 2 × clock-skew`, or a proof stays replayable after its jti is evicted, and startup fails below it.
+Replay is checked last, so a request rejected for any other reason does not burn a valid jti.
 
 Certify does not issue DPoP-bound tokens — the authorization server does. eSignet stamps `cnf.jkt` only for clients
 registered with `additionalConfig.dpop_bound_access_tokens: true`, and that arrived in eSignet **1.8**; against an older
@@ -178,8 +178,8 @@ mosip.certify.authn.jwk-set-uri=...
 mosip.certify.dpop.allowed-algorithms=ES256,ES384,ES512,RS256,PS256,EdDSA
 mosip.certify.dpop.proof-max-age=60
 mosip.certify.dpop.clock-skew=10
-# MUST exceed proof-max-age + clock-skew, or an evicted jti leaves its proof replayable
-mosip.certify.dpop.jti.expire.seconds=120
+# MUST be at least proof-max-age + 2 x clock-skew, or an evicted jti leaves its proof replayable
+mosip.certify.dpop.jti.cache-expire-seconds=120
 
 # Issuer identity
 mosip.certify.domain.url=http://localhost:8090

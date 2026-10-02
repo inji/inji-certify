@@ -8,6 +8,8 @@ import java.util.Map;
 import com.authlete.sd.Disclosure;
 import com.authlete.sd.SDJWT;
 import com.authlete.sd.SDObjectBuilder;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -372,5 +374,110 @@ public class SDJsonUtilsTest {
 
       Map<String, Object> claims = builder.build();
       assertTrue(claims.containsKey("people"));
+  }
+
+  @Test
+  public void should_listFieldsWithoutArrayIndexes_when_pathContainsFields() {
+      assertEquals(Arrays.asList("address", "city"), SDJsonUtils.getPathFields("$.address.city"));
+      assertEquals(Arrays.asList("nationalities"), SDJsonUtils.getPathFields("$.nationalities[*]"));
+      assertEquals(Arrays.asList("people", "name"), SDJsonUtils.getPathFields("$.people[0].name"));
+      assertTrue(SDJsonUtils.getPathFields("$").isEmpty());
+  }
+
+  @Test
+  public void should_findPath_when_templateDeclaresItUnderTheSameParents() {
+      String template = "{\"credentialSubject\": {\"address\": {\"street\": \"${street}\", \"city\": \"${city}\"}}}";
+
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.credentialSubject.address.street"));
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.credentialSubject.address"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.address.street"));
+  }
+
+  @Test
+  public void should_notFindPath_when_sameFieldIsDeclaredUnderAnotherObject() {
+      // street exists, but under office: an absent $.address.street is not an optional field.
+      String template = "{\"office\": {\"street\": \"${officeStreet}\"}, \"address\": {\"city\": \"${city}\"}}";
+
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.address.street"));
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.office.street"));
+  }
+
+  @Test
+  public void should_findPath_when_fieldIsInsideAConditionalBlock() {
+      String template = "{\"name\": \"${name}\" #if($nickname), \"nickname\" : \"${nickname}\"#end}";
+
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.nickname"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.nick"));
+  }
+
+  @Test
+  public void should_findPath_when_fieldIsAnArrayOrInsideOne() {
+      String template = "{\"nationalities\": ${nationalities}, \"people\": ["
+              + "#foreach($p in $people){\"name\": \"$p.name\"}#if($foreach.hasNext),#end#end]}";
+
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.nationalities[*]"));
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.people[*].name"));
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.people[0].name"));
+  }
+
+  @Test
+  public void should_ignoreValuesVelocityAndComments_when_lookingForKeys() {
+      // Braces and quotes inside strings, ${...} references and comments do not change the nesting,
+      // and a name used only as a value or a variable is not a declared key.
+      String template = "## \"commented\": {\n"
+              + "{\"note\": \"a {b} \\\"c\\\"\", \"alias\": \"${name}\", #* \"hidden\": { *# \"data\": $!{data}, \"age\": ${age}}";
+
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.age"));
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.data"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.name"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.commented"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.hidden"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$"));
+  }
+
+  @Test
+  public void should_acceptOnlyWellFormedPaths_when_checkingPathSyntax() {
+      assertTrue(SDJsonUtils.isPathSyntaxValid("$.address.city"));
+      assertTrue(SDJsonUtils.isPathSyntaxValid("$.nationalities[*]"));
+      assertTrue(SDJsonUtils.isPathSyntaxValid("$.people[0].name"));
+      assertFalse(SDJsonUtils.isPathSyntaxValid("name"));
+      assertFalse(SDJsonUtils.isPathSyntaxValid("$.name[-1]"));
+      assertFalse(SDJsonUtils.isPathSyntaxValid("$..name"));
+      assertFalse(SDJsonUtils.isPathSyntaxValid(null));
+  }
+
+  @Test
+  public void should_reportAbsent_when_dataIsMissingNullOrEmpty() throws Exception {
+      JsonNode node = new ObjectMapper().readTree("{\"nickname\": null, \"nationalities\": [], \"address\": {}}");
+
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.alias"));
+      // A null part way along the path means the data is not there. A null leaf is present, as it is
+      // for isPathValid, so it is disclosed and never reaches the optional-field fallback.
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.nickname.first"));
+      assertFalse(SDJsonUtils.isPathAbsent(node, "$.nickname"));
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.nationalities[*]"));
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.nationalities[0]"));
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.address.*"));
+      assertTrue(SDJsonUtils.isPathAbsent(node, "$.address.street"));
+  }
+
+  @Test
+  public void should_reportNotAbsent_when_valueIsPresentWithAnotherShape() throws Exception {
+      // Treating these as optional would issue the value as an ordinary, non-disclosable claim.
+      JsonNode node = new ObjectMapper().readTree("{\"name\": \"John\", \"address\": \"12 Main St\", \"tags\": [\"a\"]}");
+
+      assertFalse(SDJsonUtils.isPathAbsent(node, "$.name[*]"));
+      assertFalse(SDJsonUtils.isPathAbsent(node, "$.address.street"));
+      assertFalse(SDJsonUtils.isPathAbsent(node, "$.tags.first"));
+      assertFalse(SDJsonUtils.isPathAbsent(node, "$"));
+  }
+
+  @Test
+  public void should_findPath_when_objectWildcardMatchesAnyDeclaredKey() {
+      String template = "{\"address\": {#if($street)\"street\": \"${street}\"#end}}";
+
+      assertTrue(SDJsonUtils.isPathInTemplate(template, "$.address.*"));
+      assertFalse(SDJsonUtils.isPathInTemplate("{\"address\": {}}", "$.address.*"));
+      assertFalse(SDJsonUtils.isPathInTemplate(template, "$.office.*"));
   }
 }

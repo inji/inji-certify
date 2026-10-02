@@ -37,6 +37,9 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
+import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.InvalidDpopHeaderException;
 import io.mosip.certify.core.util.CommonUtil;
 import jakarta.annotation.PostConstruct;
@@ -69,10 +72,14 @@ public class DpopProofValidator {
     private static final String HTM = "htm";
     private static final String HTU = "htu";
     private static final String ATH = "ath";
-    private static final String CNF = "cnf";
-    private static final String JKT = "jkt";
 
     static final String DPOP_JTI_CACHE = "dpopJti";
+
+    /**
+     * Returned to the caller when this deployment, not the proof, is at fault. The
+     * property at fault is named in the log only.
+     */
+    static final String ERROR_SERVER_MISCONFIGURED = "The DPoP proof could not be validated due to a server configuration error.";
 
     @Autowired
     private CacheManager cacheManager;
@@ -137,6 +144,14 @@ public class DpopProofValidator {
      */
     @Value("${spring.cache.type:simple}")
     private String cacheType;
+
+    /**
+     * Per-cache TTLs, read for the {@code dpopJti} entry only. This map, not
+     * {@code mosip.certify.dpop.jti.cache-expire-seconds}, is what the cache is built
+     * from, so it is what {@link #checkJtiCacheTtl} has to look at.
+     */
+    @Value("#{${mosip.certify.cache.expire-in-seconds:{:}}}")
+    private Map<String, Integer> cacheExpireInSeconds;
 
     /**
      * @param dpopToken         the proof JWT, verbatim from the {@code DPoP} request header
@@ -341,11 +356,11 @@ public class DpopProofValidator {
      *         replay check and returned to the filter
      */
     private String validateCnfClaim(JWK proofJwk, Map<String, Object> accessTokenClaims) {
-        Object cnf = accessTokenClaims == null ? null : accessTokenClaims.get(CNF);
+        Object cnf = accessTokenClaims == null ? null : accessTokenClaims.get(Constants.CONFIRMATION);
         if (!(cnf instanceof Map)) {
             throw new InvalidDpopHeaderException("Access token is not DPoP-bound: cnf claim is missing");
         }
-        Object boundJkt = ((Map<?, ?>) cnf).get(JKT);
+        Object boundJkt = ((Map<?, ?>) cnf).get(Constants.JKT);
         if (!(boundJkt instanceof String) || ((String) boundJkt).isBlank()) {
             throw new InvalidDpopHeaderException("Access token is not DPoP-bound: cnf.jkt is missing");
         }
@@ -373,17 +388,16 @@ public class DpopProofValidator {
      * @param jkt RFC 7638 thumbprint of the proof's key, scoping the replay namespace
      * @param jti the proof's unique identifier
      * @return {@code true} if this {@code jti} was already used by this key, i.e. a replay
-     * @throws InvalidDpopHeaderException if the cache is not configured
+     * @throws CertifyException with {@code server_error} if the cache is not configured
      */
     boolean checkAndMarkJti(String jkt, String jti) {
         Cache cache = cacheManager.getCache(DPOP_JTI_CACHE);
         if (cache == null) {
             // Fail closed. Silently skipping the check would leave every proof replayable
             // while looking perfectly healthy from the outside.
-            log.error("Cache {} not available. Please verify cache configuration.", DPOP_JTI_CACHE);
-            throw new InvalidDpopHeaderException("DPoP replay cache '" + DPOP_JTI_CACHE
-                    + "' is not configured. Add it to mosip.certify.cache.names and "
-                    + "mosip.certify.cache.expire-in-seconds.");
+            log.error("DPoP replay cache '{}' is not configured. Add it to mosip.certify.cache.names "
+                    + "and mosip.certify.cache.expire-in-seconds.", DPOP_JTI_CACHE);
+            throw new CertifyException(ErrorConstants.SERVER_ERROR, ERROR_SERVER_MISCONFIGURED);
         }
         return cache.putIfAbsent(jkt + ":" + jti, System.currentTimeMillis()) != null;
     }
@@ -393,6 +407,29 @@ public class DpopProofValidator {
      * actually holds for a multi-pod deployment.
      */
     private static final Set<String> DISTRIBUTED_CACHE_TYPES = Set.of("redis", "hazelcast", "infinispan");
+
+    /**
+     * Refuses to start when a used {@code jti} could be forgotten while its proof is still
+     * accepted.
+     *
+     * <p>{@link #verifyFreshness} lets {@code iat} run up to clock-skew ahead of now, and
+     * accepts it until proof-max-age + clock-skew behind. A proof stamped at the leading
+     * edge therefore stays acceptable for proof-max-age + 2 x clock-skew after it first
+     * arrives, and its {@code jti} must be remembered at least that long.
+     *
+     * <p>A missing {@code dpopJti} entry is not safe either: the simple cache falls back to
+     * a 60 second TTL, below the default window.
+     */
+    @PostConstruct
+    public void checkJtiCacheTtl() {
+        long minimumTtl = proofMaxAgeSeconds + 2 * maxClockSkewSeconds;
+        Integer ttl = cacheExpireInSeconds == null ? null : cacheExpireInSeconds.get(DPOP_JTI_CACHE);
+        if (ttl == null || ttl < minimumTtl) {
+            throw new IllegalStateException("The '" + DPOP_JTI_CACHE + "' TTL in mosip.certify.cache.expire-in-seconds is "
+                    + (ttl == null ? "not set" : ttl + " seconds") + ". It must be at least proof-max-age + 2 x clock-skew = "
+                    + minimumTtl + " seconds, or a used DPoP proof becomes replayable once its jti is evicted.");
+        }
+    }
 
     /** Logged once at startup so a single-pod-only cache setup is visible in the logs. */
     @PostConstruct
@@ -467,8 +504,9 @@ public class DpopProofValidator {
      * The URI this deployment expects, built from {@code mosip.certify.domain.url}.
      *
      * <p>A failure here is a misconfiguration of this service, never the caller's, so it
-     * must not answer {@code invalid_dpop_proof}: that tells every wallet its proof is
-     * malformed when the property is at fault, and no client-side change could fix it.
+     * answers {@code server_error}. {@code invalid_dpop_proof} would tell every wallet
+     * its proof is malformed when the property is at fault, and no client-side change
+     * could fix it.
      * The offending value is logged for the operator and kept out of the response.
      *
      * <p>A value with no scheme is the usual cause - {@code certify-nginx:80} parses as
@@ -480,12 +518,12 @@ public class DpopProofValidator {
         try {
             normalized = normalizeUri(raw);
         } catch (URISyntaxException e) {
-            log.error("mosip.certify.domain.url does not parse as a URI: {}", raw, e);
-            throw new IllegalStateException("Cannot resolve the expected DPoP htu: certify's domain URL is misconfigured");
+            log.error("Cannot resolve the expected DPoP htu: mosip.certify.domain.url does not parse as a URI: {}", raw, e);
+            throw new CertifyException(ErrorConstants.SERVER_ERROR, ERROR_SERVER_MISCONFIGURED);
         }
         if (normalized == null) {
-            log.error("mosip.certify.domain.url is not an absolute http(s) URI: {}", raw);
-            throw new IllegalStateException("Cannot resolve the expected DPoP htu: certify's domain URL is misconfigured");
+            log.error("Cannot resolve the expected DPoP htu: mosip.certify.domain.url is not an absolute http(s) URI: {}", raw);
+            throw new CertifyException(ErrorConstants.SERVER_ERROR, ERROR_SERVER_MISCONFIGURED);
         }
         return normalized;
     }

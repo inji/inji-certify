@@ -168,9 +168,9 @@ mosip.certify.dpop.allowed-algorithms=ES256,ES384,ES512,RS256,PS256,EdDSA
 # How old a proof's iat may be, and the tolerance for clock drift on either side
 mosip.certify.dpop.proof-max-age=60
 mosip.certify.dpop.clock-skew=10
-# TTL of the replay cache. MUST be at least proof-max-age + clock-skew: a jti dropped
-# while its proof is still fresh leaves that proof replayable.
-mosip.certify.dpop.jti.expire.seconds=120
+# TTL of the replay cache. MUST be at least proof-max-age + 2 x clock-skew: a proof
+# stays acceptable that long, and Certify refuses to start with a shorter dpopJti TTL.
+mosip.certify.dpop.jti.cache-expire-seconds=120
 ```
 
 **Note**: the authorization server issues the binding, not Certify. eSignet does so only for clients registered with

@@ -59,6 +59,13 @@ public interface VCFormatter {
     List<String> getSelectiveDisclosureInfo(String templateName);
 
     /**
+     * returns the raw, untemplated VC template for the given template name.
+     * @param templateName
+     * @return
+     */
+    String getTemplate(String templateName);
+
+    /**
      * returns the crypto suite used for VC signature or proof generation
      * @param templateName
      * @return

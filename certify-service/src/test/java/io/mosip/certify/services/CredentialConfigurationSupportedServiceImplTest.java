@@ -394,7 +394,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void should_throwException_when_msoMdocAlgorithmIsUnsupported() {
+    public void should_leaveOutConfiguration_when_msoMdocAlgorithmIsUnsupported() {
         CredentialConfig config = new CredentialConfig();
         config.setConfigId(UUID.randomUUID().toString());
         config.setCredentialConfigKeyId("mdoc-invalid-alg");
@@ -416,7 +416,10 @@ public class CredentialConfigurationSupportedServiceImplTest {
         dto.setDocType("org.iso.18013.5.1.mDL");
         when(credentialConfigMapper.toDto(config)).thenReturn(dto);
 
-        assertThrows(IllegalArgumentException.class, () -> credentialConfigurationService.fetchCredentialIssuerMetadata());
+        // The configuration cannot be advertised, but the endpoint still answers for everything else.
+        CredentialIssuerMetadataDTO metadata = credentialConfigurationService.fetchCredentialIssuerMetadata();
+
+        Assert.assertFalse(metadata.getCredentialConfigurationSupportedDTO().containsKey("mdoc-invalid-alg"));
     }
 
     @Test

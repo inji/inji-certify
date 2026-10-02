@@ -59,9 +59,6 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = Constants.SCHEME_BEARER + " ";
     private static final String DPOP_PREFIX = Constants.SCHEME_DPOP + " ";
 
-    private static final String CNF = "cnf";
-    private static final String JKT = "jkt";
-
     @Value("${mosip.certify.authn.issuer-uri}")
     private String issuerUri;
 
@@ -145,10 +142,10 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
                     return;
 
                 } catch (CertifyException e) {
-                    // DPoP failures already carry a precise, caller-safe description.
-                    // The code travels with it so the handler advice can answer
-                    // invalid_dpop_proof rather than a generic invalid_token.
-                    log.error("DPoP validation failed: {}", e.getMessage());
+                    // Scheme-binding failures already carry a precise, caller-safe description.
+                    // The code travels with it so the handler advice can answer invalid_dpop_proof
+                    // or server_error rather than a generic invalid_token.
+                    log.error("{} access token rejected with {}: {}", scheme, e.getErrorCode(), e.getMessage());
                     request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, e.getMessage());
                     request.setAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE, e.getErrorCode());
                 } catch (Exception e) {
@@ -239,8 +236,8 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
     }
 
     private boolean isDpopBoundAccessToken(Map<String, Object> claims) {
-        Object cnf = claims.get(CNF);
-        return cnf instanceof Map && ((Map<?, ?>) cnf).get(JKT) != null;
+        Object cnf = claims.get(Constants.CONFIRMATION);
+        return cnf instanceof Map && ((Map<?, ?>) cnf).get(Constants.JKT) != null;
     }
 
     private String resolveJwtErrorDescription(Exception e) {
