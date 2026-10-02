@@ -126,7 +126,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && LdpVcCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.LDP_VC_CONFIG_EXISTS, "Configuration already exists for the specified context and credentialType.");
                 }
-                validateKeyAliasMapperConfiguration(credentialConfig);
                 break;
             case VCFormats.MSO_MDOC:
                 if (!MsoMdocCredentialConfigValidator.isValidCheck(credentialConfig)) {
@@ -147,6 +146,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
         }
+
+        validateKeyAliasMapperAndSignatureConfiguration(credentialConfig);
     }
 
     private void validateCommonCredentialConfig(
@@ -179,41 +180,54 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         }
     }
 
-    private void validateKeyAliasMapperConfiguration(CredentialConfigurationDTO credentialConfig) {
-        if(pluginMode.equals("VCIssuance")) {
+
+    /**
+     * Validates signature algorithm and MOSIP Key Manager configuration for the requested credential configuration.
+     * <p>
+     * Performs cryptographic suite checking and signature algorithm derivation, then verifies the
+     * key alias mapping for ldp_vc configurations. Skipped in VCIssuance mode, where the plugin signs.
+     * </p>
+     *
+     * @param credentialConfig the credential configuration DTO to validate
+     */
+    private void validateKeyAliasMapperAndSignatureConfiguration(CredentialConfigurationDTO credentialConfig) {
+        if (pluginMode.equals("VCIssuance")) {
             return;
         }
+
         String signatureCryptoSuite = credentialConfig.getSignatureCryptoSuite();
         String signatureAlgo = credentialConfig.getSignatureAlgo();
 
-        if(signatureCryptoSuite != null) {
-            if(!credentialSigningAlgValuesSupportedMap.containsKey(signatureCryptoSuite)) {
+        if (signatureCryptoSuite != null) {
+            if (!credentialSigningAlgValuesSupportedMap.containsKey(signatureCryptoSuite)) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_CRYPTO_SUITE, "Unsupported signature crypto suite: " + signatureCryptoSuite);
             }
 
             List<String> signatureAlgos = credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite);
-            if(signatureAlgo == null ) {
+            if (signatureAlgo == null) {
                 signatureAlgo = signatureAlgos.getFirst();
                 credentialConfig.setSignatureAlgo(signatureAlgo);
-            } else if(!signatureAlgos.contains(signatureAlgo)) {
+            } else if (!signatureAlgos.contains(signatureAlgo)) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "Signature algorithm " + signatureAlgo + " is not supported for the crypto suite: " + signatureCryptoSuite);
             }
         }
 
-        List<List<String>> keyAliasList = keyAliasMapper.get(credentialConfig.getSignatureAlgo());
-        if (keyAliasList == null || keyAliasList.isEmpty()) {
-            throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND, "No key chooser configuration found for the signature crypto suite: " + credentialConfig.getSignatureCryptoSuite());
-        }
+        if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
+            List<List<String>> keyAliasList = keyAliasMapper.get(signatureAlgo);
+            if (keyAliasList == null || keyAliasList.isEmpty()) {
+                throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND, "No key chooser configuration found for the signature crypto suite: " + credentialConfig.getSignatureCryptoSuite());
+            }
 
-        boolean isMatch = keyAliasList.stream()
-                .anyMatch(pair ->
-                        credentialConfig.getKeyManagerAppId() != null &&
-                                pair.getFirst().equals(credentialConfig.getKeyManagerAppId()) &&
-                                credentialConfig.getKeyManagerRefId() != null &&
-                                pair.getLast().equals(credentialConfig.getKeyManagerRefId()));
+            boolean isMatch = keyAliasList.stream()
+                    .anyMatch(pair ->
+                            credentialConfig.getKeyManagerAppId() != null &&
+                                    pair.getFirst().equals(credentialConfig.getKeyManagerAppId()) &&
+                                    credentialConfig.getKeyManagerRefId() != null &&
+                                    pair.getLast().equals(credentialConfig.getKeyManagerRefId()));
 
-        if (!isMatch) {
-            throw new CertifyException(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, "No matching appId and refId found in the key chooser configuration.");
+            if (!isMatch) {
+                throw new CertifyException(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, "No matching appId and refId found in the key chooser configuration.");
+            }
         }
     }
 
