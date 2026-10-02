@@ -1,6 +1,8 @@
 package io.mosip.certify.filter;
 
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.dpop.DpopProofValidator;
 import io.mosip.certify.core.util.CommonUtil;
@@ -276,6 +278,27 @@ class AccessTokenValidationFilterTest {
 
         verify(parsedAccessToken).setActive(true);
         verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    public void should_recordServerError_when_dpopValidationHitsAConfigurationFault() throws ServletException, IOException {
+        // A misconfigured domain URL or a missing replay cache is this deployment's fault.
+        // The code must reach the advice intact, or the caller is answered 401 for a
+        // proof that may be perfectly valid.
+        request.addHeader("Authorization", "DPoP " + TOKEN);
+        request.addHeader("DPoP", "a.proof.jwt");
+        request.setRequestURI("/api/v1/secured");
+
+        Jwt jwt = mock(Jwt.class);
+        when(jwt.getClaims()).thenReturn(createValidClaims());
+        when(jwtDecoder.decode(anyString())).thenReturn(jwt);
+        doThrow(new CertifyException(ErrorConstants.SERVER_ERROR, "server configuration error"))
+                .when(dpopProofValidator).validate(anyString(), anyString(), any(), any());
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(parsedAccessToken).setActive(false);
+        assertEquals(ErrorConstants.SERVER_ERROR, request.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE));
     }
 
     @Test

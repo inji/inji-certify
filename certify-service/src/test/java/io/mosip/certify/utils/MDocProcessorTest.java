@@ -668,6 +668,26 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_dropAnyFragment_when_didJwkCarriesAFragmentOtherThan0() throws Exception {
+        // Only "#0" used to be removed, so any other fragment was decoded as part of the key.
+        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
+        String encodedKey = Base64.getUrlEncoder().withoutPadding().encodeToString(jwkJson.getBytes());
+
+        for (String fragment : List.of("#0", "#key-1", "#")) {
+            Map<String, Object> mDocJson = new HashMap<>();
+            mDocJson.put("_holderId", "did:jwk:" + encodedKey + fragment);
+
+            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+            Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
+            Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
+
+            assertEquals("crv should be P-256 for fragment " + fragment, 1, deviceKey.get(-1));
+        }
+    }
+
+    @Test
     public void should_mapCorrectly_when_p521CurveUsed() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-521\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","

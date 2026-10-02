@@ -1,9 +1,12 @@
 package io.mosip.certify.utils;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.authlete.sd.Disclosure;
 import com.authlete.sd.SDObjectBuilder;
@@ -16,6 +19,10 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class SDJsonUtils {
+
+    private static final Pattern SD_PATH_SYNTAX =
+            Pattern.compile("^\\$(?:\\.[^.\\[\\]]+|\\[(?:\\*|0|[1-9]\\d*)\\])*$");
+
     /**
      * This method constructs the SD-JWT payload for a given JSON node.
      * <p>
@@ -222,6 +229,119 @@ public class SDJsonUtils {
     }
 
     /**
+     * The field names along a selective disclosure path, with array indexes dropped:
+     * {@code $.address.city} is {@code [address, city]} and {@code $.people[*].name} is
+     * {@code [people, name]}. Empty for {@code $}.
+     */
+    static List<String> getPathFields(String path) {
+        List<String> fields = new ArrayList<>();
+        for (String segment : path.trim().replaceAll("\\[[^\\]]*\\]", "").split("\\.")) {
+            if (!segment.isEmpty() && !segment.equals("$")) {
+                fields.add(segment);
+            }
+        }
+        return fields;
+    }
+
+    /** Field-by-field comparison where a {@code *} in the path matches any one key at that level. */
+    private static boolean matchesPath(List<String> declared, List<String> target) {
+        if (declared.size() != target.size()) {
+            return false;
+        }
+        for (int i = 0; i < target.size(); i++) {
+            if (!target.get(i).equals("*") && !target.get(i).equals(declared.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether the raw VC template declares this path: each of its fields as a JSON key, nested under
+     * the one before it. Array levels are skipped, as they are in the path, and a {@code *} field
+     * matches any key at its level.
+     *
+     * <p>The template is Velocity, not JSON, so it is scanned rather than parsed. Directives such as
+     * {@code #if} contain no braces, so a key inside a conditional block counts as declared, and the
+     * braces of {@code ${...}}, {@code $!{...}} and {@code #{...}} are skipped along with comments.
+     *
+     * @return {@code false} for {@code $}, which names no field
+     */
+    public static boolean isPathInTemplate(String template, String path) {
+        if (template == null || path == null) {
+            return false;
+        }
+        List<String> target = getPathFields(path);
+        if (target.isEmpty()) {
+            return false;
+        }
+        Deque<String> parents = new ArrayDeque<>();   // key that opened each enclosing {/[; "" when none
+        String pendingKey = null;
+        int n = template.length();
+        for (int i = 0; i < n; i++) {
+            char c = template.charAt(i);
+            if (c == '"') {
+                int end = i + 1;
+                StringBuilder value = new StringBuilder();
+                while (end < n && template.charAt(end) != '"') {
+                    if (template.charAt(end) == '\\' && end + 1 < n) {
+                        end++;
+                    }
+                    value.append(template.charAt(end));
+                    end++;
+                }
+                i = end;
+                int next = i + 1;
+                while (next < n && Character.isWhitespace(template.charAt(next))) {
+                    next++;
+                }
+                if (next < n && template.charAt(next) == ':') {
+                    pendingKey = value.toString();
+                    List<String> current = new ArrayList<>();
+                    parents.descendingIterator().forEachRemaining(key -> {
+                        if (!key.isEmpty()) {
+                            current.add(key);
+                        }
+                    });
+                    current.add(pendingKey);
+                    if (matchesPath(current, target)) {
+                        return true;
+                    }
+                }
+            } else if ((c == '$' || c == '#') && i + 1 < n
+                    && (template.charAt(i + 1) == '{' || (template.charAt(i + 1) == '!' && i + 2 < n && template.charAt(i + 2) == '{'))) {
+                int close = template.indexOf('}', i);
+                i = close < 0 ? n : close;
+            } else if (c == '#' && i + 1 < n && template.charAt(i + 1) == '#') {
+                int eol = template.indexOf('\n', i);
+                i = eol < 0 ? n : eol;
+            } else if (c == '#' && i + 1 < n && template.charAt(i + 1) == '*') {
+                int close = template.indexOf("*#", i + 2);
+                i = close < 0 ? n : close + 1;
+            } else if (c == '{' || c == '[') {
+                parents.push(pendingKey == null ? "" : pendingKey);
+                pendingKey = null;
+            } else if (c == '}' || c == ']') {
+                if (!parents.isEmpty()) {
+                    parents.pop();
+                }
+                pendingKey = null;
+            } else if (c == ',') {
+                pendingKey = null;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a selective disclosure path is well formed: {@code $} followed by {@code .field} and
+     * {@code [index]} or {@code [*]} segments. Says nothing about whether the path exists in a credential.
+     */
+    public static boolean isPathSyntaxValid(String path) {
+        return path != null && SD_PATH_SYNTAX.matcher(path.trim()).matches();
+    }
+
+    /**
      * Validates if a JSON path exists in a given JsonNode.
      *
      * @param root The root JsonNode.
@@ -229,15 +349,26 @@ public class SDJsonUtils {
      * @return true if the path exists, false otherwise.
      */
     public static boolean isPathValid(JsonNode root, String path) {
-        if (path == null || path.trim().isEmpty()) {
+        String[] segments = toSegments(path);
+        if (segments == null) {
             return false;
+        }
+        return segments.length == 0 || checkSegments(root, segments, 0);
+    }
+
+    /**
+     * Splits a well-formed path into the segments the walkers below expect: {@code $.a[0].b} is
+     * {@code [a, [0], b]}.
+     *
+     * @return the segments, empty for {@code $}, or {@code null} when the path is malformed
+     */
+    private static String[] toSegments(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return null;
         }
         path = path.trim();
-        if (!path.matches("^\\$(?:\\.[^.\\[\\]]+|\\[(?:\\*|0|[1-9]\\d*)\\])*$")) {
-            return false;
-        }
-        if (path.contains("..")) {
-            return false;
+        if (!isPathSyntaxValid(path) || path.contains("..")) {
+            return null;
         }
         if (path.startsWith("$")) {
             path = path.substring(1);
@@ -246,16 +377,77 @@ public class SDJsonUtils {
             path = path.substring(1);
         }
         if (path.isEmpty()) {
-            return true;
+            return new String[0];
         }
-
         String normalizedPath = path.replace("[", ".[");
         if (normalizedPath.startsWith(".")) {
             normalizedPath = normalizedPath.substring(1);
         }
-        String[] segments = normalizedPath.split("\\.");
+        return normalizedPath.split("\\.");
+    }
 
-        return checkSegments(root, segments, 0);
+    private enum PathState { PRESENT, ABSENT, MISMATCH }
+
+    /**
+     * Whether a path is missing from a credential only because the data is not there: a key that is
+     * absent or null, or an array or object that is empty. Such a path may be an optional field.
+     *
+     * <p>A value that is present but has a different shape, such as a string where the path expects an
+     * array ({@code $.name[*]} with a scalar {@code name}), is not absent. Treating it as optional would
+     * issue that value as an ordinary claim instead of a selectively disclosable one.
+     *
+     * @return {@code true} only when every way the path could resolve ends in missing data
+     */
+    public static boolean isPathAbsent(JsonNode root, String path) {
+        String[] segments = toSegments(path);
+        return segments != null && segments.length > 0 && walk(root, segments, 0) == PathState.ABSENT;
+    }
+
+    private static PathState walk(JsonNode node, String[] segments, int index) {
+        if (index >= segments.length) {
+            return PathState.PRESENT;
+        }
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return PathState.ABSENT;
+        }
+        String segment = segments[index];
+        if (segment.startsWith("[") && segment.endsWith("]")) {
+            if (!node.isArray()) {
+                return PathState.MISMATCH;
+            }
+            String indexStr = segment.substring(1, segment.length() - 1);
+            if (indexStr.equals("*")) {
+                return walkEach(node, segments, index);
+            }
+            try {
+                int arrayIdx = Integer.parseInt(indexStr);
+                return arrayIdx < node.size() ? walk(node.get(arrayIdx), segments, index + 1) : PathState.ABSENT;
+            } catch (NumberFormatException e) {
+                return PathState.ABSENT;   // an index too large for an int is past the end of any array
+            }
+        }
+        if (!node.isObject()) {
+            return PathState.MISMATCH;
+        }
+        if (segment.equals("*")) {
+            return walkEach(node, segments, index);
+        }
+        return node.has(segment) ? walk(node.get(segment), segments, index + 1) : PathState.ABSENT;
+    }
+
+    /** A wildcard over a container: any mismatch wins, then any match; an empty container is absent. */
+    private static PathState walkEach(JsonNode container, String[] segments, int index) {
+        PathState result = PathState.ABSENT;
+        for (JsonNode child : container) {
+            PathState state = walk(child, segments, index + 1);
+            if (state == PathState.MISMATCH) {
+                return PathState.MISMATCH;
+            }
+            if (state == PathState.PRESENT) {
+                result = PathState.PRESENT;
+            }
+        }
+        return result;
     }
 
     private static boolean checkSegments(JsonNode node, String[] segments, int index) {

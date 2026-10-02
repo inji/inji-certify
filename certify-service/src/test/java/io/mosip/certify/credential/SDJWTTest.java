@@ -81,13 +81,119 @@ public class SDJWTTest {
         when(mockFormatter.format(any(Map.class))).thenReturn(templateJson);
         when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
                 .thenReturn(Arrays.asList("$.invalid_claim"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"name\": \"${name}\", \"age\": ${age}}");
 
         CertifyException exception = assertThrows(CertifyException.class, () -> {
             sdjwt.createCredential(templateParams, mockTemplateName);
         });
 
         assertEquals(ErrorConstants.SD_CLAIMS_PARSE_ERROR, exception.getErrorCode());
-        assertTrue(exception.getMessage().contains("SD-Claim path '$.invalid_claim' not found in the credential template."));
+        assertTrue(exception.getMessage().contains("SD-Claim path '$.invalid_claim' not found in the issued credential."));
+    }
+
+    @Test
+    public void should_throwCertifyException_when_sdClaimPathIsMalformed() {
+        // The template declares "name", so the optional-field fallback would accept these by their
+        // field name alone, and name would be issued without being selectively disclosable.
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"name\": \"John\"}");
+
+        for (String path : Arrays.asList("name", "$.name[-1]")) {
+            when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName)).thenReturn(Arrays.asList(path));
+
+            CertifyException exception = assertThrows(CertifyException.class,
+                    () -> sdjwt.createCredential(new HashMap<>(), mockTemplateName));
+
+            assertEquals(ErrorConstants.SD_CLAIMS_PARSE_ERROR, exception.getErrorCode());
+            assertTrue(exception.getMessage().contains("SD-Claim path '" + path + "' is not a valid JSON path."));
+        }
+        verify(mockFormatter, never()).getTemplate(mockTemplateName);
+    }
+
+    @Test
+    public void should_issueWithoutTheClaim_when_optionalSdFieldIsMissingForThisHolder() {
+        // The template emits nickname only #if the holder has one. This holder has none, so the
+        // path is absent from their credential, but the configuration is not wrong.
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"name\": \"John\"}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
+                .thenReturn(Arrays.asList("$.name", "$.nickname"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"name\": \"${name}\" #if($nickname), \"nickname\": \"${nickname}\"#end}");
+
+        String result = sdjwt.createCredential(new HashMap<>(), mockTemplateName);
+
+        // One disclosure, for name: nickname has nothing to disclose for this holder.
+        assertEquals(2, result.split("~", -1).length - 1);
+    }
+
+    @Test
+    public void should_throwCertifyException_when_onlyAFieldOfTheSameNameUnderAnotherObjectIsInTheTemplate() {
+        // street is declared under office, not address, so a missing $.address.street is a wrong
+        // path, not an optional field, and must not be dropped silently.
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"office\": {\"street\": \"Main St\"}, \"address\": {\"city\": \"Pune\"}}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName)).thenReturn(Arrays.asList("$.address.street"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"office\": {\"street\": \"${officeStreet}\"}, \"address\": {\"city\": \"${city}\"}}");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> sdjwt.createCredential(new HashMap<>(), mockTemplateName));
+
+        assertEquals(ErrorConstants.SD_CLAIMS_PARSE_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("SD-Claim path '$.address.street' not found in the issued credential."));
+    }
+
+    @Test
+    public void should_issueWithoutTheClaim_when_optionalNestedSdFieldIsMissingForThisHolder() {
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"address\": {\"city\": \"Pune\"}}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
+                .thenReturn(Arrays.asList("$.address.city", "$.address.street"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"address\": {\"city\": \"${city}\"#if($street), \"street\": \"${street}\"#end}}");
+
+        assertNotNull(sdjwt.createCredential(new HashMap<>(), mockTemplateName));
+    }
+
+    @Test
+    public void should_throwCertifyException_when_sdPathExpectsAnArrayButTheValueIsAString() {
+        // name is declared in the template, so the optional-field fallback would accept $.name[*] and
+        // name would be issued as a plain, readable claim instead of a selectively disclosable one.
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"name\": \"John\"}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName)).thenReturn(Arrays.asList("$.name[*]"));
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> sdjwt.createCredential(new HashMap<>(), mockTemplateName));
+
+        assertEquals(ErrorConstants.SD_CLAIMS_PARSE_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("SD-Claim path '$.name[*]' does not match the structure of the issued credential."));
+        verify(mockFormatter, never()).getTemplate(mockTemplateName);
+    }
+
+    @Test
+    public void should_issueWithoutTheClaim_when_objectWildcardHasNoKeysForThisHolder() {
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"name\": \"John\", \"address\": {}}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName)).thenReturn(Arrays.asList("$.address.*"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"name\": \"${name}\", \"address\": {#if($street)\"street\": \"${street}\"#end}}");
+
+        assertNotNull(sdjwt.createCredential(new HashMap<>(), mockTemplateName));
+    }
+
+    @Test
+    public void should_issueWithoutTheClaim_when_sdArrayIsEmptyForThisHolder() {
+        String mockTemplateName = "mockTemplate";
+        when(mockFormatter.format(any(Map.class))).thenReturn("{\"name\": \"John\", \"nationalities\": []}");
+        when(mockFormatter.getSelectiveDisclosureInfo(mockTemplateName))
+                .thenReturn(Arrays.asList("$.nationalities[*]"));
+        when(mockFormatter.getTemplate(mockTemplateName))
+                .thenReturn("{\"name\": \"${name}\", \"nationalities\": ${nationalities}}");
+
+        assertNotNull(sdjwt.createCredential(new HashMap<>(), mockTemplateName));
     }
 
     @Test

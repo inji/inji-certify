@@ -122,6 +122,68 @@ public class QrSettingsValidatorTest {
     }
 
     @Test
+    public void should_throwException_when_compositeFieldMatchesOnlyRootFieldInTemplate() {
+        // The template has an address but no pincode, so the QR code would read a field that is not there.
+        String templateWithRootOnly = "{\"credentialSubject\": {\"address\": \"${address}\"}}";
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Pincode", "${address.pincode}")
+        );
+
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> QrSettingsValidator.validateQrSettings(qrSettings, templateWithRootOnly));
+
+        assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
+        assertTrue(ex.getMessage().contains("Field 'address.pincode'"));
+    }
+
+    @Test
+    public void should_throwException_when_localisedCompositeFieldMatchesOnlyRootFieldInTemplate() {
+        String templateWithRootOnly = "{\"credentialSubject\": {\"address\": \"${address}\"}}";
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Country", "${address#en.country}")
+        );
+
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> QrSettingsValidator.validateQrSettings(qrSettings, templateWithRootOnly));
+
+        assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_throwException_when_compositeFieldHasAnEmptyPart() {
+        // Splitting used to drop the empty part, so the root (address) was taken as the terminal field.
+        String template = "{\"credentialSubject\": {\"address\": \"${address}\", \"city\": \"${city}\"}}";
+
+        for (String field : List.of("${address.}", "${address..city}", "${address#}")) {
+            CertifyException ex = assertThrows(CertifyException.class,
+                    () -> QrSettingsValidator.validateQrSettings(List.of(Map.of("Field", field)), template));
+            assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
+        }
+    }
+
+    @Test
+    public void should_throwException_when_malformedCompositeFieldAlsoAppearsInTemplate() {
+        // The template carrying the same malformed reference must not make it valid through the
+        // exact-match check.
+        String template = "{\"credentialSubject\": {\"city\": \"${address..city}\"}}";
+
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> QrSettingsValidator.validateQrSettings(List.of(Map.of("City", "${address..city}")), template));
+
+        assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_validateSuccessfully_when_compositeFieldMatchesTemplateExactly() {
+        String templateWithPath = "{\"credentialSubject\": {\"pincode\": \"${address.pincode}\"}}";
+        List<Map<String, Object>> qrSettings = List.of(
+                Map.of("Pincode", "${address.pincode}")
+        );
+
+        assertDoesNotThrow(() -> QrSettingsValidator.validateQrSettings(qrSettings, templateWithPath));
+    }
+
+    @Test
     public void should_ignoreCurrencyLiterals_when_qrSettingsContainsDollarAmount() {
         List<Map<String, Object>> qrSettings = List.of(
                 Map.of("Full Name", "${fullName}", "Price", "Amount: $2.50")

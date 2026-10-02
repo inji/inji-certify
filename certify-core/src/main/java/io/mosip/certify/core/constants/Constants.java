@@ -32,6 +32,7 @@ public class Constants {
     public  static final String SIGNATURE_CRYPTO_SUITE = "SIGNATURE_CRYPTO_SUITE";
     public  static final String VCTYPE = "vct";
     public  static final String CONFIRMATION = "cnf";
+    public static final String JKT = "jkt";
     public  static final String ISSUER = "iss";
     public static final String TYPE = "type";
 

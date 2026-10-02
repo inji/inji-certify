@@ -234,9 +234,9 @@ class DpopProofValidatorTest {
         JWTClaimsSet claims = defaultClaims().build();
         String proof = signProof(walletKey, claims, walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
 
-        IllegalStateException e = assertThrows(IllegalStateException.class,
+        CertifyException e = assertThrows(CertifyException.class,
                 () -> validator.validate(proof, ACCESS_TOKEN, boundClaims(walletJkt), request));
-        assertTrue(e.getMessage().contains("misconfigured"));
+        assertEquals(ErrorConstants.SERVER_ERROR, e.getErrorCode());
         assertFalse(e.getMessage().contains("certify-nginx"),
                 "the offending value belongs in the log, not in a response to the caller");
     }
@@ -247,8 +247,9 @@ class DpopProofValidatorTest {
         JWTClaimsSet claims = defaultClaims().build();
         String proof = signProof(walletKey, claims, walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
 
-        assertThrows(IllegalStateException.class,
+        CertifyException e = assertThrows(CertifyException.class,
                 () -> validator.validate(proof, ACCESS_TOKEN, boundClaims(walletJkt), request));
+        assertEquals(ErrorConstants.SERVER_ERROR, e.getErrorCode());
     }
 
     // ---------- freshness ----------
@@ -402,9 +403,38 @@ class DpopProofValidatorTest {
 
         CertifyException e = assertThrows(CertifyException.class,
                 () -> validator.checkAndMarkJti(walletJkt, "jti-1"));
-        assertEquals(ErrorConstants.INVALID_DPOP_PROOF, e.getErrorCode());
-        assertTrue(e.getMessage().contains("mosip.certify.cache.names"),
-                "the error should name the property that needs fixing");
+        assertEquals(ErrorConstants.SERVER_ERROR, e.getErrorCode(),
+                "a missing cache is this deployment's fault, not the proof's");
+        assertFalse(e.getMessage().contains("mosip.certify"),
+                "property names belong in the log, not in a response to the caller");
+    }
+
+    // ---------- jti cache TTL ----------
+
+    @Test
+    void should_start_when_jtiTtlCoversTheWholeAcceptanceWindow() {
+        // 60 + 2 x 10: the window is exactly covered.
+        ReflectionTestUtils.setField(validator, "cacheExpireInSeconds", Map.of(DpopProofValidator.DPOP_JTI_CACHE, 80));
+
+        assertDoesNotThrow(() -> validator.checkJtiCacheTtl());
+    }
+
+    @Test
+    void should_refuseToStart_when_jtiTtlCoversOnlyMaxAgePlusOneSkew() {
+        // 70 is what the old comment asked for. iat may run 10s ahead and is accepted until
+        // 70s behind, so a proof stays acceptable for 80s and would be replayable for the last 10.
+        ReflectionTestUtils.setField(validator, "cacheExpireInSeconds", Map.of(DpopProofValidator.DPOP_JTI_CACHE, 70));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> validator.checkJtiCacheTtl());
+        assertTrue(e.getMessage().contains("80"), "the error should name the minimum TTL");
+    }
+
+    @Test
+    void should_refuseToStart_when_jtiTtlIsMissing() {
+        // The simple cache falls back to a 60s TTL for a cache with no entry.
+        ReflectionTestUtils.setField(validator, "cacheExpireInSeconds", Map.of("someOtherCache", 600));
+
+        assertThrows(IllegalStateException.class, () -> validator.checkJtiCacheTtl());
     }
 
     @Test

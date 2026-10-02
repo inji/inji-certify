@@ -26,8 +26,11 @@ import io.mosip.certify.validators.credentialconfigvalidators.SdJwtCredentialCon
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import java.util.*;
@@ -84,11 +87,13 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
 
+    // The algorithms an mso_mdoc issuer may sign with. ISO 18013-5 allows ES256, ES384, ES512 and
+    // EdDSA for issuerAuth, so RS256 and ES256K are not listed. ES384 and ES512 are left out as well:
+    // the keymanager's COSE signing supports neither, and advertising them would promise credentials
+    // that cannot be issued.
     private static final Map<String, Integer> COSE_ALGORITHM_INTEGER_MAP = Map.of(
         JWSAlgorithm.ES256.getName(), COSEAlgorithms.ES256,
-        JWSAlgorithm.EdDSA.getName(), COSEAlgorithms.EdDSA,        
-        JWSAlgorithm.ES256K.getName(), COSEAlgorithms.ES256K,
-        JWSAlgorithm.RS256.getName(), COSEAlgorithms.RS256 
+        JWSAlgorithm.EdDSA.getName(), COSEAlgorithms.EdDSA
     );
 
     @Override
@@ -416,47 +421,98 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         return buildMetadata(credentialConfigList);
     }
 
+    /**
+     * Checks every active configuration once the application is up, so a stored configuration that cannot
+     * be advertised is reported at startup rather than first noticed by a wallet. It is logged, not fatal:
+     * the metadata endpoint skips such a configuration and keeps serving the rest.
+     *
+     * <p>It runs outside the class-level transaction. Inside it, a failed load would mark that transaction
+     * rollback-only, and committing it would then fail startup even though the error was caught.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void validateStoredConfigurations() {
+        List<CredentialConfig> active;
+        try {
+            active = credentialConfigRepository.findAll()
+                    .stream()
+                    .filter(config -> Constants.ACTIVE.equals(config.getStatus()))
+                    .toList();
+        } catch (RuntimeException e) {
+            log.error("Stored credential configurations could not be loaded for the startup check", e);
+            return;
+        }
+        long invalid = active.stream().filter(config -> tryBuildSupportedDTO(config) == null).count();
+        if (invalid > 0) {
+            log.error("{} of {} active credential configurations cannot be advertised in the issuer metadata",
+                    invalid, active.size());
+        }
+    }
+
     private CredentialIssuerMetadataDTO buildMetadata(List<CredentialConfig> credentialConfigList) {
         CredentialIssuerMetadataDTO credentialIssuerMetadata = new CredentialIssuerMetadataDTO();
         Map<String, CredentialConfigurationSupportedDTO> credentialConfigurationSupportedMap = new HashMap<>();
 
-        credentialConfigList.forEach(credentialConfig -> {
-            CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
-            // The values stored against this configuration are what gets advertised, so an issuer's
-            // explicit selection reaches wallets instead of being rebuilt from configuration.
-            List<String> algs = CredentialConfigMetadataResolver.resolveStoredSigningAlgs(credentialConfig, credentialSigningAlgValuesSupportedMap);
-            if (algs.isEmpty()) {
-                algs = null;
+        for (CredentialConfig credentialConfig : credentialConfigList) {
+            CredentialConfigurationSupportedDTO dto = tryBuildSupportedDTO(credentialConfig);
+            if (dto != null) {
+                credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
             }
-
-            // A configuration written before these attributes were stored carries neither, so the same
-            // defaults the Get API resolves are applied here too - what a wallet reads and what an
-            // issuer reads back stay the same.
-            if (dto.getCryptographicBindingMethodsSupported() == null) {
-                dto.setCryptographicBindingMethodsSupported(
-                        CredentialConfigMetadataResolver.deriveBindingMethods(credentialConfig.getCredentialFormat(),
-                                cryptographicBindingMethodsSupportedMap));
-            }
-            Map<String, Object> storedProofTypes = credentialConfig.getProofTypesSupported();
-            dto.setProofTypesSupported(CredentialConfigMetadataResolver.resolveProofTypes(
-                    storedProofTypes == null || storedProofTypes.isEmpty() ? proofTypesSupported : storedProofTypes,
-                    proofTypesSupported));
-
-            if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat()) && algs != null) {
-                List<Object> coseAlgs = new ArrayList<>();
-                for (String alg : algs) {
-                    coseAlgs.add(getCoseAlgorithm(alg));
-                }
-                dto.setCredentialSigningAlgValuesSupported(coseAlgs);
-            } else {
-                dto.setCredentialSigningAlgValuesSupported(algs != null ? new ArrayList<>(algs) : null);
-            }
-            credentialConfigurationSupportedMap.put(credentialConfig.getCredentialConfigKeyId(), dto);
-        });
+        }
 
         credentialIssuerMetadata.setCredentialConfigurationSupportedDTO(credentialConfigurationSupportedMap);
         populateCommonMetadataFields(credentialIssuerMetadata);
         return credentialIssuerMetadata;
+    }
+
+    /**
+     * One configuration that cannot be advertised must not take the issuer metadata down for every
+     * credential type, so the failure is logged against that configuration and it is left out.
+     *
+     * @return the advertised entry, or {@code null} when this configuration cannot be advertised
+     */
+    private CredentialConfigurationSupportedDTO tryBuildSupportedDTO(CredentialConfig credentialConfig) {
+        try {
+            return buildSupportedDTO(credentialConfig);
+        } catch (RuntimeException e) {
+            log.error("Credential configuration {} is left out of the issuer metadata: {}",
+                    credentialConfig.getCredentialConfigKeyId(), e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private CredentialConfigurationSupportedDTO buildSupportedDTO(CredentialConfig credentialConfig) {
+        CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
+        // The values stored against this configuration are what gets advertised, so an issuer's
+        // explicit selection reaches wallets instead of being rebuilt from configuration.
+        List<String> algs = CredentialConfigMetadataResolver.resolveStoredSigningAlgs(credentialConfig, credentialSigningAlgValuesSupportedMap);
+        if (algs.isEmpty()) {
+            algs = null;
+        }
+
+        // A configuration written before these attributes were stored carries neither, so the same
+        // defaults the Get API resolves are applied here too - what a wallet reads and what an
+        // issuer reads back stay the same.
+        if (dto.getCryptographicBindingMethodsSupported() == null) {
+            dto.setCryptographicBindingMethodsSupported(
+                    CredentialConfigMetadataResolver.deriveBindingMethods(credentialConfig.getCredentialFormat(),
+                            cryptographicBindingMethodsSupportedMap));
+        }
+        Map<String, Object> storedProofTypes = credentialConfig.getProofTypesSupported();
+        dto.setProofTypesSupported(CredentialConfigMetadataResolver.resolveProofTypes(
+                storedProofTypes == null || storedProofTypes.isEmpty() ? proofTypesSupported : storedProofTypes,
+                proofTypesSupported));
+
+        if (VCFormats.MSO_MDOC.equals(credentialConfig.getCredentialFormat()) && algs != null) {
+            List<Object> coseAlgs = new ArrayList<>();
+            for (String alg : algs) {
+                coseAlgs.add(getCoseAlgorithm(alg));
+            }
+            dto.setCredentialSigningAlgValuesSupported(coseAlgs);
+        } else {
+            dto.setCredentialSigningAlgValuesSupported(algs != null ? new ArrayList<>(algs) : null);
+        }
+        return dto;
     }
 
     public Integer getCoseAlgorithm(String signAlgorithm) {
