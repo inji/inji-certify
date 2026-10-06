@@ -4,7 +4,8 @@
     "name": "Inji Certify With Sunbird Insurance",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "12594460",
-    "_collection_link": "https://go.postman.co/collection/12594460-29b32ec1-afa2-43ad-9ef4-1e6a830c200c?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/12594460-29b32ec1-afa2-43ad-9ef4-1e6a830c200c?source=collection_link",
+    "description": "Sunbird RC insurance issuance via eSignet (knowledge-based auth) and Inji Certify.\n\nSelect environment `ENV Sunbird Insurance`, then:\n1. OIDC Client Mgmt: once per deployment, to register the client (hosted deployments also need internalUrl and partnerSecret).\n2. Sunbird RC Insurance Registry: Create the record, then Search and confirm exactly one match. Duplicate records make eSignet answer auth_failed. The KBI challenge and the individualId are built from the insurance_registry_* collection variables, so there is nothing to keep in sync by hand.\n3. VCI (Bearer): top to bottom.\n\nRequires `pmlib_code` in the environment (or in globals)."
   },
   "item": [
     {
@@ -18,7 +19,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "eval(pm.environment.get('pmlib_code'));\n\n// The token comes back as a Set-Cookie, not in the body: the body carries only\n// {status, message} and answers 200 whether or not a token was minted, so a\n// green response here proves nothing. The cookie is the only evidence.\nvar token = null;\npm.response.headers.each(function (h) {\n    if (!token && h.key.toLowerCase() === 'set-cookie' && h.value.indexOf('Authorization=') === 0) {\n        token = h.value.split(';')[0].substring('Authorization='.length);\n    }\n});\n\nvar body = null;\ntry { body = pm.response.json(); } catch (e) { body = null; }\n\npm.test('partner token issued', function () {\n    pm.expect(JSON.stringify((body && body.errors) || []), 'authmanager rejected the credentials - partnerSecret is deployment-specific').to.equal('[]');\n    pm.expect(token, 'no Authorization cookie in the response').to.be.a('string');\n});\n\nif (token) {\n    // Cleared before validation, not after: client-mgmt rejects a stale, expired or\n    // wrong-scope token exactly as it does a missing one - 'Full authentication is\n    // required to access this resource' at HTTP 200 - so a token left behind after\n    // failing its checks looks correctly populated while every registration fails.\n    pm.environment.unset('authToken');\n\n    var claims = {};\n    try {\n        var parsed = JSON.parse(pmlib.rs.b64utoutf8(token.split('.')[1]));\n        if (parsed && typeof parsed === 'object') claims = parsed;\n    } catch (e) {\n        // Malformed token: both checks below fail on the empty claims and report it.\n    }\n\n    // scope is space-delimited, so membership rather than substring - a scope such as\n    // add_oidc_client_readonly must not pass. A token minted for the wrong appId\n    // authenticates perfectly and still cannot register a client; its scope is the\n    // only thing that says so, and the failure it causes later does not mention it.\n    var hasScope = typeof claims.scope === 'string' &&\n        claims.scope.split(/\\s+/).indexOf('add_oidc_client') !== -1;\n\n    // These tokens are short-lived. Authenticating once and registering some minutes\n    // later fails exactly like never authenticating at all.\n    var notExpired = typeof claims.exp === 'number' && isFinite(claims.exp) &&\n        claims.exp * 1000 > Date.now();\n\n    pm.test('token carries add_oidc_client', function () {\n        pm.expect(hasScope, 'wrong appId, or the token could not be decoded - it cannot register clients').to.equal(true);\n    });\n\n    pm.test('token is not already expired', function () {\n        pm.expect(notExpired, 'authToken has no usable exp, or has already expired - re-run this request immediately before creating the client').to.equal(true);\n    });\n\n    // Stored only once both checks pass, so the environment never holds a token that\n    // client-mgmt will refuse.\n    if (hasScope && notExpired) pm.environment.set('authToken', token);\n} else {\n    pm.environment.unset('authToken');\n}"
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'));\n\n// The token comes back as a Set-Cookie, not in the body: the body carries only\n// {status, message} and answers 200 whether or not a token was minted, so a\n// green response here proves nothing. The cookie is the only evidence.\nvar token = null;\npm.response.headers.each(function (h) {\n    if (!token && h.key.toLowerCase() === 'set-cookie' && h.value.indexOf('Authorization=') === 0) {\n        token = h.value.split(';')[0].substring('Authorization='.length);\n    }\n});\n\nvar body = null;\ntry { body = pm.response.json(); } catch (e) { body = null; }\n\npm.test('partner token issued', function () {\n    pm.expect(JSON.stringify((body && body.errors) || []), 'authmanager rejected the credentials - partnerSecret is deployment-specific').to.equal('[]');\n    pm.expect(token, 'no Authorization cookie in the response').to.be.a('string');\n});\n\nif (token) {\n    // Cleared before validation, not after: client-mgmt rejects a stale, expired or\n    // wrong-scope token exactly as it does a missing one - 'Full authentication is\n    // required to access this resource' at HTTP 200 - so a token left behind after\n    // failing its checks looks correctly populated while every registration fails.\n    pm.environment.unset('authToken');\n\n    var claims = {};\n    try {\n        var parsed = JSON.parse(pmlib.rs.b64utoutf8(token.split('.')[1]));\n        if (parsed && typeof parsed === 'object') claims = parsed;\n    } catch (e) {\n        // Malformed token: both checks below fail on the empty claims and report it.\n    }\n\n    // scope is space-delimited, so membership rather than substring - a scope such as\n    // add_oidc_client_readonly must not pass. A token minted for the wrong appId\n    // authenticates perfectly and still cannot register a client; its scope is the\n    // only thing that says so, and the failure it causes later does not mention it.\n    var hasScope = typeof claims.scope === 'string' &&\n        claims.scope.split(/\\s+/).indexOf('add_oidc_client') !== -1;\n\n    // These tokens are short-lived. Authenticating once and registering some minutes\n    // later fails exactly like never authenticating at all.\n    var notExpired = typeof claims.exp === 'number' && isFinite(claims.exp) &&\n        claims.exp * 1000 > Date.now();\n\n    pm.test('token carries add_oidc_client', function () {\n        pm.expect(hasScope, 'wrong appId, or the token could not be decoded - it cannot register clients').to.equal(true);\n    });\n\n    pm.test('token is not already expired', function () {\n        pm.expect(notExpired, 'authToken has no usable exp, or has already expired - re-run this request immediately before creating the client').to.equal(true);\n    });\n\n    // Stored only once both checks pass, so the environment never holds a token that\n    // client-mgmt will refuse.\n    if (hasScope && notExpired) pm.environment.set('authToken', token);\n} else {\n    pm.environment.unset('authToken');\n}"
                 ]
               }
             }
@@ -52,7 +53,7 @@
                 "clientidsecretkey"
               ]
             },
-            "description": "Only needed on a hosted deployment. A local eSignet leaves client-mgmt unauthenticated, so requests 2 and 3 work on their own and this one has nothing to talk to - internalUrl ships empty.\n\npartnerSecret is deployment-specific and deliberately not committed: set it in your own environment.\n\nThis collection keeps its own environment (ENV Mock Identity Bearer), so authToken must be minted here - the DPoP collection writes its copy into a different environment."
+            "description": "Only needed on a hosted deployment. A local eSignet leaves client-mgmt unauthenticated, so requests 2 and 3 work on their own and this one has nothing to talk to - internalUrl ships empty.\n\npartnerSecret is deployment-specific and deliberately not committed: set it in your own environment.\n\nauthToken is written to the active environment (ENV Sunbird Insurance)."
           },
           "response": []
         },
@@ -64,7 +65,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var token = pm.cookies.get(\"XSRF-TOKEN\")\npm.environment.set(\"csrf_token\", token);"
+                  "var body = pm.response.json();\npm.test('csrf token returned', function () {\n    pm.expect(body.token).to.be.a('string');\n});\npm.environment.set('csrf_token', body.token);"
                 ]
               }
             }
@@ -105,7 +106,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "eval(pm.globals.get('pmlib_code'))\nkp = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);\nprivateKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.prvKeyObj);\npublicKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.pubKeyObj);\n\npm.environment.set(\"privateKey_jwk\", JSON.stringify(privateKey_jwk));\npm.environment.set(\"publicKey_jwk\", JSON.stringify(publicKey_jwk));"
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'));\n\n// eSignet can neither re-key a client nor hand its key back, so an existing key pair is\n// never overwritten: it is reused. To register a different client, clear privateKey_jwk\n// and publicKey_jwk in the environment first.\nif (!pm.environment.get('privateKey_jwk') || !pm.environment.get('publicKey_jwk')) {\n    var kp = pmlib.rs.KEYUTIL.generateKeypair('RSA', 2048);\n    pm.environment.set('privateKey_jwk', JSON.stringify(pmlib.rs.KEYUTIL.getJWK(kp.prvKeyObj)));\n    pm.environment.set('publicKey_jwk', JSON.stringify(pmlib.rs.KEYUTIL.getJWK(kp.pubKeyObj)));\n}"
                 ]
               }
             },
@@ -114,7 +115,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Validate clientId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.clientId).to.eql(pm.collectionVariables.get(\"clientId\"));\n});\n\npm.test(\"Validate status\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");\n});"
+                  "pm.test(\"Validate clientId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.clientId).to.eql(pm.environment.get(\"clientId\"));\n});\n\npm.test(\"Validate status\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");\n});"
                 ]
               }
             }
@@ -139,7 +140,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{    \n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"clientName\": \"{{$randomAvatarImage}}\",\n        \"publicKey\": {{publicKey_jwk}},\n        \"relyingPartyId\": \"{{relayingPartyId}}\",\n        \"userClaims\": [\n            \"name\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:knowledge\"\n        ],\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"http://localhost:3001\"\n        ],\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
+              "raw": "{    \n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"clientName\": \"Sunbird Insurance Wallet\",\n        \"publicKey\": {{publicKey_jwk}},\n        \"relyingPartyId\": \"{{relayingPartyId}}\",\n        \"userClaims\": [\n            \"name\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:knowledge\"\n        ],\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"http://localhost:3001\"\n        ],\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -167,7 +168,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Validate clientId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.clientId).to.eql(pm.collectionVariables.get(\"clientId\"));\n});\n\npm.test(\"Validate status\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");\n});"
+                  "pm.test(\"Validate clientId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.clientId).to.eql(pm.environment.get(\"clientId\"));\n});\n\npm.test(\"Validate status\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");\n});"
                 ]
               }
             }
@@ -178,7 +179,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{authorizationToken}}",
+                  "value": "{{authToken}}",
                   "type": "string"
                 }
               ]
@@ -192,7 +193,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n            \"{{redirectionUrl}}\"\n        ],\n        \"userClaims\": [\n            \"name\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:knowledge\"\n        ],\n        \"status\": \"ACTIVE\",\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientName\": \"Pension Scheme\",\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n            \"{{redirectionUrl}}\"\n        ],\n        \"userClaims\": [\n            \"name\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:knowledge\"\n        ],\n        \"status\": \"ACTIVE\",\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientName\": \"Sunbird Insurance Wallet\",\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -226,7 +227,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "let jsonData = pm.response.json();\npm.collectionVariables.set(\"insurance_registry_osid\", jsonData?.result?.Insurance?.osid);"
+                  "var jsonData = pm.response.json();\nvar osid = jsonData?.result?.Insurance?.osid;\npm.test('record created', function () {\n    pm.expect(osid, JSON.stringify(jsonData)).to.be.a('string');\n});\nif (osid) pm.collectionVariables.set('insurance_registry_osid', osid);"
                 ]
               }
             },
@@ -274,56 +275,7 @@
             },
             "description": "Create new Insurance"
           },
-          "response": [
-            {
-              "name": "OK",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"policyNumber\": \"laborum veniam dolore\",\n  \"policyName\": \"veniam sed est culpa\",\n  \"expiresOn\": \"2003-04-20T20:48:17.684Z\",\n  \"fullName\": \"minim nisi\",\n  \"dob\": \"1966-10-03\",\n  \"benefits\": [\n    \"exercitation aliqua consequat pariatur fugiat\",\n    \"eiusmod\"\n  ],\n  \"gender\": \"Other\",\n  \"mobile\": \"et aute incididunt cupidatat\",\n  \"email\": \"Ut irure pariatur\"\n}",
-                  "options": {
-                    "raw": {
-                      "headerFamily": "json",
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{REGISTRY_BASE_URL}}/api/v1/Insurance",
-                  "host": [
-                    "{{REGISTRY_BASE_URL}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "Insurance"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "{\n  \"policyNumber\": \"laborum veniam dolore\",\n  \"policyName\": \"veniam sed est culpa\",\n  \"expiresOn\": \"2003-04-20T20:48:17.684Z\",\n  \"fullName\": \"minim nisi\",\n  \"dob\": \"1966-10-03\",\n  \"benefits\": [\n    \"exercitation aliqua consequat pariatur fugiat\",\n    \"eiusmod\"\n  ],\n  \"gender\": \"Other\",\n  \"mobile\": \"et aute incididunt cupidatat\",\n  \"email\": \"Ut irure pariatur\"\n}"
-            }
-          ]
+          "response": []
         },
         {
           "name": "Search Insurance Registry",
@@ -333,7 +285,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "let jsonData = pm.response.json();\nlet osid = pm.collectionVariables.get(\"insurance_registry_osid\");\nlet obj = jsonData.find(d => d?.osid === osid) || {};\nlet registry = Object.keys(obj).reduce((res, item) => {\n    if(!item.startsWith(\"os\")) return { ...res, [item]: obj[item] };\n    return res;\n}, {});\npm.collectionVariables.set(\"insurance_registry_expiresOn\", registry?.expiresOn);\npm.collectionVariables.set(\"insurance_registry\", JSON.stringify(registry));"
+                  "var jsonData = pm.response.json();\npm.test('search returned a list', function () {\n    pm.expect(jsonData).to.be.an('array');\n});\n\n// Two records with the same policyNumber make eSignet's KBI authentication fail with\n// auth_failed. Delete the extras with 'Delete by OSID'.\npm.test('exactly one record matches', function () {\n    pm.expect(jsonData.length, 'duplicate or missing records for this policyNumber').to.equal(1);\n});\n\nvar osid = pm.collectionVariables.get('insurance_registry_osid');\nvar obj = jsonData.find(function (d) { return d && d.osid === osid; }) || jsonData[0] || {};\nvar registry = Object.keys(obj).reduce(function (res, item) {\n    if (!item.startsWith('os')) res[item] = obj[item];\n    return res;\n}, {});\npm.collectionVariables.set('insurance_registry_expiresOn', registry.policyExpiresOn);\npm.collectionVariables.set('insurance_registry', JSON.stringify(registry));"
                 ]
               }
             }
@@ -371,59 +323,9 @@
                 "search"
               ]
             },
-            "description": "Create new Insurance"
+            "description": "Search Insurance records by fullName, dob and policyNumber (the insurance_registry_* collection variables)."
           },
-          "response": [
-            {
-              "name": "OK",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Accept",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"offset\": 0,\n  \"limit\": 0,\n  \"filters\": {\n    \"field_path\": {\n      \"operators\": \"name\"\n    }\n  }\n}",
-                  "options": {
-                    "raw": {
-                      "headerFamily": "json",
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{REGISTRY_BASE_URL}}/api/v1/Insurance/search",
-                  "host": [
-                    "{{REGISTRY_BASE_URL}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "Insurance",
-                    "search"
-                  ]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "cookie": [],
-              "body": "[\n  {\n    \"policyNumber\": \"aliquip sed\",\n    \"policyName\": \"aliquip aute dolore eu Excepteur\",\n    \"expiresOn\": \"2000-09-05T20:23:37.158Z\",\n    \"fullName\": \"consequat enim exercitation officia\",\n    \"dob\": \"1965-03-01\",\n    \"benefits\": [\n      \"incididunt\",\n      \"et irure conseq\"\n    ],\n    \"gender\": \"Other\",\n    \"mobile\": \"amet officia\",\n    \"email\": \"ut velit\"\n  },\n  {\n    \"policyNumber\": \"cupidatat in\",\n    \"policyName\": \"incididunt ut aliqua\",\n    \"expiresOn\": \"1950-08-21T23:59:52.932Z\",\n    \"fullName\": \"mollit aute culpa\",\n    \"dob\": \"1946-12-10\",\n    \"benefits\": [\n      \"mollit incididunt ea\",\n      \"nostrud non ea\"\n    ],\n    \"gender\": \"Female\",\n    \"mobile\": \"reprehenderit pariatur quis\",\n    \"email\": \"nisi eu Duis\"\n  }\n]"
-            }
-          ]
+          "response": []
         },
         {
           "name": "Delete by OSID",
@@ -431,7 +333,7 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{REGISTRY_BASE_URL}}/api/v1/Insurance/1-1612c597-2638-44c5-9105-5123005f4cd0",
+              "raw": "{{REGISTRY_BASE_URL}}/api/v1/Insurance/{{insurance_registry_osid}}",
               "host": [
                 "{{REGISTRY_BASE_URL}}"
               ],
@@ -439,16 +341,17 @@
                 "api",
                 "v1",
                 "Insurance",
-                "1-1612c597-2638-44c5-9105-5123005f4cd0"
+                "{{insurance_registry_osid}}"
               ]
-            }
+            },
+            "description": "Deletes the record whose osid is in insurance_registry_osid (set by Create). When Search shows duplicates, set insurance_registry_osid to the one to remove."
           },
           "response": []
         }
       ]
     },
     {
-      "name": "KBA",
+      "name": "VCI (Bearer)",
       "item": [
         {
           "name": "1. Get CSRF token",
@@ -458,7 +361,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var body = pm.response.json();\npm.environment.set(\"csrf_token\", body.token);"
+                  "var body = pm.response.json();\npm.test('csrf token returned', function () {\n    pm.expect(body.token).to.be.a('string');\n});\npm.environment.set('csrf_token', body.token);"
                 ]
               }
             }
@@ -499,7 +402,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var btoa = require('btoa');\n\n\npm.test(\"Validate transactionId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.transactionId).not.equals(null);\n    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);\n});\n\npm.test(\"Validate auth factors\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));\n});\n\npm.test(\"set oauth-details-hash\", function () {\n    var jsonData = pm.response.json();\n    var sha256Hash = CryptoJS.SHA256(JSON.stringify(jsonData.response));\n    var base64Encoded = sha256Hash.toString(CryptoJS.enc.Base64);\n    // Remove padding characters\n    base64Encoded = base64Encoded.replace(/=+$/, '');\n    // Replace '+' with '-' and '/' with '_' to convert to base64 URL encoding\n    base64Encoded = base64Encoded.replace(/\\+/g, '-').replace(/\\//g, '_');\n    console.log(\"base64Encoded : \" + base64Encoded);\n    pm.environment.set(\"oauth_details_key\", jsonData.response.transactionId);\n    pm.environment.set(\"oauth_details_hash\", base64Encoded);\n});"
+                  "var jsonData = pm.response.json();\n\npm.test('no errors', function () {\n    pm.expect(jsonData.errors, JSON.stringify(jsonData.errors)).to.eql([]);\n});\n\nif (jsonData.response) {\n    pm.test('transactionId returned', function () {\n        pm.expect(jsonData.response.transactionId).to.be.a('string');\n    });\n\n    pm.test('KBI auth factor offered', function () {\n        var factors = [].concat.apply([], jsonData.response.authFactors || []);\n        pm.expect(factors.some(function (f) { return f.type === 'KBI'; }), 'the client or acrValues does not allow KBI').to.equal(true);\n    });\n\n    var sha256Hash = CryptoJS.SHA256(JSON.stringify(jsonData.response));\n    // base64url, no padding\n    var b64u = sha256Hash.toString(CryptoJS.enc.Base64).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');\n    pm.environment.set('transaction_id', jsonData.response.transactionId);\n    pm.environment.set('oauth_details_key', jsonData.response.transactionId);\n    pm.environment.set('oauth_details_hash', b64u);\n}"
                 ]
               }
             },
@@ -508,7 +411,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "eval(pm.globals.get('pmlib_code'))\n\nconst pkce = pmlib.pkceChallenge();\npm.collectionVariables.set(\"codeChallenge\",pkce.code_challenge);\npm.collectionVariables.set(\"codeChallengeMethod\",pkce.code_challenge_method);\npm.collectionVariables.set(\"codeVerifier\",pkce.code_verifier);"
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'));\n\nconst pkce = pmlib.pkceChallenge();\npm.collectionVariables.set('codeChallenge', pkce.code_challenge);\npm.collectionVariables.set('codeChallengeMethod', pkce.code_challenge_method);\npm.collectionVariables.set('codeVerifier', pkce.code_verifier);\n\n// Fresh, unpredictable nonce and state on every run (eSignet answers invalid_request\n// to a missing or very short nonce).\npm.environment.set('nonce', CryptoJS.lib.WordArray.random(16).toString());\npm.environment.set('state', CryptoJS.lib.WordArray.random(8).toString());"
                 ]
               }
             }
@@ -523,7 +426,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"life_insurance_vc_ldp\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:knowledge\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"{{scope}}\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:knowledge\",\n        \"nonce\": \"{{nonce}}\",\n        \"state\": \"{{state}}\",\n        \"claimsLocales\": \"en\",\n        \"codeChallenge\": \"{{codeChallenge}}\",\n        \"codeChallengeMethod\": \"{{codeChallengeMethod}}\"\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -545,7 +448,7 @@
           "response": []
         },
         {
-          "name": "3. Authenticate User V2",
+          "name": "3. Authenticate User V2 (KBI)",
           "request": {
             "method": "POST",
             "header": [
@@ -564,7 +467,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"KBI\",\n                \"challenge\" : \"eyJwb2xpY3lOdW1iZXIiOiIxMTIyMzM0IiwiZnVsbE5hbWUiOiJNYXl1cmEgRCIsImRvYiI6IjIwMjUtMDEtMDEifQ\",\n                \"format\" : \"base64url-encoded-json\"\n            }\n        ]\n    }\n}",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{insurance_registry_policyNumber}}\",\n        \"challengeList\": [\n            {\n                \"authFactorType\": \"KBI\",\n                \"challenge\": \"{{kbi_challenge}}\",\n                \"format\": \"base64url-encoded-json\"\n            }\n        ]\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -582,7 +485,27 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// KBI challenge = base64url(JSON) of the fields the eSignet lists in\n// auth.factor.kbi.field-details. They come from the same collection variables the registry\n// record is created from, so the challenge always matches the record.\nvar fields = {\n    policyNumber: pm.collectionVariables.get('insurance_registry_policyNumber'),\n    fullName: pm.collectionVariables.get('insurance_registry_fullName'),\n    dob: pm.collectionVariables.get('insurance_registry_dob')\n};\nObject.keys(fields).forEach(function (k) {\n    if (!fields[k]) throw new Error('insurance_registry_' + k + ' is empty - set it in the collection variables');\n});\nvar b64 = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify(fields)));\npm.collectionVariables.set('kbi_challenge', b64.replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();\npm.test('authenticated', function () {\n    pm.expect(jsonData.errors, JSON.stringify(jsonData.errors) + ' - auth_failed usually means no record, or more than one, matches').to.eql([]);\n});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "4. Authorization Code",
@@ -592,7 +515,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "\n\npm.test(\"Validate code\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.code).not.equals(null);\n    pm.collectionVariables.set(\"code\", jsonData.response.code);\n});"
+                  "var jsonData = pm.response.json();\npm.test('no errors', function () {\n    pm.expect(jsonData.errors, JSON.stringify(jsonData.errors)).to.eql([]);\n});\npm.test('code returned', function () {\n    pm.expect(jsonData.response.code).to.be.a('string');\n});\nif (jsonData.response) pm.collectionVariables.set('code', jsonData.response.code);"
                 ]
               }
             }
@@ -646,7 +569,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "eval(pm.globals.get('pmlib_code'))\n\n// Set headers for JWT\nvar header = {\t\n\t\"alg\": \"RS256\"\n};\n\n\n//sign token\n//Note: Key pair is generated in \"Create OIDC client\" pre-requests script\n//generated private and public keys are stored in the postman environment \nconst signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get(\"privateKey_jwk\")), pm.environment.get('clientId'), pm.environment.get('aud'), exp = 2000,  \"RS256\");\n\npm.collectionVariables.set(\"client_assertion\",signed_jwt);\n"
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'));\n\n// The client assertion's aud is the token endpoint of the eSignet being called.\n// The key pair was generated and stored by 'Create OIDC client'.\nvar tokenUrl = pm.environment.get('url') + '/oauth/v2/token';\nconst signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get('privateKey_jwk')), pm.environment.get('clientId'), tokenUrl, 2000, 'RS256');\npm.collectionVariables.set('client_assertion', signed_jwt);"
                 ]
               }
             },
@@ -655,7 +578,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Validate Id-token\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.id_token).not.equals(null);\n});\n\npm.test(\"Validate access-token\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.access_token).not.equals(null);\n    pm.environment.set(\"access_token\", jsonData.access_token);\n\n    var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature\n    var jwt_payload = JSON.parse(atob(jwt_parts[1]));\n});"
+                  "var jsonData = pm.response.json();\npm.test('token response', function () {\n    pm.expect(jsonData.access_token, JSON.stringify(jsonData)).to.be.a('string');\n    pm.expect(jsonData.id_token).to.be.a('string');\n});\nif (jsonData.access_token) pm.environment.set('access_token', jsonData.access_token);"
                 ]
               }
             }
@@ -718,7 +641,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var response = pm.response.json();\npm.environment.set(\"c_nonce\", response.c_nonce);"
+                  "var response = pm.response.json();\npm.test('c_nonce issued', function () {\n    pm.expect(response.c_nonce).to.be.a('string');\n});\npm.environment.set('c_nonce', response.c_nonce);"
                 ]
               }
             }
@@ -746,7 +669,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "eval(pm.globals.get('pmlib_code'))\nkeyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);\njwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);\njwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);\njwkPublicKey[\"alg\"] = \"RS256\";\njwkPublicKey[\"use\"] = \"sig\";\n\npm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))\npm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));\n\n// Set headers for JWT\nvar header = {\t\n\t\"alg\": \"RS256\",\n    \"typ\" : \"openid4vci-proof+jwt\",\n    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))\n};\n\n\nconsole.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));\n\nconst signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {\n    \"aud\" : pm.environment.get('audUrl'),\n\t\"nonce\": pm.environment.get('c_nonce'),\n    \"iss\" : pm.environment.get('clientId'),\n}, header, exp=600, alg = \"RS256\")\nconsole.log();\npm.collectionVariables.set(\"proof_jwt\",signed_jwt);\n"
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'));\n\n// A fresh holder key pair per run; the proof JWT binds the credential to it.\nvar keyPair = pmlib.rs.KEYUTIL.generateKeypair('RSA', 2048);\nvar jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);\nvar jwkPublicKey = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);\njwkPublicKey['alg'] = 'RS256';\njwkPublicKey['use'] = 'sig';\n\npm.environment.set('holder_public_key', JSON.stringify(jwkPublicKey));\npm.environment.set('holder_private_key', JSON.stringify(jwkPrivateKey));\n\nvar header = {\n    'alg': 'RS256',\n    'typ': 'openid4vci-proof+jwt',\n    'jwk': jwkPublicKey\n};\n\n// iss must equal the access token's client_id; aud must equal certify's credential_issuer.\nconst signed_jwt = pmlib.jwtSign(jwkPrivateKey, {\n    'aud': pm.environment.get('audUrl'),\n    'nonce': pm.environment.get('c_nonce'),\n    'iss': pm.environment.get('clientId')\n}, header, 600, 'RS256');\npm.collectionVariables.set('proof_jwt', signed_jwt);"
                 ]
               }
             },
@@ -755,7 +678,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Validate c_nonce\", function () {\n    var jsonData = pm.response.json();\n    if(jsonData.c_nonce != null) {\n        pm.environment.set(\"c_nonce\", jsonData.c_nonce);\n        console.log(\"setting c_nonce\");\n    }    \n});"
+                  "var jsonData = pm.response.json();\npm.test('status is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('a credential came back', function () {\n    pm.expect(jsonData.credentials || jsonData.credential, JSON.stringify(jsonData)).to.exist;\n});\nif (jsonData.c_nonce) pm.environment.set('c_nonce', jsonData.c_nonce);"
                 ]
               }
             }
@@ -775,7 +698,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"credential_configuration_id\":\"LifeInsuranceCredential\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
+              "raw": "{\n    \"credential_configuration_id\": \"{{credentialConfigurationId}}\",\n    \"proofs\": {\n        \"jwt\": [\"{{proof_jwt}}\"]\n    }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -880,9 +803,9 @@
               }
             },
             "url": {
-              "raw": "{{certifyurl}}/credential-configurations",
+              "raw": "{{certifyServiceUrl}}/credential-configurations",
               "host": [
-                "{{certifyurl}}"
+                "{{certifyServiceUrl}}"
               ],
               "path": [
                 "credential-configurations"
@@ -897,9 +820,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
               "host": [
-                "{{certifyurl}}"
+                "{{certifyServiceUrl}}"
               ],
               "path": [
                 "credential-configurations",
@@ -924,9 +847,9 @@
               }
             },
             "url": {
-              "raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
               "host": [
-                "{{certifyurl}}"
+                "{{certifyServiceUrl}}"
               ],
               "path": [
                 "credential-configurations",
@@ -937,7 +860,7 @@
           "response": []
         },
         {
-          "name": "Delete Configuration By Id Copy",
+          "name": "Delete Configuration By Id",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -951,9 +874,9 @@
               }
             },
             "url": {
-              "raw": "{{certifyurl}}/credential-configurations/{{configId}}",
+              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
               "host": [
-                "{{certifyurl}}"
+                "{{certifyServiceUrl}}"
               ],
               "path": [
                 "credential-configurations",
@@ -969,9 +892,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{certifyurl}}/.well-known/openid-credential-issuer",
+              "raw": "{{certifyServiceUrl}}/.well-known/openid-credential-issuer",
               "host": [
-                "{{certifyurl}}"
+                "{{certifyServiceUrl}}"
               ],
               "path": [
                 ".well-known",
@@ -984,97 +907,7 @@
       ]
     }
   ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          ""
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "exec": [
-          ""
-        ]
-      }
-    }
-  ],
   "variable": [
-    {
-      "key": "clientId",
-      "value": "mock-oidc-client",
-      "disabled": true
-    },
-    {
-      "key": "redirectionUrl",
-      "value": "https://mosip.io/index.php",
-      "disabled": true
-    },
-    {
-      "key": "relayingPartyId",
-      "value": "mock-relaying-party-id",
-      "disabled": true
-    },
-    {
-      "key": "status",
-      "value": "\"ACTIVE\"",
-      "disabled": true
-    },
-    {
-      "key": "acr_values",
-      "value": "level0 level1",
-      "disabled": true
-    },
-    {
-      "key": "scope",
-      "value": "openid profile",
-      "disabled": true
-    },
-    {
-      "key": "claims_request_param",
-      "value": "{\n            \"userinfo\": {\n                \"email\": {\n                    \"value\": null,\n                    \"values\": null,\n           ...",
-      "disabled": true
-    },
-    {
-      "key": "nonce",
-      "value": "2erwER34WW",
-      "disabled": true
-    },
-    {
-      "key": "state",
-      "value": "ptOO76SD",
-      "disabled": true
-    },
-    {
-      "key": "expected_amr",
-      "value": "\"pin\"",
-      "disabled": true
-    },
-    {
-      "key": "transaction_id",
-      "value": "ece56bfa-d0c2-46ce-a5a2-8500dfb393a7",
-      "disabled": true
-    },
-    {
-      "key": "individual_id",
-      "value": "8267411571",
-      "disabled": true
-    },
-    {
-      "key": "auth_pin",
-      "value": "34789",
-      "disabled": true
-    },
-    {
-      "key": "url",
-      "value": "",
-      "disabled": true
-    },
     {
       "key": "code",
       "value": ""
@@ -1082,31 +915,6 @@
     {
       "key": "client_assertion",
       "value": ""
-    },
-    {
-      "key": "access_token",
-      "value": "",
-      "disabled": true
-    },
-    {
-      "key": "linkTransactionId",
-      "value": "",
-      "disabled": true
-    },
-    {
-      "key": "wla_challenge",
-      "value": "",
-      "disabled": true
-    },
-    {
-      "key": "client_secret",
-      "value": "",
-      "disabled": true
-    },
-    {
-      "key": "csrf_token",
-      "value": "08a17840-da3c-4b93-9ab3-83d9b297ac68",
-      "disabled": true
     },
     {
       "key": "proof_jwt",
@@ -1125,16 +933,20 @@
       "value": ""
     },
     {
-      "key": "insurance_registry_fullName",
-      "value": ""
-    },
-    {
-      "key": "insurance_registry_dob",
+      "key": "kbi_challenge",
       "value": ""
     },
     {
       "key": "insurance_registry_policyNumber",
-      "value": ""
+      "value": "1122334"
+    },
+    {
+      "key": "insurance_registry_fullName",
+      "value": "Mayura D"
+    },
+    {
+      "key": "insurance_registry_dob",
+      "value": "2025-01-01"
     },
     {
       "key": "insurance_registry_osid",
