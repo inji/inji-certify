@@ -159,60 +159,6 @@
             }
           },
           "response": []
-        },
-        {
-          "name": "4. Update OIDC",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Validate clientId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.clientId).to.eql(pm.environment.get(\"clientId\"));\n});\n\npm.test(\"Validate status\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.status).to.eql(\"ACTIVE\");\n});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{authToken}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "PUT",
-            "header": [
-              {
-                "key": "X-XSRF-TOKEN",
-                "value": "{{csrf_token}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n            \"{{redirectionUrl}}\"\n        ],\n        \"userClaims\": [\n            \"name\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:knowledge\"\n        ],\n        \"status\": \"ACTIVE\",\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientName\": \"Sunbird Insurance Wallet\",\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{url}}/client-mgmt/oidc-client/{{clientId}}",
-              "host": [
-                "{{url}}"
-              ],
-              "path": [
-                "client-mgmt",
-                "oidc-client",
-                "{{clientId}}"
-              ]
-            }
-          },
-          "response": []
         }
       ]
     },
