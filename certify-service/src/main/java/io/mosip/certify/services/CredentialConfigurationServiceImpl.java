@@ -364,7 +364,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         CredentialConfig credentialConfig = optional.get();
         credentialConfigMapper.updateEntityFromDto(credentialConfigurationDTO, credentialConfig);
 
-        validateCredentialConfiguration(credentialConfigMapper.toDto(credentialConfig), false);
+        CredentialConfigurationDTO mergedConfig = credentialConfigMapper.toDto(credentialConfig);
+        validateCredentialConfiguration(mergedConfig, false);
+        credentialConfig.setSignatureAlgo(mergedConfig.getSignatureAlgo());
 
         validateAndApplyCredentialConfigMetadataAttributes(credentialConfigurationDTO, credentialConfig, false);
 
