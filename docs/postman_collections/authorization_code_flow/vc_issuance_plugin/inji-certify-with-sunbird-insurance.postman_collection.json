@@ -201,7 +201,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"policyNumber\": \"1122334\",\n    \"policyName\": \"Start Insurance Gold Premium\",\n    \"policyExpiresOn\": \"2033-04-20T20:48:17.684Z\",\n    \"policyIssuedOn\": \"2023-04-20T20:48:17.684Z\",\n    \"fullName\": \"Aarav Sharma\",\n    \"dob\": \"2025-01-01\",\n    \"benefits\": [\n        \"Critical Surgery\",\n        \"Full body checkup\"\n    ],\n    \"gender\": \"Female\",\n    \"mobile\": \"0123456789\",\n    \"email\": \"aarav.sharma@example.com\"\n}",
+              "raw": "{\n    \"policyNumber\": \"1122334\",\n    \"policyName\": \"Start Insurance Gold Premium\",\n    \"policyExpiresOn\": \"2033-04-20T20:48:17.684Z\",\n    \"policyIssuedOn\": \"2023-04-20T20:48:17.684Z\",\n    \"fullName\": \"Aarav Sharma\",\n    \"dob\": \"2025-01-01\",\n    \"benefits\": [\n        \"Critical Surgery\",\n        \"Full body checkup\"\n    ],\n    \"gender\": \"Male\",\n    \"mobile\": \"0123456789\",\n    \"email\": \"aarav.sharma@example.com\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
