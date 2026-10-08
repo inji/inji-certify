@@ -2056,7 +2056,14 @@ public static void configureOtp() {
 		currentTestCaseName = testCaseName;
 		
 		//When the captcha is enabled we cannot execute the test case as we can not generate the captcha token
-		if (isCaptchaEnabled() == true) {
+		boolean captchaEnabled = false;
+		try {
+			captchaEnabled = isCaptchaEnabled();
+		} catch (NullPointerException e) {
+			// eSignet actuator unreachable in CI — treat captcha as disabled
+			captchaEnabled = false;
+		}
+		if (captchaEnabled) {
 			GlobalMethods.reportCaptchaStatus(GlobalConstants.CAPTCHA_ENABLED, true);
 			throw new SkipException(GlobalConstants.CAPTCHA_ENABLED_MESSAGE);
 		}
