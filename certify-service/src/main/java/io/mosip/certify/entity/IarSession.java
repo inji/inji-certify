@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "iar_session")
@@ -68,7 +69,7 @@ public class IarSession {
 
     @PrePersist
     protected void onCreate() {
-        createdDtimes = LocalDateTime.now();
+        createdDtimes = LocalDateTime.now(ZoneOffset.UTC);
     }
 }
 

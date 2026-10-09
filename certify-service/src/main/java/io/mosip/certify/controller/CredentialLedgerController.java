@@ -17,8 +17,12 @@ import java.util.List;
 @RestController
 public class CredentialLedgerController {
 
+    private final CredentialLedgerService credentialLedgerService;
+
     @Autowired
-    private CredentialLedgerService credentialLedgerService;
+    public CredentialLedgerController(CredentialLedgerService credentialLedgerService) {
+        this.credentialLedgerService = credentialLedgerService;
+    }
 
     @PostMapping(value = "/ledger-search", produces = "application/json")
     public ResponseEntity<List<CredentialStatusResponse>> searchCredentials(

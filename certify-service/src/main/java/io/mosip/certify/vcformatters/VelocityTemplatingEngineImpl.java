@@ -41,19 +41,25 @@ import static io.mosip.certify.core.constants.Constants.*;
 public class VelocityTemplatingEngineImpl implements VCFormatter {
     VelocityEngine engine;
 
-    @Autowired
-    CredentialConfigRepository credentialConfigRepository;
-    @Autowired
-    RenderingTemplateService renderingTemplateService;
+    private final CredentialConfigRepository credentialConfigRepository;
+    private final RenderingTemplateService renderingTemplateService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Value("${mosip.certify.data-provider-plugin.vc-expiry-duration:P730d}")
     String defaultExpiryDuration;
 
     @Value("${mosip.certify.data-provider-plugin.id-field-prefix-uri:}")
     String idPrefix;
+
+    @Autowired
+    public VelocityTemplatingEngineImpl(CredentialConfigRepository credentialConfigRepository,
+                                        RenderingTemplateService renderingTemplateService,
+                                        ObjectMapper objectMapper) {
+        this.credentialConfigRepository = credentialConfigRepository;
+        this.renderingTemplateService = renderingTemplateService;
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void initialize() {

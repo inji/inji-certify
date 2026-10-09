@@ -22,8 +22,12 @@ import java.util.Map;
 @Component
 public class Ed25519Signature2020ProofGenerator implements ProofGenerator {
 
+    private final SignatureServicev2 signatureService;
+
     @Autowired
-    SignatureServicev2 signatureService;
+    public Ed25519Signature2020ProofGenerator(SignatureServicev2 signatureService) {
+        this.signatureService = signatureService;
+    }
 
     Canonicalizer canonicalizer = new URDNA2015Canonicalizer();
 

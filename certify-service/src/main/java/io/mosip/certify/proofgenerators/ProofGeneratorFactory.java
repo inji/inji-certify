@@ -8,8 +8,12 @@ import java.util.Optional;
 
 @Component
 public class ProofGeneratorFactory {
+    private final List<ProofGenerator> proofGenerators;
+
     @Autowired
-    private List<ProofGenerator> proofGenerators;
+    public ProofGeneratorFactory(List<ProofGenerator> proofGenerators) {
+        this.proofGenerators = proofGenerators;
+    }
 
     /**
      * Factory method to create ProofGenerator based on the given algorithm name.

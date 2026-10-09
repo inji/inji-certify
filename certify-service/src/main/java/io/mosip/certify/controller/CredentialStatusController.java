@@ -16,11 +16,16 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/credentials")
 public class CredentialStatusController {
 
-    @Autowired
-    private StatusListCredentialService statusListCredentialService;
+    private final StatusListCredentialService statusListCredentialService;
+
+    private final CredentialStatusService credentialStatusService;
 
     @Autowired
-    private CredentialStatusService credentialStatusService;
+    public CredentialStatusController(StatusListCredentialService statusListCredentialService,
+                                      CredentialStatusService credentialStatusService) {
+        this.statusListCredentialService = statusListCredentialService;
+        this.credentialStatusService = credentialStatusService;
+    }
 
     /**
      * Get Status List Credential by ID with optional fragment support

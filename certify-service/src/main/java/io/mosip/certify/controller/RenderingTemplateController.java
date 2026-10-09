@@ -23,8 +23,12 @@ import java.util.concurrent.TimeUnit;
 public class RenderingTemplateController {
     @Value("${mosip.certify.rendering-template.cache-max-age-days:1}")
     Integer maxAgeDays;
+    private final RenderingTemplateService renderingTemplateService;
+
     @Autowired
-    RenderingTemplateService renderingTemplateService;
+    public RenderingTemplateController(RenderingTemplateService renderingTemplateService) {
+        this.renderingTemplateService = renderingTemplateService;
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<String> serveSvgTemplate(@PathVariable String id) throws RenderingTemplateException {

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.vcformatters.VCFormatter;
 import io.mosip.kernel.signature.service.SignatureService;
+import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -24,14 +25,17 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class MDocCredential extends Credential {
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
+
+    private final MDocProcessor mDocProcessor;
 
     @Autowired
-    private MDocProcessor mDocProcessor;
-
-    public MDocCredential(VCFormatter vcFormatter, SignatureService signatureService) {
-        super(vcFormatter, signatureService);
+    public MDocCredential(VCFormatter vcFormatter, SignatureService signatureService,
+                          CoseSignatureService coseSignatureService, ObjectMapper objectMapper,
+                          MDocProcessor mDocProcessor) {
+        super(vcFormatter, signatureService, coseSignatureService);
+        this.objectMapper = objectMapper;
+        this.mDocProcessor = mDocProcessor;
     }
 
     @Override

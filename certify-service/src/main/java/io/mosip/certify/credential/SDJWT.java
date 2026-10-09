@@ -26,6 +26,7 @@ import io.mosip.certify.utils.SDJsonUtils;
 import io.mosip.certify.vcformatters.VCFormatter;
 import io.mosip.kernel.signature.dto.JWTSignatureResponseDto;
 import io.mosip.kernel.signature.service.SignatureService;
+import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -33,13 +34,14 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class SDJWT extends Credential{
 
-    @Autowired
-    public SDJWT(VCFormatter vcFormatter, SignatureService signatureService){
-        super(vcFormatter, signatureService);
-    }
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    private ObjectMapper objectMapper;
+    public SDJWT(VCFormatter vcFormatter, SignatureService signatureService,
+                 CoseSignatureService coseSignatureService, ObjectMapper objectMapper){
+        super(vcFormatter, signatureService, coseSignatureService);
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * This method returns true when a format can be handled.

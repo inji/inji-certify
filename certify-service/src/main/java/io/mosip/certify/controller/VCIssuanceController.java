@@ -18,11 +18,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/issuance")
 public class VCIssuanceController {
 
-    @Autowired
-    private VCIssuanceService vcIssuanceService;
+    private final VCIssuanceService vcIssuanceService;
+
+    private final MessageSource messageSource;
 
     @Autowired
-    MessageSource messageSource;
+    public VCIssuanceController(VCIssuanceService vcIssuanceService,
+                                MessageSource messageSource) {
+        this.vcIssuanceService = vcIssuanceService;
+        this.messageSource = messageSource;
+    }
 
     /**
      * 1. The credential Endpoint MUST accept Access Tokens

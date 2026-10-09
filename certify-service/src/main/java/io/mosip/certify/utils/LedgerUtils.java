@@ -17,8 +17,12 @@ import java.util.*;
 @Component
 public class LedgerUtils {
 
+    private final IndexedAttributesConfig indexedAttributesConfig;
+
     @Autowired
-    private IndexedAttributesConfig indexedAttributesConfig;
+    public LedgerUtils(IndexedAttributesConfig indexedAttributesConfig) {
+        this.indexedAttributesConfig = indexedAttributesConfig;
+    }
 
     /**
      * Process extracted values to handle complex types appropriately

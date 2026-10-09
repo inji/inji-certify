@@ -36,8 +36,7 @@ import java.util.Map;
 @Profile(value = {"!test"})
 public class SecurityConfig {
 
-    @Autowired
-    private LocalAuthenticationEntryPoint localAuthenticationEntryPoint;
+    private final LocalAuthenticationEntryPoint localAuthenticationEntryPoint;
 
     @Value("${server.servlet.path}")
     private String servletPath;
@@ -62,6 +61,11 @@ public class SecurityConfig {
 
     @Value("${mosip.certify.security.cors-enabled-get-method-urls:}")
     private String corsEnabledGetMethodUrls;
+
+    @Autowired
+    public SecurityConfig(LocalAuthenticationEntryPoint localAuthenticationEntryPoint) {
+        this.localAuthenticationEntryPoint = localAuthenticationEntryPoint;
+    }
 
     @Bean
     public SecurityFilterChain web(HttpSecurity http) throws Exception {

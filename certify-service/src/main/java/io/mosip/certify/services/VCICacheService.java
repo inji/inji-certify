@@ -21,8 +21,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class VCICacheService {
 
-    @Autowired
-    private CacheManager cacheManager;
+    private final CacheManager cacheManager;
 
     @Value("${spring.cache.type:simple}")
     private String cacheType;
@@ -30,6 +29,11 @@ public class VCICacheService {
     private static final String VCISSUANCE_CACHE = "vcissuance";
     private static final String PRE_AUTH_TXN_CACHE = "preAuthCacheTxn";
     private static final String NONCE_CACHE = "nonce";
+
+    @Autowired
+    public VCICacheService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
 
     @PostConstruct
     public void validateCacheConfiguration() {

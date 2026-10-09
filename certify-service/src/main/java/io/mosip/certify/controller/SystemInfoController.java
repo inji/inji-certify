@@ -31,17 +31,23 @@ import java.util.Optional;
 @RequestMapping("/system-info")
 public class SystemInfoController {
 
-    @Autowired
-    private KeymanagerService keymanagerService;
+    private final KeymanagerService keymanagerService;
 
-    @Autowired
-    private PartnerCertificateManagerService partnerCertificateManagerService;
+    private final PartnerCertificateManagerService partnerCertificateManagerService;
     
-    @Autowired
-    AuditPlugin auditWrapper;
+    private final AuditPlugin auditWrapper;
     
     @Value("${mosip.certify.audit.claim-name:preferred_username}")
     private String claimName;
+
+    @Autowired
+    public SystemInfoController(KeymanagerService keymanagerService,
+                                PartnerCertificateManagerService partnerCertificateManagerService,
+                                AuditPlugin auditWrapper) {
+        this.keymanagerService = keymanagerService;
+        this.partnerCertificateManagerService = partnerCertificateManagerService;
+        this.auditWrapper = auditWrapper;
+    }
 
     @GetMapping(value = "/certificate", produces = "application/json")
     public ResponseWrapper<KeyPairGenerateResponseDto> getCertificate(

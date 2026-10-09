@@ -27,14 +27,19 @@ import java.util.Map;
 @Component
 public class AccessTokenJwtUtil {
 
-    @Autowired
-    private SignatureService signatureService;
+    private final SignatureService signatureService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Value("${mosip.certify.cnonce-expire-seconds:300}")
     private int cNonceExpireSeconds;
+
+    @Autowired
+    public AccessTokenJwtUtil(SignatureService signatureService,
+                              ObjectMapper objectMapper) {
+        this.signatureService = signatureService;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Generate a signed JWT access token using keymanager service

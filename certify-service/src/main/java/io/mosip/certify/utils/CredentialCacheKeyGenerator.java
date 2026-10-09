@@ -17,11 +17,16 @@ import static io.mosip.certify.core.constants.Constants.DELIMITER;
 public class CredentialCacheKeyGenerator {
 
     private static final Logger log = LoggerFactory.getLogger(CredentialCacheKeyGenerator.class);
-    @Autowired
-    private CredentialConfigRepository credentialConfigRepository;
+    private final CredentialConfigRepository credentialConfigRepository;
+
+    private final CacheManager cacheManager;
 
     @Autowired
-    private CacheManager cacheManager;
+    public CredentialCacheKeyGenerator(CredentialConfigRepository credentialConfigRepository,
+                                       CacheManager cacheManager) {
+        this.credentialConfigRepository = credentialConfigRepository;
+        this.cacheManager = cacheManager;
+    }
 
     public String generateKeyFromCredentialConfigKeyId(String credentialConfigKeyId) {
         if (credentialConfigKeyId == null) {

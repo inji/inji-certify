@@ -26,8 +26,12 @@ import java.util.Map;
 @Component
 public class EcdsaKoblitzSignature2016ProofGenerator implements ProofGenerator {
 
+    private final SignatureService signatureService;
+
     @Autowired
-    SignatureService signatureService;
+    public EcdsaKoblitzSignature2016ProofGenerator(SignatureService signatureService) {
+        this.signatureService = signatureService;
+    }
 
     Canonicalizer canonicalizer = new URDNA2015Canonicalizer();
 

@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Pre-Authorized Code API", description = "Endpoints for Pre-Authorized Code Flow")
 public class PreAuthorizedCodeController {
 
+    private final PreAuthorizedCodeService preAuthorizedCodeService;
+
     @Autowired
-    private PreAuthorizedCodeService preAuthorizedCodeService;
+    public PreAuthorizedCodeController(PreAuthorizedCodeService preAuthorizedCodeService) {
+        this.preAuthorizedCodeService = preAuthorizedCodeService;
+    }
 
     @PostMapping(value = "/pre-authorized-data", produces = "application/json")
     public PreAuthorizedResponse generatePreAuthorizedCode(@Valid @RequestBody PreAuthorizedRequest request) {

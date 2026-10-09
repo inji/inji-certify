@@ -18,14 +18,20 @@ import java.util.Map;
 @RestController
 public class WellKnownController {
 
-    @Autowired
-    private CredentialConfigurationService credentialConfigurationService;
+    private final CredentialConfigurationService credentialConfigurationService;
+
+    private final VCIssuanceService vcIssuanceService;
+
+    private final JwksService jwksService;
 
     @Autowired
-    private VCIssuanceService vcIssuanceService;
-
-    @Autowired
-    private JwksService jwksService;
+    public WellKnownController(CredentialConfigurationService credentialConfigurationService,
+                               VCIssuanceService vcIssuanceService,
+                               JwksService jwksService) {
+        this.credentialConfigurationService = credentialConfigurationService;
+        this.vcIssuanceService = vcIssuanceService;
+        this.jwksService = jwksService;
+    }
 
     @GetMapping(value = "/.well-known/openid-credential-issuer", produces = "application/json")
     public CredentialIssuerMetadataDTO getCredentialIssuerMetadata() {

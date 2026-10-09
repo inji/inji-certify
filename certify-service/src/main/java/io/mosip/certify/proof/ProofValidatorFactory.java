@@ -10,8 +10,12 @@ import java.util.List;
 @Component
 public class ProofValidatorFactory {
 
+    private final List<ProofValidator> proofValidators;
+
     @Autowired
-    private List<ProofValidator> proofValidators;
+    public ProofValidatorFactory(List<ProofValidator> proofValidators) {
+        this.proofValidators = proofValidators;
+    }
 
     public ProofValidator getProofValidator(String proofType) {
        return proofValidators.stream()

@@ -17,11 +17,16 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class CredentialStatusServiceImpl implements CredentialStatusService {
-    @Autowired
-    private CredentialStatusTransactionRepository credentialStatusTransactionRepository;
+    private final CredentialStatusTransactionRepository credentialStatusTransactionRepository;
+
+    private final StatusListCredentialRepository statusListCredentialRepository;
 
     @Autowired
-    private StatusListCredentialRepository statusListCredentialRepository;
+    public CredentialStatusServiceImpl(CredentialStatusTransactionRepository credentialStatusTransactionRepository,
+                                       StatusListCredentialRepository statusListCredentialRepository) {
+        this.credentialStatusTransactionRepository = credentialStatusTransactionRepository;
+        this.statusListCredentialRepository = statusListCredentialRepository;
+    }
 
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {

@@ -3,6 +3,7 @@ package io.mosip.certify.core.config;
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -14,10 +15,13 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class LocalAuthenticationEntryPoint implements AuthenticationEntryPoint {
-    @Autowired
-    private HandlerExceptionResolver handlerExceptionResolver;
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
-    public LocalAuthenticationEntryPoint() {
+    // Several HandlerExceptionResolver beans exist; the field name used to pick this one.
+    @Autowired
+    public LocalAuthenticationEntryPoint(
+            @Qualifier("handlerExceptionResolver") HandlerExceptionResolver handlerExceptionResolver) {
+        this.handlerExceptionResolver = handlerExceptionResolver;
     }
 
     @Override
