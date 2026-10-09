@@ -17,6 +17,7 @@ import io.mosip.certify.validators.credentialconfigvalidators.CredentialConfigMe
 import io.mosip.certify.validators.credentialconfigvalidators.LdpVcCredentialConfigValidator;
 import io.mosip.certify.validators.credentialconfigvalidators.MsoMdocCredentialConfigValidator;
 import io.mosip.certify.validators.credentialconfigvalidators.QrSettingsValidator;
+import io.mosip.certify.validators.credentialconfigvalidators.SdClaimValidator;
 import io.mosip.certify.validators.credentialconfigvalidators.SdJwtCredentialConfigValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -114,6 +115,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private void validateCredentialConfiguration(CredentialConfigurationDTO credentialConfig, boolean shouldCheckDuplicate) {
 
         validateCommonCredentialConfig(credentialConfig.getCredentialStatusPurposes(),credentialConfig.getVcTemplate(),credentialConfig.getQrSettings(),credentialConfig.getQrSignatureAlgo());
+
+        // sdClaim is not specific to one format, so it is checked ahead of the format branch.
+        SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim());
 
         switch (credentialConfig.getCredentialFormat()) {
             case VCFormats.LDP_VC:
