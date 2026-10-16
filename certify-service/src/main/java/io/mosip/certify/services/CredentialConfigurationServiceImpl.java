@@ -68,8 +68,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     @Value("#{${mosip.certify.credential-config.cryptographic-binding-methods-supported}}")
     private LinkedHashMap<String, List<String>> cryptographicBindingMethodsSupportedMap;
 
-    @Value("#{${mosip.certify.credential-config.credential-signing-alg-values-supported}}")
-    private LinkedHashMap<String, List<String>> credentialSigningAlgValuesSupportedMap;
+    @Autowired
+    private CredentialConfigMetadataResolver.DeclaredSigningAlgs declaredSigningAlgs;
 
     @Value("#{${mosip.certify.credential-config.proof-types-supported}}")
     private LinkedHashMap<String, Object> proofTypesSupported;
@@ -93,7 +93,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         validateCredentialConfiguration(credentialConfigurationDTO, true);
 
         CredentialConfig credentialConfig = credentialConfigMapper.toEntity(credentialConfigurationDTO);
-        validateAndApplyCredentialConfigMetadataAttributes(credentialConfigurationDTO, credentialConfig, true);
+        validateAndApplyCredentialConfigMetadataAttributes(credentialConfigurationDTO, credentialConfig);
         return saveCredentialConfiguration(credentialConfig);
     }
 
@@ -127,7 +127,11 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 break;
             case VCFormats.MSO_MDOC:
                 if (!MsoMdocCredentialConfigValidator.isValidCheck(credentialConfig)) {
-                    throw new CertifyException(ErrorConstants.MSO_MDOC_MANDATORY_FIELDS_MISSING, "Fields doctype and signatureCryptoSuite are mandatory for the mso_mdoc format.");
+                    throw new CertifyException(ErrorConstants.MSO_MDOC_MANDATORY_FIELDS_MISSING, "Fields doctype and signatureAlgo are mandatory for the mso_mdoc format.");
+                }
+                // An mdoc's issuerAuth is signed with signatureAlgo alone, so a crypto suite has no meaning here.
+                if (credentialConfig.getSignatureCryptoSuite() != null) {
+                    throw new CertifyException(ErrorConstants.INVALID_REQUEST, "signatureCryptoSuite is not supported for the mso_mdoc format, which is signed with signatureAlgo.");
                 }
                 if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
@@ -183,16 +187,19 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         String signatureCryptoSuite = credentialConfig.getSignatureCryptoSuite();
         String signatureAlgo = credentialConfig.getSignatureAlgo();
 
+        // The signing algorithm is mandatory and is never filled in from the deployment configuration.
+        if(signatureAlgo == null || signatureAlgo.isEmpty()) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "signatureAlgo is mandatory and must not be empty.");
+        }
+
         if(signatureCryptoSuite != null) {
-            if(!credentialSigningAlgValuesSupportedMap.containsKey(signatureCryptoSuite)) {
-                throw new CertifyException(ErrorConstants.UNSUPPORTED_CRYPTO_SUITE, "Unsupported signature crypto suite: " + signatureCryptoSuite);
+            if(!declaredSigningAlgs.byCryptoSuite().containsKey(signatureCryptoSuite)) {
+                throw new CertifyException(ErrorConstants.UNSUPPORTED_CRYPTO_SUITE,
+                        CredentialConfigMetadataValidator.unsupportedCryptoSuiteMessage(signatureCryptoSuite, declaredSigningAlgs.byCryptoSuite()));
             }
 
-            List<String> signatureAlgos = credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite);
-            if(signatureAlgo == null ) {
-                signatureAlgo = signatureAlgos.getFirst();
-                credentialConfig.setSignatureAlgo(signatureAlgo);
-            } else if(!signatureAlgos.contains(signatureAlgo)) {
+            List<String> signatureAlgos = declaredSigningAlgs.byCryptoSuite().get(signatureCryptoSuite);
+            if(!signatureAlgos.contains(signatureAlgo)) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "Signature algorithm " + signatureAlgo + " is not supported for the crypto suite: " + signatureCryptoSuite);
             }
         }
@@ -215,100 +222,77 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     }
 
     /**
-     * Resolves cryptographic_binding_methods_supported, credential_signing_alg_values_supported and
-     * proof_types_supported onto the entity.
+     * Validates cryptographic_binding_methods_supported, credential_signing_alg_values_supported and
+     * proof_types_supported and stores them on the entity.
      * <p>
-     * An attribute present in the request is validated against the deployment configuration, which acts
-     * as the allow-list, and stored exactly as requested. An omitted attribute falls back to the value
-     * derived from configuration on add, and to the previously stored value on update, so an earlier
-     * explicit selection is never silently re-derived away.
+     * All three are mandatory on add and on update. The deployment configuration is the allow-list every
+     * value is checked against, and never a source of values: nothing is filled in from it, so what a
+     * configuration advertises is always what the issuer declared for it.
+     * <p>
+     * credential_signing_alg_values_supported is not taken from the request. It is what the credential is
+     * signed with: the crypto suite for ldp_vc, the signatureAlgo for every other format, so what is
+     * advertised and what is used to sign can never disagree.
+     * <p>
+     * A value listed more than once is kept once, in the order first given, and the request is not
+     * rejected for it. This happens before validation, so a repeated value is also reported only once.
      * <p>
      * Every failure across all three attributes is collected before anything is stored, so the caller
      * sees the whole payload's problems at once and nothing is partially saved.
      */
-    private void validateAndApplyCredentialConfigMetadataAttributes(CredentialConfigurationDTO request, CredentialConfig credentialConfig, boolean isAdd) {
-        List<String> requestedBindingMethods = request.getCryptographicBindingMethodsSupported();
-        List<String> requestedSigningAlgs = request.getCredentialSigningAlgValuesSupported();
-        Map<String, Object> requestedProofTypes = request.getProofTypesSupported();
-
-        List<String> storedBindingMethods = credentialConfig.getCryptographicBindingMethodsSupported();
-        Map<String, Object> storedProofTypes = credentialConfig.getProofTypesSupported();
-        List<String> rawStoredSigningAlgs = credentialConfig.getCredentialSigningAlgValuesSupported();
-
-        // A retained value is validated too, so a value the deployment has stopped declaring surfaces on
-        // the next update rather than drifting silently. A value that was only ever derived is not, since
-        // it came from the configuration in the first place and there is nothing for an issuer to correct.
-        boolean retainsBindingMethods = requestedBindingMethods == null && !isAdd
-                && storedBindingMethods != null && !storedBindingMethods.isEmpty();
-        boolean retainsSigningAlgs = requestedSigningAlgs == null && !isAdd
-                && rawStoredSigningAlgs != null && rawStoredSigningAlgs.stream().anyMatch(Objects::nonNull);
-        boolean retainsProofTypes = requestedProofTypes == null && !isAdd
-                && storedProofTypes != null && !storedProofTypes.isEmpty();
-
-        // Read as-is, except that a crypto suite name written before this change is corrected to the
-        // algorithms it stands for. What the configuration advertises is unchanged either way.
-        List<String> storedSigningAlgs = retainsSigningAlgs
-                ? CredentialConfigMetadataResolver.resolveStoredSigningAlgs(credentialConfig, credentialSigningAlgValuesSupportedMap)
-                : null;
-
-        List<String> providedBindingMethods =
-                providedValue(requestedBindingMethods, storedBindingMethods, retainsBindingMethods);
-        List<String> providedSigningAlgs =
-                providedValue(requestedSigningAlgs, storedSigningAlgs, retainsSigningAlgs);
-        Map<String, Object> providedProofTypes =
-                providedValue(requestedProofTypes, storedProofTypes, retainsProofTypes);
-
-        // What this configuration will actually advertise: the request's selection, or the algorithms
-        // derived from configuration when it made none.
-        List<String> effectiveSigningAlgs = providedSigningAlgs != null
-                ? providedSigningAlgs
-                : CredentialConfigMetadataResolver.deriveSigningAlgs(credentialConfig.getSignatureCryptoSuite(),
-                        credentialConfig.getSignatureAlgo(), credentialSigningAlgValuesSupportedMap);
+    private void validateAndApplyCredentialConfigMetadataAttributes(CredentialConfigurationDTO request, CredentialConfig credentialConfig) {
+        List<String> bindingMethods = getDistinct(request.getCryptographicBindingMethodsSupported());
+        String signatureAlgo = credentialConfig.getSignatureAlgo();
+        Map<String, Object> proofTypes = getDistinctProofSigningAlgs(request.getProofTypesSupported());
 
         List<io.mosip.certify.core.dto.Error> errors = new ArrayList<>();
-        if (providedBindingMethods != null) {
-            CredentialConfigMetadataValidator.validateBindingMethods(providedBindingMethods,
-                    credentialConfig.getCredentialFormat(), cryptographicBindingMethodsSupportedMap, errors);
+        CredentialConfigMetadataValidator.validateBindingMethods(bindingMethods,
+                credentialConfig.getCredentialFormat(), cryptographicBindingMethodsSupportedMap, errors);
+        int errorsBeforeSigningAlg = errors.size();
+        CredentialConfigMetadataValidator.validateSigningAlg(signatureAlgo, credentialConfig.getCredentialFormat(),
+                credentialConfig.getSignatureCryptoSuite(), declaredSigningAlgs.byCryptoSuite(),
+                declaredSigningAlgs.byFormat(), keyAliasMapper, errors);
+        // An algorithm already rejected by the allow-list is not reported a second time by the COSE check.
+        if (errors.size() == errorsBeforeSigningAlg) {
+            CredentialConfigMetadataValidator.validateCoseSigningAlg(signatureAlgo,
+                    credentialConfig.getCredentialFormat(), COSE_ALGORITHM_INTEGER_MAP.keySet(), errors);
         }
-        if (providedSigningAlgs != null) {
-            CredentialConfigMetadataValidator.validateSigningAlgs(providedSigningAlgs,
-                    credentialConfig.getSignatureCryptoSuite(), credentialSigningAlgValuesSupportedMap,
-                    keyAliasMapper, errors);
-        }
-        // A derived value is not checked against configuration - that is the allow-list - but the COSE
-        // constraint belongs to the mso_mdoc format, which configuration can violate, so it is checked
-        // whoever chose the algorithms.
-        CredentialConfigMetadataValidator.validateCoseSigningAlgs(effectiveSigningAlgs,
-                credentialConfig.getCredentialFormat(), COSE_ALGORITHM_INTEGER_MAP.keySet(), errors);
-        if (providedProofTypes != null) {
-            CredentialConfigMetadataValidator.validateProofTypes(providedProofTypes, proofTypesSupported, errors);
-        }
+        CredentialConfigMetadataValidator.validateProofTypes(proofTypes, proofTypesSupported, errors);
 
         if (!errors.isEmpty()) {
             throw new CredentialConfigValidationException(errors);
         }
 
-        // Whatever was provided is stored; only an attribute nobody provided falls back to configuration.
-        credentialConfig.setCryptographicBindingMethodsSupported(providedBindingMethods != null
-                ? providedBindingMethods
-                : CredentialConfigMetadataResolver.deriveBindingMethods(credentialConfig.getCredentialFormat(),
-                        cryptographicBindingMethodsSupportedMap));
+        credentialConfig.setCryptographicBindingMethodsSupported(bindingMethods);
+        credentialConfig.setCredentialSigningAlgValuesSupported(
+                CredentialConfigMetadataResolver.resolveAdvertisedSigningAlgs(credentialConfig, declaredSigningAlgs.byCryptoSuite()));
+        credentialConfig.setProofTypesSupported(proofTypes);
+    }
 
-        credentialConfig.setCredentialSigningAlgValuesSupported(effectiveSigningAlgs);
-
-        // The derived default goes through the same resolution as a requested value, so a proof type the
-        // deployment declares without any signing algorithm cannot be stored by omitting the attribute.
-        credentialConfig.setProofTypesSupported(CredentialConfigMetadataResolver.resolveProofTypes(
-                providedProofTypes != null ? providedProofTypes : proofTypesSupported, proofTypesSupported));
+    private static <T> List<T> getDistinct(List<T> values) {
+        return values == null ? null : new ArrayList<>(new LinkedHashSet<>(values));
     }
 
     /**
-     * The value already provided for an attribute: by the request, or by the stored row when that value
-     * is being retained. Null when neither provided one and it will be derived from configuration, which
-     * is not validated - configuration is the allow-list, and checking it against itself proves nothing.
+     * The proof types with each proof_signing_alg_values_supported list de-duplicated. A proof type name
+     * cannot repeat, being a JSON object key. Any other shape is passed through unchanged for the
+     * validator to report.
      */
-    private static <T> T providedValue(T requested, T stored, boolean retains) {
-        return requested != null ? requested : (retains ? stored : null);
+    private static Map<String, Object> getDistinctProofSigningAlgs(Map<String, Object> proofTypes) {
+        if (proofTypes == null) {
+            return null;
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        proofTypes.forEach((proofType, detail) -> {
+            if (detail instanceof Map<?, ?> detailMap
+                    && detailMap.get(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED) instanceof List<?> algs) {
+                Map<Object, Object> distinctDetail = new LinkedHashMap<>(detailMap);
+                distinctDetail.put(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, getDistinct(algs));
+                result.put(proofType, distinctDetail);
+            } else {
+                result.put(proofType, detail);
+            }
+        });
+        return result;
     }
 
     @Override
@@ -316,14 +300,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
         CredentialConfig credentialConfig = getActiveCredentialConfig(credentialConfigKeyId);
 
         CredentialConfigurationDTO credentialConfigurationDTO = credentialConfigMapper.toDto(credentialConfig);
-        // All three are always returned, resolving the defaults for configurations that never set them.
+        // Both are always returned; the signing algorithm is returned as signatureAlgo. The stored values are
+        // returned as they are; a configuration created before these attributes were stored carries none,
+        // and keeps returning the values it always has.
         if (credentialConfigurationDTO.getCryptographicBindingMethodsSupported() == null) {
             credentialConfigurationDTO.setCryptographicBindingMethodsSupported(
                     CredentialConfigMetadataResolver.deriveBindingMethods(credentialConfig.getCredentialFormat(),
                             cryptographicBindingMethodsSupportedMap));
         }
-        credentialConfigurationDTO.setCredentialSigningAlgValuesSupported(
-                CredentialConfigMetadataResolver.resolveStoredSigningAlgs(credentialConfig, credentialSigningAlgValuesSupportedMap));
         Map<String, Object> storedProofTypes = credentialConfigurationDTO.getProofTypesSupported();
         credentialConfigurationDTO.setProofTypesSupported(CredentialConfigMetadataResolver.resolveProofTypes(
                 storedProofTypes == null || storedProofTypes.isEmpty() ? proofTypesSupported : storedProofTypes,
@@ -366,7 +350,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         validateCredentialConfiguration(credentialConfigMapper.toDto(credentialConfig), false);
 
-        validateAndApplyCredentialConfigMetadataAttributes(credentialConfigurationDTO, credentialConfig, false);
+        validateAndApplyCredentialConfigMetadataAttributes(credentialConfigurationDTO, credentialConfig);
 
         CredentialConfig savedConfig = credentialConfigRepository.save(credentialConfig);
         log.info("Updated credential configuration: {}", savedConfig.getConfigId());
@@ -475,9 +459,9 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
     private CredentialConfigurationSupportedDTO buildSupportedDTO(CredentialConfig credentialConfig) {
         CredentialConfigurationSupportedDTO dto = mapToSupportedDTO(credentialConfig);
-        // The values stored against this configuration are what gets advertised, so an issuer's
-        // explicit selection reaches wallets instead of being rebuilt from configuration.
-        List<String> algs = CredentialConfigMetadataResolver.resolveStoredSigningAlgs(credentialConfig, credentialSigningAlgValuesSupportedMap);
+        // The configuration advertises what it signs with - its crypto suite for ldp_vc, its algorithm
+        // otherwise - so a wallet is never told of something the credential is not actually signed with.
+        List<String> algs = CredentialConfigMetadataResolver.resolveAdvertisedSigningAlgs(credentialConfig, declaredSigningAlgs.byCryptoSuite());
         if (algs.isEmpty()) {
             algs = null;
         }

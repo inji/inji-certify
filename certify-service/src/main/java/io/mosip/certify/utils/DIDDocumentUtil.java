@@ -40,9 +40,7 @@ public class DIDDocumentUtil {
 
     private final KeymanagerService keymanagerService;
     private final CredentialConfigRepository credentialConfigRepository;
-
-    @Value("#{${mosip.certify.credential-config.credential-signing-alg-values-supported}}")
-    private LinkedHashMap<String, List<String>> credentialSigningAlgValuesSupportedMap;
+    private final CredentialConfigMetadataResolver.DeclaredSigningAlgs declaredSigningAlgs;
 
     private static final String MULTICODEC_PREFIX = "ed01";
     private static final String DID_CONTEXT = "https://www.w3.org/ns/did/v1";
@@ -56,9 +54,11 @@ public class DIDDocumentUtil {
     );
 
     public DIDDocumentUtil(KeymanagerService keymanagerService,
-                           CredentialConfigRepository credentialConfigRepository) {
+                           CredentialConfigRepository credentialConfigRepository,
+                           CredentialConfigMetadataResolver.DeclaredSigningAlgs declaredSigningAlgs) {
         this.keymanagerService = keymanagerService;
         this.credentialConfigRepository = credentialConfigRepository;
+        this.declaredSigningAlgs = declaredSigningAlgs;
     }
 
     public Map<String, Object> generateDIDDocument(String didUrl) {
@@ -303,7 +303,16 @@ public class DIDDocumentUtil {
                 configDetails.add(refId);
                 if (config.getSignatureAlgo() == null) {
                     String signatureCryptoSuite = config.getSignatureCryptoSuite();
-                    configDetails.add(credentialSigningAlgValuesSupportedMap.get(signatureCryptoSuite).getFirst());
+                    List<String> algs = signatureCryptoSuite == null ? null
+                            : declaredSigningAlgs.byCryptoSuite().get(signatureCryptoSuite);
+                    // One configuration with no resolvable algorithm is left out rather than failing the
+                    // whole DID document, as the issuer metadata does.
+                    if (algs == null || algs.isEmpty()) {
+                        log.error("Credential configuration {} is left out of the DID document: no signing algorithm is declared for its crypto suite {}",
+                                config.getCredentialConfigKeyId(), signatureCryptoSuite);
+                        continue;
+                    }
+                    configDetails.add(algs.getFirst());
                 } else {
                     configDetails.add(config.getSignatureAlgo());
                 }
