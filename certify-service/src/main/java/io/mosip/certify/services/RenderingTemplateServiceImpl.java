@@ -17,8 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class RenderingTemplateServiceImpl implements RenderingTemplateService {
+    private final RenderingTemplateRepository renderTemplateRepository;
+
     @Autowired
-    RenderingTemplateRepository renderTemplateRepository;
+    public RenderingTemplateServiceImpl(RenderingTemplateRepository renderTemplateRepository) {
+        this.renderTemplateRepository = renderTemplateRepository;
+    }
 
     @Override
     @Cacheable(cacheNames="renderTemplate", key="#id")

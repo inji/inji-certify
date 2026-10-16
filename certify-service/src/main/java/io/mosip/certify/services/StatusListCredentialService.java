@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 
 /**
@@ -35,17 +36,13 @@ import java.util.*;
 @Service
 public class StatusListCredentialService {
 
-    @Autowired
-    private StatusListCredentialRepository statusListCredentialRepository;
+    private final StatusListCredentialRepository statusListCredentialRepository;
 
-    @Autowired
-    private VCFormatter vcFormatter;
+    private final VCFormatter vcFormatter;
 
-    @Autowired
-    private CredentialFactory credentialFactory;
+    private final CredentialFactory credentialFactory;
 
-    @Autowired
-    private DatabaseStatusListIndexProvider indexProvider;
+    private final DatabaseStatusListIndexProvider indexProvider;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -70,6 +67,17 @@ public class StatusListCredentialService {
 
     @Value("${mosip.certify.status-list.key-manager-ref-id:ED25519_SIGN}")
     private String statusListKeyManagerRefId;
+
+    @Autowired
+    public StatusListCredentialService(StatusListCredentialRepository statusListCredentialRepository,
+                                       VCFormatter vcFormatter,
+                                       CredentialFactory credentialFactory,
+                                       DatabaseStatusListIndexProvider indexProvider) {
+        this.statusListCredentialRepository = statusListCredentialRepository;
+        this.vcFormatter = vcFormatter;
+        this.credentialFactory = credentialFactory;
+        this.indexProvider = indexProvider;
+    }
 
     public String getStatusListCredential(String id) throws CertifyException {
         log.info("Processing status list credential request for ID: {}", id);
@@ -171,7 +179,7 @@ public class StatusListCredentialService {
             statusListCredential.setStatusPurpose(statusPurpose);
             statusListCredential.setCapacityInKB(statusListSizeInKB);
             statusListCredential.setCredentialStatus(StatusListCredential.CredentialStatus.AVAILABLE);
-            statusListCredential.setCreatedDtimes(LocalDateTime.now());
+            statusListCredential.setCreatedDtimes(LocalDateTime.now(ZoneOffset.UTC));
 
             // Save to database
             StatusListCredential savedCredential = statusListCredentialRepository.saveAndFlush(statusListCredential);

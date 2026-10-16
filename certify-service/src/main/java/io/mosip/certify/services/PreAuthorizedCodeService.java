@@ -314,9 +314,9 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
-        // Atomically claim the pre-authorized code
-        boolean claimed = vciCacheService.claimPreAuthCode(request.getPre_authorized_code());
-        if (!claimed) {
+        // Atomically claim the pre-authorized code. A code with no stored data can never be
+        // claimed, so it is refused the same way before any of its fields are read.
+        if (codeData == null || !vciCacheService.claimPreAuthCode(request.getPre_authorized_code())) {
             log.error("Pre-authorized code already used or invalid");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used  or invalid");
         }

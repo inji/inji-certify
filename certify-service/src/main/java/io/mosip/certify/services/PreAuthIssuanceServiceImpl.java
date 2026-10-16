@@ -18,10 +18,15 @@ import java.util.Map;
 @ConditionalOnProperty(value = "mosip.certify.integration.data-provider-plugin", havingValue = "PreAuthDataProviderPlugin")
 public class PreAuthIssuanceServiceImpl implements DataProviderPlugin {
 
+    private final VCICacheService vciCacheService;
+    private final ParsedAccessToken parsedAccessToken;
+
     @Autowired
-    private VCICacheService vciCacheService;
-    @Autowired
-    private ParsedAccessToken parsedAccessToken;
+    public PreAuthIssuanceServiceImpl(VCICacheService vciCacheService,
+                                      ParsedAccessToken parsedAccessToken) {
+        this.vciCacheService = vciCacheService;
+        this.parsedAccessToken = parsedAccessToken;
+    }
 
     @Override
     public JSONObject fetchData(Map<String, Object> identityDetails) throws DataProviderExchangeException {

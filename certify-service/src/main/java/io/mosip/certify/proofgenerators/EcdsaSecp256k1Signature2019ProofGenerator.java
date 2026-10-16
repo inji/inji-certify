@@ -24,8 +24,12 @@ import java.util.Map;
 @Component
 public class EcdsaSecp256k1Signature2019ProofGenerator implements ProofGenerator {
 
+    private final SignatureService signatureService;
+
     @Autowired
-    SignatureService signatureService;
+    public EcdsaSecp256k1Signature2019ProofGenerator(SignatureService signatureService) {
+        this.signatureService = signatureService;
+    }
 
     Canonicalizer canonicalizer = new URDNA2015Canonicalizer();
 

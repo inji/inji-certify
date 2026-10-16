@@ -17,8 +17,12 @@ import java.util.Map;
 
 @Component
 public class RSASignature2018ProofGenerator implements ProofGenerator {
+    private final SignatureService signatureService;
+
     @Autowired
-    SignatureService signatureService;
+    public RSASignature2018ProofGenerator(SignatureService signatureService) {
+        this.signatureService = signatureService;
+    }
 
     Canonicalizer canonicalizer = new URDNA2015Canonicalizer();
 

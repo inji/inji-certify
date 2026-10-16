@@ -12,8 +12,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    private final AuthorizationDetailsConverter authorizationDetailsConverter;
+
     @Autowired
-    private AuthorizationDetailsConverter authorizationDetailsConverter;
+    public WebMvcConfig(AuthorizationDetailsConverter authorizationDetailsConverter) {
+        this.authorizationDetailsConverter = authorizationDetailsConverter;
+    }
 
     @Override
     public void addFormatters(FormatterRegistry registry) {

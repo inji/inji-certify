@@ -40,10 +40,14 @@ public class LocalAccessTokenValidationFilter extends OncePerRequestFilter {
     @Value("#{${mosip.certify.authn.filter-urls}}")
     private List<String> urlPatterns;
 
-    @Autowired
-    private ParsedAccessToken parsedAccessToken;
+    private final ParsedAccessToken parsedAccessToken;
 
     private NimbusJwtDecoder nimbusJwtDecoder;
+
+    @Autowired
+    public LocalAccessTokenValidationFilter(ParsedAccessToken parsedAccessToken) {
+        this.parsedAccessToken = parsedAccessToken;
+    }
 
 
     private boolean isJwt(String token) {

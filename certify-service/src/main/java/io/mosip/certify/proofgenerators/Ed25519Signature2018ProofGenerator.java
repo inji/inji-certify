@@ -20,8 +20,12 @@ import java.util.Map;
  */
 @Component
 public class Ed25519Signature2018ProofGenerator implements ProofGenerator {
+    private final SignatureService signatureService;
+
     @Autowired
-    SignatureService signatureService;
+    public Ed25519Signature2018ProofGenerator(SignatureService signatureService) {
+        this.signatureService = signatureService;
+    }
 
     Canonicalizer canonicalizer = new URDNA2015Canonicalizer();
 

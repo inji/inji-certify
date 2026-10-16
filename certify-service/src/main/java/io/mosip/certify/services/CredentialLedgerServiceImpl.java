@@ -23,8 +23,12 @@ import java.util.stream.Stream;
 @Slf4j
 @Component
 public class CredentialLedgerServiceImpl implements CredentialLedgerService {
+    private final LedgerRepository ledgerRepository;
+
     @Autowired
-    private LedgerRepository ledgerRepository;
+    public CredentialLedgerServiceImpl(LedgerRepository ledgerRepository) {
+        this.ledgerRepository = ledgerRepository;
+    }
 
     @Override
     public List<CredentialStatusResponse> searchCredentialLedger(CredentialLedgerSearchRequest request) {

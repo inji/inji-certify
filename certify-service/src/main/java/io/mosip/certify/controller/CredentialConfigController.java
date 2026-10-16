@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/credential-configurations")
 public class CredentialConfigController {
 
+    private final CredentialConfigurationService credentialConfigurationService;
+
     @Autowired
-    private CredentialConfigurationService credentialConfigurationService;
+    public CredentialConfigController(CredentialConfigurationService credentialConfigurationService) {
+        this.credentialConfigurationService = credentialConfigurationService;
+    }
 
     @PostMapping(produces = "application/json")
     public ResponseEntity<CredentialConfigResponse> addCredentialConfiguration(@Valid @RequestBody CredentialConfigurationDTO credentialConfigurationRequest) throws JsonProcessingException {

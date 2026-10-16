@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
@@ -320,7 +321,7 @@ public class IarServiceImpl implements IarService {
 
         // Validate expiration
         if (session.getCodeIssuedAt() != null && 
-            session.getCodeIssuedAt().isBefore(LocalDateTime.now().minusMinutes(authorizationCodeExpiresMinutes))) {
+            session.getCodeIssuedAt().isBefore(LocalDateTime.now(ZoneOffset.UTC).minusMinutes(authorizationCodeExpiresMinutes))) {
             throw new CertifyException("invalid_grant", "Authorization code expired");
         }
 
@@ -331,7 +332,7 @@ public class IarServiceImpl implements IarService {
         try {
             int updatedRows = iarSessionRepository.markAuthorizationCodeAsUsed(
                 tokenRequest.getCode(), 
-                LocalDateTime.now()
+                LocalDateTime.now(ZoneOffset.UTC)
             );
             
             if (updatedRows == 0) {
@@ -342,7 +343,7 @@ public class IarServiceImpl implements IarService {
             
             // Update the session object to reflect the change
             session.setIsCodeUsed(true);
-            session.setCodeUsedAt(LocalDateTime.now());
+            session.setCodeUsedAt(LocalDateTime.now(ZoneOffset.UTC));
             
             log.debug("Authorization code atomically marked as used");
             return session;

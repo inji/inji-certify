@@ -66,13 +66,18 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
     @Value("#{${mosip.certify.authn.filter-urls}}")
     private List<String> urlPatterns;
 
-    @Autowired
-    private ParsedAccessToken parsedAccessToken;
+    private final ParsedAccessToken parsedAccessToken;
 
-    @Autowired
-    private DpopProofValidator dpopProofValidator;
+    private final DpopProofValidator dpopProofValidator;
 
     private NimbusJwtDecoder nimbusJwtDecoder;
+
+    @Autowired
+    public AccessTokenValidationFilter(ParsedAccessToken parsedAccessToken,
+                                       DpopProofValidator dpopProofValidator) {
+        this.parsedAccessToken = parsedAccessToken;
+        this.dpopProofValidator = dpopProofValidator;
+    }
 
     private boolean isJwt(String token) {
         return token.split("\\.").length == 3;

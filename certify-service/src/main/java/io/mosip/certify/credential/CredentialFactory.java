@@ -17,8 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class CredentialFactory {
 
+    private final List<Credential> credentials;
+
     @Autowired
-    private List<Credential> credentials;
+    public CredentialFactory(List<Credential> credentials) {
+        this.credentials = credentials;
+    }
 
     /**
      * Factory method to create objects based on the given format.

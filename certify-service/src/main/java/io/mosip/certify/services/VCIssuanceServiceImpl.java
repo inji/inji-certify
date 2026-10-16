@@ -34,23 +34,32 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(value = "mosip.certify.plugin-mode", havingValue = "VCIssuance")
 public class VCIssuanceServiceImpl implements VCIssuanceService {
 
-    @Autowired
-    private ParsedAccessToken parsedAccessToken;
+    private final ParsedAccessToken parsedAccessToken;
+
+    private final VCIssuancePlugin vcIssuancePlugin;
+
+    private final ProofValidatorFactory proofValidatorFactory;
+
+    private final VCICacheService vciCacheService;
+
+    private final AuditPlugin auditWrapper;
+
+    private final CredentialConfigurationService credentialConfigurationService;
 
     @Autowired
-    private VCIssuancePlugin vcIssuancePlugin;
-
-    @Autowired
-    private ProofValidatorFactory proofValidatorFactory;
-
-    @Autowired
-    private VCICacheService vciCacheService;
-
-    @Autowired
-    private AuditPlugin auditWrapper;
-
-    @Autowired
-    private CredentialConfigurationService credentialConfigurationService;
+    public VCIssuanceServiceImpl(ParsedAccessToken parsedAccessToken,
+                                 VCIssuancePlugin vcIssuancePlugin,
+                                 ProofValidatorFactory proofValidatorFactory,
+                                 VCICacheService vciCacheService,
+                                 AuditPlugin auditWrapper,
+                                 CredentialConfigurationService credentialConfigurationService) {
+        this.parsedAccessToken = parsedAccessToken;
+        this.vcIssuancePlugin = vcIssuancePlugin;
+        this.proofValidatorFactory = proofValidatorFactory;
+        this.vciCacheService = vciCacheService;
+        this.auditWrapper = auditWrapper;
+        this.credentialConfigurationService = credentialConfigurationService;
+    }
 
     @Override
     public CredentialResponse getCredential(CredentialRequest credentialRequest) {

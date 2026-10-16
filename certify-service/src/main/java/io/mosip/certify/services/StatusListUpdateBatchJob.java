@@ -16,9 +16,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,20 +31,30 @@ import java.util.stream.Collectors;
 @Service
 public class StatusListUpdateBatchJob {
 
-    @Autowired
-    private CredentialStatusTransactionRepository transactionRepository;
+    private final CredentialStatusTransactionRepository transactionRepository;
 
-    @Autowired
-    private StatusListCredentialRepository statusListRepository;
+    private final StatusListCredentialRepository statusListRepository;
 
-    @Autowired
-    private StatusListCredentialService statusListCredentialService;
+    private final StatusListCredentialService statusListCredentialService;
+
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${mosip.certify.batch.status-list-update.enabled:true}")
     private boolean batchJobEnabled;
 
     @Value("${mosip.certify.batch.status-list-update.batch-size:1000}")
     private int batchSize;
+
+    @Autowired
+    public StatusListUpdateBatchJob(CredentialStatusTransactionRepository transactionRepository,
+                                    StatusListCredentialRepository statusListRepository,
+                                    StatusListCredentialService statusListCredentialService,
+                                    TransactionTemplate transactionTemplate) {
+        this.transactionRepository = transactionRepository;
+        this.statusListRepository = statusListRepository;
+        this.statusListCredentialService = statusListCredentialService;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     /**
      * Scheduled method that runs periodically (schedule controlled by cron expression property)
@@ -85,7 +96,10 @@ public class StatusListUpdateBatchJob {
                 List<CredentialStatusTransaction> transactions = entry.getValue();
 
                 try {
-                    updateStatusList(statusListId, transactions);
+                    // A direct call bypasses the Spring proxy, so @Transactional would be ignored here.
+                    // The template gives each status list its own transaction: the re-signed list and
+                    // its processed transactions commit together or not at all.
+                    transactionTemplate.executeWithoutResult(status -> updateStatusList(statusListId, transactions));
                     updatedLists++;
                     log.info("Successfully updated status list: {} and marked {} transactions as processed", statusListId, transactions.size());
                 } catch (Exception e) {
@@ -113,9 +127,9 @@ public class StatusListUpdateBatchJob {
     }
 
     /**
-     * Update a specific status list with the given transactions
+     * Update a specific status list with the given transactions. Runs in the transaction opened by
+     * {@link #updateStatusLists()}.
      */
-    @Transactional
     public void updateStatusList(String statusListId, List<CredentialStatusTransaction> transactions) {
         log.info("Updating status list {} with {} transactions", statusListId, transactions.size());
 
@@ -142,7 +156,7 @@ public class StatusListUpdateBatchJob {
             updateStatusListCredential(statusListCredential, newEncodedList);
 
             // Mark transactions as processed
-            LocalDateTime processedTime = LocalDateTime.now();
+            LocalDateTime processedTime = LocalDateTime.now(ZoneOffset.UTC);
             for (CredentialStatusTransaction txn : transactions) {
                 txn.setProcessedTime(processedTime);
                 txn.setIsProcessed(true);
@@ -174,9 +188,8 @@ public class StatusListUpdateBatchJob {
 
 
     /**
-     * Update the status list credential with the new encoded list
+     * Update the status list credential with the new encoded list. Runs in the caller's transaction.
      */
-    @Transactional
     public void updateStatusListCredential(StatusListCredential statusListCredential, String newEncodedList) {
         try {
             log.info("Starting update of StatusListCredential with ID: {}", statusListCredential.getId());
@@ -201,7 +214,7 @@ public class StatusListUpdateBatchJob {
 
             // Update the database record
             statusListCredential.setVcDocument(updatedVcDocument);
-            statusListCredential.setUpdatedDtimes(LocalDateTime.now());
+            statusListCredential.setUpdatedDtimes(LocalDateTime.now(ZoneOffset.UTC));
             statusListRepository.save(statusListCredential);
 
             log.info("Successfully updated and saved StatusListCredential ID: {}", statusListCredential.getId());

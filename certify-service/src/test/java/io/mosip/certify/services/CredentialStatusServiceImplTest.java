@@ -7,12 +7,10 @@ import io.mosip.certify.entity.CredentialStatusTransaction;
 import io.mosip.certify.entity.StatusListCredential;
 import io.mosip.certify.repository.CredentialStatusTransactionRepository;
 import io.mosip.certify.repository.StatusListCredentialRepository;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Optional;
@@ -34,10 +32,6 @@ public class CredentialStatusServiceImplTest {
     @InjectMocks
     private CredentialStatusServiceImpl credentialStatusService;
 
-    @Before
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     @Test
     public void updateCredentialStatusV2_StatusIdMismatch_ThrowsException() {

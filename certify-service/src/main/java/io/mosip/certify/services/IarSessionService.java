@@ -28,20 +28,26 @@ import java.util.Optional;
 @Service
 public class IarSessionService {
 
-    @Autowired
-    private IarSessionRepository iarSessionRepository;
+    private final IarSessionRepository iarSessionRepository;
 
-    @Autowired
-    private CredentialConfigRepository credentialConfigRepository;
+    private final CredentialConfigRepository credentialConfigRepository;
 
     private static final String SESSION_PREFIX = "iar_session_";
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Autowired
+    public IarSessionService(IarSessionRepository iarSessionRepository,
+                             CredentialConfigRepository credentialConfigRepository) {
+        this.iarSessionRepository = iarSessionRepository;
+        this.credentialConfigRepository = credentialConfigRepository;
+    }
 
     /**
      * Generate a new auth session identifier
      */
     public String generateAuthSession() {
         byte[] randomBytes = new byte[16];
-        new SecureRandom().nextBytes(randomBytes);
+        SECURE_RANDOM.nextBytes(randomBytes);
         String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
         
         String authSession = SESSION_PREFIX + encoded;
