@@ -103,6 +103,12 @@
         "TC_esignetDependent_GenerateToken_23",
         "TC_mockDependent_GenerateNonce_Mock_01"
     ],
+    "TC_InjiCertify_GetCredentialForMockIDA_05": [
+        "TC_esignetDependent_CreateOidc_05",
+        "TC_esignetDependent_GenerateToken_23",
+        "TC_mockDependent_GenerateNonce_Mock_01",
+        "TC_InjiCertify_Mock_SVGRendering_updateConfig_01"
+    ],
     "TC_InjiCertify_GetCredentialForMockIDA_23": [
         "TC_esignetDependent_CreateOidc_05",
         "TC_esignetDependent_GenerateTokenNeg_26"
@@ -116,10 +122,6 @@
         "TC_esignetDependent_GenerateTokenNeg_26"
     ],
     "TC_InjiCertify_GetCredentialForMockIDA_20": [
-        "TC_esignetDependent_CreateOidc_05",
-        "TC_esignetDependent_GenerateTokenNeg_26"
-    ],
-    "TC_InjiCertify_GetCredentialForMockIDA_05": [
         "TC_esignetDependent_CreateOidc_05",
         "TC_esignetDependent_GenerateTokenNeg_26"
     ],

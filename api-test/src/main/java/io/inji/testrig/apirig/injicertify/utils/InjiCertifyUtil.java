@@ -3376,5 +3376,57 @@ public static void configureOtp() {
 				"mDoc 'credential' is not valid base64url for " + testCaseName);
 		}
 	}
-	
+
+	private static final Pattern RENDER_METHOD_TEMPLATE_ID = Pattern
+			.compile("^https?://\\S+/rendering-template/[0-9a-fA-F-]{36}$");
+
+	/**
+	 * The generic output validation flattens a response into a map keyed by the last segment of
+	 * each json path, so every "id" in an issued credential (credential.id, credentialSubject.id
+	 * and renderMethod[].template.id) collapses onto the same key and only the last one visited
+	 * survives. renderMethod[0].template.id can therefore never be asserted from an expected
+	 * result template and is validated here instead.
+	 */
+	public static void validateSvgRenderMethodResponse(Response response, String testCaseName) {
+		JSONObject json;
+		try {
+			json = new JSONObject(response.asString());
+		} catch (JSONException e) {
+			throw new RuntimeException("Credential response is not valid JSON for " + testCaseName);
+		}
+
+		JSONArray credentials = json.optJSONArray("credentials");
+		if (credentials == null || credentials.length() == 0) {
+			throw new RuntimeException(
+				"Credential response has no 'credentials' entries for " + testCaseName);
+		}
+
+		JSONObject credential = credentials.getJSONObject(0).optJSONObject("credential");
+		if (credential == null) {
+			throw new RuntimeException(
+				"Credential response first entry has no 'credential' object for " + testCaseName);
+		}
+
+		JSONArray renderMethod = credential.optJSONArray("renderMethod");
+		if (renderMethod == null || renderMethod.length() == 0) {
+			throw new RuntimeException(
+				"Issued credential has no 'renderMethod' entries for " + testCaseName);
+		}
+
+		JSONObject template = renderMethod.getJSONObject(0).optJSONObject("template");
+		if (template == null) {
+			throw new RuntimeException(
+				"renderMethod[0] has no 'template' object for " + testCaseName);
+		}
+
+		String templateId = template.optString("id", "");
+		if (!RENDER_METHOD_TEMPLATE_ID.matcher(templateId).matches()) {
+			throw new RuntimeException(
+				"renderMethod[0].template.id is not a rendering template URL for " + testCaseName
+				+ ", found: " + (templateId.isBlank() ? "<absent>" : templateId));
+		}
+
+		logger.info(testCaseName + ": renderMethod validated — template.id=" + templateId);
+	}
+
 }

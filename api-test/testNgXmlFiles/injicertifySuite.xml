@@ -302,6 +302,26 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="AddCredentialConfigForMockIDADataIntegrity">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMockIDA/AddCredentialConfigForDataIntegrityMock/AddCredentialConfiguration.yml" />
+		<parameter name="idKeyName" value="id" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="UpdateCredentialConfigForSVGRenderingMock">
+		<parameter name="ymlFile"
+			value="injicertify/VCIMockIDA/UpdateCredentialConfigForSVGRenderingMock/UpdateCredentialConfiguration.yml" />
+		<parameter name="pathParams" value="configurationId" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.PutWithPathParamsAndBody" />
+		</classes>
+	</test>
 	<test name="OAuthDetailsRequestVCIForMockIDA">
 		<parameter name="ymlFile"
 			value="injicertify/VCIMockIDA/OAuthDetailsRequestForMockIDA/OAuthDetailsRequestForMockIDA.yml" />
