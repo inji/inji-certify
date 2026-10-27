@@ -612,7 +612,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_PluginFailsWithMessage_ReturnsPluginMessageAsDescription() throws Exception {
+    public void should_returnPluginMessageAsErrorDescription_when_pluginFailsWithMessage() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
@@ -631,7 +631,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_PluginFailsWithCodeOnly_ReturnsReadableDescription() throws Exception {
+    public void should_returnReadableErrorDescription_when_pluginFailsWithErrorCodeOnly() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         when(parsedAccessToken.isActive()).thenReturn(true);
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
