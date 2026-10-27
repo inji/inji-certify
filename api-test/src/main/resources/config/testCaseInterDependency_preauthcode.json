@@ -38,5 +38,13 @@
     ],
     "TC_preauth_TokenExchange_02": ["TC_preauth_GetOffer_02"],
     "TC_preauth_GetOffer_06": ["TC_preauth_GenerateCode_09"],
-    "TC_preauth_GetOffer_05": ["TC_preauth_GenerateCode_08"]
+    "TC_preauth_GetOffer_05": ["TC_preauth_GenerateCode_08"],
+    "TC_InjiCertify_GetCredentialForPreAuthCodeEccR1Siganture_01": [
+        "TC_preauth_TokenExchange_01",
+        "TC_preauth_GenerateNonce_01"
+    ],
+    "TC_InjiCertify_GetCredentialForPreAuthCodeEccR1Siganture_02": [
+        "TC_preauth_TokenExchange_01",
+        "TC_preauth_GenerateNonce_01"
+    ]
 }

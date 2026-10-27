@@ -1188,4 +1188,11 @@
 			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="GetCredentialForPreAuthCodeEccR1">
+		<parameter name="ymlFile"
+			value="injicertify/EccR1/GetCredentialForPreAuthCodeEccR1/GetCredentialForPreAuthCodeEccR1.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.SimplePost" />
+		</classes>
+	</test>
 </suite>

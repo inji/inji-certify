@@ -763,6 +763,7 @@ public static void configureOtp() {
 	private static final String DPOP_CASE_MARKER = "_DPoP_";
 	private static RSAKey dpopWalletKey;
 	private static final Map<String, String> oidcJwkStore = new HashMap<>();
+	private static final Map<String, String> reusedProofJwtStore = new HashMap<>();
 	
 	protected static boolean triggerESignetKeyGen1 = true;
 	protected static boolean triggerESignetKeyGen13 = true;
@@ -1149,6 +1150,38 @@ public static void configureOtp() {
 
 			jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_ES256$",
 					signES256JWT(clientId, accessToken, cNonce, testCaseName, tempUrl));
+		}
+
+		if (jsonString.contains("$PROOF_JWT_ES256_REUSED$")) {
+			JSONObject request = new JSONObject(jsonString);
+			String clientId = "";
+			String accessToken = "";
+			String cNonce = "";
+			String tempUrl = "";
+			if (request.has("client_id")) {
+				clientId = request.getString("client_id");
+				request.remove("client_id");
+			}
+			if (request.has("idpAccessToken")) {
+				accessToken = request.getString("idpAccessToken");
+			}
+			if (request.has("c_nonce")) {
+				cNonce = request.getString("c_nonce");
+				request.remove("c_nonce");
+			}
+			jsonString = request.toString();
+			tempUrl = getBaseURL(testCaseName, InjiCertifyConfigManager.getInjiCertifyBaseUrl());
+
+			// The proof has to be byte-identical across the test cases that replay it, so it is
+			// signed once per token/nonce/audience and served from the cache afterwards.
+			String reuseKey = String.join("|", clientId, accessToken, cNonce, tempUrl);
+			String reusedProofJWT = reusedProofJwtStore.get(reuseKey);
+			if (reusedProofJWT == null || reusedProofJWT.isBlank()) {
+				reusedProofJWT = signES256JWT(clientId, accessToken, cNonce, testCaseName, tempUrl);
+				reusedProofJwtStore.put(reuseKey, reusedProofJWT);
+			}
+
+			jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_ES256_REUSED$", reusedProofJWT);
 		}
 		
 		if (jsonString.contains("$PROOF_JWT_ES256K$")) {

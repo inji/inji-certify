@@ -944,6 +944,20 @@
         "TC_esignetDependent_GenerateToken_03",
         "TC_landRegistryDependent_GenerateNonce_ecc_r1_01"
     ],
+    "TC_InjiCertify_GetCredentialForEccR1Siganture_06": [
+        "TC_InjiCertify_EccR1_Signature_01",
+        "TC_DBDependent_InsertQuery_02",
+        "TC_esignetDependent_CreateOidc_For_EccR1_04",
+        "TC_esignetDependent_GenerateToken_03",
+        "TC_landRegistryDependent_GenerateNonce_ecc_r1_01"
+    ],
+    "TC_InjiCertify_GetCredentialForEccR1Siganture_07": [
+        "TC_InjiCertify_EccR1_Signature_01",
+        "TC_DBDependent_InsertQuery_02",
+        "TC_esignetDependent_CreateOidc_For_EccR1_04",
+        "TC_esignetDependent_GenerateToken_03",
+        "TC_landRegistryDependent_GenerateNonce_ecc_r1_01"
+    ],
     "TC_InjiCertify_GetCredentialForEccR1Siganture_04": [
         "TC_InjiCertify_EccR1_Signature_01",
         "TC_DBDependent_InsertQuery_02",
