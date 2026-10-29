@@ -25,3 +25,17 @@ GetDataFromLedgerTable:
 }'
       output: '{
 }'
+   InjiCertify_GetDataFromLedgerTable_For_LandRegistry_cred3_VCDM11_Valid_smoke_Pos_sid:
+      endPoint: no endpoint
+      uniqueIdentifier: TC_DBDependent_Get_Data_From_Ledger_Table_03
+      description: Getting values from ledger table using credential_type for the VC Data Model 1.1 (revocation not applicable) credential
+      role: idrepo
+      restMethod: post
+      additionalDependencies: TC_InjiCertify_GetCredential_For_Revocation_03
+      inputTemplate: injicertify/Revocation/GetDataFromLedgerTable/SelectQueryFromLedgerTable
+      outputTemplate: injicertify/Revocation/GetDataFromLedgerTable/InsertDBDataResult
+      input: '{
+	  "credential_type": "VerifiableCredential,landregistry_revocation_vcdm11"
+}'
+      output: '{
+}'

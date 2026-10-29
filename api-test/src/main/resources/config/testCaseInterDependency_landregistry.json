@@ -114,6 +114,16 @@
         "TC_InjiCertify_revocation_01",
         "TC_landRegistryDependent_GenerateNonce_revocation_01"
     ],
+    "TC_InjiCertify_GetCredential_For_Revocation_03": [
+        "TC_esignetDependent_GenerateToken_06",
+        "TC_DBDependent_InsertQuery_01",
+        "TC_esignetDependent_CreateOidc_For_EccR1_04",
+        "TC_InjiCertify_revocation_05",
+        "TC_landRegistryDependent_GenerateNonce_revocation_01"
+    ],
+    "TC_DBDependent_Get_Data_From_Ledger_Table_03": [
+        "TC_InjiCertify_GetCredential_For_Revocation_03"
+    ],
     "TC_InjiCertify_GetCredentialForLandRegistryEccR1_08": [
         "TC_InjiCertify_EccR1_Signature_01",
         "TC_DBDependent_InsertQuery_02",
@@ -240,6 +250,9 @@
     ],
     "TC_InjiCertify_Delete_Credential_Config_Revocation_02": [
         "TC_InjiCertify_revocation_02"
+    ],
+    "TC_InjiCertify_Delete_Credential_Config_Revocation_03": [
+        "TC_InjiCertify_revocation_05"
     ],
     "TC_InjiCertify_GetCredentialFor_Sd_jwt_09": [
         "TC_InjiCertify_Sd_jwt_Signature_04",
@@ -372,6 +385,9 @@
     ],
     "TC_InjiCertify_Ledger_Search_08": [
         "TC_DBDependent_Get_Data_From_Ledger_Table_02"
+    ],
+    "TC_InjiCertify_Ledger_Search_09": [
+        "TC_DBDependent_Get_Data_From_Ledger_Table_03"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_27": [
         "TC_DBDependent_InsertQuery_02",
@@ -968,6 +984,9 @@
     "TC_InjiCertify_revocation_01": [
         "TC_InjiCertify_Delete_Credential_Config_Revocation_01"
     ],
+    "TC_InjiCertify_revocation_05": [
+        "TC_InjiCertify_Delete_Credential_Config_Revocation_03"
+    ],
     "TC_InjiCertify_DeleteCredentialConfig_06": [
         "TC_InjiCertify_addCredentialtype_07"
     ],
@@ -1110,6 +1129,7 @@
     "TC_landRegistryDependent_GenerateNonce_revocation_01": [
         "TC_InjiCertify_revocation_02",
         "TC_InjiCertify_revocation_01",
+        "TC_InjiCertify_revocation_05",
         "TC_esignetDependent_GenerateToken_06",
         "TC_esignetDependent_GenerateToken_05",
         "TC_DBDependent_InsertQuery_02",
