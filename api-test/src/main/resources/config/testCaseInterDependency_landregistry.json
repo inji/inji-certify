@@ -861,6 +861,12 @@
     "TC_InjiCertify_Update_Credential_Status_V2_03": [],
     "TC_InjiCertify_Update_Credential_Status_V2_02": [],
     "TC_InjiCertify_Update_Credential_Status_V2_01": [],
+    "TC_InjiCertify_GetCredentialFor_dataintegrity_23": [
+        "TC_DBDependent_InsertQuery_02",
+        "TC_esignetDependent_CreateOidc_For_EccR1_04",
+        "TC_esignetDependent_GenerateToken_01",
+        "TC_landRegistryDependent_GenerateNonce_dataIntegrity_01"
+    ],
     "TC_InjiCertify_GetCredentialFor_dataintegrity_22": [
         "TC_esignetDependent_CreateOidc_For_EccR1_04",
         "TC_esignetDependent_GenerateToken_01",
