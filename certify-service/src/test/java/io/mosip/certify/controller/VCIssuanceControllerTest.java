@@ -163,7 +163,7 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
-    public void getVerifiableCredential_withUnknownField_thenIgnoredAndPass() throws Exception {
+    public void should_ignoreUnknownField_when_requestIsValid() throws Exception {
         CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
         CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
         credentialWrapper.setCredential(new JsonLDObject());
