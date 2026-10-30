@@ -1,5 +1,6 @@
 package io.mosip.certify.services;
 
+import foundation.identity.jsonld.JsonLDObject;
 import io.mosip.certify.api.dto.VCRequestDto;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.VCIExchangeException;
@@ -10,6 +11,8 @@ import io.mosip.certify.api.util.ActionStatus;
 import io.mosip.certify.api.util.AuditHelper;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.constants.VCDM1Constants;
+import io.mosip.certify.core.constants.VCDM2Constants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.*;
@@ -161,6 +164,8 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                     vcRequestDto.setType(credentialConfigurationSupported.getTypes());
                     vcResult = vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(vcRequestDto, holderId,
                             parsedAccessToken.getClaims());
+                    if (vcResult != null)
+                        validateDataModelContext(credentialConfigurationSupported.getContext(), vcResult.getCredential());
                     break;
                 case VCFormats.MSO_MDOC :
                     vcRequestDto.setDoctype( credentialConfigurationSupported.getDocType());
@@ -181,6 +186,42 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.ERROR,
                 AuditHelper.buildAuditDto(parsedAccessToken.getAccessTokenHash(), "accessTokenHash"), null);
         throw new CertifyException(ErrorConstants.VC_ISSUANCE_FAILED);
+    }
+
+    /**
+     * The plugin builds the credential, and may use a different VC data model than the credential config
+     * advertises (MOSIP IDA takes @context from its own configuration). Refuse such a credential instead of
+     * handing the wallet one it did not ask for. A credential that names no data model context is not checked.
+     * One naming both is refused: its first @context entry sets its data model, so [v1, v2] is a v1 credential.
+     */
+    private void validateDataModelContext(List<String> requestedContext, Object credential) {
+        if (!(credential instanceof JsonLDObject jsonLDObject))
+            return;
+        Object issuedContext = jsonLDObject.getJsonObject().get("@context");
+        List<String> requested = dataModelContexts(requestedContext);
+        List<String> issued = dataModelContexts(issuedContext instanceof String context ? List.of(context)
+                : issuedContext instanceof List<?> contexts ? contexts : List.of());
+        if (requested.isEmpty() || issued.isEmpty()
+                || (issued.size() == 1 && requested.contains(issued.getFirst())))
+            return;
+
+        log.error("Plugin issued a credential with data model context {} for a credential config with {}", issued, requested);
+        auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.ERROR,
+                AuditHelper.buildAuditDto(parsedAccessToken.getAccessTokenHash(), "accessTokenHash"), null);
+        throw new CertifyException(VCIErrorConstants.CREDENTIAL_REQUEST_DENIED,
+                "The requested credential context " + String.join(", ", requested) + " is not supported by the issuer; "
+                        + "the issued credential uses " + String.join(", ", issued) + ".");
+    }
+
+    // contextURLs are stored sorted, so the data model URL is found by membership, not by position.
+    private static List<String> dataModelContexts(List<?> contexts) {
+        if (contexts == null)
+            return List.of();
+        return contexts.stream()
+                .filter(context -> VCDM1Constants.URL.equals(context) || VCDM2Constants.URL.equals(context))
+                .map(String.class::cast)
+                .distinct()
+                .toList();
     }
 
 }
