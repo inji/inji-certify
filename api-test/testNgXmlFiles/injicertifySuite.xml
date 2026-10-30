@@ -475,6 +475,15 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
+	<test name="UpdateLandRegistryRSACredentialConfig">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/UpdateCredentialConfiguration/UpdateCredentialConfiguration.yml" />
+		<parameter name="pathParams" value="configurationId" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.PutWithPathParamsAndBody" />
+		</classes>
+	</test>
 	<test name="GetCredentialForLandRegistry">
 		<parameter name="ymlFile"
 			value="injicertify/VCILandRegistry/GetCredentialForLandRegistry/GetCredentialForLandRegistry.yml" />
