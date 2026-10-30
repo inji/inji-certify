@@ -505,4 +505,41 @@ public class VCIssuanceServiceImplTest {
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals("PLUGIN_ERROR_CODE", ex.getErrorCode());
     }
+
+    @Test
+    public void should_returnPluginMessageAsErrorDescription_when_pluginFailsWithMessage() throws Exception {
+        request = createValidCredentialRequest(VCFormats.LDP_VC);
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+
+        String pluginMessage = "The requested credential context https://www.w3.org/ns/credentials/v2 is not supported for this credential.";
+        when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
+                .thenThrow(new VCIExchangeException("vci_exchange_failed", pluginMessage));
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("vci_exchange_failed", ex.getErrorCode());
+        assertEquals(pluginMessage, ex.getMessage());
+    }
+
+    @Test
+    public void should_returnReadableErrorDescription_when_pluginFailsWithErrorCodeOnly() throws Exception {
+        request = createValidCredentialRequest(VCFormats.LDP_VC);
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+
+        when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
+                .thenThrow(new VCIExchangeException("vci_exchange_failed"));
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("vci_exchange_failed", ex.getErrorCode());
+        assertEquals("The issuer could not issue the requested credential.", ex.getMessage());
+    }
 }

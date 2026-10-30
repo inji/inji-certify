@@ -171,7 +171,10 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                     throw new CertifyException(VCIErrorConstants.UNSUPPORTED_CREDENTIAL_FORMAT, "Invalid or unsupported VC format requested.");
             }
         } catch (VCIExchangeException e) {
-            throw new CertifyException(e.getErrorCode());
+            // The plugin's reason becomes the error_description; a bare code would only repeat the error field.
+            String description = e.getErrorMessage() != null && !e.getErrorMessage().isBlank()
+                    ? e.getErrorMessage() : "The issuer could not issue the requested credential.";
+            throw new CertifyException(e.getErrorCode(), description);
         }
 
         if(vcResult != null && vcResult.getCredential() != null)
