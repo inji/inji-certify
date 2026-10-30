@@ -7,14 +7,19 @@ import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.dto.*;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.certify.config.AppConfig;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.services.VCICacheService;
+import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,7 +42,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(value = VCIssuanceController.class)
+@Import(VCIssuanceControllerTest.ApplicationObjectMapper.class)
 public class VCIssuanceControllerTest {
+
+    /**
+     * Binds requests with the application's own ObjectMapper, as the running service does, rather
+     * than the web slice's default one, so the test reflects production behaviour for unknown fields.
+     */
+    @TestConfiguration
+    static class ApplicationObjectMapper {
+        @Bean
+        ObjectMapper objectMapper() {
+            return new AppConfig(Mockito.mock(KeymanagerService.class)).objectMapper();
+        }
+    }
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -142,6 +160,26 @@ public class VCIssuanceControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(exception.getErrorCode()))
                 .andExpect(jsonPath("$.error_description").value(exception.getMessage()));
+    }
+
+    @Test
+    public void should_ignoreUnknownField_when_requestIsValid() throws Exception {
+        CredentialResponse credentialResponse = new CredentialResponse<JsonLDObject>();
+        CredentialResponse.CredentialWrapper credentialWrapper = new CredentialResponse.CredentialWrapper<JsonLDObject>();
+        credentialWrapper.setCredential(new JsonLDObject());
+        credentialResponse.setCredentials(List.of(credentialWrapper));
+        Mockito.when(vcIssuanceService.getCredential(Mockito.any())).thenReturn(credentialResponse);
+
+        // OpenID4VCI §8.2: an unrecognised request parameter must be ignored, not rejected.
+        String bodyWithUnknownField = "{\"credential_configuration_id\":\"TestId\"," +
+                "\"proofs\":{\"jwt\":[\"dummy_jwt_proof\"]}," +
+                "\"some_unknown_param\":\"x\"}";
+
+        mockMvc.perform(post("/issuance/credential")
+                        .content(bodyWithUnknownField)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.credentials").exists());
     }
 
     @Test
