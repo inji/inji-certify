@@ -1,6 +1,7 @@
 package io.mosip.certify.services;
 
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.NonceErrorConstants;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
 import io.mosip.certify.core.dto.PreAuthCodeData;
@@ -27,6 +28,7 @@ public class VCICacheService {
 
     private static final String VCISSUANCE_CACHE = "vcissuance";
     private static final String PRE_AUTH_TXN_CACHE = "preAuthCacheTxn";
+    private static final String PRE_AUTH_CODE_CACHE = "preAuthCodeCache";
     private static final String NONCE_CACHE = "nonce";
 
     public VCICacheService(CacheManager cacheManager) {
@@ -96,12 +98,12 @@ public class VCICacheService {
 
     public void setPreAuthCodeData(String code, PreAuthCodeData data) {
         String key = Constants.PRE_AUTH_CODE_PREFIX + code;
-        cacheManager.getCache("preAuthCodeCache").put(key, data);
+        cacheManager.getCache(PRE_AUTH_CODE_CACHE).put(key, data);
     }
 
     public PreAuthCodeData getPreAuthCodeData(String code) {
         String key = Constants.PRE_AUTH_CODE_PREFIX + code;
-        Cache.ValueWrapper wrapper = cacheManager.getCache("preAuthCodeCache").get(key);
+        Cache.ValueWrapper wrapper = cacheManager.getCache(PRE_AUTH_CODE_CACHE).get(key);
         return wrapper != null ? (PreAuthCodeData) wrapper.get() : null;
     }
 
@@ -135,49 +137,29 @@ public class VCICacheService {
         }
     }
 
-    /**
-     * Get cached authorization server metadata
-     */
-    public boolean isPreAuthCodeUsed(String code) {
-        String key = "used:" + code;
-        Cache cache = cacheManager.getCache("preAuthCodeCache");
+    public boolean claimPreAuthCode(String preAuthCode) {
+        Cache cache = cacheManager.getCache(PRE_AUTH_CODE_CACHE);
         if (cache == null) {
-            log.error("Cache preAuthCodeCache not available");
+            log.error("Cache preAuthCodeCache not available for claiming code. Add it to "
+                    + "mosip.certify.cache.names and mosip.certify.cache.expire-in-seconds.");
+            throw new CertifyException(ErrorConstants.SERVER_ERROR,
+                    "preAuthCodeCache is not configured. Please verify cache configuration.");
+        }
+
+        // Cannot claim a code that does not exist.
+        if (getPreAuthCodeData(preAuthCode) == null) {
             return false;
         }
-        Cache.ValueWrapper wrapper = cache.get(key);
-        return wrapper != null && Boolean.TRUE.equals(wrapper.get());
-    }
 
-    public boolean claimPreAuthCode(String preAuthCode) {
-        synchronized (this) {
-            PreAuthCodeData codeData = getPreAuthCodeData(preAuthCode);
-            if (codeData == null || isPreAuthCodeUsed(preAuthCode)) {
-                return false;
-            }
-            markPreAuthCodeAsUsed(preAuthCode);
-            return true;
+        // Atomically claim the code. Only the first caller succeeds.
+        String usedKey = Constants.PRE_AUTH_CODE_USED_PREFIX + preAuthCode;
+        if (cache.putIfAbsent(usedKey, true) != null) {
+            return false;
         }
-    }
 
-    /**
-     * Mark a pre-authorized code as used to prevent reuse
-     */
-    public void markPreAuthCodeAsUsed(String code) {
-        String key = "used:" + code;
-        Cache cache = cacheManager.getCache("preAuthCodeCache");
-        if (cache == null) {
-            log.error("Cache preAuthCodeCache not available for marking code as used");
-            return;
-        }
-        // Store in cache with same TTL as pre-auth code
-        cache.put(key, true);
-
-        // Also remove the pre-auth code data
-        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
-        cache.evict(codeKey);
-
-        log.info("Pre-authorized code marked as used");
+        // Remove one-time pre-authorized code data.
+        cache.evict(Constants.PRE_AUTH_CODE_PREFIX + preAuthCode);
+        return true;
     }
 
 

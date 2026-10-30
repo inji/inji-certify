@@ -2,6 +2,7 @@ package io.mosip.certify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialOfferResponse;
 import io.mosip.certify.core.dto.OAuthAuthorizationServerMetadataDTO;
 import io.mosip.certify.core.dto.PreAuthCodeData;
@@ -17,8 +18,19 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -204,63 +216,6 @@ public class VCICacheServiceTest {
 
     private static final String AS_METADATA_CACHE = "asMetadataCache";
 
-    // Tests for isPreAuthCodeUsed
-
-    @Test
-    public void isPreAuthCodeUsed_WhenUsed_ReturnsTrue() {
-        String code = "used-code";
-        String key = "used:" + code;
-        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
-        when(wrapper.get()).thenReturn(Boolean.TRUE);
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(wrapper);
-
-        boolean result = vciCacheService.isPreAuthCodeUsed(code);
-
-        assertEquals(true, result);
-        verify(cache).get(key);
-    }
-
-    @Test
-    public void isPreAuthCodeUsed_WhenNotUsed_ReturnsFalse() {
-        String code = "valid-code";
-        String key = "used:" + code;
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(null);
-
-        boolean result = vciCacheService.isPreAuthCodeUsed(code);
-
-        assertEquals(false, result);
-        verify(cache).get(key);
-    }
-
-    @Test
-    public void isPreAuthCodeUsed_WhenWrapperReturnsFalse_ReturnsFalse() {
-        String code = "code";
-        String key = "used:" + code;
-        Cache.ValueWrapper wrapper = mock(Cache.ValueWrapper.class);
-        when(wrapper.get()).thenReturn(Boolean.FALSE);
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-        when(cache.get(key)).thenReturn(wrapper);
-
-        boolean result = vciCacheService.isPreAuthCodeUsed(code);
-
-        assertEquals(false, result);
-    }
-
-    @Test
-    public void markPreAuthCodeAsUsed_Success() {
-        String code = "code-to-mark";
-        String usedKey = "used:" + code;
-        String codeKey = Constants.PRE_AUTH_CODE_PREFIX + code;
-        when(cacheManager.getCache(PRE_AUTH_CODE_CACHE)).thenReturn(cache);
-
-        vciCacheService.markPreAuthCodeAsUsed(code);
-
-        verify(cache).put(eq(usedKey), eq(true));
-        verify(cache).evict(eq(codeKey));
-    }
-
     @Test
     public void should_returnTransaction_when_preAuthTransactionExists() {
         PreAuthTransaction tx = new PreAuthTransaction();
@@ -300,21 +255,10 @@ public class VCICacheServiceTest {
     }
 
     @Test
-    public void should_doNothing_when_preAuthCodeCacheIsNullOnMark() {
-        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
-        vciCacheService.markPreAuthCodeAsUsed("code");
-    }
-
-    @Test
-    public void should_returnFalse_when_preAuthCodeCacheIsNull() {
-        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
-        assertFalse(vciCacheService.isPreAuthCodeUsed("code"));
-    }
-
-    @Test
     public void should_returnFalse_when_preAuthCodeDataMissing() {
         when(cache.get("pre_auth_code:code")).thenReturn(null);
         assertFalse(vciCacheService.claimPreAuthCode("code"));
+        verify(cache, never()).putIfAbsent(anyString(), any());
     }
 
     @Test
@@ -323,10 +267,11 @@ public class VCICacheServiceTest {
         Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
         when(dataWrapper.get()).thenReturn(data);
         when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
-        when(cache.get("used:code")).thenReturn(null);
+        when(cache.putIfAbsent("used:code", true)).thenReturn(null);
 
         assertTrue(vciCacheService.claimPreAuthCode("code"));
-        verify(cache).put("used:code", true);
+        verify(cache).putIfAbsent("used:code", true);
+        verify(cache).evict("pre_auth_code:code");
     }
 
     @Test
@@ -334,12 +279,108 @@ public class VCICacheServiceTest {
         PreAuthCodeData data = new PreAuthCodeData();
         Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
         when(dataWrapper.get()).thenReturn(data);
-        Cache.ValueWrapper usedWrapper = mock(Cache.ValueWrapper.class);
-        when(usedWrapper.get()).thenReturn(Boolean.TRUE);
         when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
-        when(cache.get("used:code")).thenReturn(usedWrapper);
+        Cache.ValueWrapper existing = mock(Cache.ValueWrapper.class);
+        when(cache.putIfAbsent("used:code", true)).thenReturn(existing);
 
         assertFalse(vciCacheService.claimPreAuthCode("code"));
+        verify(cache, never()).evict(anyString());
+    }
+
+    @Test
+    public void should_throwServerError_when_preAuthCodeCacheIsNullOnClaim() {
+        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> vciCacheService.claimPreAuthCode("code"));
+        assertEquals(ErrorConstants.SERVER_ERROR, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_returnTrueThenFalse_when_cacheAllowsOnlyOneClaim() {
+        PreAuthCodeData data = new PreAuthCodeData();
+        Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
+        when(dataWrapper.get()).thenReturn(data);
+        when(cache.get("pre_auth_code:code")).thenReturn(dataWrapper);
+        Cache.ValueWrapper existing = mock(Cache.ValueWrapper.class);
+        when(cache.putIfAbsent("used:code", true)).thenReturn(null).thenReturn(existing);
+
+        assertTrue(vciCacheService.claimPreAuthCode("code"));
+        assertFalse(vciCacheService.claimPreAuthCode("code"));
+    }
+
+    @Test
+    public void should_letExactlyOneWin_when_twoInstancesClaimConcurrentlyOverSharedCache() throws Exception {
+        ConcurrentMapCacheManager backing = new ConcurrentMapCacheManager("preAuthCodeCache");
+        Cache realCache = backing.getCache("preAuthCodeCache");
+        realCache.put(Constants.PRE_AUTH_CODE_PREFIX + "code", new PreAuthCodeData());
+
+        CyclicBarrier bothRead = new CyclicBarrier(2);
+        Cache barrierCache = new BarrierOnReadCache(realCache, Constants.PRE_AUTH_CODE_PREFIX + "code", bothRead);
+        CacheManager sharedManager = new SingleCacheManager(barrierCache);
+
+        VCICacheService first = new VCICacheService(sharedManager);
+        VCICacheService second = new VCICacheService(sharedManager);
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger winners = new AtomicInteger();
+            Future<Boolean> f1 = pool.submit(() -> { start.await(); return first.claimPreAuthCode("code"); });
+            Future<Boolean> f2 = pool.submit(() -> { start.await(); return second.claimPreAuthCode("code"); });
+
+            start.countDown();
+
+            if (Boolean.TRUE.equals(f1.get(5, TimeUnit.SECONDS))) winners.incrementAndGet();
+            if (Boolean.TRUE.equals(f2.get(5, TimeUnit.SECONDS))) winners.incrementAndGet();
+
+            assertEquals("Exactly one instance must redeem the pre-authorized code", 1, winners.get());
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /** CacheManager that always hands back a single supplied cache - used to share one cache. */
+    private static final class SingleCacheManager implements CacheManager {
+        private final Cache cache;
+        SingleCacheManager(Cache cache) { this.cache = cache; }
+        @Override public Cache getCache(String name) { return cache; }
+        @Override public java.util.Collection<String> getCacheNames() { return java.util.List.of(cache.getName()); }
+    }
+
+    /**
+     * Delegating cache that makes {@code get(barrierKey)} block on a 2-party barrier until both
+     * threads have read the key. Forces both claimers through the read phase before either marks,
+     * deterministically exposing a check-then-mark race. All other operations pass straight through.
+     */
+    private static final class BarrierOnReadCache implements Cache {
+        private final Cache delegate;
+        private final String barrierKey;
+        private final CyclicBarrier barrier;
+        BarrierOnReadCache(Cache delegate, String barrierKey, CyclicBarrier barrier) {
+            this.delegate = delegate; this.barrierKey = barrierKey; this.barrier = barrier;
+        }
+        @Override public String getName() { return delegate.getName(); }
+        @Override public Object getNativeCache() { return delegate.getNativeCache(); }
+        @Override public ValueWrapper get(Object key) {
+            ValueWrapper value = delegate.get(key);
+            if (barrierKey.equals(key)) {
+                try {
+                    barrier.await(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                } catch (BrokenBarrierException | TimeoutException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            return value;
+        }
+        @Override public <T> T get(Object key, Class<T> type) { return delegate.get(key, type); }
+        @Override public <T> T get(Object key, java.util.concurrent.Callable<T> valueLoader) { return delegate.get(key, valueLoader); }
+        @Override public void put(Object key, Object value) { delegate.put(key, value); }
+        @Override public ValueWrapper putIfAbsent(Object key, Object value) { return delegate.putIfAbsent(key, value); }
+        @Override public void evict(Object key) { delegate.evict(key); }
+        @Override public void clear() { delegate.clear(); }
     }
 }
 

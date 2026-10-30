@@ -53,6 +53,7 @@ public class Constants {
     public static final String PROOF_TYPES_SUPPORTED = "proof_types_supported";
     public static final String MANDATORY = "mandatory";
     public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
+    public static final String PRE_AUTH_CODE_USED_PREFIX = "used:";
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
     public static final String PRE_AUTHORIZED_CODE_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:pre-authorized_code";
     public static final String AS_METADATA_PREFIX = "as_metadata:";
