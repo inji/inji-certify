@@ -98,13 +98,24 @@ public class VCICacheService {
 
     public void setPreAuthCodeData(String code, PreAuthCodeData data) {
         String key = Constants.PRE_AUTH_CODE_PREFIX + code;
-        cacheManager.getCache(PRE_AUTH_CODE_CACHE).put(key, data);
+        getPreAuthCodeCache().put(key, data);
     }
 
     public PreAuthCodeData getPreAuthCodeData(String code) {
         String key = Constants.PRE_AUTH_CODE_PREFIX + code;
-        Cache.ValueWrapper wrapper = cacheManager.getCache(PRE_AUTH_CODE_CACHE).get(key);
+        Cache.ValueWrapper wrapper = getPreAuthCodeCache().get(key);
         return wrapper != null ? (PreAuthCodeData) wrapper.get() : null;
+    }
+
+    private Cache getPreAuthCodeCache() {
+        Cache cache = cacheManager.getCache(PRE_AUTH_CODE_CACHE);
+        if (cache == null) {
+            log.error("Cache {} not available. Add it to "
+                    + "mosip.certify.cache.names and mosip.certify.cache.expire-in-seconds.", PRE_AUTH_CODE_CACHE);
+            throw new CertifyException(ErrorConstants.SERVER_ERROR,
+                    PRE_AUTH_CODE_CACHE + " is not configured. Please verify cache configuration.");
+        }
+        return cache;
     }
 
     public CredentialOfferResponse getCredentialOffer(String offerId) {
@@ -138,13 +149,7 @@ public class VCICacheService {
     }
 
     public boolean claimPreAuthCode(String preAuthCode) {
-        Cache cache = cacheManager.getCache(PRE_AUTH_CODE_CACHE);
-        if (cache == null) {
-            log.error("Cache preAuthCodeCache not available for claiming code. Add it to "
-                    + "mosip.certify.cache.names and mosip.certify.cache.expire-in-seconds.");
-            throw new CertifyException(ErrorConstants.SERVER_ERROR,
-                    "preAuthCodeCache is not configured. Please verify cache configuration.");
-        }
+        Cache cache = getPreAuthCodeCache();
 
         // Cannot claim a code that does not exist.
         if (getPreAuthCodeData(preAuthCode) == null) {

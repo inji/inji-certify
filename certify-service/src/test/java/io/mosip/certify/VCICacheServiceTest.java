@@ -296,6 +296,22 @@ public class VCICacheServiceTest {
     }
 
     @Test
+    public void should_throwServerError_when_preAuthCodeCacheIsNullOnGet() {
+        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> vciCacheService.getPreAuthCodeData("code"));
+        assertEquals(ErrorConstants.SERVER_ERROR, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_throwServerError_when_preAuthCodeCacheIsNullOnSet() {
+        when(cacheManager.getCache("preAuthCodeCache")).thenReturn(null);
+        CertifyException ex = assertThrows(CertifyException.class,
+                () -> vciCacheService.setPreAuthCodeData("code", new PreAuthCodeData()));
+        assertEquals(ErrorConstants.SERVER_ERROR, ex.getErrorCode());
+    }
+
+    @Test
     public void should_returnTrueThenFalse_when_cacheAllowsOnlyOneClaim() {
         PreAuthCodeData data = new PreAuthCodeData();
         Cache.ValueWrapper dataWrapper = mock(Cache.ValueWrapper.class);
