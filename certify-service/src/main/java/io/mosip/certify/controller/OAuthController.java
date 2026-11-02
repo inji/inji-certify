@@ -39,9 +39,12 @@ public class OAuthController {
         this.preAuthorizedCodeService = preAuthorizedCodeService;
     }
 
-    @GetMapping(value = "/.well-known/oauth-authorization-server", produces = "application/json")
-    public OAuthAuthorizationServerMetadataDTO getOAuthAuthorizationServerMetadata() {
-        return oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata();
+    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document (#1143)
+    @GetMapping("/.well-known/oauth-authorization-server")
+    public ResponseEntity<OAuthAuthorizationServerMetadataDTO> getOAuthAuthorizationServerMetadata() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata());
     }
 
     /**

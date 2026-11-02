@@ -5,6 +5,7 @@ import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -31,17 +32,22 @@ public class WellKnownController {
         this.jwksService = jwksService;
     }
 
-    @GetMapping(value = "/.well-known/openid-credential-issuer", produces = "application/json")
-    public CredentialIssuerMetadataDTO getCredentialIssuerMetadata() {
-        return credentialConfigurationService.fetchCredentialIssuerMetadata();
+    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document (#1143)
+    @GetMapping("/.well-known/openid-credential-issuer")
+    public ResponseEntity<CredentialIssuerMetadataDTO> getCredentialIssuerMetadata() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(credentialConfigurationService.fetchCredentialIssuerMetadata());
     }
 
-    @GetMapping(value = "/.well-known/did.json", produces = "application/json")
-    public Map<String, Object> getDIDDocument() {
-        return vcIssuanceService.getDIDDocument();
+    @GetMapping("/.well-known/did.json")
+    public ResponseEntity<Map<String, Object>> getDIDDocument() {
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(vcIssuanceService.getDIDDocument());
     }
 
-    @GetMapping(value = "/.well-known/jwks.json", produces = "application/json")
+    @GetMapping("/.well-known/jwks.json")
     public ResponseEntity<Map<String, Object>> getJwks() {
         try {
             Map<String, Object> response = jwksService.getJwks();
@@ -49,11 +55,11 @@ public class WellKnownController {
             if (response != null && response.containsKey("keys")) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> jwkList = (List<Map<String, Object>>) response.get("keys");
-                return ResponseEntity.ok(response);
+                return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(response);
             } else {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("keys", Collections.emptyList());
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).contentType(MediaType.APPLICATION_JSON).body(errorResponse);
             }
 
         } catch (Exception e) {
@@ -61,7 +67,7 @@ public class WellKnownController {
             // Do NOT cache error responses - allow retries
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("keys", Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).contentType(MediaType.APPLICATION_JSON).body(errorResponse);
         }
     }
 }

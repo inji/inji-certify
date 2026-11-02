@@ -98,6 +98,25 @@ class OAuthControllerTest {
     }
 
     @Test
+    void should_returnJsonAuthorizationServerMetadata_when_acceptIsApplicationJwt() throws Exception {
+        OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
+        mockMetadata.setIssuer("http://localhost:8090");
+        mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
+        mockMetadata.setGrantTypesSupported(Arrays.asList("authorization_code"));
+        when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
+
+        String json = mockMvc.perform(get("/.well-known/oauth-authorization-server").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        // Certify does not sign its metadata, so Accept: application/jwt gets the unsigned JSON document (#1143)
+        mockMvc.perform(get("/.well-known/oauth-authorization-server").accept("application/jwt"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(json, true));
+    }
+
+    @Test
     void processInteractiveAuthorizationRequest_success_requireInteraction() throws Exception {
         // Arrange
         IarResponse mockResponse = createMockIarResponse(IarStatus.REQUIRE_INTERACTION);

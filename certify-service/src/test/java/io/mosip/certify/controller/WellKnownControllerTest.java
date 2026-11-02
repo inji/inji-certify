@@ -13,6 +13,7 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -191,5 +192,55 @@ class WellKnownControllerTest {
                 .andExpect(jsonPath("$.keys[1].kid").value("key2"));
 
         verify(jwksService, times(1)).getJwks();
+    }
+
+    @Test
+    void should_returnJsonIssuerMetadata_when_acceptIsApplicationJwt() throws Exception {
+        CredentialIssuerMetadataDTO metadata = new CredentialIssuerMetadataDTO();
+        metadata.setCredentialIssuer("http://localhost:8090");
+        metadata.setCredentialEndpoint("http://localhost:8090/v1/certify/issuance/credential");
+        metadata.setNonceEndpoint("http://localhost:8090/v1/certify/nonce");
+        when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(metadata);
+
+        assertAcceptJwtServesTheJsonDocument("/.well-known/openid-credential-issuer");
+    }
+
+    @Test
+    void should_returnJsonDidDocument_when_acceptIsApplicationJwt() throws Exception {
+        when(vcIssuanceService.getDIDDocument()).thenReturn(Collections.singletonMap("id", "did:example:123"));
+
+        assertAcceptJwtServesTheJsonDocument("/.well-known/did.json");
+    }
+
+    @Test
+    void should_returnJsonJwkSet_when_acceptIsApplicationJwt() throws Exception {
+        when(jwksService.getJwks()).thenReturn(Map.of(
+                "keys", Collections.singletonList(Map.of("kty", "RSA", "kid", "test-key-id", "e", "AQAB"))));
+
+        assertAcceptJwtServesTheJsonDocument("/.well-known/jwks.json");
+    }
+
+    @Test
+    void should_returnJsonServiceUnavailable_when_acceptIsApplicationJwtAndJwksIsNull() throws Exception {
+        when(jwksService.getJwks()).thenReturn(null);
+
+        mockMvc.perform(get("/.well-known/jwks.json").accept("application/jwt"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.keys").isArray())
+                .andExpect(jsonPath("$.keys").isEmpty());
+    }
+
+    // Certify does not sign its metadata, so Accept: application/jwt gets the unsigned JSON document,
+    // the form OID4VCI 1.0 section 12.2.2 requires every issuer to support (#1143).
+    private void assertAcceptJwtServesTheJsonDocument(String path) throws Exception {
+        String json = mockMvc.perform(get(path).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        mockMvc.perform(get(path).accept("application/jwt"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(json, true));
     }
 }
