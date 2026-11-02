@@ -148,17 +148,36 @@ public class JwtProofValidator implements ProofValidator {
      */
     @Override
     public String getKeyMaterial(String proofJwt) {
+        JWSHeader header = parseProofHeader(proofJwt);
+        return getInstance(header.getKeyID()).getDID(header)
+                .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+    }
+
+    /**
+     * @param proofJwt from the credential request.
+     * @return the holder's public key from the proof, as a JWK holding only its key members
+     */
+    @Override
+    public Map<String, Object> getHolderPublicJwk(String proofJwt) {
+        JWSHeader header = parseProofHeader(proofJwt);
+        JWK holderKey = getInstance(header.getKeyID()).getKeyFromHeader(header)
+                .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+        // The required members are the key itself: kty with n,e (RSA), crv,x,y (EC) or crv,x (OKP), as
+        // hashed for a thumbprint (RFC 7638 §3.2). kid, use, alg, x5c and any private member are left out.
+        return new LinkedHashMap<>(holderKey.getRequiredParams());
+    }
+
+    /**
+     * The proof header carries the holder's key, either as a jwk or as a did:jwk or did:key kid.
+     * @throws InvalidRequestException PROOF_HEADER_INVALID_KEY when the proof is not a parsable JWT
+     */
+    private JWSHeader parseProofHeader(String proofJwt) {
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
-            JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
-            return jpkm.getDID(jwt.getHeader())
-                    .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+            return ((SignedJWT) JWTParser.parse(proofJwt)).getHeader();
         } catch (ParseException e) {
             log.error("Failed to parse jwt in the credential proof", e);
-        } catch (InvalidRequestException e) {
-            log.error("Invalid proof : {}", e.getErrorCode());
+            throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
         }
-        throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
     }
 
     private void validateHeaderClaims(JWSHeader jwsHeader, List<String> algorithms) {

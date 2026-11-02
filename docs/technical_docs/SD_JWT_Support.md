@@ -79,11 +79,12 @@ sequenceDiagram
   - if you set it to `<DOMAIN_NAME>#`, the `kid` will be prefixed with the domain name followed by `#`. example: `example.com#<KEY_ID>`
   - if you set it to `PAYLOAD_ISSUER`, the `kid` will be prefixed with the issuer of the payload. example: `did:example:123#<KEY_ID>`
 
-### DID Binding
-- DID binding ensures the credential is cryptographically linked to a Decentralized Identifier (DID).
-- The supported binding methods for SD-JWT are `did:jwk` and `did:key` (see configuration above).
-- In the final SD-JWT credential, the `cnf` field in payload will contain the holderId in the following format : 
-{... cnf": { "kid": "did:jwk:<HOLDER_ID>" ... }}
+### Holder Key Binding
+- Key binding ensures the credential is cryptographically linked to the key the holder proved possession of in the credential request.
+- The holder key is read from the JWT proof header, given as a `jwk`, or as a `did:jwk` or `did:key` `kid`.
+- In the final SD-JWT credential, the `cnf` claim carries that key as a JWK ([RFC 7800 §3.2](https://www.rfc-editor.org/rfc/rfc7800.html#section-3.2)), holding only its public key members:
+  `{ ... "cnf": { "jwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." } } ... }`
+- Whatever form the proof gave the key in, `cnf` always carries it as a JWK, so a credential configuration should include `jwk` in `cryptographicBindingMethodsSupported`.
 
 ---
 

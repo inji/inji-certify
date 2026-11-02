@@ -25,4 +25,12 @@ public interface ProofValidator {
      * @return public key as did:jwk equivalent
      */
     String getKeyMaterial(String proofJwt);
+
+    /**
+     * Extracts the holder's public key from the proof header as a JWK, for the cnf claim of an SD-JWT VC
+     * (RFC 7800 §3.2). The same key as {@link #getKeyMaterial(String)}, in JWK form instead of a DID.
+     * @param proofJwt from the credential request.
+     * @return the public key members of the JWK only, without kid or any other metadata
+     */
+    Map<String, Object> getHolderPublicJwk(String proofJwt);
 }

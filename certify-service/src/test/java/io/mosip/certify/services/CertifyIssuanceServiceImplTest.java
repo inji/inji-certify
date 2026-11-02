@@ -108,6 +108,9 @@ public class CertifyIssuanceServiceImplTest {
     private static final String DEFAULT_FORMAT_LDP = VCFormats.LDP_VC;
     private static final String DEFAULT_FORMAT_SDJWT = VCFormats.DC_SD_JWT; // dc+sd-jwt
     private static final String DEFAULT_FORMAT_MDOC = VCFormats.MSO_MDOC; // mso_mdoc
+    // The same holder key in its two forms: a DID for _holderId, and a JWK for the SD-JWT cnf.
+    private static final String HOLDER_DID = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IngiLCJ5IjoieSJ9";
+    private static final Map<String, Object> HOLDER_PUBLIC_JWK = Map.of("kty", "EC", "crv", "P-256", "x", "x", "y", "y");
 
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken; // Renamed for clarity
@@ -587,6 +590,63 @@ public class CertifyIssuanceServiceImplTest {
         String credential = (String) response.getCredentials().getFirst().getCredential();
         assertTrue("Credential string should contain SD-JWT disclosure separator '~'", credential.contains("~"));
         verify(auditWrapper).logAudit(eq(Action.VC_ISSUANCE), eq(ActionStatus.SUCCESS), any(), isNull());
+    }
+
+    @Test
+    public void should_bindSdJwtCnfToHolderPublicJwk_when_proofIsValid() throws Exception {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_SDJWT);
+        stubValidProof();
+        when(proofValidator.getHolderPublicJwk(anyString())).thenReturn(HOLDER_PUBLIC_JWK);
+
+        SDJWT mockSdJwt = mock(SDJWT.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_SDJWT)).thenReturn(Optional.of(mockSdJwt));
+        when(mockSdJwt.createCredential(anyMap(), anyString())).thenReturn("{\"unsigned\":\"sdjwt_payload\"}");
+        VCResult signedSdJwt = new VCResult<String>();
+        signedSdJwt.setCredential("signed.sdjwt.string~disclosure1");
+        when(mockSdJwt.addProof(anyString(), anyString(), any(), any(), any(), any(), any())).thenReturn(signedSdJwt);
+
+        issuanceService.getCredential(request);
+
+        // cnf carries the key itself (RFC 7800 §3.2), not a kid naming it.
+        ArgumentCaptor<Map<String, Object>> templateParamsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(mockSdJwt).createCredential(templateParamsCaptor.capture(), anyString());
+        JSONObject cnf = (JSONObject) templateParamsCaptor.getValue().get(Constants.CONFIRMATION);
+        assertEquals(Map.of("jwk", HOLDER_PUBLIC_JWK), cnf.toMap());
+    }
+
+    @Test
+    public void should_keepHolderDidAsHolderId_when_formatIsLdpVc() throws Exception {
+        // Only the SD-JWT cnf changes to a JWK; ldp_vc still names the holder by its DID.
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        stubValidProof();
+
+        W3CJsonLD mockW3CJsonLD = mock(W3CJsonLD.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.of(mockW3CJsonLD));
+        when(mockW3CJsonLD.createCredential(anyMap(), anyString())).thenReturn("{\"unsigned\":\"credential\"}");
+        VCResult signedLdp = new VCResult<JsonLDObject>();
+        signedLdp.setCredential(JsonLDObject.fromJson("{\"signed\":\"credential\", \"proof\":{}}"));
+        when(mockW3CJsonLD.addProof(anyString(), anyString(), any(), any(), any(), any(), any())).thenReturn(signedLdp);
+
+        issuanceService.getCredential(request);
+
+        ArgumentCaptor<Map<String, Object>> templateParamsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(mockW3CJsonLD).createCredential(templateParamsCaptor.capture(), anyString());
+        assertEquals(HOLDER_DID, templateParamsCaptor.getValue().get(Constants._HOLDER_ID));
+        assertFalse(templateParamsCaptor.getValue().containsKey(Constants.CONFIRMATION));
+    }
+
+    /**
+     * Stubs a credential request whose single proof is valid and was signed by the holder key
+     * HOLDER_DID names.
+     */
+    private void stubValidProof() throws DataProviderExchangeException {
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(anyString(), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_DID);
+        when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
     }
 
     @Test

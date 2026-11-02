@@ -8,9 +8,11 @@ import com.nimbusds.jose.jwk.*;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 
+import io.ipfs.multibase.Multibase;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
@@ -127,6 +129,81 @@ class JwtProofValidatorTest {
         String credentialProof = "invalid.jwt.token";
 
         assertThrows(InvalidRequestException.class, () -> jwtProofValidator.getKeyMaterial(credentialProof));
+    }
+
+    @Test
+    void should_returnOnlyPublicKeyMembers_when_proofHeaderCarriesJwk() throws Exception {
+        // kid, use and alg describe the key but are not part of it, so none of them may reach cnf.jwk.
+        RSAKey holderKey = new RSAKeyGenerator(2048)
+                .keyID("holder-key-1")
+                .keyUse(KeyUse.SIGNATURE)
+                .algorithm(JWSAlgorithm.RS256)
+                .generate();
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.RS256).jwk(holderKey.toPublicJWK()),
+                new RSASSASigner(holderKey));
+
+        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+
+        assertEquals(Map.of(
+                "kty", "RSA",
+                "n", holderKey.getModulus().toString(),
+                "e", holderKey.getPublicExponent().toString()), publicJwk);
+    }
+
+    @Test
+    void should_returnOnlyPublicKeyMembers_when_proofKidIsDidJwk() throws Exception {
+        // Resolving a did:jwk sets the DID itself as the JWK's kid; that must not reach cnf.jwk.
+        ECKey holderKey = new ECKeyGenerator(Curve.P_256).generate();
+        String didJwk = "did:jwk:" + Base64URL.encode(holderKey.toPublicJWK().toJSONString());
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.ES256).keyID(didJwk + "#0"),
+                new ECDSASigner(holderKey));
+
+        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+
+        assertEquals(Map.of(
+                "kty", "EC",
+                "crv", "P-256",
+                "x", holderKey.getX().toString(),
+                "y", holderKey.getY().toString()), publicJwk);
+    }
+
+    @Test
+    void should_returnOnlyPublicKeyMembers_when_proofKidIsDidKey() throws Exception {
+        // An Ed25519 did:key is base58btc(0xed 0x01 || raw public key), multibase-prefixed with 'z'.
+        OctetKeyPair holderKey = new OctetKeyPairGenerator(Curve.Ed25519).generate();
+        byte[] rawPublicKey = holderKey.getDecodedX();
+        byte[] multicodecKey = new byte[rawPublicKey.length + 2];
+        multicodecKey[0] = (byte) 0xed;
+        multicodecKey[1] = (byte) 0x01;
+        System.arraycopy(rawPublicKey, 0, multicodecKey, 2, rawPublicKey.length);
+        String didKey = "did:key:" + Multibase.encode(Multibase.Base.Base58BTC, multicodecKey);
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(didKey),
+                new Ed25519Signer(holderKey));
+
+        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+
+        assertEquals(Map.of(
+                "kty", "OKP",
+                "crv", "Ed25519",
+                "x", holderKey.getX().toString()), publicJwk);
+    }
+
+    @Test
+    void should_rejectProof_when_holderPublicJwkIsRequestedForUnparsableJwt() {
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> jwtProofValidator.getHolderPublicJwk("invalid.jwt.token"));
+        assertEquals(ErrorConstants.PROOF_HEADER_INVALID_KEY, exception.getErrorCode());
+    }
+
+    /**
+     * Signs a minimal proof JWT. Only the header matters to key extraction, so the claims are not
+     * the ones validate() requires.
+     */
+    private String signProof(JWSHeader.Builder header, JWSSigner signer) throws JOSEException {
+        SignedJWT proof = new SignedJWT(header.type(new JOSEObjectType("openid4vci-proof+jwt")).build(),
+                new JWTClaimsSet.Builder().issueTime(new Date()).build());
+        proof.sign(signer);
+        return proof.serialize();
     }
 
     private String createValidJWT() throws Exception {

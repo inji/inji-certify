@@ -183,7 +183,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                         (a, b) -> a,
                         LinkedHashMap::new
                 ));
-        List<String> holderIds = new ArrayList<>();
+        List<HolderKey> holderKeys = new ArrayList<>();
         String nonceEndpoint = credentialIssuerMetadataDTO.getNonceEndpoint();
         for (Map.Entry<ProofType,Set<String>> entry : proofs.entrySet()) {
             String proofType = entry.getKey().toString().toLowerCase();
@@ -202,7 +202,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     }
                     String keyMaterial = proofValidator.getKeyMaterial(proofValue);
                     if (keyMaterial != null) {
-                        holderIds.add(keyMaterial);
+                        holderKeys.add(new HolderKey(keyMaterial, proofValidator.getHolderPublicJwk(proofValue)));
                     }
                 } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
@@ -212,15 +212,15 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             }
         }
 
-        if(holderIds.isEmpty()) {
+        if(holderKeys.isEmpty()) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
 
         auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
                 AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
 
-        for (String holderId : holderIds) {
-            vcResults.add(getVerifiableCredential(credentialConfigurationSupported, holderId));
+        for (HolderKey holderKey : holderKeys) {
+            vcResults.add(getVerifiableCredential(credentialConfigurationSupported, holderKey));
         }
 
         auditWrapper.logAudit(Action.VC_ISSUANCE, ActionStatus.SUCCESS,
@@ -234,7 +234,15 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         return didDocument;
     }
 
-    private VCResult<?> getVerifiableCredential(CredentialConfigurationSupported credentialConfigurationSupported, String holderId) {
+    /**
+     * The key of one validated proof, in the two forms a credential binds to: the DID, which becomes
+     * _holderId (ldp_vc credentialSubject.id, mso_mdoc deviceKey), and the public JWK, which becomes the
+     * dc+sd-jwt cnf.
+     */
+    private record HolderKey(String did, Map<String, Object> publicJwk) {
+    }
+
+    private VCResult<?> getVerifiableCredential(CredentialConfigurationSupported credentialConfigurationSupported, HolderKey holderKey) {
         parsedAccessToken.getClaims().put("accessTokenHash", parsedAccessToken.getAccessTokenHash());
         VCRequestDto vcRequestDto = new VCRequestDto();
         vcRequestDto.setFormat(credentialConfigurationSupported.getFormat());
@@ -271,7 +279,8 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                     vcRequestDto.setVct(credentialConfigurationSupported.getVct());
                     templateName = CredentialUtils.getTemplateName(vcRequestDto);
                     templateParams.put(Constants.VCTYPE, vcRequestDto.getVct());
-                    templateParams.put(Constants.CONFIRMATION, Map.of("kid", holderId));
+                    // cnf carries the holder's key itself, as SD-JWT VC recommends (RFC 7800 §3.2).
+                    templateParams.put(Constants.CONFIRMATION, Map.of("jwk", holderKey.publicJwk()));
                     templateParams.put(Constants.ISSUER, certifyIssuer);
                     jsonObject.put(Constants.TYPE, vcRequestDto.getVct());
                     break;
@@ -293,7 +302,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             if (!StringUtils.isEmpty(renderTemplateId)) {
                 templateParams.put(Constants.RENDERING_TEMPLATE_ID, renderTemplateId);
             }
-            jsonObject.put("_holderId", holderId);
+            jsonObject.put("_holderId", holderKey.did());
             templateParams.putAll(jsonObject.toMap());
             if(!StringUtils.isEmpty(idPrefix)) {
                 templateParams.put(VCDMConstants.CREDENTIAL_ID, idPrefix + UUID.randomUUID());
