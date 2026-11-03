@@ -151,6 +151,7 @@
     "TC_InjiCertify_MosipID_AddCredentialConfig_14": ["TC_InjiCertify_Delete_Credential_Config_Mosipid_08"],
     "TC_InjiCertify_MosipID_AddCredentialConfig_13": ["TC_InjiCertify_Delete_Credential_Config_Mosipid_01"],
     "TC_InjiCertify_MosipID_AddCredentialConfig_10": ["TC_InjiCertify_Delete_Credential_Config_Mosipid_01"],
+    "TC_InjiCertify_MosipID_AddCredentialConfig_11": ["TC_InjiCertify_Delete_Credential_Config_Mosipid_01"],
     "TC_mosipIDDependent_GenerateNonceNeg_01": ["TC_pms_dependency_01"],
     "TC_esignetDependent_OAuthdetailsRequestNeg_31": ["TC_pms_dependency_01"],
     "TC_esignetDependent_AuthenticateUserNeg_31": [
