@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.cert.CertificateException;
@@ -61,6 +62,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.javafaker.Faker;
 import com.google.gson.Gson;
 import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
@@ -101,6 +103,7 @@ import io.mosip.testrig.apirig.utils.JWKKeyUtil;
 import io.mosip.testrig.apirig.utils.KeyMgrUtility;
 import io.mosip.testrig.apirig.utils.NotificationListener;
 import io.mosip.testrig.apirig.utils.RestClient;
+import io.mosip.testrig.apirig.utils.SecurityXSSException;
 import io.mosip.testrig.apirig.utils.SkipTestCaseHandler;
 import io.restassured.response.Response;
 
@@ -117,6 +120,7 @@ public class InjiCertifyUtil extends AdminTestUtil {
 public static List<String> testCasesInRunScope = new ArrayList<>();
 
 	private static final String SAMPLE_MOSIP_IDENTITY_VC_CACHE_KEY = "PresentationDuringIssuance_sampleMosipIdentityVc";
+	private static boolean mosipIdCertificateCacheRefreshed;
 	private static final String MOSIP_ID_PARTNER_ID_KEYWORD =
 			"$ID:PartnerSelfRegistration_MOSIPID_All_Valid_Smoke_sid_partnerId$";
 	/** Mock eSignet partner. Valid for mdl/mdocvp mock OIDC, not for released IDA. */
@@ -248,28 +252,8 @@ public static void configureOtp() {
 		return "mdocvp".equals(trimLowerUseCase());
 	}
 
-	/**
-	 * First row of inji-config {@code driving_license_mosipid.csv} (dev-int).
-	 * MockCSVDataProviderPlugin looks up the IAR token {@code sub} against that
-	 * column. AddIdentity still uses a fresh idgenerator UIN so IDA can send OTP;
-	 * after IAR-with-VP succeeds we rewrite {@code iar_session.identity_data} to
-	 * this id so the subsequent token {@code sub} matches the CSV.
-	 */
-	public static final String DEFAULT_MDOCVP_CSV_IDENTITY_ID = "6039071423";
 	public static final String MDOCVP_IAR_VP_SMOKE_UNIQUE_ID = "TC_InjiCertify_IARInitialRequest_With_VP_01";
 	private static final Pattern SAFE_IAR_SESSION_TOKEN = Pattern.compile("[A-Za-z0-9._:-]+");
-
-	public static String mdocvpCsvIdentityId() {
-		try {
-			String configured = InjiCertifyConfigManager.getproperty("mdocvpCsvIdentityId");
-			if (configured != null && !configured.isBlank() && !"null".equalsIgnoreCase(configured.trim())) {
-				return configured.trim();
-			}
-		} catch (RuntimeException ignored) {
-			// Unit tests may call this before ConfigManager.init().
-		}
-		return DEFAULT_MDOCVP_CSV_IDENTITY_ID;
-	}
 
 	public static boolean shouldRewriteMdocvpIarSessionIdentity(TestCaseDTO testCaseDTO) {
 		if (!isMdocvpUseCase() || testCaseDTO == null) {
@@ -307,7 +291,7 @@ public static void configureOtp() {
 		} catch (JSONException e) {
 			throw new AdminTestException("IAR VP request is not JSON; cannot rewrite iar_session.identity_data");
 		}
-		String csvIdentityId = mdocvpCsvIdentityId();
+		String csvIdentityId = mdocvpIssuanceIdentityId();
 		String sql = mdocvpIarSessionIdentityUpdateSql(authSession, csvIdentityId);
 		String selectSql = "SELECT auth_session FROM iar_session WHERE auth_session = '" + authSession + "'";
 		logger.error("Rewriting mdocvp IAR session identity_data to the configured CSV identity");
@@ -341,7 +325,16 @@ public static void configureOtp() {
 				// Unit tests may call this before ConfigManager.init().
 			}
 			if (mdocDb != null && !mdocDb.isBlank() && !"null".equalsIgnoreCase(mdocDb.trim())) {
-				return "jdbc:postgresql://" + InjiCertifyConfigManager.getproperty("db-server") + ":"
+				String dbHost = InjiCertifyConfigManager.getproperty("db-server");
+				try {
+					String environmentHost = URI.create(BaseTestCase.ApplnURI).getHost();
+					if (environmentHost != null && environmentHost.startsWith("api-internal.")) {
+						dbHost = environmentHost.substring("api-internal.".length());
+					}
+				} catch (RuntimeException ignored) {
+					// Fall back to the configured DB host.
+				}
+				return "jdbc:postgresql://" + dbHost + ":"
 						+ InjiCertifyConfigManager.getproperty("db-port") + "/" + mdocDb.trim();
 			}
 		}
@@ -765,6 +758,10 @@ public static void configureOtp() {
 	
 	protected static final String OIDCJWK1 = "oidcJWK1";
 	protected static final String OIDCJWK4 = "oidcJWK4";
+	private static final String OIDC_JWK_DPOP = "oidcJWKDpop";
+	private static final String DPOP_WALLET_KEY = "dpopWalletJwk";
+	private static final String DPOP_CASE_MARKER = "_DPoP_";
+	private static RSAKey dpopWalletKey;
 	private static final Map<String, String> oidcJwkStore = new HashMap<>();
 	
 	protected static boolean triggerESignetKeyGen1 = true;
@@ -1036,6 +1033,14 @@ public static void configureOtp() {
 			}
 			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY4$", toPublicOidcJwkJson(jwkKey));
 		}
+
+		if (jsonString.contains("$OIDCJWKKEY_DPOP$")) {
+			if (oidcJwkStore.get(OIDC_JWK_DPOP) == null) {
+				generateUniqueOidcJwkKey(OIDC_JWK_DPOP);
+			}
+			jsonString = replaceKeywordValue(jsonString, "$OIDCJWKKEY_DPOP$",
+					toPublicOidcJwkJson(oidcJwkStore.get(OIDC_JWK_DPOP)));
+		}
 		if (jsonString.contains("$PROOF_JWT_3$")) {
 			JWKKeyUtil.generateAndCacheJWKKey(BINDINGJWK1);
 			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
@@ -1209,6 +1214,29 @@ public static void configureOtp() {
 					signJWKKey(clientId, oidcJWKKey4, tempUrl));
 		}
 
+		if (jsonString.contains("$CLIENT_ASSERTION_DPOP_JWT$")) {
+			String storedDpopJwk = oidcJwkStore.get(OIDC_JWK_DPOP);
+			if (storedDpopJwk == null || storedDpopJwk.isBlank()) {
+				throw new SkipException(
+						"DPoP client key is not available. Ensure the DPoP OIDC client case ran before this token request.");
+			}
+			RSAKey dpopClientKey;
+			try {
+				dpopClientKey = RSAKey.parse(storedDpopJwk);
+			} catch (java.text.ParseException e) {
+				throw new SkipException(
+						"DPoP client key could not be parsed. Ensure the DPoP OIDC client case ran before this token request.");
+			}
+			JSONObject request = new JSONObject(jsonString);
+			String clientId = null;
+			if (request.has("client_id")) {
+				clientId = request.get("client_id").toString();
+			}
+			String tempUrl = getBaseURL(testCaseName, InjiCertifyConfigManager.getInjiCertifyBaseUrl());
+			jsonString = replaceKeywordValue(jsonString, "$CLIENT_ASSERTION_DPOP_JWT$",
+					signJWKKey(clientId, dpopClientKey, tempUrl));
+		}
+
 		if (jsonString.contains("$CLIENT_ASSERTION_USER4_JWK$")) {
 			String oidcJWKKeyString = getOidcJwkKey(OIDCJWK4);
 			logger.info("oidcJWKKeyString =" + oidcJWKKeyString);
@@ -1367,6 +1395,105 @@ public static void configureOtp() {
 		return baseUrl;
 	}
 
+	public static boolean shouldSynchronizeMdocvpMosipIdClient(TestCaseDTO testCaseDTO) {
+		return isMdocvpUseCase() && testCaseDTO != null
+				&& "TC_pms_dependency_01".equals(testCaseDTO.getUniqueIdentifier());
+	}
+
+	/** eSignet 1.8 sends this client id to IDA, so it must be the PMS-issued API key. */
+	public static boolean shouldBindMosipIdDpopClient(TestCaseDTO testCaseDTO) {
+		return "mosipid".equals(trimLowerUseCase()) && testCaseDTO != null
+				&& "TC_esignetDependent_CreateOidc_DPoP_Mosip_01".equals(testCaseDTO.getUniqueIdentifier());
+	}
+
+	/** Mirrors a PMS-issued client into eSignet while preserving its IDA-authorized identifiers. */
+	public static String mdocvpMosipIdClientRequest(String pmsRequestJson, String pmsResponseJson) {
+		JSONObject pmsRequest = new JSONObject(pmsRequestJson).getJSONObject("request");
+		JSONObject pmsResponse = new JSONObject(pmsResponseJson).getJSONObject("response");
+		JSONObject request = new JSONObject();
+		request.put("clientId", pmsResponse.getString("clientId"));
+		request.put("clientName", "MOSIP PDI Client");
+		request.put("publicKey", pmsRequest.getJSONObject("publicKey"));
+		request.put("relyingPartyId", pmsRequest.getString("authPartnerId"));
+		request.put("userClaims", new JSONArray().put("name").put("email").put("gender")
+				.put("phone_number").put("birthdate"));
+		request.put("authContextRefs", new JSONArray().put("mosip:idp:acr:static-code")
+				.put("mosip:idp:acr:generated-code").put("mosip:idp:acr:biometrics")
+				.put("mosip:idp:acr:knowledge"));
+		request.put("logoUri", pmsRequest.getString("logoUri"));
+		request.put("redirectUris", pmsRequest.getJSONArray("redirectUris"));
+		request.put("grantTypes", pmsRequest.getJSONArray("grantTypes"));
+		request.put("clientAuthMethods", pmsRequest.getJSONArray("clientAuthMethods"));
+		request.put("clientNameLangMap", new JSONObject().put("eng", "MOSIP PDI Client"));
+		return new JSONObject().put("requestTime", generateCurrentUTCTimeStamp()).put("request", request).toString();
+	}
+
+	/** Same PMS client, with the DPoP binding eSignet requires on the access token. */
+	public static String mosipIdDpopClientRequest(String pmsRequestJson, String pmsResponseJson) {
+		JSONObject body = new JSONObject(mdocvpMosipIdClientRequest(pmsRequestJson, pmsResponseJson));
+		JSONObject request = body.getJSONObject("request");
+		request.put("clientName", "MOSIP OIDC Client");
+		request.getJSONObject("clientNameLangMap").put("eng", "MOSIP OIDC Client");
+		request.put("additionalConfig", new JSONObject().put("dpop_bound_access_tokens", true));
+		return body.toString();
+	}
+
+	public static String mosipIdDpopBindingPatch() {
+		return new JSONObject().put("requestTime", generateCurrentUTCTimeStamp())
+				.put("request", new JSONObject().put("additionalConfig",
+						new JSONObject().put("dpop_bound_access_tokens", true)))
+				.toString();
+	}
+
+	/** Refreshes the deployed issuer's cached signing kid before the mdocvp VC prerequisite. */
+	public static synchronized void refreshMosipIdCertificateCache(String testCaseName, String inputJson)
+			throws AdminTestException {
+		if (!isMdocvpUseCase() || testCaseName == null || !testCaseName.contains("_mdocvp_holder")
+				|| mosipIdCertificateCacheRefreshed) {
+			return;
+		}
+		String actuatorPath = InjiCertifyConfigManager.getproperty("actuatorCertifyEndpoint");
+		if (actuatorPath == null || actuatorPath.isBlank()) {
+			actuatorPath = "/v1/certify/actuator/env";
+		}
+		int envIndex = actuatorPath.lastIndexOf("/env");
+		String actuatorBase = envIndex >= 0 ? actuatorPath.substring(0, envIndex) : actuatorPath;
+		String url = getMosipIdCertifyBaseUrl().replaceAll("/+$", "")
+				+ actuatorBase + "/caches/certificatedatacache";
+		try {
+			String accessToken = new JSONObject(inputJson).optString("idpAccessToken", "");
+			if (accessToken.isBlank()) {
+				throw new AdminTestException("MOSIP ID access token is missing; cannot refresh the signing cache");
+			}
+			if (!url.regionMatches(true, 0, "https://", 0, "https://".length())) {
+				throw new AdminTestException(
+						"Refusing to send the MOSIP ID access token to a non-HTTPS cache URL: " + url);
+			}
+			Response response = io.restassured.RestAssured.given()
+					.header("Authorization", "Bearer " + accessToken).delete(url);
+			if (response.getStatusCode() == 403) {
+				String csrfToken = response.getCookie("XSRF-TOKEN");
+				if (csrfToken != null && !csrfToken.isBlank()) {
+					response = io.restassured.RestAssured.given()
+							.header("Authorization", "Bearer " + accessToken).cookie("XSRF-TOKEN", csrfToken)
+							.header("X-XSRF-TOKEN", csrfToken).delete(url);
+				}
+			}
+			if (response.getStatusCode() != 200 && response.getStatusCode() != 204) {
+				throw new AdminTestException("Unable to refresh MOSIP ID signing certificate cache at " + url
+						+ ": HTTP " + response.getStatusCode() + " " + response.asString());
+			}
+			mosipIdCertificateCacheRefreshed = true;
+			logger.info("Refreshed MOSIP ID signing certificate cache before mdocvp credential issuance");
+		} catch (AdminTestException e) {
+			throw e;
+		} catch (Exception e) {
+			logger.error("Unable to refresh MOSIP ID signing certificate cache at " + url, e);
+			throw new AdminTestException("Unable to refresh MOSIP ID signing certificate cache at " + url
+					+ ": " + e.getMessage());
+		}
+	}
+
 	public static String getMosipIdEsignetBaseUrl() {
 		String configured = InjiCertifyConfigManager.getproperty("eSignetMosipIdBaseUrl");
 		if (configured != null && !configured.isBlank()) {
@@ -1480,6 +1607,17 @@ public static void configureOtp() {
 	public static boolean shouldUpdateExistingMosipIdCredentialConfig(TestCaseDTO testCaseDTO, Response response) {
 		return shouldReplaceExistingMosipIdCredentialConfig(testCaseDTO)
 				&& isDuplicateMosipIdCredentialConfig(response);
+	}
+
+	/** qainji keeps these issuer configs; a second run updates them instead of failing the create. */
+	public static boolean shouldUpdateExistingLandRegistryCredentialConfig(TestCaseDTO testCaseDTO, Response response) {
+		if (!"landregistry".equals(trimLowerUseCase()) || testCaseDTO == null
+				|| !isDuplicateMosipIdCredentialConfig(response)) {
+			return false;
+		}
+		String uniqueIdentifier = testCaseDTO.getUniqueIdentifier();
+		return "TC_InjiCertify_LandRegistry_AddVCDM20_01".equals(uniqueIdentifier)
+				|| "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01".equals(uniqueIdentifier);
 	}
 
 	public static boolean isDuplicateMosipIdCredentialConfig(Response response) {
@@ -1949,7 +2087,8 @@ public static void configureOtp() {
 		} else if (testCaseName.contains("_GenerateToken_ForMockIDA")) {
 			tempURL = getValueFromEsignetWellKnownEndPoint("token_endpoint",
 					InjiCertifyConfigManager.getEsignetBaseUrl());
-		} else if (testCaseName.contains("_GenerateToken_ForLandRegistry")|| testCaseName.contains("_GenerateToken_Formdl")) {
+		} else if (testCaseName.contains("_GenerateToken_ForLandRegistry")|| testCaseName.contains("_GenerateToken_Formdl")
+				|| testCaseName.contains("_GenerateTokenSunBirdC")) {
 			tempURL = getValueFromEsignetWellKnownEndPoint("token_endpoint",
 					InjiCertifyConfigManager.getEsignetBaseUrl());
 		} else if (testCaseName.contains("_GetCredentialForMockIDA")) {
@@ -2033,7 +2172,105 @@ public static void configureOtp() {
 		
 		return "";
 	}
-	
+
+	@Override
+	protected Response postWithBodyAndCookieForAutoGeneratedIdForUrlEncoded(String url, String jsonInput,
+			String testCaseName, String idKeyName) throws SecurityXSSException {
+		if (!isDpopCase(testCaseName)) {
+			return super.postWithBodyAndCookieForAutoGeneratedIdForUrlEncoded(url, jsonInput, testCaseName, idKeyName);
+		}
+		String resolved = inputJsonKeyWordHandeler(jsonInput, testCaseName);
+		Map<String, String> form = jsonToForm(resolved);
+		Response response = postDpopForm(url, form, null);
+		if (response != null && response.asString() != null && response.asString().contains("use_dpop_nonce")) {
+			response = postDpopForm(url, form, response.getHeader("DPoP-Nonce"));
+		}
+		if (response != null) {
+			GlobalMethods.checkXSSProtectionHeader(response, url);
+			GlobalMethods.reportResponse(response.getHeaders().asList().toString(), url, response);
+			if (testCaseName.toLowerCase().contains("_sid")) {
+				writeAutoGeneratedId(response, idKeyName, testCaseName);
+			}
+		}
+		return response;
+	}
+
+	@Override
+	protected Response postRequestWithCookieAuthHeaderAndXsrfToken(String url, String jsonInput, String cookieName,
+			String testCaseName) throws SecurityXSSException {
+		if (!isDpopCase(testCaseName) || !testCaseName.contains("_GetCredential")) {
+			return super.postRequestWithCookieAuthHeaderAndXsrfToken(url, jsonInput, cookieName, testCaseName);
+		}
+		JSONObject body = new JSONObject(jsonInput);
+		String accessToken = body.getString("idpAccessToken");
+		body.remove("idpAccessToken");
+		body.remove("client_id");
+		Map<String, String> headers = new HashMap<>();
+		headers.put("Authorization", "DPoP " + accessToken);
+		headers.put("DPoP", dpopProof(url, accessToken, null));
+		String payload = body.toString();
+		GlobalMethods.reportRequest(headers.toString(), payload, url);
+		Response response = RestClient.postRequestWithMultipleHeadersWithoutCookie(url, payload,
+				MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON, headers);
+		GlobalMethods.checkXSSProtectionHeader(response, url);
+		GlobalMethods.reportResponse(response.getHeaders().asList().toString(), url, response);
+		return response;
+	}
+
+	private static boolean isDpopCase(String testCaseName) {
+		return testCaseName != null && testCaseName.contains(DPOP_CASE_MARKER);
+	}
+
+	private static boolean isUseDpop() {
+		return "true".equalsIgnoreCase(InjiCertifyConfigManager.getproperty("useDpop"));
+	}
+
+	private static Response postDpopForm(String url, Map<String, String> form, String nonce) {
+		Map<String, String> headers = new HashMap<>();
+		headers.put("DPoP", dpopProof(url, null, nonce));
+		GlobalMethods.reportRequest(headers.toString(), form.toString(), url);
+		return RestClient.postRequestWithFormDataBodyWithHeaders(url, form, headers);
+	}
+
+	private static Map<String, String> jsonToForm(String json) {
+		JSONObject object = new JSONObject(json);
+		Map<String, String> form = new HashMap<>();
+		Iterator<String> keys = object.keys();
+		while (keys.hasNext()) {
+			String key = keys.next();
+			form.put(key, String.valueOf(object.get(key)));
+		}
+		return form;
+	}
+
+	private static String dpopProof(String htu, String accessToken, String nonce) {
+		try {
+			RSAKey key = dpopWalletKey();
+			JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder().jwtID(UUID.randomUUID().toString())
+					.issueTime(new Date()).claim("htm", "POST").claim("htu", htu);
+			if (accessToken != null) {
+				claims.claim("ath", Base64URL.encode(MessageDigest.getInstance("SHA-256")
+						.digest(accessToken.getBytes(StandardCharsets.US_ASCII))).toString());
+			}
+			if (nonce != null && !nonce.isBlank()) {
+				claims.claim("nonce", nonce);
+			}
+			SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256)
+					.type(new JOSEObjectType("dpop+jwt")).jwk(key.toPublicJWK()).build(), claims.build());
+			jwt.sign(new RSASSASigner(key));
+			return jwt.serialize();
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to build DPoP proof", e);
+		}
+	}
+
+	private static RSAKey dpopWalletKey() throws java.text.ParseException {
+		if (dpopWalletKey == null) {
+			dpopWalletKey = RSAKey.parse(generateUniqueOidcJwkKey(DPOP_WALLET_KEY));
+		}
+		return dpopWalletKey;
+	}
+
 	public static TestCaseDTO isTestCaseValidForExecution(TestCaseDTO testCaseDTO) {
 		String testCaseName = testCaseDTO.getTestCaseName();
 		currentTestCaseName = testCaseName;
@@ -2067,6 +2304,10 @@ public static void configureOtp() {
 
 		if (SkipTestCaseHandler.isTestCaseInSkippedList(testCaseName)) {
 			throw new SkipException(GlobalConstants.KNOWN_ISSUES);
+		}
+
+		if (isDpopCase(testCaseName) && !isUseDpop()) {
+			throw new SkipException(GlobalConstants.FEATURE_NOT_SUPPORTED_MESSAGE);
 		}
 
 		String uc = trimLowerUseCase();
@@ -2228,6 +2469,7 @@ public static void configureOtp() {
 				signedJWT = new SignedJWT(
 						new JWSHeader.Builder(JWSAlgorithm.RS256).type(new JOSEObjectType(typ)).build(), claimsSet);
 			} else if (testCaseName.contains("_Sign_PS256_")) {
+				jwkHeader = new RSAKey.Builder((RSAKey) jwkHeader).algorithm(JWSAlgorithm.PS256).build();
 				signedJWT = new SignedJWT(
 						new JWSHeader.Builder(JWSAlgorithm.PS256).type(new JOSEObjectType(typ)).jwk(jwkHeader).build(),
 						claimsSet);
@@ -3023,6 +3265,21 @@ public static void configureOtp() {
 		return RAW_PLACEHOLDER.matcher(json).replaceAll("$1");
 	}
 
+	/** Uses an identifier from the CSV configured by the deployed mdoc issuer. */
+	static String mdocvpIssuanceIdentityId() throws AdminTestException {
+		String csvUrl = getValueFromCertifyActuator(
+				InjiCertifyConfigManager.getproperty("certifyActuatorPropertySection"),
+				"mosip.certify.mock.data-provider.csv-registry-uri");
+		if (csvUrl == null || csvUrl.isBlank()) {
+			throw new AdminTestException("Issuer CSV registry URI is not configured");
+		}
+		String identityId = getIdFromCsvUrl(csvUrl.trim());
+		if (!isSafeIarSessionToken(identityId)) {
+			throw new AdminTestException("Issuer CSV has no valid identifier: " + csvUrl);
+		}
+		return identityId.trim();
+	}
+
 	public static String getIdFromCsvUrl(String url) {
 		logger.info("Reading CSV from URL");
 
@@ -3063,6 +3320,61 @@ public static void configureOtp() {
 
 		// ----- TRIM / EXTRACT offer_id ----- // Only take the last segment after "%2F"
 		return credeuri.substring(credeuri.lastIndexOf("%2F") + 3);
+	}
+
+	public static void validateMdocCredentialResponse(Response response, String testCaseName) {
+		String body = response.asString();
+		JSONObject json;
+		try {
+			json = new JSONObject(body);
+		} catch (JSONException e) {
+			throw new RuntimeException("mDoc response is not valid JSON for " + testCaseName);
+		}
+
+		if (!json.has("credentials")) {
+			throw new RuntimeException(
+				"mDoc response missing 'credentials' array for " + testCaseName);
+		}
+
+		JSONArray credentials = json.getJSONArray("credentials");
+		if (credentials.length() == 0) {
+			throw new RuntimeException(
+				"mDoc response 'credentials' array is empty for " + testCaseName);
+		}
+
+		JSONObject firstEntry = credentials.getJSONObject(0);
+		if (!firstEntry.has("credential")) {
+			throw new RuntimeException(
+				"mDoc response first entry missing 'credential' field for " + testCaseName);
+		}
+
+		Object credentialField = firstEntry.get("credential");
+
+		if (!(credentialField instanceof String)) {
+			throw new RuntimeException(
+				"mDoc 'credential' must be a base64url string per OpenID4VCI v1.0, but got type: "
+				+ credentialField.getClass().getSimpleName()
+				+ " for " + testCaseName);
+		}
+
+		String credentialStr = (String) credentialField;
+		if (credentialStr.isBlank()) {
+			throw new RuntimeException(
+				"mDoc 'credential' field is blank for " + testCaseName);
+		}
+
+		try {
+			byte[] decoded = Base64.getUrlDecoder().decode(credentialStr);
+			if (decoded.length == 0) {
+				throw new RuntimeException(
+					"mDoc 'credential' base64url decodes to empty bytes for " + testCaseName);
+			}
+			logger.info(testCaseName + ": mDoc credential validated — base64url string, decoded size="
+				+ decoded.length + " bytes");
+		} catch (IllegalArgumentException e) {
+			throw new RuntimeException(
+				"mDoc 'credential' is not valid base64url for " + testCaseName);
+		}
 	}
 	
 }

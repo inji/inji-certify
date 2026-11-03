@@ -465,6 +465,16 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
+	<test name="AddLandRegistryIssuerCredentialConfig">
+		<parameter name="ymlFile"
+			value="injicertify/VCILandRegistry/AddCredentialConfigVCDM20/AddCredentialConfiguration.yml" />
+		<parameter name="idKeyName" value="id" />
+		<parameter name="prerequisite" value="Yes" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetCredentialForLandRegistry">
 		<parameter name="ymlFile"
 			value="injicertify/VCILandRegistry/GetCredentialForLandRegistry/GetCredentialForLandRegistry.yml" />
@@ -539,6 +549,13 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>	
+	<test name="GetCredentialConfigMetadataForMdocMDL">
+		<parameter name="ymlFile"
+			value="injicertify/mDocMDL/GetCredentialConfigurationForMdoc/GetCredentialConfigurationForMdoc.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
+		</classes>
+	</test>
 	<test name="OAuthDetailsRequestVCIFormDocMDL">
 		<parameter name="ymlFile"
 			value="injicertify/mDocMDL/OAuthDetailsRequestFormDoc/OAuthDetailsRequestFormDoc.yml" />
@@ -652,6 +669,13 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
+	<test name="GetCredentialConfigForEccR1">
+		<parameter name="ymlFile"
+			value="injicertify/EccR1/GetCredentialConfigurationEccR1/GetCredentialConfigurationEccR1.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
+		</classes>
+	</test>
 	<test name="OAuthDetailsRequestVCIForLandRegistryEccR1">
 		<parameter name="ymlFile"
 			value="injicertify/EccR1/OAuthDetailsRequestForLandRegistryEccR1/OAuthDetailsRequestForLandRegistry.yml" />
@@ -724,6 +748,13 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="GetCredentialConfigForSd_jwt">
+		<parameter name="ymlFile"
+			value="injicertify/Sd_Jwt/GetCredentialConfigurationSd_Jwt/GetCredentialConfigurationSd_Jwt.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
 		</classes>
 	</test>
 	<test name="OAuthDetailsRequestForSd_jwt">
@@ -800,6 +831,13 @@
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
 		</classes>
 	</test>
+	<test name="GetCredentialConfigForDataIntegrityProof">
+		<parameter name="ymlFile"
+			value="injicertify/DataIntegrityProof/GetCredentialConfigurationForDataIntegrity/GetCredentialConfigurationForDataIntegrity.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
+		</classes>
+	</test>
 	<test name="OAuthDetailsRequestForDataIntegrityProof">
 		<parameter name="ymlFile"
 			value="injicertify/DataIntegrityProof/OAuthDetailsRequestForDataIntegrity/OAuthDetailsRequestForDataIntegrity.yml" />
@@ -871,6 +909,13 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="GetCredentialConfigForRevocation">
+		<parameter name="ymlFile"
+			value="injicertify/Revocation/GetCredentialConfigurationForRevocation/GetCredentialConfigurationForRevocation.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
 		</classes>
 	</test>
 	<test name="OAuthDetailsRequestForRevocation">
@@ -999,6 +1044,13 @@
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injicertify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="GetCredentialConfigForCSRCertificate">
+		<parameter name="ymlFile"
+			value="injicertify/CSRCertificate/GetCredentialConfigurationForCSRCertificate/GetCredentialConfigurationForCSRCertificate.yml" />
+		<classes>
+			<class name="io.inji.testrig.apirig.injicertify.testscripts.GetWithParam" />
 		</classes>
 	</test>
 	<test name="OAuthDetailsRequestForCSRCertificate">
