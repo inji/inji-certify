@@ -16,6 +16,7 @@ import com.nimbusds.jwt.SignedJWT;
 import io.ipfs.multibase.Multibase;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -239,7 +240,7 @@ class JwtProofValidatorTest {
     void should_rejectProof_when_proofIsUnparsableJwt() {
         InvalidRequestException exception = assertThrows(InvalidRequestException.class,
                 () -> jwtProofValidator.getHolderKey("invalid.jwt.token"));
-        assertEquals(ErrorConstants.PROOF_HEADER_INVALID_KEY, exception.getErrorCode());
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
     }
 
     /**

@@ -22,6 +22,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -162,14 +163,14 @@ public class JwtProofValidator implements ProofValidator {
 
     /**
      * The proof header carries the holder's key, either as a jwk or as a did:jwk or did:key kid.
-     * @throws InvalidRequestException PROOF_HEADER_INVALID_KEY when the proof is not a parsable JWT
+     * @throws InvalidRequestException INVALID_PROOF when the proof is not a parsable JWT
      */
     private JWSHeader parseProofHeader(String proofJwt) {
         try {
             return ((SignedJWT) JWTParser.parse(proofJwt)).getHeader();
         } catch (ParseException e) {
             log.error("Failed to parse jwt in the credential proof", e);
-            throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
+            throw new InvalidRequestException(VCIErrorConstants.INVALID_PROOF);
         }
     }
 
