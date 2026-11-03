@@ -144,27 +144,20 @@ public class JwtProofValidator implements ProofValidator {
 
     /**
      * @param proofJwt from the credential request.
-     * @return the key material from the proof in a did:jwk or did:key format
+     * @return the holder's key from the proof, as the DID the proof gave and as a JWK holding only its key members
      */
     @Override
-    public String getKeyMaterial(String proofJwt) {
+    public HolderKey getHolderKey(String proofJwt) {
         JWSHeader header = parseProofHeader(proofJwt);
-        return getInstance(header.getKeyID()).getDID(header)
+        JwtProofKeyManager keyManager = getInstance(header.getKeyID());
+        // The DID is read from the header, not built from the JWK, so a did:key holder stays did:key.
+        String did = keyManager.getDID(header)
                 .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
-    }
-
-    /**
-     * @param proofJwt from the credential request.
-     * @return the holder's public key from the proof, as a JWK holding only its key members
-     */
-    @Override
-    public Map<String, Object> getHolderPublicJwk(String proofJwt) {
-        JWSHeader header = parseProofHeader(proofJwt);
-        JWK holderKey = getInstance(header.getKeyID()).getKeyFromHeader(header)
+        JWK jwk = keyManager.getKeyFromHeader(header)
                 .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
         // The required members are the key itself: kty with n,e (RSA), crv,x,y (EC) or crv,x (OKP), as
         // hashed for a thumbprint (RFC 7638 §3.2). kid, use, alg, x5c and any private member are left out.
-        return new LinkedHashMap<>(holderKey.getRequiredParams());
+        return new HolderKey(did, new LinkedHashMap<>(jwk.getRequiredParams()));
     }
 
     /**

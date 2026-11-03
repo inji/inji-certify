@@ -34,6 +34,7 @@ import io.mosip.certify.credential.CredentialFactory;
 import io.mosip.certify.credential.MDocCredential;
 import io.mosip.certify.credential.SDJWT;
 import io.mosip.certify.credential.W3CJsonLD;
+import io.mosip.certify.proof.HolderKey;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.LedgerUtils;
@@ -288,8 +289,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Stub getKeyMaterial, its result is used in templateParams for createCredential
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey, its result is used in templateParams for createCredential
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
@@ -341,8 +342,8 @@ public class CertifyIssuanceServiceImplTest {
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
 
-        // Stub getKeyMaterial, its result is used in templateParams for createCredential
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey, its result is used in templateParams for createCredential
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
@@ -397,8 +398,8 @@ public class CertifyIssuanceServiceImplTest {
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
 
-        // Stub getKeyMaterial, its result is used in templateParams for createCredential
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey, its result is used in templateParams for createCredential
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
@@ -450,7 +451,7 @@ public class CertifyIssuanceServiceImplTest {
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(anyMap())).thenReturn(new JSONObject());
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("did:example:holder123");
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("did:example:holder123", HOLDER_PUBLIC_JWK));
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockGlobalCredentialIssuerMetadataDTO);
         when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.empty());
 
@@ -465,7 +466,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("did:example:holder123");
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("did:example:holder123", HOLDER_PUBLIC_JWK));
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
         DataProviderExchangeException e = new DataProviderExchangeException("DP_FETCH_FAILED", "Failed to fetch data");
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenThrow(e);
@@ -550,8 +551,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Crucial: Stub getKeyMaterial to return "" to match the addProof mock
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Crucial: Stub getHolderKey with a "" DID to match the addProof mock
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(anyString(), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
@@ -574,7 +575,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(mockSdJwt.addProof(
                 eq("{\"unsigned\":\"sdjwt_payload\"}"), // unsignedCredential
-                eq(""),                                 // holderId (now matches due to getKeyMaterial stub)
+                eq(""),                                 // holderId (now matches due to getHolderKey stub)
                 anyString(),                            // proofAlgorithm
                 anyString(),                            // keyManagerAppId
                 anyString(),                            // keyManagerRefId
@@ -596,7 +597,6 @@ public class CertifyIssuanceServiceImplTest {
     public void should_bindSdJwtCnfToHolderPublicJwk_when_proofIsValid() throws Exception {
         request = createValidCredentialRequest(DEFAULT_FORMAT_SDJWT);
         stubValidProof();
-        when(proofValidator.getHolderPublicJwk(anyString())).thenReturn(HOLDER_PUBLIC_JWK);
 
         SDJWT mockSdJwt = mock(SDJWT.class);
         when(credentialFactory.getCredential(DEFAULT_FORMAT_SDJWT)).thenReturn(Optional.of(mockSdJwt));
@@ -645,7 +645,7 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_DID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey(HOLDER_DID, HOLDER_PUBLIC_JWK));
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
     }
 
@@ -660,8 +660,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Crucial: Stub getKeyMaterial to return "" to match the addProof mock
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Crucial: Stub getHolderKey with a "" DID to match the addProof mock
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(anyString(), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
@@ -684,7 +684,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(mockSdJwt.addProof(
                 eq("{\"unsigned\":\"sdjwt_payload\"}"), // unsignedCredential
-                eq(""),                                 // holderId (now matches due to getKeyMaterial stub)
+                eq(""),                                 // holderId (now matches due to getHolderKey stub)
                 anyString(),                            // proofAlgorithm
                 anyString(),                            // keyManagerAppId
                 anyString(),                            // keyManagerRefId
@@ -718,8 +718,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Crucial: Stub getKeyMaterial to return "" to match the addProof mock
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Crucial: Stub getHolderKey with a "" DID to match the addProof mock
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(anyString(), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
@@ -742,7 +742,7 @@ public class CertifyIssuanceServiceImplTest {
 
         when(mockSdJwt.addProof(
                 eq("{\"unsigned\":\"sdjwt_payload\"}"), // unsignedCredential
-                eq(""),                                 // holderId (now matches due to getKeyMaterial stub)
+                eq(""),                                 // holderId (now matches due to getHolderKey stub)
                 anyString(),                            // proofAlgorithm
                 anyString(),                            // keyManagerAppId
                 anyString(),                            // keyManagerRefId
@@ -774,8 +774,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Stub getKeyMaterial, its result is used in templateParams for createCredential
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey, its result is used in templateParams for createCredential
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
@@ -832,8 +832,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Stub getKeyMaterial, its result is used in templateParams for createCredential
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey, its result is used in templateParams for createCredential
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
@@ -894,8 +894,8 @@ public class CertifyIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
 
-        // Stub getKeyMaterial to return ""
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        // Stub getHolderKey with a "" DID
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
 
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
@@ -943,7 +943,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
         when(proofValidator.validate(anyString(), anyString(), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
 
@@ -1010,7 +1010,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
         when(proofValidator.validate(anyString(), anyString(), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
 
@@ -1053,7 +1053,7 @@ public class CertifyIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn("");
+        when(proofValidator.getHolderKey(anyString())).thenReturn(new HolderKey("", HOLDER_PUBLIC_JWK));
         when(proofValidator.validate(anyString(), anyString(), anyString(), any())).thenReturn(true);
         when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
 

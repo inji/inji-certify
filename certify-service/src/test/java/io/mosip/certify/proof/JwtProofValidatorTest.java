@@ -99,41 +99,9 @@ class JwtProofValidatorTest {
     }
 
     @Test
-    void testGetKeyMaterial_ValidJWT() throws Exception {
-        String credentialProof  = createValidJWT();
-
-        String keyMaterial = jwtProofValidator.getKeyMaterial(credentialProof);
-        assertNotNull(keyMaterial);
-        assertTrue(keyMaterial.startsWith("did:jwk:"), "Key material should be prefixed with did:jwk");
-    }
-
-    @Test
-    void should_rejectProof_when_noDidCanBeDerivedFromTheHeader() throws Exception {
-        // No embedded jwk and a kid that is neither did:jwk nor did:key: there is no DID to
-        // return. This used to escape as a NoSuchElementException, a 500.
-        RSAKey rsaJWK = new RSAKeyGenerator(2048).generate();
-        SignedJWT jwt = new SignedJWT(new JWSHeader.Builder(JWSAlgorithm.RS256)
-                .type(new JOSEObjectType("openid4vci-proof+jwt"))
-                .keyID("key-1")
-                .build(), new JWTClaimsSet.Builder().issueTime(new Date()).build());
-        jwt.sign(new RSASSASigner(rsaJWK));
-
-        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> jwtProofValidator.getKeyMaterial(jwt.serialize()));
-        assertEquals(ErrorConstants.PROOF_HEADER_INVALID_KEY, exception.getErrorCode());
-    }
-
-    @Test
-    void testGetKeyMaterial_InvalidJWT() {
-
-        String credentialProof = "invalid.jwt.token";
-
-        assertThrows(InvalidRequestException.class, () -> jwtProofValidator.getKeyMaterial(credentialProof));
-    }
-
-    @Test
-    void should_returnOnlyPublicKeyMembers_when_proofHeaderCarriesJwk() throws Exception {
+    void should_returnDidJwkAndPublicJwk_when_proofHeaderCarriesJwk() throws Exception {
         // kid, use and alg describe the key but are not part of it, so none of them may reach cnf.jwk.
+        // The DID is built from the header jwk as given, so it still carries them.
         RSAKey holderKey = new RSAKeyGenerator(2048)
                 .keyID("holder-key-1")
                 .keyUse(KeyUse.SIGNATURE)
@@ -142,34 +110,41 @@ class JwtProofValidatorTest {
         String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.RS256).jwk(holderKey.toPublicJWK()),
                 new RSASSASigner(holderKey));
 
-        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
 
+        assertNotNull(result);
+        assertTrue(result.did().startsWith("did:jwk:"));
+        assertEquals(holderKey.toPublicJWK(),
+                JWK.parse(Base64URL.from(result.did().substring("did:jwk:".length())).decodeToString()));
         assertEquals(Map.of(
                 "kty", "RSA",
                 "n", holderKey.getModulus().toString(),
-                "e", holderKey.getPublicExponent().toString()), publicJwk);
+                "e", holderKey.getPublicExponent().toString()), result.publicJwk());
     }
 
     @Test
-    void should_returnOnlyPublicKeyMembers_when_proofKidIsDidJwk() throws Exception {
+    void should_returnProofDidAndPublicJwk_when_proofKidIsDidJwk() throws Exception {
         // Resolving a did:jwk sets the DID itself as the JWK's kid; that must not reach cnf.jwk.
         ECKey holderKey = new ECKeyGenerator(Curve.P_256).generate();
         String didJwk = "did:jwk:" + Base64URL.encode(holderKey.toPublicJWK().toJSONString());
         String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.ES256).keyID(didJwk + "#0"),
                 new ECDSASigner(holderKey));
 
-        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
 
+        assertNotNull(result);
+        assertEquals(didJwk + "#0", result.did());
         assertEquals(Map.of(
                 "kty", "EC",
                 "crv", "P-256",
                 "x", holderKey.getX().toString(),
-                "y", holderKey.getY().toString()), publicJwk);
+                "y", holderKey.getY().toString()), result.publicJwk());
     }
 
     @Test
-    void should_returnOnlyPublicKeyMembers_when_proofKidIsDidKey() throws Exception {
+    void should_returnProofDidAndPublicJwk_when_proofKidIsDidKey() throws Exception {
         // An Ed25519 did:key is base58btc(0xed 0x01 || raw public key), multibase-prefixed with 'z'.
+        // The DID must stay did:key: deriving it from the JWK would turn it into a did:jwk.
         OctetKeyPair holderKey = new OctetKeyPairGenerator(Curve.Ed25519).generate();
         byte[] rawPublicKey = holderKey.getDecodedX();
         byte[] multicodecKey = new byte[rawPublicKey.length + 2];
@@ -180,18 +155,33 @@ class JwtProofValidatorTest {
         String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.EdDSA).keyID(didKey),
                 new Ed25519Signer(holderKey));
 
-        Map<String, Object> publicJwk = jwtProofValidator.getHolderPublicJwk(proof);
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
 
+        assertNotNull(result);
+        assertEquals(didKey, result.did());
         assertEquals(Map.of(
                 "kty", "OKP",
                 "crv", "Ed25519",
-                "x", holderKey.getX().toString()), publicJwk);
+                "x", holderKey.getX().toString()), result.publicJwk());
     }
 
     @Test
-    void should_rejectProof_when_holderPublicJwkIsRequestedForUnparsableJwt() {
+    void should_rejectProof_when_noDidCanBeDerivedFromTheHeader() throws Exception {
+        // No embedded jwk and a kid that is neither did:jwk nor did:key: there is no DID to
+        // return. This used to escape as a NoSuchElementException, a 500.
+        RSAKey rsaJWK = new RSAKeyGenerator(2048).generate();
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("key-1"),
+                new RSASSASigner(rsaJWK));
+
         InvalidRequestException exception = assertThrows(InvalidRequestException.class,
-                () -> jwtProofValidator.getHolderPublicJwk("invalid.jwt.token"));
+                () -> jwtProofValidator.getHolderKey(proof));
+        assertEquals(ErrorConstants.PROOF_HEADER_INVALID_KEY, exception.getErrorCode());
+    }
+
+    @Test
+    void should_rejectProof_when_proofIsUnparsableJwt() {
+        InvalidRequestException exception = assertThrows(InvalidRequestException.class,
+                () -> jwtProofValidator.getHolderKey("invalid.jwt.token"));
         assertEquals(ErrorConstants.PROOF_HEADER_INVALID_KEY, exception.getErrorCode());
     }
 

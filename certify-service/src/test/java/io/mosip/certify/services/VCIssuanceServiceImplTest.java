@@ -30,6 +30,7 @@ import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.exception.NotAuthenticatedException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.util.SecurityHelperService;
+import io.mosip.certify.proof.HolderKey;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import org.junit.Before;
@@ -76,6 +77,9 @@ public class VCIssuanceServiceImplTest {
     private static final String TEST_CNONCE = "test-cnonce";
     private static final String DEFAULT_SCOPE = "test-scope";
     private static final String HOLDER_ID = "test_holder_id";
+    // VCIssuance binds the credential to the DID only; the JWK is not used.
+    private static final HolderKey HOLDER_KEY = new HolderKey(HOLDER_ID,
+            Map.of("kty", "EC", "crv", "P-256", "x", "x", "y", "y"));
 
 
     CredentialRequest request;
@@ -244,7 +248,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<JsonLDObject> vcResultLdp = new VCResult<>();
         JsonLDObject jsonLDObject = new JsonLDObject();
@@ -267,7 +271,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<JsonLDObject> vcResultLdp = new VCResult<>();
         JsonLDObject jsonLDObject = new JsonLDObject();
@@ -291,7 +295,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<JsonLDObject> vcResultLdp = new VCResult<>();
         JsonLDObject jsonLDObject = new JsonLDObject();
@@ -335,7 +339,7 @@ public class VCIssuanceServiceImplTest {
         when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(null), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<JsonLDObject> vcResultLdp = new VCResult<>();
         JsonLDObject jsonLDObject = new JsonLDObject();
@@ -370,7 +374,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
         when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
                 .thenReturn(null); // Plugin returns null
 
@@ -386,7 +390,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<JsonLDObject> emptyVcResult = new VCResult<>();
         emptyVcResult.setCredential(null); // VCResult has null credential
@@ -408,7 +412,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<String> msoMDocVCResult = new VCResult<>();
         msoMDocVCResult.setCredential("test_mso_mdoc_credential_string");
@@ -432,7 +436,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(anyString(), anyString(), anyString(),any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCResult<String> msoMDocVCResult = new VCResult<>();
         msoMDocVCResult.setCredential("test_mso_mdoc_credential_string");
@@ -495,7 +499,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         VCIExchangeException pluginException = new VCIExchangeException("PLUGIN_ERROR_CODE");
         when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))

@@ -19,6 +19,7 @@ import io.mosip.certify.core.spi.CredentialLedgerService;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import io.mosip.certify.credential.Credential;
 import io.mosip.certify.credential.CredentialFactory;
+import io.mosip.certify.proof.HolderKey;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.CredentialUtils;
@@ -200,9 +201,9 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                         auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
                                 AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
                     }
-                    String keyMaterial = proofValidator.getKeyMaterial(proofValue);
-                    if (keyMaterial != null) {
-                        holderKeys.add(new HolderKey(keyMaterial, proofValidator.getHolderPublicJwk(proofValue)));
+                    HolderKey holderKey = proofValidator.getHolderKey(proofValue);
+                    if (holderKey != null) {
+                        holderKeys.add(holderKey);
                     }
                 } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
@@ -232,14 +233,6 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
     public Map<String, Object> getDIDDocument() {
         didDocument = didDocumentUtil.generateDIDDocument(didUrl);
         return didDocument;
-    }
-
-    /**
-     * The key of one validated proof, in the two forms a credential binds to: the DID, which becomes
-     * _holderId (ldp_vc credentialSubject.id, mso_mdoc deviceKey), and the public JWK, which becomes the
-     * dc+sd-jwt cnf.
-     */
-    private record HolderKey(String did, Map<String, Object> publicJwk) {
     }
 
     private VCResult<?> getVerifiableCredential(CredentialConfigurationSupported credentialConfigurationSupported, HolderKey holderKey) {
