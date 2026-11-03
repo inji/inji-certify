@@ -602,8 +602,43 @@ public class CertifyIssuanceServiceImplTest {
         // cnf carries the key itself (RFC 7800 §3.2), not a kid naming it.
         ArgumentCaptor<Map<String, Object>> templateParamsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(mockSdJwt).createCredential(templateParamsCaptor.capture(), anyString());
-        JSONObject cnf = (JSONObject) templateParamsCaptor.getValue().get(Constants.CONFIRMATION);
-        assertEquals(Map.of("jwk", HOLDER_PUBLIC_JWK), cnf.toMap());
+        assertEquals(Map.of("jwk", HOLDER_PUBLIC_JWK), cnfOf(templateParamsCaptor.getValue()));
+    }
+
+    @Test
+    public void should_bindEachSdJwtCnfToItsOwnProofKey_when_requestHasTwoProofs() throws Exception {
+        // One credential is issued per proof, in the request's order, each bound to the key of its own proof.
+        String proofA = createValidJWT(TEST_CNONCE);
+        String proofB = createValidJWTWithEC(TEST_CNONCE);
+        Map<String, Object> jwkA = Map.of("kty", "EC", "crv", "P-256", "x", "xA", "y", "yA");
+        Map<String, Object> jwkB = Map.of("kty", "EC", "crv", "P-256", "x", "xB", "y", "yB");
+        request = createValidCredentialRequest(DEFAULT_FORMAT_SDJWT);
+        request.setProofs(Map.of(ProofType.JWT, List.of(proofA, proofB)));
+        stubValidProof();
+        when(proofValidator.getHolderKey(proofA)).thenReturn(new HolderKey("did:jwk:A", jwkA));
+        when(proofValidator.getHolderKey(proofB)).thenReturn(new HolderKey("did:jwk:B", jwkB));
+
+        SDJWT mockSdJwt = mock(SDJWT.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_SDJWT)).thenReturn(Optional.of(mockSdJwt));
+        when(mockSdJwt.createCredential(anyMap(), anyString())).thenReturn("{\"unsigned\":\"sdjwt_payload\"}");
+        VCResult signedSdJwt = new VCResult<String>();
+        signedSdJwt.setCredential("signed.sdjwt.string~disclosure1");
+        when(mockSdJwt.addProof(anyString(), anyString(), any(), any(), any(), any(), any())).thenReturn(signedSdJwt);
+
+        CredentialResponse<?> response = issuanceService.getCredential(request);
+
+        ArgumentCaptor<Map<String, Object>> templateParamsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(mockSdJwt, times(2)).createCredential(templateParamsCaptor.capture(), anyString());
+        assertEquals(Map.of("jwk", jwkA), cnfOf(templateParamsCaptor.getAllValues().get(0)));
+        assertEquals(Map.of("jwk", jwkB), cnfOf(templateParamsCaptor.getAllValues().get(1)));
+        assertEquals(2, response.getCredentials().size());
+    }
+
+    /**
+     * @return the cnf claim the service passed to createCredential, as a plain map
+     */
+    private Map<String, Object> cnfOf(Map<String, Object> templateParams) {
+        return ((JSONObject) templateParams.get(Constants.CONFIRMATION)).toMap();
     }
 
     @Test
