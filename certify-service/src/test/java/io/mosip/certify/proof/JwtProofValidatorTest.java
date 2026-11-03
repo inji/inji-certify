@@ -4,6 +4,7 @@ import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.crypto.Ed25519Signer;
 import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton;
 import com.nimbusds.jose.jwk.*;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
@@ -142,7 +143,7 @@ class JwtProofValidatorTest {
     }
 
     @Test
-    void should_returnProofDidAndPublicJwk_when_proofKidIsDidKey() throws Exception {
+    void should_returnProofDidAndPublicJwk_when_proofKidIsEd25519DidKey() throws Exception {
         // An Ed25519 did:key is base58btc(0xed 0x01 || raw public key), multibase-prefixed with 'z'.
         // The DID must stay did:key: deriving it from the JWK would turn it into a did:jwk.
         OctetKeyPair holderKey = new OctetKeyPairGenerator(Curve.Ed25519).generate();
@@ -163,6 +164,62 @@ class JwtProofValidatorTest {
                 "kty", "OKP",
                 "crv", "Ed25519",
                 "x", holderKey.getX().toString()), result.publicJwk());
+    }
+
+    // The did:key vectors below are the ones DIDkeysProofManagerTest decodes. They are fixed rather than
+    // generated: a random P-256 or secp256k1 key whose x or y starts with a 0x00 byte is decoded to a
+    // 31-byte coordinate by DIDkeysProofManager, which would make these tests fail now and then.
+    // getHolderKey reads only the proof header, so each proof is signed with a throwaway key.
+
+    @Test
+    void should_returnProofDidAndPublicJwkWithoutKid_when_proofKidIsP256DidKey() throws Exception {
+        // The P-256 decoder sets the DID as the JWK's kid; it must not reach cnf.jwk.
+        String didKey = "did:key:zDnaehKu2hNcmLBhd5iNkh3v6Q4ncq75fT4EXKMtietgzR1bZ";
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.ES256).keyID(didKey),
+                new ECDSASigner(new ECKeyGenerator(Curve.P_256).generate()));
+
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
+
+        assertEquals(didKey, result.did());
+        assertEquals(Map.of(
+                "kty", "EC",
+                "crv", "P-256",
+                "x", "-wim35fhXPUsGq78EeP90JV1Fq0YvvYTbc_0kqhB6cQ",
+                "y", "42YsvtOfjrHASU_mJTraPLeEuA-At3YsXQwbRZDpM_A"), result.publicJwk());
+    }
+
+    @Test
+    void should_returnProofDidAndPublicJwk_when_proofKidIsSecp256k1DidKey() throws Exception {
+        String didKey = "did:key:zQ3shsijT3Dmb494bwbLqj89Huo6QdYA8U6Xeo391cspCuC1s";
+        // The JDK has no secp256k1, so the throwaway key and its signer use BouncyCastle.
+        ECKey signingKey = new ECKeyGenerator(Curve.SECP256K1).provider(BouncyCastleProviderSingleton.getInstance()).generate();
+        ECDSASigner signer = new ECDSASigner(signingKey);
+        signer.getJCAContext().setProvider(BouncyCastleProviderSingleton.getInstance());
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.ES256K).keyID(didKey), signer);
+
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
+
+        assertEquals(didKey, result.did());
+        assertEquals(Map.of(
+                "kty", "EC",
+                "crv", "secp256k1",
+                "x", "wldSvS-mIkLtxWUKTzH2bzpRc3r-lBeSu0FtqWBKiO4",
+                "y", "omtLUrNAYHypnICk14EsyCbHmVQxBCsGf_n3Z2AAnQc"), result.publicJwk());
+    }
+
+    @Test
+    void should_returnProofDidAndPublicJwk_when_proofKidIsRsaDidKey() throws Exception {
+        String didKey = "did:key:z4MXj1wBzi9jUstyPx4gpGCHXGU6SZNCGaWDBktDPabqKE9pU9Y3D8GeMkeXipiM3MYJooZRkhi32m2CWdWVm1MTdYQs2pwtp92SPbLnp9eqDKTwCWNrvnqgsbJC9u6CvrXfUj1XeRZgSEkRxqoAjycSFyAsdrEP76d9NaRveKKabnNQ4y2NCBTY2q8c2tBP4HAGWVa4rMvsgmZY7zcoyf1rLnuAhG717cXdDrrWJnHXY3miMPfHvZbLhouoXcakRDRRnxPJYRCFHqqohSBeDxDqN1QKw77MFCDwz286bWpWWxS1mD4DZwQdBomoQgv5y1LyvndoxHJ4GukM2m8AzJvy5eibDufpJtva6F5cZMq3nKw4hJtnU";
+        String proof = signProof(new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(didKey),
+                new RSASSASigner(new RSAKeyGenerator(2048).generate()));
+
+        HolderKey result = jwtProofValidator.getHolderKey(proof);
+
+        assertEquals(didKey, result.did());
+        assertEquals(Map.of(
+                "kty", "RSA",
+                "n", "y6dYuJhvq1gPXDm2ulPepI5RO19Z9i0ZVrWkvebXEZ2R_gUXNpVk7zHa2K-Z_JEX1Vtnrgr9X2bBgsxU57PoPRQIMiVKbV-xPLEfmtuX7sFn2Oucj7_lqI0Nm3wPZ8X0nl5I-Wy-Lug5NGWghEtjbXzF2d2gHRtuZ72_MbYnMBT7qpkK7GizutCMBqmzXASdbxijkApteOe2cMqZprFcnoGSPV_sfD_1eQaFHNCMPJjYOm_L1Mx0M7vLMvbh3mNGlvxWN7gC7m5bgvn_TEBeKDi3OkMGmBbGXsVo7qcCxJrp_eIgahX3YtkzMsjD7CwM_A-H1vl8w_v0KtZZNbLpAw",
+                "e", "AQAB"), result.publicJwk());
     }
 
     @Test
