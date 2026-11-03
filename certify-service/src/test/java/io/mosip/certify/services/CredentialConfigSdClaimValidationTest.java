@@ -22,6 +22,7 @@ import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 import static org.junit.Assert.assertThrows;
@@ -39,6 +40,27 @@ public class CredentialConfigSdClaimValidationTest {
 
     private static final String SD_JWT_KEY_ID = "sd-jwt-config";
     private static final String STORED_SD_CLAIM = "$.fullName, $.address.region, $.phoneNumbers[0]";
+
+    /**
+     * The dc+sd-jwt template (example) the requests carry, base64 encoded as the API takes it.
+     */
+    private static final String SD_JWT_TEMPLATE = base64("""
+            {
+              #if($nickname)"nickname": "${nickname}",#end
+              "fullName": "${fullName}",
+              "dateOfBirth": "${dateOfBirth}",
+              "gender": "${gender}",
+              "UIN": "${UIN}",
+              "email": "${email}",
+              "address": {
+                "region": "${region}",
+                "postalCode": "${postalCode}"
+              },
+              "phoneNumbers": [
+                "${phone}"
+              ]
+            }
+            """);
 
     @Mock
     private CredentialConfigRepository credentialConfigRepository;
@@ -102,10 +124,14 @@ public class CredentialConfigSdClaimValidationTest {
         return new ClaimsDisplayFieldsConfigDTO(List.of(new ClaimsDisplayFieldsConfigDTO.Display(name, "en")));
     }
 
+    private static String base64(String template) {
+        return Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8));
+    }
+
     /** The request collection 10's dc+sd-jwt bodies send, with the given sdClaim (null = omitted). */
     private static CredentialConfigurationDTO sdJwtRequest(String sdClaim) {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
-        dto.setVcTemplate("test_template");
+        dto.setVcTemplate(SD_JWT_TEMPLATE);
         dto.setCredentialConfigKeyId(SD_JWT_KEY_ID);
         dto.setContextURLs(new ArrayList<>());
         dto.setCredentialTypes(new ArrayList<>());
@@ -425,16 +451,53 @@ public class CredentialConfigSdClaimValidationTest {
         assertAddAccepted("$.fullName,$.fullName");
     }
 
-    /** Scope guard: well formed but not in the template. Needs credential data, so it stays at VC fetch. */
+    // add: path not declared in the template
+
+    /** Well formed, but the template has no such field, so VC fetch would fail for every holder. */
     @Test
-    public void should_allowCredentialConfiguration_when_sdClaimPathIsNotInTemplate() {
-        assertAddAccepted("$.favouriteColour");
+    public void should_throwCertifyException_when_sdClaimPathIsNotInTemplate() {
+        assertAddRejected("$.favouriteColour", "$.favouriteColour");
     }
 
-    /** Scope guard: well formed but the wrong shape (fullName is a string). Stays at VC fetch. */
+    @Test
+    public void should_throwCertifyException_when_sdClaimNestedPathIsNotInTemplate() {
+        assertAddRejected("$.address.randomField", "$.address.randomField");
+    }
+
+    /** The whole path has to be declared: region exists, but only under address. */
+    @Test
+    public void should_throwCertifyException_when_sdClaimPathSkipsItsParent() {
+        assertAddRejected("$.region", "$.region");
+    }
+
+    @Test
+    public void should_nameTheUndeclaredEntry_when_sdClaimHasDeclaredThenUndeclaredPath() {
+        assertAddRejected("$.fullName,$.randomField", "$.randomField");
+    }
+
+    /** A malformed entry is reported before an undeclared one, wherever it sits in the list. */
+    @Test
+    public void should_nameTheMalformedEntry_when_anEarlierEntryIsOnlyUndeclared() {
+        assertAddRejected("$.randomField, abcdef", "abcdef");
+    }
+
+    /** Declared under #if: absent for a holder without one, which VC fetch allows. */
+    @Test
+    public void should_allowCredentialConfiguration_when_sdClaimPathIsOptionalInTemplate() {
+        assertAddAccepted("$.nickname");
+    }
+
+    /** Scope guard: declared, but the wrong shape (fullName is a string). Needs credential data, so it stays at VC fetch. */
     @Test
     public void should_allowCredentialConfiguration_when_sdClaimPathHasWrongShapeForCredential() {
         assertAddAccepted("$.fullName[*]");
+    }
+
+    /** In VCIssuance mode the plugin builds the credential, not the template, so the template is not consulted. */
+    @Test
+    public void should_allowCredentialConfiguration_when_sdClaimPathIsNotInTemplateInVCIssuanceMode() {
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "VCIssuance");
+        assertAddAccepted("$.favouriteColour");
     }
 
     /** sdClaim is only read for dc+sd-jwt, so other formats are not checked for it. */
@@ -477,6 +540,33 @@ public class CredentialConfigSdClaimValidationTest {
     @Test
     public void should_throwCertifyException_when_updatedSdClaimHasTrailingSeparator() {
         assertUpdateRejected("$.fullName,", null);
+    }
+
+    @Test
+    public void should_throwCertifyException_when_updatedSdClaimPathIsNotInTemplate() {
+        assertUpdateRejected("$.favouriteColour", "$.favouriteColour");
+    }
+
+    /** PUT checks the merged configuration, so a new template that drops a disclosed field is refused. */
+    @Test
+    public void should_throwCertifyException_when_updatedTemplateNoLongerDeclaresSdClaimPath() {
+        when(credentialConfigRepository.findByCredentialConfigKeyId(SD_JWT_KEY_ID))
+                .thenReturn(Optional.of(storedSdJwtConfig()));
+        CredentialConfigurationDTO request = sdJwtRequest(STORED_SD_CLAIM);
+        request.setVcTemplate(base64("""
+                {
+                  "fullName": "${fullName}",
+                  "phoneNumbers": [
+                    "${phone}"
+                  ]
+                }
+                """));
+
+        CertifyException e = assertThrows("a template without address must be rejected on update",
+                CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration(SD_JWT_KEY_ID, request));
+        assertInvalidSdClaim(e, STORED_SD_CLAIM, "$.address.region");
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
 
     @Test

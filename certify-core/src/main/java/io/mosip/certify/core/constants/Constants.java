@@ -64,6 +64,12 @@ public class Constants {
     // Request attribute carrying the error code behind an auth failure, so the
     // handler advice can answer with it instead of a generic invalid_token.
     public static final String AUTH_ERROR_CODE_ATTRIBUTE = "certify.authErrorCode";
+    // Set by AccessTokenValidationFilter when a DPoP-bound token is presented as Bearer, so
+    // the handler advice adds a DPoP challenge to that 401 alone (RFC 9449 section 7.2).
+    public static final String AUTH_DPOP_REQUIRED_ATTRIBUTE = "certify.authDpopRequired";
+    // Set by AccessTokenValidationFilter when a valid proof arrives with a token not bound to its key,
+    // so the handler advice keeps algs on that DPoP invalid_token (RFC 9449 section 7.1).
+    public static final String AUTH_DPOP_BINDING_FAILED_ATTRIBUTE = "certify.authDpopBindingFailed";
     // Header carrying the DPoP proof JWT (RFC 9449 section 4.1).
     public static final String DPOP = "DPoP";
     // Authorization schemes a token may be presented with, and the value recorded in

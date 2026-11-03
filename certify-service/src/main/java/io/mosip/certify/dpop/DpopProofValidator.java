@@ -13,8 +13,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
@@ -35,6 +35,7 @@ import com.nimbusds.jwt.SignedJWT;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.certify.core.exception.DpopBindingException;
 import io.mosip.certify.core.exception.InvalidDpopHeaderException;
 import io.mosip.certify.core.util.CommonUtil;
 import jakarta.annotation.PostConstruct;
@@ -57,9 +58,16 @@ import lombok.extern.slf4j.Slf4j;
  * {@code CacheUtilService.checkAndMarkJti}. Since {@code iat} freshness already bounds how
  * long any proof can be presented, a {@code jti} only has to be remembered for that same
  * window - after it, the proof is rejected on age anyway.
+ *
+ * <p>Created only while {@code mosip.certify.dpop.enabled} is true, which is the default
+ * when it is unset. With DPoP disabled the bean does not exist, so none of the
+ * {@code mosip.certify.dpop.*} properties are bound and neither startup check below runs:
+ * a Bearer-only deployment does not need a {@code dpopJti} cache. Callers treat the
+ * absent bean as DPoP being disabled.
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "mosip.certify.dpop.enabled", havingValue = "true", matchIfMissing = true)
 public class DpopProofValidator {
 
     private static final String DPOP_JWT_TYPE = "dpop+jwt";
@@ -76,8 +84,7 @@ public class DpopProofValidator {
      */
     static final String ERROR_SERVER_MISCONFIGURED = "The DPoP proof could not be validated due to a server configuration error.";
 
-    @Autowired
-    private CacheManager cacheManager;
+    private final CacheManager cacheManager;
 
     /**
      * Public address of this issuer, as advertised in the credential issuer metadata.
@@ -148,13 +155,19 @@ public class DpopProofValidator {
     @Value("#{${mosip.certify.cache.expire-in-seconds:{:}}}")
     private Map<String, Integer> cacheExpireInSeconds;
 
+    public DpopProofValidator(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
+
     /**
      * @param dpopToken         the proof JWT, verbatim from the {@code DPoP} request header
      * @param accessToken       the token from the Authorization header, verbatim
      * @param accessTokenClaims decoded claims of that token, for the {@code cnf.jkt} binding
      * @param request           the inbound request, for {@code htm} / {@code htu}
-     * @throws InvalidDpopHeaderException on any failure; returns normally when the proof
-     *         satisfies every rule in RFC 9449 section 4.3
+     * @throws InvalidDpopHeaderException on any failure of the proof itself; returns normally
+     *         when the proof satisfies every rule in RFC 9449 section 4.3
+     * @throws DpopBindingException when the proof is valid but the access token is not
+     *         bound to its key
      */
     public void validate(String dpopToken, String accessToken,
                                    Map<String, Object> accessTokenClaims, HttpServletRequest request) {
@@ -166,12 +179,14 @@ public class DpopProofValidator {
         verifyFreshness(claims);
         validateAthClaim(claims, accessToken);
 
-        String jkt = validateCnfClaim(jwk, accessTokenClaims);
-
         String jti = claims.getJWTID();
         if (jti == null || jti.isBlank()) {
             throw new InvalidDpopHeaderException("DPoP proof is missing the jti claim");
         }
+
+        // Every proof check has passed by now, so a binding failure is the token's fault.
+        String jkt = validateCnfClaim(jwk, accessTokenClaims);
+
         // Replay check runs last: a proof is only burned once everything else about it has
         // been accepted, so a rejected request cannot consume a valid jti.
         if (checkAndMarkJti(jkt, jti)) {
@@ -347,23 +362,26 @@ public class DpopProofValidator {
      * comparison depends on is derived where it is used. It is left until after the
      * {@code cnf} checks: a token with no binding at all is refused without hashing.
      *
+     * <p>A failure here is the token's, not the proof's, so it answers {@code invalid_token}
+     * (RFC 9449 §7.1, Figure 16) rather than {@code invalid_dpop_proof}.
+     *
      * @return the RFC 7638 thumbprint of the proof key, reused by the caller for the
      *         replay check and returned to the filter
      */
     private String validateCnfClaim(JWK proofJwk, Map<String, Object> accessTokenClaims) {
         Object cnf = accessTokenClaims == null ? null : accessTokenClaims.get(Constants.CONFIRMATION);
         if (!(cnf instanceof Map)) {
-            throw new InvalidDpopHeaderException("Access token is not DPoP-bound: cnf claim is missing");
+            throw new DpopBindingException("Access token is not DPoP-bound: cnf claim is missing");
         }
         Object boundJkt = ((Map<?, ?>) cnf).get(Constants.JKT);
         if (!(boundJkt instanceof String) || ((String) boundJkt).isBlank()) {
-            throw new InvalidDpopHeaderException("Access token is not DPoP-bound: cnf.jkt is missing");
+            throw new DpopBindingException("Access token is not DPoP-bound: cnf.jkt is missing");
         }
         String jkt = computeThumbprint(proofJwk);
         if (!MessageDigest.isEqual(((String) boundJkt).getBytes(StandardCharsets.UTF_8),
                 jkt.getBytes(StandardCharsets.UTF_8))) {
             log.error("cnf claim validation failed");
-            throw new InvalidDpopHeaderException("DPoP proof key does not match the access token binding");
+            throw new DpopBindingException("DPoP proof key does not match the access token binding");
         }
         return jkt;
     }

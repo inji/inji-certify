@@ -20,7 +20,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -58,12 +57,6 @@ public class CredentialConfigurationSupportedServiceImplTest {
 
     @Before
     public void setup() {
-        Map<String, List<List<String>>> keyAliasMapper = new HashMap<>();
-        keyAliasMapper.put("EdDSA", List.of(
-                List.of("TEST2019", "TEST2019-REF")));
-//        keyAliasMapper.put("RS256", List.of());
-
-        MockitoAnnotations.openMocks(this);
         logo = new MetaDataDisplayDTO.Logo();
         logo.setUri("https://logo2.mosip.io");
         metaDataDisplayDTO = new MetaDataDisplayDTO();
@@ -99,23 +92,40 @@ public class CredentialConfigurationSupportedServiceImplTest {
         credentialConfigurationDTO.setKeyManagerRefId("TEST2019-REF");
         credentialConfigurationDTO.setClaims(Map.of("name", new ClaimsDTO(List.of(new ClaimsDTO.Display("Full Name", "en")))));
 
-        ReflectionTestUtils.setField(credentialConfigurationService, "credentialIssuer", "http://example.com/");
-        ReflectionTestUtils.setField(credentialConfigurationService, "authUrl", "http://auth.com");
-        ReflectionTestUtils.setField(credentialConfigurationService, "servletPath", "v1/test");
-        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
-        ReflectionTestUtils.setField(credentialConfigurationService, "issuerDisplay", List.of(Map.of()));
+        configure(credentialConfigurationService);
+    }
+
+    /** The @Value settings every service under test needs, as Spring would bind them. */
+    private void configure(CredentialConfigurationServiceImpl service) {
+        Map<String, List<List<String>>> keyAliasMapper = new HashMap<>();
+        keyAliasMapper.put("EdDSA", List.of(
+                List.of("TEST2019", "TEST2019-REF")));
+//        keyAliasMapper.put("RS256", List.of());
+
+        ReflectionTestUtils.setField(service, "credentialIssuer", "http://example.com/");
+        ReflectionTestUtils.setField(service, "authUrl", "http://auth.com");
+        ReflectionTestUtils.setField(service, "servletPath", "v1/test");
+        ReflectionTestUtils.setField(service, "pluginMode", "DataProvider");
+        ReflectionTestUtils.setField(service, "issuerDisplay", List.of(Map.of()));
         Map<String, List<String>> credentialSigningMap = new LinkedHashMap<>();
         credentialSigningMap.put("Ed25519Signature2020", List.of("EdDSA"));
         credentialSigningMap.put("RsaSignature2018", List.of("RS256"));
         credentialSigningMap.put("EcdsaSecp256r1Signature2019", List.of("ES256"));
-        ReflectionTestUtils.setField(credentialConfigurationService, "cryptographicBindingMethodsSupportedMap", new LinkedHashMap<>());
-        ReflectionTestUtils.setField(credentialConfigurationService, "credentialSigningAlgValuesSupportedMap", credentialSigningMap);
-        ReflectionTestUtils.setField(credentialConfigurationService, "proofTypesSupported", new LinkedHashMap<>());
-        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", keyAliasMapper);
+        ReflectionTestUtils.setField(service, "cryptographicBindingMethodsSupportedMap", new LinkedHashMap<>());
+        ReflectionTestUtils.setField(service, "credentialSigningAlgValuesSupportedMap", credentialSigningMap);
+        ReflectionTestUtils.setField(service, "proofTypesSupported", new LinkedHashMap<>());
+        ReflectionTestUtils.setField(service, "keyAliasMapper", keyAliasMapper);
         Map<String, String> authServerMapping = new HashMap<>();
         authServerMapping.put("default", "http://auth.com");
-        ReflectionTestUtils.setField(credentialConfigurationService, "authorizationServerMapping", authServerMapping);
+        ReflectionTestUtils.setField(service, "authorizationServerMapping", authServerMapping);
+    }
 
+    /** A service with the real mapper, for tests that need the request merged into the stored entity. */
+    private CredentialConfigurationServiceImpl serviceWithRealMapper() {
+        CredentialConfigurationServiceImpl service =
+                new CredentialConfigurationServiceImpl(credentialConfigRepository, new CredentialConfigMapperImpl());
+        configure(service);
+        return service;
     }
 
     /**
@@ -998,7 +1008,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     @Test
     public void should_throwCertifyException_when_qrSignatureAlgoUnsupported_onUpdate() {
         // the real mapper merges the request into the stored entity, so validation sees what would be saved
-        ReflectionTestUtils.setField(credentialConfigurationService, "credentialConfigMapper", new CredentialConfigMapperImpl());
+        CredentialConfigurationServiceImpl service = serviceWithRealMapper();
         // the real mapper clears the entity's collections before refilling them, so they must be mutable
         credentialConfig.setClaims(new HashMap<>(credentialConfig.getClaims()));
         credentialConfigurationDTO.setSignatureAlgo("EdDSA");
@@ -1007,7 +1017,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         when(credentialConfigRepository.findByCredentialConfigKeyId("test-credential")).thenReturn(Optional.of(credentialConfig));
 
         CertifyException ex = assertThrows(CertifyException.class, () ->
-                credentialConfigurationService.updateCredentialConfiguration("test-credential", credentialConfigurationDTO));
+                service.updateCredentialConfiguration("test-credential", credentialConfigurationDTO));
 
         assertEquals(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, ex.getErrorCode());
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
@@ -1028,7 +1038,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
 
     @Test
     public void should_throwCertifyException_when_qrSignatureAlgoSetWithoutSignatureAlgo_onUpdate() {
-        ReflectionTestUtils.setField(credentialConfigurationService, "credentialConfigMapper", new CredentialConfigMapperImpl());
+        CredentialConfigurationServiceImpl service = serviceWithRealMapper();
         credentialConfig.setClaims(new HashMap<>(credentialConfig.getClaims()));
         // the stored config has a signatureAlgo; the request omits it, which the mapper applies as null
         credentialConfig.setSignatureAlgo("EdDSA");
@@ -1038,7 +1048,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
         when(credentialConfigRepository.findByCredentialConfigKeyId("test-credential")).thenReturn(Optional.of(credentialConfig));
 
         CertifyException ex = assertThrows(CertifyException.class, () ->
-                credentialConfigurationService.updateCredentialConfiguration("test-credential", credentialConfigurationDTO));
+                service.updateCredentialConfiguration("test-credential", credentialConfigurationDTO));
 
         assertEquals(ErrorConstants.QR_SIGNATURE_ALGO_NOT_ALLOWED, ex.getErrorCode());
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));

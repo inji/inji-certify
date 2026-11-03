@@ -16,7 +16,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -64,15 +63,14 @@ public class IarVpRequestServiceTest {
     @Mock
     private Environment environment;
 
-    @InjectMocks
     private IarVpRequestService iarVpRequestService;
 
     @Before
     public void setup() {
+        iarVpRequestService = new IarVpRequestService(restTemplate, new ObjectMapper(), vpRequestService, environment);
         ReflectionTestUtils.setField(iarVpRequestService, "iaePostResponseMode", "iae_post");
         ReflectionTestUtils.setField(iarVpRequestService, "iaePostJwtResponseMode", "iae_post.jwt");
         ReflectionTestUtils.setField(iarVpRequestService, "certifyIaeEndpoint", "http://localhost:8090/v1/certify/oauth/iae");
-        ReflectionTestUtils.setField(iarVpRequestService, "objectMapper", new ObjectMapper());
         ReflectionTestUtils.setField(iarVpRequestService, "vpRequestConfigUrl", "http://localhost/vp_request_config.json");
         ReflectionTestUtils.setField(iarVpRequestService, "verifierClientId", "verifier-client-id");
     }

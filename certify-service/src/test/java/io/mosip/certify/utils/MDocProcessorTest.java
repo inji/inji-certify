@@ -19,7 +19,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.runner.RunWith;
 import org.mockito.*;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -88,7 +87,6 @@ public class MDocProcessorTest {
     @Mock
     private CoseSignatureService coseSignatureService;
 
-    @InjectMocks
     private MDocProcessor mDocProcessor;
 
     private ObjectMapper objectMapper;
@@ -96,7 +94,7 @@ public class MDocProcessorTest {
     @Before
     public void setUp() {
         objectMapper = new ObjectMapper();
-        ReflectionTestUtils.setField(mDocProcessor, "objectMapper", objectMapper);
+        mDocProcessor = new MDocProcessor(objectMapper, mDocConfig, coseSignatureService);
 
         // Setup default mock behavior
         when(mDocConfig.getValidityPeriodYears()).thenReturn(5);
