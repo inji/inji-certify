@@ -1,4 +1,49 @@
 {
+    "TC_InjiCertify_Config_Get_01": ["TC_InjiCertify_Config_Add_01"],
+    "TC_InjiCertify_Config_Update_01": ["TC_InjiCertify_Config_Add_01", "TC_InjiCertify_Config_Get_01"],
+    "TC_InjiCertify_Config_Delete_01": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_04": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_06": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_07": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_09": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_10": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_12": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_13": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_14": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_15": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_16": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_17": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_18": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_19": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_Config_Update_20": ["TC_InjiCertify_Config_Update_01"],
+    "TC_InjiCertify_CSR_MetaAttrs_Add_02": ["TC_InjiCertify_UploadCertificate_04"],
+    "TC_InjiCertify_Sd_jwt_MetaAttrs_Get_01": ["TC_InjiCertify_Sd_jwt_MetaAttrs_Add_01"],
+    "TC_InjiCertify_CSR_MetaAttrs_Add_01": ["TC_InjiCertify_CSR_MetaAttrs_Delete_01", "TC_InjiCertify_UploadCertificate_04"],
+    "TC_InjiCertify_CSR_MetaAttrs_GetCredential_01": ["TC_InjiCertify_CSR_MetaAttrs_Add_01", "TC_DBDependent_InsertQuery_01", "TC_esignetDependent_CreateOidc_For_EccR1_04", "TC_esignetDependent_GenerateToken_csrcertificate_01", "TC_landRegistryDependent_GenerateNonce_CSR_MetaAttrs_01"],
+    "TC_landRegistryDependent_GenerateNonce_CSR_MetaAttrs_01": ["TC_esignetDependent_GenerateToken_csrcertificate_01"],
+    "TC_InjiCertify_CSR_MetaAttrs_Delete_01": ["TC_InjiCertify_CSR_MetaAttrs_GetCredential_01"],
+    "TC_InjiCertify_UploadCertificate_04": ["TC_InjiCertify_UploadCACertificate_04"],
+    "TC_InjiCertify_UploadCACertificate_04": ["TC_InjiCertify_GenerateCSR_04"],
+    "TC_InjiCertify_DataIntegrity_MetaAttrs_Add_01": ["TC_InjiCertify_DataIntegrity_MetaAttrs_Delete_01"],
+    "TC_InjiCertify_DataIntegrity_MetaAttrs_GetCredential_01": ["TC_InjiCertify_DataIntegrity_MetaAttrs_Add_01", "TC_DBDependent_InsertQuery_02", "TC_esignetDependent_CreateOidc_For_EccR1_04", "TC_esignetDependent_GenerateToken_01", "TC_landRegistryDependent_GenerateNonce_DataIntegrity_MetaAttrs_01"],
+    "TC_landRegistryDependent_GenerateNonce_DataIntegrity_MetaAttrs_01": ["TC_esignetDependent_GenerateToken_01"],
+    "TC_InjiCertify_DataIntegrity_MetaAttrs_Delete_01": ["TC_InjiCertify_DataIntegrity_MetaAttrs_GetCredential_01"],
+    "TC_InjiCertify_Revocation_MetaAttrs_Add_01": ["TC_InjiCertify_Revocation_MetaAttrs_Delete_01"],
+    "TC_InjiCertify_Revocation_MetaAttrs_GetCredential_01": ["TC_InjiCertify_Revocation_MetaAttrs_Add_01", "TC_DBDependent_InsertQuery_01", "TC_esignetDependent_CreateOidc_For_EccR1_04", "TC_esignetDependent_GenerateToken_06", "TC_landRegistryDependent_GenerateNonce_Revocation_MetaAttrs_01"],
+    "TC_landRegistryDependent_GenerateNonce_Revocation_MetaAttrs_01": ["TC_esignetDependent_GenerateToken_06"],
+    "TC_InjiCertify_Revocation_MetaAttrs_Delete_01": ["TC_InjiCertify_Revocation_MetaAttrs_GetCredential_01"],
+    "TC_InjiCertify_Sd_jwt_MetaAttrs_Add_01": ["TC_InjiCertify_Sd_jwt_MetaAttrs_Delete_01"],
+    "TC_InjiCertify_Sd_jwt_MetaAttrs_GetCredential_01": ["TC_InjiCertify_Sd_jwt_MetaAttrs_Add_01","TC_DBDependent_InsertQuery_02","TC_esignetDependent_CreateOidc_For_EccR1_04","TC_esignetDependent_GenerateToken_07","TC_landRegistryDependent_GenerateNonce_sd_jwt_MetaAttrs_01"],
+    "TC_landRegistryDependent_GenerateNonce_sd_jwt_MetaAttrs_01": ["TC_esignetDependent_GenerateToken_07"],
+    "TC_InjiCertify_Sd_jwt_MetaAttrs_Delete_01": ["TC_InjiCertify_Sd_jwt_MetaAttrs_GetCredential_01"],
+    "TC_InjiCertify_Revocation_MetaAttrs_Get_01": ["TC_InjiCertify_Revocation_MetaAttrs_Add_01"],
+    "TC_InjiCertify_CSR_MetaAttrs_Get_01": ["TC_InjiCertify_CSR_MetaAttrs_Add_01"],
+    "TC_InjiCertify_DataIntegrity_MetaAttrs_Get_01": ["TC_InjiCertify_DataIntegrity_MetaAttrs_Add_01"],
+    "TC_InjiCertify_EccR1_MetaAttrs_Add_02": ["TC_InjiCertify_EccR1_MetaAttrs_Delete_02"],
+    "TC_InjiCertify_EccR1_MetaAttrs_Get_01": ["TC_InjiCertify_EccR1_MetaAttrs_Add_02"],
+    "TC_InjiCertify_EccR1_MetaAttrs_GetCredential_02": ["TC_InjiCertify_EccR1_MetaAttrs_Add_02","TC_InjiCertify_EccR1_MetaAttrs_Get_01","TC_DBDependent_InsertQuery_02","TC_esignetDependent_CreateOidc_For_EccR1_04","TC_esignetDependent_GenerateToken_03","TC_landRegistryDependent_GenerateNonce_EccR1_MetaAttrs_02"],
+    "TC_landRegistryDependent_GenerateNonce_EccR1_MetaAttrs_02": ["TC_esignetDependent_GenerateToken_03"],
+    "TC_InjiCertify_EccR1_MetaAttrs_Delete_02": ["TC_InjiCertify_EccR1_MetaAttrs_GetCredential_02"],
     "TC_InjiCertify_DeleteCredentialConfig_17": [
         "TC_InjiCertify_EccR1_Signature_03"
     ],
@@ -304,6 +349,14 @@
         "TC_esignetDependent_GenerateToken_03",
         "TC_landRegistryDependent_GenerateNonce_ecc_r1_01"
     ],
+    "TC_InjiCertify_GetCredentialForEccK1Siganture_14": [
+        "TC_InjiCertify_EccR1_Signature_01",
+        "TC_DBDependent_InsertQuery_02",
+        "TC_InjiCertify_EccR1_Signature_05",
+        "TC_esignetDependent_CreateOidc_For_EccR1_04",
+        "TC_esignetDependent_GenerateToken_03",
+        "TC_landRegistryDependent_GenerateNonce_ecc_r1_01"
+    ],
     "TC_InjiCertify_GetCredentialFor_Sd_jwt_10": [
         "TC_esignetDependent_GenerateToken_08",
         "TC_esignetDependent_CreateOidc_For_EccR1_04",
@@ -392,6 +445,7 @@
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_28": [
+        "TC_InjiCertify_LandRegistry_AddVCDM20_01",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_GenerateToken_14",
         "TC_esignetDependent_CreateOidc_03",
@@ -399,6 +453,7 @@
     ],
     "TC_InjiCertify_UpdateConfiguration_01": [],
     "TC_InjiCertify_GetCredentialForLandRegistry_23": [
+        "TC_InjiCertify_LandRegistry_AddVCDM20_01",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_GenerateToken_14",
         "TC_esignetDependent_CreateOidc_03",
@@ -411,18 +466,21 @@
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_25": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_24": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_30": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_CreateOidc_03",
@@ -707,6 +765,7 @@
         "TC_landRegistryDependent_GenerateNonceNeg_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_08": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_esignetDependent_CreateOidc_03",
@@ -719,6 +778,7 @@
         "TC_mock_identity_dependency_02"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_05": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_InjiCertify_dataIntegrity_proof_01",
@@ -728,18 +788,21 @@
         "TC_esignetDependent_GenerateToken_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_04": [
+        "TC_InjiCertify_LandRegistry_AddVCDM20_01",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_GenerateToken_14",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_07": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_06": [
+        "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01",
         "TC_esignetDependent_GenerateToken_15",
         "TC_DBDependent_InsertQuery_01",
         "TC_esignetDependent_CreateOidc_03",
@@ -752,6 +815,7 @@
         "TC_landRegistryDependent_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForLandRegistry_03": [
+        "TC_InjiCertify_LandRegistry_AddVCDM20_01",
         "TC_DBDependent_InsertQuery_02",
         "TC_esignetDependent_GenerateToken_14",
         "TC_esignetDependent_CreateOidc_03",
@@ -832,6 +896,7 @@
     "TC_InjiCertify_Update_Credential_Status_V2_08": [],
     "TC_InjiCertify_Update_Credential_Status_V2_07": [],
     "TC_InjiCertify_GetCredentialForLandRegistry_21": [
+        "TC_InjiCertify_LandRegistry_AddVCDM20_01",
         "TC_esignetDependent_GenerateToken_18",
         "TC_esignetDependent_CreateOidc_03",
         "TC_landRegistryDependent_GenerateNonceNeg_01"
@@ -1148,5 +1213,33 @@
         "TC_esignetDependent_GenerateToken_02",
         "TC_esignetDependent_GenerateToken_01",
         "TC_esignetDependent_CreateOidc_For_EccR1_04"
+    ],
+    "TC_esignetDependent_OAuthdetailsRequest_DPoP_01": [
+        "TC_esignetDependent_CreateOidc_DPoP_01"
+    ],
+    "TC_esignetDependent_AuthenticateUser_DPoP_01": [
+        "TC_esignetDependent_OAuthdetailsRequest_DPoP_01",
+        "TC_mock_identity_dependency_02"
+    ],
+    "TC_InjiCertify_GetCredentialForLandRegistry_DPoP_01": [
+        "TC_esignetDependent_CreateOidc_DPoP_01",
+        "TC_esignetDependent_GenerateToken_DPoP_01",
+        "TC_landRegistryDependent_GenerateNonce_01",
+        "TC_DBDependent_InsertQuery_02"
+    ],
+    "TC_InjiCertify_GetCredentialForLandRegistry_DPoP_Bearer_01": [
+        "TC_esignetDependent_CreateOidc_DPoP_01",
+        "TC_esignetDependent_GenerateToken_DPoP_01",
+        "TC_landRegistryDependent_GenerateNonce_01",
+        "TC_DBDependent_InsertQuery_02"
+    ],
+    "TC_esignetDependent_GenerateToken_DPoP_01": [
+        "TC_esignetDependent_AuthorizationCode_DPoP_01",
+        "TC_esignetDependent_CreateOidc_DPoP_01"
+    ],
+    "TC_esignetDependent_CreateOidc_DPoP_01": [],
+    "TC_esignetDependent_AuthorizationCode_DPoP_01": [
+        "TC_esignetDependent_OAuthdetailsRequest_DPoP_01",
+        "TC_esignetDependent_AuthenticateUser_DPoP_01"
     ]
 }
