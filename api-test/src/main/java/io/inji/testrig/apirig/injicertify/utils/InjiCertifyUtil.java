@@ -761,6 +761,7 @@ public static void configureOtp() {
 	private static final String OIDC_JWK_DPOP = "oidcJWKDpop";
 	private static final String DPOP_WALLET_KEY = "dpopWalletJwk";
 	private static final String DPOP_CASE_MARKER = "_DPoP_";
+	private static final String REUSE_PROOF_SECOND_USE_MARKER = "_Second_Use_";
 	private static RSAKey dpopWalletKey;
 	private static final Map<String, String> oidcJwkStore = new HashMap<>();
 	private static final Map<String, String> reusedProofJwtStore = new HashMap<>();
@@ -1178,6 +1179,14 @@ public static void configureOtp() {
 			String reuseKey = String.join("|", clientId, accessToken, cNonce, tempUrl);
 			String reusedProofJWT = reusedProofJwtStore.get(reuseKey);
 			if (reusedProofJWT == null || reusedProofJWT.isBlank()) {
+				// A "second use" case must replay a proof that an earlier "first use" case already
+				// signed and cached. If that cache entry is missing here (e.g. the first-use case
+				// was skipped), silently signing a fresh proof would let this case pass without ever
+				// exercising proof reuse, so it is failed explicitly instead.
+				if (testCaseName.contains(REUSE_PROOF_SECOND_USE_MARKER)) {
+					throw new IllegalStateException("No cached reused proof_jwt found for test case '" + testCaseName
+							+ "'; the corresponding first-use test case must run (and cache its proof) before this one.");
+				}
 				reusedProofJWT = signES256JWT(clientId, accessToken, cNonce, testCaseName, tempUrl);
 				reusedProofJwtStore.put(reuseKey, reusedProofJWT);
 				try {
