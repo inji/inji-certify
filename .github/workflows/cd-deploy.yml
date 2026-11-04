@@ -167,7 +167,7 @@ jobs:
           pf=$!
           trap 'kill $pf 2>/dev/null || true' EXIT
           for i in $(seq 1 12); do
-            if out=$(curl -fsS http://127.0.0.1:18090/v1/certify/actuator/health 2>/dev/null); then
+            if out=$(curl -fsS --connect-timeout 5 --max-time 10 http://127.0.0.1:18090/v1/certify/actuator/health 2>/dev/null); then
               echo "$out"
               echo "$out" | grep -q '"status":"UP"' && exit 0
             fi
