@@ -44,6 +44,7 @@
         "TC_preauth_GenerateNonce_01"
     ],
     "TC_InjiCertify_GetCredentialForPreAuthCodeEccR1Siganture_02": [
+        "TC_InjiCertify_GetCredentialForPreAuthCodeEccR1Siganture_01",
         "TC_preauth_TokenExchange_01",
         "TC_preauth_GenerateNonce_01"
     ]
