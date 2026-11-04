@@ -1,7 +1,5 @@
 package io.inji.testrig.apirig.injicertify.utils;
 
-import java.io.InputStream;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -12,14 +10,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
-
 import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.testng.SkipException;
-
-import com.apicatalog.jsonld.document.JsonDocument;
-import com.apicatalog.jsonld.http.media.MediaType;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -29,12 +23,10 @@ import com.nimbusds.jose.crypto.Ed25519Signer;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.util.Base64URL;
-
 import foundation.identity.jsonld.ConfigurableDocumentLoader;
 import foundation.identity.jsonld.JsonLDObject;
 import info.weboftrust.ldsignatures.LdProof;
 import info.weboftrust.ldsignatures.canonicalizer.URDNA2015Canonicalizer;
-import info.weboftrust.ldsignatures.jsonld.LDSecurityContexts;
 
 /**
  * Builds the DCQL {@code openid4vp_response} for Presentation During Issuance using
@@ -46,7 +38,6 @@ public final class PresentationDuringIssuanceVpUtil {
 	private static final Logger logger = Logger.getLogger(PresentationDuringIssuanceVpUtil.class);
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 	private static final String SIGNATURE_SUITE = "JsonWebSignature2020";
-	private static final ConfigurableDocumentLoader PRESENTATION_DOCUMENT_LOADER = presentationDocumentLoader();
 
 	/**
 	 * Fixed Ed25519 holder. verify-core only verifies JsonWebSignature2020 with EdDSA,
@@ -125,44 +116,15 @@ public final class PresentationDuringIssuanceVpUtil {
 				});
 
 		JsonLDObject vpLd = JsonLDObject.fromJsonObject(vpMap);
-		vpLd.setDocumentLoader(PRESENTATION_DOCUMENT_LOADER);
+		ConfigurableDocumentLoader documentLoader = new ConfigurableDocumentLoader();
+		documentLoader.setEnableHttps(true);
+		documentLoader.setEnableHttp(true);
+		documentLoader.setEnableFile(false);
+		vpLd.setDocumentLoader(documentLoader);
 
 		LdProof ldProof = LdProof.getFromJsonLDObject(vpLd);
 		byte[] canonicalBytes = new URDNA2015Canonicalizer().canonicalize(ldProof, vpLd);
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(canonicalBytes);
-	}
-
-	/**
-	 * The VP and the embedded MOSIP VC name these contexts by URL. Serving the
-	 * published documents from the classpath keeps canonicalization working when
-	 * the runner cannot reach w3.org, w3id.org, or github.io.
-	 */
-	private static ConfigurableDocumentLoader presentationDocumentLoader() {
-		try {
-			ConfigurableDocumentLoader loader = new ConfigurableDocumentLoader();
-			loader.setEnableHttps(true);
-			loader.setEnableHttp(true);
-			loader.setEnableFile(false);
-			loader.getLocalCache().putAll(LDSecurityContexts.CONTEXTS);
-			cacheClasspathContext(loader, "https://www.w3.org/2018/credentials/v1", "jsonld/credentials-v1.jsonld");
-			cacheClasspathContext(loader, "https://inji.github.io/inji-config/contexts/mosip-identity-context.json",
-					"jsonld/mosip-identity-context.json");
-			return loader;
-		} catch (Exception e) {
-			throw new ExceptionInInitializerError(e);
-		}
-	}
-
-	private static void cacheClasspathContext(ConfigurableDocumentLoader loader, String url, String resource)
-			throws Exception {
-		try (InputStream in = PresentationDuringIssuanceVpUtil.class.getClassLoader().getResourceAsStream(resource)) {
-			if (in == null) {
-				throw new IllegalStateException("Missing JSON-LD context " + resource);
-			}
-			JsonDocument document = JsonDocument.of(MediaType.JSON_LD, in);
-			document.setDocumentUrl(URI.create(url));
-			loader.getLocalCache().put(URI.create(url), document);
-		}
 	}
 
 	static String signDetachedJwt(JWK holderKey, String dataToSignBase64Url) throws Exception {
