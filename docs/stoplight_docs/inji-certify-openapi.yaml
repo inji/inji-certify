@@ -592,18 +592,47 @@ paths:
           description: >-
             The access token or the DPoP proof was rejected. The WWW-Authenticate header
             challenges in the scheme the caller used, so a DPoP client is never told to
-            retry as Bearer - which it must not do for a bound token.
+            retry as Bearer - which it must not do for a bound token. invalid_dpop_proof
+            means the DPoP proof failed one of the checks of RFC 9449 section 4.3. A
+            sender-constrained (cnf.jkt) token presented as Bearer answers invalid_token
+            instead, because no proof took part in that request. Under the DPoP scheme, a
+            valid proof with a token that is not bound to its key (no cnf, no cnf.jkt, or
+            a different key) also answers invalid_token, because the token is at fault. On a
+            deployment with mosip.certify.dpop.enabled=false, a DPoP-scheme request is
+            refused with invalid_token and "DPoP is not supported by this deployment. Use a
+            Bearer token.", before the access token or request body is examined, and a
+            DPoP-bound token presented as Bearer is still refused.
           headers:
             WWW-Authenticate:
               description: >-
                 Challenge in the caller's scheme, carrying error and error_description.
-                For invalid_dpop_proof it also carries algs, listing the signature
-                algorithms this issuer accepts on a proof.
+                algs lists the signature algorithms this issuer accepts on a proof and is a
+                DPoP parameter only. It is on the DPoP challenge for invalid_dpop_proof and
+                for a token not bound to the proof key (RFC 9449 section 7.1), and, when a
+                DPoP-bound token is presented as Bearer, on a separate DPoP challenge telling
+                the client to retry under DPoP (RFC 9449 section 7.2). Other failures carry
+                no algs. With DPoP disabled the challenge is always Bearer and never carries
+                algs, for example: Bearer error="invalid_token", error_description="DPoP is
+                not supported by this deployment. Use a Bearer token."
               schema:
                 type: string
-              example: >-
-                DPoP error="invalid_dpop_proof", error_description="DPoP proof htu does not
-                match the request URI", algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
+              examples:
+                invalidDpopProof:
+                  summary: The DPoP proof failed a check
+                  value: >-
+                    DPoP error="invalid_dpop_proof", error_description="DPoP proof htu does
+                    not match the request URI", algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
+                tokenNotBoundToProofKey:
+                  summary: A valid DPoP proof with a token not bound to its key
+                  value: >-
+                    DPoP error="invalid_token", error_description="Access token is not
+                    DPoP-bound: cnf claim is missing", algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
+                boundTokenAsBearer:
+                  summary: A DPoP-bound access token was presented as Bearer
+                  value: >-
+                    Bearer error="invalid_token", error_description="This access token is
+                    DPoP-bound and cannot be presented as a Bearer token.", DPoP
+                    algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
           content:
             '*/*':
               schema:
@@ -1503,15 +1532,16 @@ components:
       bearerFormat: JWT
       description: >-
         A plain access token. Accepted only when the token is not sender-constrained: a
-        token carrying a cnf.jkt claim is refused under this scheme, because honouring it
-        would discard the very protection that binding provides.
+        token carrying a cnf.jkt claim is refused under this scheme with invalid_token,
+        because honouring it would discard the very protection that binding provides.
     dpopAuth:
       type: http
       scheme: DPoP
       description: >-
         A DPoP-bound access token (RFC 9449), presented with a proof of possession in the
         DPoP header. The proof must be signed by the key whose thumbprint appears in the
-        token's cnf.jkt claim.
+        token's cnf.jkt claim. Offered only while mosip.certify.dpop.enabled is true, the
+        default.
   schemas:
     CredentialConfigurationDTO:
       type: object

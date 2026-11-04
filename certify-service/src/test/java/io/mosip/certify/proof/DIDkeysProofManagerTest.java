@@ -9,10 +9,15 @@ import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.ipfs.multibase.Multibase;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.io.IOException;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
@@ -134,6 +139,128 @@ public class DIDkeysProofManagerTest {
         assertEquals("AQAB", ((RSAKey) result).getPublicExponent().toString());
         assertEquals("y6dYuJhvq1gPXDm2ulPepI5RO19Z9i0ZVrWkvebXEZ2R_gUXNpVk7zHa2K-Z_JEX1Vtnrgr9X2bBgsxU57PoPRQIMiVKbV-xPLEfmtuX7sFn2Oucj7_lqI0Nm3wPZ8X0nl5I-Wy-Lug5NGWghEtjbXzF2d2gHRtuZ72_MbYnMBT7qpkK7GizutCMBqmzXASdbxijkApteOe2cMqZprFcnoGSPV_sfD_1eQaFHNCMPJjYOm_L1Mx0M7vLMvbh3mNGlvxWN7gC7m5bgvn_TEBeKDi3OkMGmBbGXsVo7qcCxJrp_eIgahX3YtkzMsjD7CwM_A-H1vl8w_v0KtZZNbLpAw",
                 ((RSAKey) result).getModulus().toString());
+    }
+
+    /**
+     * An RSA did:key whose payload is valid DER but not a SEQUENCE is rejected as an invalid key
+     * rather than failing with a ClassCastException.
+     */
+    @Test
+    void should_returnEmpty_when_rsaDidKeyIsNotAnAsn1Sequence() throws IOException {
+        JWSHeader header = Mockito.mock(JWSHeader.class);
+        when(header.getKeyID()).thenReturn(rsaDidKey(new ASN1Integer(65537).getEncoded()));
+
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(header).isEmpty());
+    }
+
+    /**
+     * An RSA did:key whose SEQUENCE holds something other than the modulus and exponent integers is
+     * rejected as an invalid key rather than failing with a ClassCastException.
+     */
+    @Test
+    void should_returnEmpty_when_rsaDidKeySequenceHoldsNonIntegers() throws IOException {
+        JWSHeader header = Mockito.mock(JWSHeader.class);
+        byte[] der = new DERSequence(new ASN1Encodable[]{
+                new DEROctetString(new byte[]{1}), new DEROctetString(new byte[]{2})}).getEncoded();
+        when(header.getKeyID()).thenReturn(rsaDidKey(der));
+
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(header).isEmpty());
+    }
+
+    /**
+     * An RSA did:key with nothing after the multicodec prefix is rejected as an invalid key rather
+     * than failing with a NullPointerException.
+     */
+    @Test
+    void should_returnEmpty_when_rsaDidKeyHasNoAsn1Object() {
+        JWSHeader header = Mockito.mock(JWSHeader.class);
+        when(header.getKeyID()).thenReturn(rsaDidKey(new byte[0]));
+
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(header).isEmpty());
+    }
+
+    /**
+     * A did:key too short to hold a multicodec prefix is rejected as an invalid key rather than
+     * failing with an ArrayIndexOutOfBoundsException.
+     */
+    @Test
+    void should_returnEmpty_when_didKeyDecodesToFewerThanTwoBytes() {
+        // nothing after the multibase prefix, and a lone Ed25519 prefix byte
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(headerWithKeyId("did:key:z")).isEmpty());
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(headerWithKeyId(
+                "did:key:" + Multibase.encode(Multibase.Base.Base58BTC, new byte[]{(byte) 0xed}))).isEmpty());
+    }
+
+    /**
+     * A did:key with nothing after "did:key:" is rejected as an invalid key rather than failing
+     * while decoding the multibase value.
+     */
+    @Test
+    void should_returnEmpty_when_didKeyHasNothingAfterThePrefix() {
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(headerWithKeyId("did:key:")).isEmpty());
+    }
+
+    /**
+     * A did:key whose base58 value holds characters outside the alphabet is rejected as an invalid
+     * key rather than failing while decoding it.
+     */
+    @Test
+    void should_returnEmpty_when_didKeyHasInvalidBase58Characters() {
+        // 0, O, I and l are not in the base58 alphabet
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(headerWithKeyId("did:key:z0OIl")).isEmpty());
+    }
+
+    /**
+     * A did:key in another multibase encoding with characters outside its alphabet is rejected as
+     * an invalid key rather than failing with the NumberFormatException its decoder throws.
+     */
+    @Test
+    void should_returnEmpty_when_didKeyHasInvalidHexCharacters() {
+        // f = base16, and z is not a hex digit
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(headerWithKeyId("did:key:fzz")).isEmpty());
+    }
+
+    /**
+     * A secp256k1 did:key whose bytes are not a point on the curve is rejected as an invalid key
+     * rather than failing with an IllegalArgumentException.
+     */
+    @Test
+    void should_returnEmpty_when_secp256k1DidKeyIsNotAValidPoint() {
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(
+                headerWithKeyId(ecDidKey((byte) 0xe7, (byte) 0x01))).isEmpty());
+    }
+
+    /**
+     * A P-256 did:key whose bytes are not a point on the curve is rejected as an invalid key rather
+     * than failing with an IllegalArgumentException.
+     */
+    @Test
+    void should_returnEmpty_when_p256DidKeyIsNotAValidPoint() {
+        assertTrue(new DIDkeysProofManager().getKeyFromHeader(
+                headerWithKeyId(ecDidKey((byte) 0x80, (byte) 0x24))).isEmpty());
+    }
+
+    private static JWSHeader headerWithKeyId(String keyId) {
+        JWSHeader header = Mockito.mock(JWSHeader.class);
+        when(header.getKeyID()).thenReturn(keyId);
+        return header;
+    }
+
+    /** A did:key of the right length for a compressed EC point, with an invalid point encoding. */
+    private static String ecDidKey(byte prefix0, byte prefix1) {
+        byte[] key = new byte[35];
+        key[0] = prefix0;
+        key[1] = prefix1;
+        key[2] = 0x05; // a compressed point starts with 0x02 or 0x03
+        return "did:key:" + Multibase.encode(Multibase.Base.Base58BTC, key);
+    }
+
+    private static String rsaDidKey(byte[] der) {
+        byte[] key = new byte[der.length + 2];
+        key[0] = (byte) 0x85;
+        key[1] = (byte) 0x24;
+        System.arraycopy(der, 0, key, 2, der.length);
+        return "did:key:" + Multibase.encode(Multibase.Base.Base58BTC, key);
     }
 
     @Test

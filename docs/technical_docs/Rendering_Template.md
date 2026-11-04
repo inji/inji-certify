@@ -72,6 +72,9 @@ In the Velocity template used for credential issuance, include the `renderMethod
 
 **IMPORTANT:** ${_renderMethodSVGdigest} is a system variable populated by Certify when mosip.certify.data-provider-plugin.rendering-template-id is configured. If this property is not set, replace with the hardcoded digest of your template. (see https://w3c-ccg.github.io/vc-render-method/ for digest generation)
 
+> **Note:** If the configured `rendering-template-id` is not found in the `rendering_template` table, issuance fails with the `template_with_id_not_found` error **only when** the template uses `${_renderMethodSVGdigest}`. If the digest is hardcoded, issuance continues and a warning is logged.
+
+
 **Note**: This template is converted into base64 encoded string and then stored as `vcTemplate` column in the `credential_config` table.
 
 ```mermaid

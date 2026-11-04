@@ -20,7 +20,6 @@ import io.mosip.certify.validators.credentialconfigvalidators.QrSettingsValidato
 import io.mosip.certify.validators.credentialconfigvalidators.SdClaimValidator;
 import io.mosip.certify.validators.credentialconfigvalidators.SdJwtCredentialConfigValidator;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.annotation.CacheEvict;
@@ -39,11 +38,9 @@ import com.authlete.cose.constants.COSEAlgorithms;
 @Transactional
 public class CredentialConfigurationServiceImpl implements CredentialConfigurationService {
 
-    @Autowired
-    private CredentialConfigRepository credentialConfigRepository;
+    private final CredentialConfigRepository credentialConfigRepository;
 
-    @Autowired
-    private CredentialConfigMapper credentialConfigMapper;
+    private final CredentialConfigMapper credentialConfigMapper;
 
     @Value("${mosip.certify.domain.url}")
     private String credentialIssuer;
@@ -82,6 +79,12 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     private Map<String, String> authorizationServerMapping;
 
     private static final String CREDENTIAL_CONFIG_CACHE_NAME = "credentialConfig";
+
+    public CredentialConfigurationServiceImpl(CredentialConfigRepository credentialConfigRepository,
+                                              CredentialConfigMapper credentialConfigMapper) {
+        this.credentialConfigRepository = credentialConfigRepository;
+        this.credentialConfigMapper = credentialConfigMapper;
+    }
 
     // The algorithms an mso_mdoc issuer may sign with. Only ES256 is supported, as HAIP requires for
     // an mdoc's issuerAuth; RS256 and ES256K are outside ISO 18013-5 altogether.
@@ -141,7 +144,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     throw new CertifyException(ErrorConstants.DC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 // sdClaim lists the selective disclosure paths, which only dc+sd-jwt uses, so it is checked only here.
-                SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim());
+                SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim(), credentialConfig.getVcTemplate(), pluginMode);
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());

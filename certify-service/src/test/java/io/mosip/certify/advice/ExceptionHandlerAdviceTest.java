@@ -1,10 +1,12 @@
 package io.mosip.certify.advice;
 
+import org.springframework.cache.CacheManager;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import io.mosip.certify.core.constants.AuthErrorMessages;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.OAuthTokenError;
@@ -54,11 +56,10 @@ public class ExceptionHandlerAdviceTest {
 
     @Before
     public void setUp() {
-        advice = new ExceptionHandlerAdvice();
         messageSource = Mockito.mock(MessageSource.class);
         when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(inv -> inv.getArgument(2));
-        ReflectionTestUtils.setField(advice, "messageSource", messageSource);
+        advice = new ExceptionHandlerAdvice(messageSource, null);
     }
 
     private ServletWebRequest webRequest(String uri) {
@@ -149,9 +150,9 @@ public class ExceptionHandlerAdviceTest {
         // processed for beans built with new, hence setting the field it binds.
         // A misconfigured property is the only way a quote reaches algs, but the header
         // must stay well-formed either way.
-        DpopProofValidator validator = new DpopProofValidator();
+        DpopProofValidator validator = new DpopProofValidator(Mockito.mock(CacheManager.class));
         ReflectionTestUtils.setField(validator, "allowedAlgorithms", List.of("ES256", "RS\"256"));
-        ReflectionTestUtils.setField(advice, "dpopProofValidator", validator);
+        advice = new ExceptionHandlerAdvice(messageSource, validator);
 
         ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
                 new NotAuthenticatedException(ErrorConstants.INVALID_DPOP_PROOF), req);
@@ -169,6 +170,140 @@ public class ExceptionHandlerAdviceTest {
         Assert.assertEquals("unescaped quotes remain in the challenge",
                 0, challenge.replaceAll("\\\\\\\"", "").chars().filter(c -> c == '"').count()
                         - 6 /* the six delimiters of error, error_description and algs */);
+    }
+
+    @Test
+    public void should_answerInvalidTokenAndAdvertiseDpop_when_boundTokenIsPresentedAsBearer() {
+        // RFC 9449 §7.2 Figure 18: the error goes on the scheme the caller used, and a
+        // separate DPoP challenge tells it to retry under DPoP. algs belongs to DPoP only.
+        String description = AuthErrorMessages.ERROR_TOKEN_REQUIRES_DPOP;
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, description, "Bearer");
+        when(req.getAttribute(Constants.AUTH_DPOP_REQUIRED_ATTRIBUTE)).thenReturn(Boolean.TRUE);
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("invalid_token", response.getBody().getError());
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"" + description + "\", "
+                        + "DPoP algs=\"ES256 RS256\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_keepAlgsOnDpopChallenge_when_proofIsInvalid() {
+        String description = "DPoP proof htm does not match the request method";
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_DPOP_PROOF, description, "DPoP");
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("invalid_dpop_proof", response.getBody().getError());
+        assertEquals("DPoP error=\"invalid_dpop_proof\", error_description=\"" + description + "\", "
+                        + "algs=\"ES256 RS256\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_keepBearerChallengeWithoutAlgs_when_plainBearerTokenIsRejected() {
+        // Only the bound-token downgrade advertises DPoP; an expired, mis-signed or
+        // wrong-audience Bearer token is answered exactly as before.
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, "The access token has expired.", "Bearer");
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"The access token has expired.\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_keepDpopChallengeWithoutAlgs_when_failureIsNotAboutTheProof() {
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, "The access token has expired.", "DPoP");
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("DPoP error=\"invalid_token\", error_description=\"The access token has expired.\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_answerInvalidTokenWithAlgs_when_tokenIsNotBoundToTheProofKey() {
+        // RFC 9449 §7.1 Figure 16: the token failed the binding, so invalid_token, and the
+        // DPoP challenge still advertises algs.
+        String description = "Access token is not DPoP-bound: cnf claim is missing";
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, description, "DPoP");
+        when(req.getAttribute(Constants.AUTH_DPOP_BINDING_FAILED_ATTRIBUTE)).thenReturn(Boolean.TRUE);
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("invalid_token", response.getBody().getError());
+        assertEquals("DPoP error=\"invalid_token\", error_description=\"" + description + "\", algs=\"ES256 RS256\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_omitAlgs_when_tokenBindingFailsAndNoAlgorithmsAreConfigured() {
+        String description = "DPoP proof key does not match the access token binding";
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, description, "DPoP");
+        when(req.getAttribute(Constants.AUTH_DPOP_BINDING_FAILED_ATTRIBUTE)).thenReturn(Boolean.TRUE);
+        withAllowedAlgorithms();
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("DPoP error=\"invalid_token\", error_description=\"" + description + "\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_keepBearerChallengeWithoutAlgs_when_authorizationHeaderIsMissing() {
+        // The filter records no scheme and no code here, only the reason.
+        String description = "Authorization header with a Bearer or DPoP token is required.";
+        HttpServletRequest req = authFailure(null, description, null);
+        withAllowedAlgorithms("ES256", "RS256");
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"" + description + "\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_omitDpopChallenge_when_noAlgorithmsAreConfigured() {
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN,
+                AuthErrorMessages.ERROR_TOKEN_REQUIRES_DPOP, "Bearer");
+        when(req.getAttribute(Constants.AUTH_DPOP_REQUIRED_ATTRIBUTE)).thenReturn(Boolean.TRUE);
+        withAllowedAlgorithms();
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"" + AuthErrorMessages.ERROR_TOKEN_REQUIRES_DPOP + "\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    private HttpServletRequest authFailure(String code, String description, String scheme) {
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE)).thenReturn(description);
+        when(req.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE)).thenReturn(code);
+        when(req.getAttribute(Constants.AUTH_SCHEME_ATTRIBUTE)).thenReturn(scheme);
+        return req;
+    }
+
+    private void withAllowedAlgorithms(String... algs) {
+        DpopProofValidator validator = new DpopProofValidator(Mockito.mock(CacheManager.class));
+        ReflectionTestUtils.setField(validator, "allowedAlgorithms", List.of(algs));
+        advice = new ExceptionHandlerAdvice(messageSource, validator);
     }
 
     // ---- folded from ExceptionHandlerAdviceExtraTest ----
@@ -305,6 +440,43 @@ public class ExceptionHandlerAdviceTest {
         assertEquals(ErrorConstants.SERVER_ERROR, response.getBody().getError());
         // No challenge: there is nothing the caller could change about its credentials.
         Assert.assertNull(response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_answerBearerChallengeWithoutAlgs_when_dpopIsDisabledAndDpopSchemeIsRejected() {
+        // What AccessTokenValidationFilter records for a DPoP-scheme request on a
+        // deployment with DPoP disabled. The validator bean is absent in that mode.
+        HttpServletRequest req = Mockito.mock(HttpServletRequest.class);
+        when(req.getAttribute(Constants.AUTH_ERROR_ATTRIBUTE)).thenReturn(AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED);
+        when(req.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE)).thenReturn(ErrorConstants.INVALID_AUTH_TOKEN);
+        when(req.getAttribute(Constants.AUTH_SCHEME_ATTRIBUTE)).thenReturn(Constants.SCHEME_BEARER);
+        advice = new ExceptionHandlerAdvice(messageSource, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(new NotAuthenticatedException(), req);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals(ErrorConstants.INVALID_AUTH_TOKEN, response.getBody().getError());
+        assertEquals(AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED,
+                response.getBody().getError_description());
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"" + AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED + "\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    public void should_notAdvertiseAlgs_when_dpopIsDisabledAndDpopBoundTokenIsPresentedAsBearer() {
+        // The downgrade guard normally adds a DPoP challenge with algs (RFC 9449 §7.2).
+        // With DPoP disabled no DPoP retry can succeed, so the challenge is Bearer alone.
+        String description = AuthErrorMessages.ERROR_TOKEN_REQUIRES_DPOP;
+        HttpServletRequest req = authFailure(ErrorConstants.INVALID_AUTH_TOKEN, description, Constants.SCHEME_BEARER);
+        when(req.getAttribute(Constants.AUTH_DPOP_REQUIRED_ATTRIBUTE)).thenReturn(Boolean.TRUE);
+        advice = new ExceptionHandlerAdvice(messageSource, null);
+
+        ResponseEntity<VCError> response = advice.handleVCIControllerExceptions(
+                new NotAuthenticatedException(ErrorConstants.INVALID_AUTH_TOKEN), req);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Bearer error=\"invalid_token\", error_description=\"" + description + "\"",
+                response.getHeaders().getFirst(HttpHeaders.WWW_AUTHENTICATE));
     }
 
     @Test

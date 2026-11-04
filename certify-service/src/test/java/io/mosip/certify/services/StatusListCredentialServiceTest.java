@@ -48,9 +48,6 @@ public class StatusListCredentialServiceTest {
 
     @Before
     public void setUp() {
-        ReflectionTestUtils.setField(service, "statusListCredentialRepository", statusListCredentialRepository);
-        ReflectionTestUtils.setField(service, "credentialFactory", credentialFactory);
-        ReflectionTestUtils.setField(service, "indexProvider", indexProvider);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
         ReflectionTestUtils.setField(service, "didUrl", "did:example:issuer");
         ReflectionTestUtils.setField(service, "domainUrl", "https://example.com");

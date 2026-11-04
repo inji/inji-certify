@@ -14,7 +14,6 @@ import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.util.introspection.SecureUberspector;
 import org.apache.velocity.tools.generic.DateTool;
 import org.apache.velocity.tools.generic.EscapeTool;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.cache.annotation.Cacheable;
@@ -41,19 +40,24 @@ import static io.mosip.certify.core.constants.Constants.*;
 public class VelocityTemplatingEngineImpl implements VCFormatter {
     VelocityEngine engine;
 
-    @Autowired
-    CredentialConfigRepository credentialConfigRepository;
-    @Autowired
-    RenderingTemplateService renderingTemplateService;
+    private final CredentialConfigRepository credentialConfigRepository;
+    private final RenderingTemplateService renderingTemplateService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
     @Value("${mosip.certify.data-provider-plugin.vc-expiry-duration:P730d}")
     String defaultExpiryDuration;
 
     @Value("${mosip.certify.data-provider-plugin.id-field-prefix-uri:}")
     String idPrefix;
+
+    public VelocityTemplatingEngineImpl(CredentialConfigRepository credentialConfigRepository,
+                                        RenderingTemplateService renderingTemplateService,
+                                        ObjectMapper objectMapper) {
+        this.credentialConfigRepository = credentialConfigRepository;
+        this.renderingTemplateService = renderingTemplateService;
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void initialize() {
@@ -239,7 +243,15 @@ public class VelocityTemplatingEngineImpl implements VCFormatter {
                         CredentialUtils.getDigestMultibase(renderingTemplateService.getTemplate(
                                 (String) updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID)).getTemplate()));
             } catch (RenderingTemplateException e) {
-                log.error("Template: " + updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID) + " not available in DB", e);
+                String configuredRenderTemplateId = (String) updatedTemplateParams.get(Constants.RENDERING_TEMPLATE_ID);
+                if (vcTemplateString.contains("_renderMethodSVGdigest")) {
+                    log.error("Rendering template id '{}' configured in mosip.certify.data-provider-plugin.rendering-template-id " +
+                            "was not found in the rendering_template table.", configuredRenderTemplateId, e);
+                    throw new CertifyException(ErrorConstants.INVALID_TEMPLATE_ID,
+                            "The rendering template configured for this credential is not available.");
+                }
+                log.warn("Rendering template id '{}' was not found in the rendering_template table, but the template " +
+                        "does not use ${_renderMethodSVGdigest}; continuing.", configuredRenderTemplateId);
             }
         }
         VelocityContext context = new VelocityContext(updatedTemplateParams);

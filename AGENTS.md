@@ -113,13 +113,31 @@ binding, `cnf.jkt` key binding, freshness, and single use. The `jti` replay cach
 least `proof-max-age + 2 × clock-skew`, or a proof stays replayable after its jti is evicted, and startup fails below it.
 Replay is checked last, so a request rejected for any other reason does not burn a valid jti.
 
+`mosip.certify.dpop.enabled` (default `true`) switches the DPoP path off. Only `true` or `false` (any case) is accepted:
+`DpopEnabledPropertyCheck` fails startup on any other value, under every profile, because `DpopProofValidator` is
+`@ConditionalOnProperty` on it, a string match that would read `yes`, `1` or a typo as disabled. The filter and
+`ExceptionHandlerAdvice` treat the absent bean as disabled. When disabled, a `DPoP`-scheme request is refused at the
+start of the filter, before the token is decoded or the request reaches a controller, and answered through
+`HandlerExceptionResolver` with `401 invalid_token` and a Bearer challenge with no `algs`. The downgrade guard still
+refuses a DPoP-bound token presented as Bearer.
+
 Certify does not issue DPoP-bound tokens — the authorization server does. eSignet stamps `cnf.jkt` only for clients
 registered with `additionalConfig.dpop_bound_access_tokens: true`, and that arrived in eSignet **1.8**; against an older
 build every DPoP path fails by construction because no token carries the claim.
 
-Failures answer `401` with a `WWW-Authenticate` challenge **in the scheme the caller used**, carrying `error`,
-`error_description`, and for `invalid_dpop_proof` an `algs` list. The description names the failing claim, so a wallet
-developer is told which check rejected the proof rather than a bare `invalid_dpop_proof`.
+Apart from the disabled-mode DPoP rejection above, which always challenges with `Bearer`, failures answer `401` with a
+`WWW-Authenticate` challenge **in the scheme the caller used**, carrying `error` and `error_description`. The `algs`
+list is a DPoP parameter and appears in three cases only: on the DPoP challenge for `invalid_dpop_proof`; on the DPoP
+challenge when a valid proof arrives with a token not bound to its key (RFC 9449 section 7.1, Figure 16); and, when a
+DPoP-bound token is presented as Bearer, on a separate error-free `DPoP algs="..."` challenge after the Bearer one
+(RFC 9449 section 7.2, Figure 18). Every other 401 carries no `algs`, and with DPoP disabled, no challenge contains
+`algs`. The description names the failing claim, so a wallet developer is told which check rejected the proof rather
+than a bare `invalid_dpop_proof`.
+
+`invalid_dpop_proof` is reserved for a proof that fails the checks of RFC 9449 section 4.3. The downgrade guard answers
+`invalid_token`, because no proof took part in that request. So does the binding check under the DPoP scheme (no `cnf`,
+no `cnf.jkt`, or a `cnf.jkt` that is not the proof key's thumbprint), because the token is at fault. That check runs only
+after every proof check, `jti` presence included, and the `jti` replay check stays last.
 
 See `docs/postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md` for the 26-scenario conformance suite covering each rule.
 
@@ -173,8 +191,10 @@ mosip.certify.authorization.url=http://localhost:8088
 mosip.certify.authn.issuer-uri=...
 mosip.certify.authn.jwk-set-uri=...
 
-# DPoP (RFC 9449). Algorithms are enforced on the proof and advertised in the
-# WWW-Authenticate challenge; asymmetric only, whatever is listed.
+# DPoP (RFC 9449). enabled defaults to true; false makes Certify Bearer-only and the
+# other dpop.* properties are then ignored. Algorithms are enforced on the proof and
+# advertised in the WWW-Authenticate challenge; asymmetric only, whatever is listed.
+mosip.certify.dpop.enabled=true
 mosip.certify.dpop.allowed-algorithms=ES256,ES384,ES512,RS256,PS256,EdDSA
 mosip.certify.dpop.proof-max-age=60
 mosip.certify.dpop.clock-skew=10

@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpHeaders;
+import org.springframework.lang.Nullable;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
@@ -24,14 +26,19 @@ import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
+import io.mosip.certify.core.constants.AuthErrorMessages;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.certify.core.exception.DpopBindingException;
 import io.mosip.certify.core.exception.InvalidDpopHeaderException;
+import io.mosip.certify.core.exception.NotAuthenticatedException;
 import io.mosip.certify.dpop.DpopProofValidator;
 import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.util.CommonUtil;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,7 +55,6 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
     static final String ERROR_EXPIRED_TOKEN = "The access token has expired.";
     static final String INVALID_TOKEN_TYPE = "Authorization header with a Bearer or DPoP token is required.";
     static final String ERROR_MISSING_DPOP_PROOF = "A DPoP header is required when using the DPoP authorization scheme.";
-    static final String ERROR_TOKEN_REQUIRES_DPOP = "This access token is DPoP-bound and cannot be presented as a Bearer token.";
     static final String ERROR_MULTIPLE_DPOP_PROOFS = "Exactly one DPoP header is allowed.";
 
     private static final String BEARER_PREFIX = Constants.SCHEME_BEARER + " ";
@@ -66,13 +72,43 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
     @Value("#{${mosip.certify.authn.filter-urls}}")
     private List<String> urlPatterns;
 
-    @Autowired
-    private ParsedAccessToken parsedAccessToken;
+    private final ParsedAccessToken parsedAccessToken;
 
-    @Autowired
-    private DpopProofValidator dpopProofValidator;
+    /**
+     * Present only when {@code mosip.certify.dpop.enabled} is true, the default. Its
+     * absence is what switches this filter to Bearer-only: the validator is conditional on
+     * that property, so a null here means DPoP is disabled for this deployment.
+     */
+    private final DpopProofValidator dpopProofValidator;
+
+    /**
+     * Answers a request rejected before it reaches a controller, so the response goes
+     * through {@code ExceptionHandlerAdvice} like every other authentication failure.
+     */
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
     private NimbusJwtDecoder nimbusJwtDecoder;
+
+    public AccessTokenValidationFilter(ParsedAccessToken parsedAccessToken,
+                                       @Nullable DpopProofValidator dpopProofValidator,
+                                       @Qualifier("handlerExceptionResolver") HandlerExceptionResolver handlerExceptionResolver) {
+        this.parsedAccessToken = parsedAccessToken;
+        this.dpopProofValidator = dpopProofValidator;
+        this.handlerExceptionResolver = handlerExceptionResolver;
+    }
+
+    @PostConstruct
+    public void logDpopMode() {
+        if (isDpopEnabled()) {
+            log.info("DPoP support is enabled: access tokens are accepted under the Bearer and DPoP schemes");
+        } else {
+            log.info("DPoP support is disabled: Bearer-only resource server, DPoP-scheme requests are rejected");
+        }
+    }
+
+    private boolean isDpopEnabled() {
+        return dpopProofValidator != null;
+    }
 
     private boolean isJwt(String token) {
         return token.split("\\.").length == 3;
@@ -111,6 +147,11 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
         String authorizationHeader = request.getHeader("Authorization");
         String scheme = resolveScheme(authorizationHeader);
 
+        if (Constants.SCHEME_DPOP.equals(scheme) && !isDpopEnabled()) {
+            rejectDpopSchemeWhenDisabled(request, response);
+            return;
+        }
+
         if (scheme == null) {
             request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, INVALID_TOKEN_TYPE);
         } else {
@@ -138,8 +179,8 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
 
                 } catch (CertifyException e) {
                     // Scheme-binding failures already carry a precise, caller-safe description.
-                    // The code travels with it so the handler advice can answer invalid_dpop_proof
-                    // or server_error rather than a generic invalid_token.
+                    // The code travels with it so the handler advice can answer invalid_token,
+                    // invalid_dpop_proof or server_error.
                     log.error("{} access token rejected with {}: {}", scheme, e.getErrorCode(), e.getMessage());
                     request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, e.getMessage());
                     request.setAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE, e.getErrorCode());
@@ -159,6 +200,38 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
         }
         parsedAccessToken.setActive(false);
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Refuses a DPoP-scheme request on a deployment with DPoP disabled, at the entrance.
+     *
+     * <p>Unlike every other failure in this filter, the request is not passed down the
+     * chain: the answer depends on the deployment alone, so neither the access token nor
+     * the request body is looked at, and no proof is parsed or spent against the replay
+     * cache. The challenge is Bearer rather than the scheme the caller used, since a DPoP
+     * retry can never succeed here, and the code is {@code invalid_token} because no proof
+     * took part in the rejection.
+     *
+     * <p>{@code ExceptionHandlerAdvice} answers 401 with a {@code WWW-Authenticate} challenge
+     * only for paths containing {@code /issuance/}; elsewhere the same exception becomes a 200
+     * error wrapper with no challenge. Every {@code mosip.certify.authn.filter-urls} entry is an
+     * issuance path today, so a filter URL added outside it needs the advice extended too.
+     */
+    private void rejectDpopSchemeWhenDisabled(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        // The caller's mistake, not this deployment's, so it is not logged as an error.
+        log.warn("DPoP authorization scheme presented, but DPoP is disabled on this deployment");
+        request.setAttribute(Constants.AUTH_SCHEME_ATTRIBUTE, Constants.SCHEME_BEARER);
+        request.setAttribute(Constants.AUTH_ERROR_ATTRIBUTE, AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED);
+        request.setAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE, ErrorConstants.INVALID_AUTH_TOKEN);
+        parsedAccessToken.setActive(false);
+        if (handlerExceptionResolver.resolveException(request, response, null, new NotAuthenticatedException()) == null) {
+            // No resolver took the exception. The chain is not run, so without this the
+            // caller would be answered an empty 200.
+            response.setHeader(HttpHeaders.WWW_AUTHENTICATE, Constants.SCHEME_BEARER
+                    + " error=\"" + ErrorConstants.INVALID_AUTH_TOKEN + "\""
+                    + ", error_description=\"" + AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED + "\"");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, AuthErrorMessages.ERROR_DPOP_NOT_SUPPORTED);
+        }
     }
 
     /**
@@ -221,12 +294,24 @@ public class AccessTokenValidationFilter extends OncePerRequestFilter {
             if (dpopHeaders.hasMoreElements()) {
                 throw new InvalidDpopHeaderException(ERROR_MULTIPLE_DPOP_PROOFS);
             }
-            // Everything the proof has to satisfy - structure, signature, request and token
-            // binding, freshness, single use - is decided in there.
-            dpopProofValidator.validate(dpopToken, token, jwt.getClaims(), request);
+            // Everything the proof has to satisfy - structure, signature, request binding, ath,
+            // freshness, single use - is decided in there, failing with invalid_dpop_proof. Once
+            // the proof is valid, the token is rejected in there too, with invalid_token, when it
+            // is not bound to the proof key (cnf.jkt).
+            try {
+                dpopProofValidator.validate(dpopToken, token, jwt.getClaims(), request);
+            } catch (DpopBindingException e) {
+                // A valid proof with a token not bound to its key: the advice keeps algs on
+                // this invalid_token, as no other DPoP token failure gets them.
+                request.setAttribute(Constants.AUTH_DPOP_BINDING_FAILED_ATTRIBUTE, Boolean.TRUE);
+                throw e;
+            }
 
         } else if (isDpopBoundAccessToken(jwt.getClaims())) {
-            throw new InvalidDpopHeaderException(ERROR_TOKEN_REQUIRES_DPOP);
+            // The one Bearer failure the client can fix by switching to DPoP, so the advice
+            // tells it how - no other 401 carries the DPoP challenge.
+            request.setAttribute(Constants.AUTH_DPOP_REQUIRED_ATTRIBUTE, Boolean.TRUE);
+            throw new CertifyException(ErrorConstants.INVALID_AUTH_TOKEN, AuthErrorMessages.ERROR_TOKEN_REQUIRES_DPOP);
         }
     }
 

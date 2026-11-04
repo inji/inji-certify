@@ -34,7 +34,20 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
         if (hashIdx != -1) {
             multibase = multibase.substring(0, hashIdx);
         }
-        byte[] b = Multibase.decode(multibase);
+        if (multibase.isEmpty()) {
+            return Optional.empty();
+        }
+        byte[] b;
+        try {
+            b = Multibase.decode(multibase);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // characters outside the multibase alphabet: an invalid proof
+            return Optional.empty();
+        }
+        if (b.length < 2) {
+            // too short to hold the two-byte multicodec prefix
+            return Optional.empty();
+        }
 
         // full list of keys and their multibase prefixes available here: https://github.com/multiformats/multicodec/blob/master/table.csv
         // NOTE: https://w3c-ccg.github.io/did-key-spec/#signature-method-creation-algorithm
@@ -49,7 +62,13 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
         } else if (b[0] == (byte) 0xe7 && b[1] == (byte) 0x01 && b.length == 35) {
             ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("secp256k1");
             ECCurve curve = params.getCurve();
-            ECPoint ecPoint = curve.decodePoint(Arrays.copyOfRange(b, 2, b.length));
+            ECPoint ecPoint;
+            try {
+                ecPoint = curve.decodePoint(Arrays.copyOfRange(b, 2, b.length));
+            } catch (IllegalArgumentException e) {
+                // not a point on the curve: an invalid proof
+                return Optional.empty();
+            }
             // Extract x and y coordinates
             byte[] xBytes = BigIntegers.asUnsignedByteArray(ecPoint.getAffineXCoord().toBigInteger());
             byte[] yBytes = BigIntegers.asUnsignedByteArray(ecPoint.getAffineYCoord().toBigInteger());
@@ -59,17 +78,22 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
             // TODO: should be 0x1200 instead
             ECNamedCurveParameterSpec params = ECNamedCurveTable.getParameterSpec("secp256r1");
             ECCurve curve = params.getCurve();
-            ECPoint ecPoint = curve.decodePoint(Arrays.copyOfRange(b, 2, b.length));
+            ECPoint ecPoint;
+            try {
+                ecPoint = curve.decodePoint(Arrays.copyOfRange(b, 2, b.length));
+            } catch (IllegalArgumentException e) {
+                // not a point on the curve: an invalid proof
+                return Optional.empty();
+            }
             byte[] xBytes = BigIntegers.asUnsignedByteArray(ecPoint.getAffineXCoord().toBigInteger());
             byte[] yBytes = BigIntegers.asUnsignedByteArray(ecPoint.getAffineYCoord().toBigInteger());
             JWK j = new ECKey.Builder(Curve.P_256, Base64URL.encode(xBytes), Base64URL.encode(yBytes)).keyID(header.getKeyID()).build();
             return Optional.of(j);
         } else if (b[0] == (byte) 0x85 && b[1] == (byte) 0x24) {
             // RSA2048
-            ASN1InputStream asn1 = new ASN1InputStream(Arrays.copyOfRange(b, 2, b.length));
-            try {
+            try (ASN1InputStream asn1 = new ASN1InputStream(Arrays.copyOfRange(b, 2, b.length))) {
                 ASN1Sequence seq = (ASN1Sequence) asn1.readObject();
-                if (seq.size() != 2) {
+                if (seq == null || seq.size() != 2) {
                     // missing modulus or exponent
                    return Optional.empty();
                 }
@@ -81,7 +105,8 @@ public class DIDkeysProofManager implements JwtProofKeyManager {
                         .build();
 
                 return Optional.of(rsaKey);
-            } catch (IOException e) {
+            } catch (IOException | ClassCastException e) {
+                // a malformed key is rejected as an invalid proof
                 return Optional.empty();
             }
         }
