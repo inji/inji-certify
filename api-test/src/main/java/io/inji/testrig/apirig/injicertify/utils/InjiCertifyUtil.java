@@ -1620,6 +1620,19 @@ public static void configureOtp() {
 				|| "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01".equals(uniqueIdentifier);
 	}
 
+	/**
+	 * The SVG rendering config must exist on a fresh issuer, but environments that already carry it
+	 * reject the create on the (credentialFormat, credentialType, context) uniqueness check. Falling
+	 * back to an update keeps the prerequisite idempotent and leaves the stored template identical
+	 * either way.
+	 */
+	public static boolean shouldUpdateExistingSvgRenderingCredentialConfig(TestCaseDTO testCaseDTO,
+			Response response) {
+		return testCaseDTO != null
+				&& "TC_InjiCertify_Mock_SVGRendering_addConfig_01".equals(testCaseDTO.getUniqueIdentifier())
+				&& isDuplicateMosipIdCredentialConfig(response);
+	}
+
 	public static boolean isDuplicateMosipIdCredentialConfig(Response response) {
 		if (response == null) {
 			return false;
@@ -3380,6 +3393,10 @@ public static void configureOtp() {
 	private static final Pattern RENDER_METHOD_TEMPLATE_ID = Pattern
 			.compile("^https?://\\S+/rendering-template/[0-9a-fA-F-]{36}$");
 
+	/** Base58btc multibase, as produced by Certify's CredentialUtils.getDigestMultibase. */
+	private static final Pattern RENDER_METHOD_DIGEST = Pattern
+			.compile("^z[1-9A-HJ-NP-Za-km-z]{40,}$");
+
 	/**
 	 * The generic output validation flattens a response into a map keyed by the last segment of
 	 * each json path, so every "id" in an issued credential (credential.id, credentialSubject.id
@@ -3426,7 +3443,16 @@ public static void configureOtp() {
 				+ ", found: " + (templateId.isBlank() ? "<absent>" : templateId));
 		}
 
-		logger.info(testCaseName + ": renderMethod validated — template.id=" + templateId);
+		String digestMultibase = template.optString("digestMultibase", "");
+		if (!RENDER_METHOD_DIGEST.matcher(digestMultibase).matches()) {
+			throw new RuntimeException(
+				"renderMethod[0].template.digestMultibase is not a base58btc multibase value for "
+				+ testCaseName + ", found: "
+				+ (digestMultibase.isBlank() ? "<absent>" : digestMultibase));
+		}
+
+		logger.info(testCaseName + ": renderMethod validated — template.id=" + templateId
+			+ ", template.digestMultibase=" + digestMultibase);
 	}
 
 }
