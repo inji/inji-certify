@@ -71,16 +71,6 @@ Nothing is resolved from the properties for it any more. Existing configurations
 
 `mso_mdoc` is signed with `signatureAlgo` alone, so it now requires `signatureAlgo` in DataProvider plugin mode (optional in VCIssuance mode), and `signatureCryptoSuite` is optional. If one is sent for `mso_mdoc`, its value is not validated, and it is not stored.
 
-**Action for existing deployments:** add `jwk` to the `ldp_vc` and `dc+sd-jwt` entries of `mosip.certify.credential-config.cryptographic-binding-methods-supported`. The previous release declared only `did:jwk` and `did:key`, so a configuration that selects `jwk` is rejected until it is added:
-
-```properties
-mosip.certify.credential-config.cryptographic-binding-methods-supported={\
-  'ldp_vc': {'jwk','did:jwk','did:key'},\
-  'mso_mdoc': {'cose_key'},\
-  'dc+sd-jwt': {'jwk','did:jwk','did:key'}\
-}
-```
-
 **Action for existing automation:** every Update request must send both attributes, and `signatureAlgo` in DataProvider plugin mode, even one that only changes an unrelated field such as the display name. This includes configurations created before these attributes were stored. `credentialSigningAlgValuesSupported` must be removed from every request body.
 
 See [Credential Issuer Configuration](./Credential_Issuer_Configuration.md) for the validation rules.
