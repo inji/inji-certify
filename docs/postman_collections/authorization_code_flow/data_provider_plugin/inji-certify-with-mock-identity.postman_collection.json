@@ -1163,7 +1163,7 @@
 				},
 				{
 					"name": "mso_mdoc",
-					"description": "mso_mdoc requires doctype and signatureAlgo (the algorithm its issuerAuth is signed with). signatureCryptoSuite is optional, because it is not used to sign an mdoc: if one is sent, its value is not validated, and it is not stored. It must not carry contextURLs, credentialTypes, sdJwtVct, claims or sdJwtClaims. Note that mosip.certify.credential-config.cryptographic-binding-methods-supported declares only cose_key for this format. The vcTemplate below is a starting point: its ${...} bindings must match the fields the configured data provider plugin supplies.",
+					"description": "mso_mdoc requires doctype and signatureAlgo (the algorithm its issuerAuth is signed with). signatureCryptoSuite is optional, because it is not used to sign an mdoc: if one is sent, its value is not validated, and it is not stored. It must not carry contextURLs, credentialTypes, sdJwtVct, claims or sdJwtClaims. Note that mosip.certify.credential-config.cryptographic-binding-methods-supported declares only cose_key for this format. The vcTemplate below is a starting point: its ${...} bindings must match the fields the configured data provider plugin supplies. MockIdaDataProviderPlugin supplies fullName but no separate given or family name, so family_name and given_name both carry ${fullName} on purpose, and family_name keeps the display name \"Full Name\". The plugin has no fields for issue_date, expiry_date or driving_privileges either, so these are fixed values in the template.",
 					"item": [
 						{
 							"name": "Add Config",
