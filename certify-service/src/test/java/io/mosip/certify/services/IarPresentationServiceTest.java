@@ -16,7 +16,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -44,14 +43,13 @@ public class IarPresentationServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @InjectMocks
     private IarPresentationService iarPresentationService;
 
     private IarSession session;
 
     @Before
     public void setUp() {
-        ReflectionTestUtils.setField(iarPresentationService, "objectMapper", objectMapper);
+        iarPresentationService = new IarPresentationService(iarSessionRepository, objectMapper, vpSubmissionService);
         ReflectionTestUtils.setField(iarPresentationService, "authorizationCodeLength", 24);
         ReflectionTestUtils.setField(iarPresentationService, "identityKeys",
                 new HashSet<>(Arrays.asList("uin", "vid", "UIN", "UID")));

@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -30,8 +32,10 @@ import com.nimbusds.jwt.SignedJWT;
 
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.certify.core.exception.DpopBindingException;
 import io.mosip.certify.core.util.CommonUtil;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DpopProofValidatorTest {
@@ -47,13 +51,11 @@ class DpopProofValidatorTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        validator = new DpopProofValidator();
+        validator = new DpopProofValidator(new ConcurrentMapCacheManager(DpopProofValidator.DPOP_JTI_CACHE));
         ReflectionTestUtils.setField(validator, "domainUrl", DOMAIN_URL);
         ReflectionTestUtils.setField(validator, "allowedAlgorithms", Arrays.asList("ES256", "RS256", "PS256", "EdDSA"));
         ReflectionTestUtils.setField(validator, "proofMaxAgeSeconds", 60L);
         ReflectionTestUtils.setField(validator, "maxClockSkewSeconds", 10L);
-        ReflectionTestUtils.setField(validator, "cacheManager",
-                new ConcurrentMapCacheManager(DpopProofValidator.DPOP_JTI_CACHE));
         ReflectionTestUtils.setField(validator, "cacheType", "simple");
 
         request = new MockHttpServletRequest();
@@ -312,7 +314,15 @@ class DpopProofValidatorTest {
     @Test
     void should_reject_when_accessTokenIsNotDpopBound() throws Exception {
         String proof = signProof(walletKey, defaultClaims().build(), walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
-        assertInvalid(() -> validator.validate(proof, ACCESS_TOKEN, Map.of("sub", "user"), request), "not DPoP-bound");
+        assertTokenRejected(() -> validator.validate(proof, ACCESS_TOKEN, Map.of("sub", "user"), request),
+                "cnf claim is missing");
+    }
+
+    @Test
+    void should_rejectTheToken_when_cnfHasNoJkt() throws Exception {
+        String proof = signProof(walletKey, defaultClaims().build(), walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
+        assertTokenRejected(() -> validator.validate(proof, ACCESS_TOKEN, Map.of("cnf", Map.of()), request),
+                "cnf.jkt is missing");
     }
 
     @Test
@@ -321,8 +331,32 @@ class DpopProofValidatorTest {
         ECKey otherKey = new ECKeyGenerator(Curve.P_256).generate();
         String otherJkt = otherKey.toPublicJWK().computeThumbprint().toString();
         String proof = signProof(walletKey, defaultClaims().build(), walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
-        assertInvalid(() -> validator.validate(proof, ACCESS_TOKEN, boundClaims(otherJkt), request),
+        assertTokenRejected(() -> validator.validate(proof, ACCESS_TOKEN, boundClaims(otherJkt), request),
                 "does not match the access token binding");
+    }
+
+    @Test
+    void should_blameTheProof_when_jtiIsMissingAndTheTokenIsUnbound() throws Exception {
+        // Both are wrong, but the proof is checked first: invalid_token is only reported
+        // for a well-formed proof.
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issueTime(new Date())
+                .claim("htm", "POST")
+                .claim("htu", DOMAIN_URL + REQUEST_URI)
+                .claim("ath", CommonUtil.generateB64EncodedHash(CommonUtil.ALGO_SHA_256, ACCESS_TOKEN))
+                .build();
+        String proof = signProof(walletKey, claims, walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
+        assertInvalid(() -> validator.validate(proof, ACCESS_TOKEN, Map.of("sub", "user"), request), "jti");
+    }
+
+    @Test
+    void should_notBurnJti_when_tokenBindingFails() throws Exception {
+        String proof = signProof(walletKey, defaultClaims().build(), walletKey.toPublicJWK(), "dpop+jwt", JWSAlgorithm.ES256);
+        assertTokenRejected(() -> validator.validate(proof, ACCESS_TOKEN, Map.of("sub", "user"), request),
+                "not DPoP-bound");
+
+        // The same proof, now with a token bound to its key, is still accepted.
+        assertDoesNotThrow(() -> validator.validate(proof, ACCESS_TOKEN, boundClaims(walletJkt), new MockHttpServletRequest("POST", REQUEST_URI)));
     }
 
     @Test
@@ -398,11 +432,10 @@ class DpopProofValidatorTest {
     void should_failClosed_when_replayCacheIsMissing() {
         // A cache manager that knows nothing about dpopJti - the exact situation when the
         // cache name is left out of mosip.certify.cache.names.
-        ReflectionTestUtils.setField(validator, "cacheManager",
-                new ConcurrentMapCacheManager("someOtherCache"));
+        DpopProofValidator withoutJtiCache = new DpopProofValidator(new ConcurrentMapCacheManager("someOtherCache"));
 
         CertifyException e = assertThrows(CertifyException.class,
-                () -> validator.checkAndMarkJti(walletJkt, "jti-1"));
+                () -> withoutJtiCache.checkAndMarkJti(walletJkt, "jti-1"));
         assertEquals(ErrorConstants.SERVER_ERROR, e.getErrorCode(),
                 "a missing cache is this deployment's fault, not the proof's");
         assertFalse(e.getMessage().contains("mosip.certify"),
@@ -435,6 +468,43 @@ class DpopProofValidatorTest {
         ReflectionTestUtils.setField(validator, "cacheExpireInSeconds", Map.of("someOtherCache", 600));
 
         assertThrows(IllegalStateException.class, () -> validator.checkJtiCacheTtl());
+    }
+
+    // ---------- mosip.certify.dpop.enabled ----------
+
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withBean(CacheManager.class, () -> new ConcurrentMapCacheManager(DpopProofValidator.DPOP_JTI_CACHE))
+            .withUserConfiguration(DpopProofValidator.class);
+
+    @Test
+    void should_createValidator_when_dpopEnabledIsUnset() {
+        // Existing deployments carry no value and must keep DPoP after an upgrade.
+        contextRunner
+                .withPropertyValues("mosip.certify.domain.url=" + DOMAIN_URL,
+                        "mosip.certify.cache.expire-in-seconds={'dpopJti': 120}")
+                .run(context -> assertThat(context).hasSingleBean(DpopProofValidator.class));
+    }
+
+    @Test
+    void should_createValidator_when_dpopIsEnabled() {
+        contextRunner
+                .withPropertyValues("mosip.certify.dpop.enabled=true",
+                        "mosip.certify.domain.url=" + DOMAIN_URL,
+                        "mosip.certify.cache.expire-in-seconds={'dpopJti': 120}")
+                .run(context -> assertThat(context).hasSingleBean(DpopProofValidator.class));
+    }
+
+    @Test
+    void should_startWithoutValidator_when_dpopIsDisabledAndDpopPropertiesAreUnusable() {
+        // No dpopJti TTL and an unparseable tuning value would each stop an enabled
+        // deployment at startup. A Bearer-only one must ignore them.
+        contextRunner
+                .withPropertyValues("mosip.certify.dpop.enabled=false",
+                        "mosip.certify.dpop.proof-max-age=not-a-number")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).doesNotHaveBean(DpopProofValidator.class);
+                });
     }
 
     @Test
@@ -577,6 +647,15 @@ class DpopProofValidatorTest {
         CertifyException e = assertThrows(CertifyException.class, action::run);
         assertEquals(ErrorConstants.INVALID_DPOP_PROOF, e.getErrorCode());
         assertTrue(e.getMessage().toLowerCase().contains(expectedMessageFragment.toLowerCase()),
+                "expected message to contain '" + expectedMessageFragment + "' but was: " + e.getMessage());
+    }
+
+    /** The proof passed every check, but the token is not bound to its key. */
+    private void assertTokenRejected(Runnable action, String expectedMessageFragment) {
+        // The filter keys algs off this type, so a plain CertifyException would not do.
+        DpopBindingException e = assertThrows(DpopBindingException.class, action::run);
+        assertEquals(ErrorConstants.INVALID_AUTH_TOKEN, e.getErrorCode());
+        assertTrue(e.getMessage().contains(expectedMessageFragment),
                 "expected message to contain '" + expectedMessageFragment + "' but was: " + e.getMessage());
     }
 }

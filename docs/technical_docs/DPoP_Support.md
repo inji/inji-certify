@@ -40,10 +40,26 @@ Certify accepts an access token under either the `Bearer` or the `DPoP` authoriz
 |---|---|---|---|
 | plain (no `cnf`) | `Bearer` | **accepted** | ordinary Bearer flow |
 | DPoP-bound (`cnf.jkt`) | `DPoP` + valid proof | **accepted** | proof demonstrates possession |
-| DPoP-bound (`cnf.jkt`) | `Bearer` | **refused** | downgrade guard (RFC 9449 §7.2) |
-| plain (no `cnf`) | `DPoP` | **refused** | nothing to bind the proof to |
+| DPoP-bound (`cnf.jkt`) | `Bearer` | **refused** (`invalid_token`) | downgrade guard (RFC 9449 §7.2) |
+| plain (no `cnf`) | `DPoP` | **refused** (`invalid_token`) | nothing to bind the proof to |
 
 The **downgrade guard** (RFC 9449 §7.2, *Compatibility with the Bearer Authentication Scheme*) is the point of the feature: accepting a sender-constrained token as a plain Bearer token would silently discard exactly the protection the binding provides, letting a stolen token work again. Scheme names are compared case-insensitively (`DPoP`, `dpop`, `Bearer`, `bearer` all resolve).
+
+### Disabling DPoP
+
+`mosip.certify.dpop.enabled` declares whether the deployment offers the DPoP path at all. It defaults to `true` when unset, so an existing deployment upgrades with no change in behaviour. Only `true` or `false` is accepted, in any case; any other value, such as `yes`, `1` or a typo, stops Certify at startup rather than silently turning DPoP off. Set it to `false` for a deployment whose authorization server does not issue DPoP-bound tokens, and Certify becomes a Bearer-only resource server:
+
+| Token | Presented as | Result with DPoP disabled |
+|---|---|---|
+| plain (no `cnf`) | `Bearer` | **accepted**, exactly as when enabled |
+| any | `DPoP` | **refused**: `401`, `error="invalid_token"`, `"DPoP is not supported by this deployment. Use a Bearer token."` |
+| DPoP-bound (`cnf.jkt`) | `Bearer` | **refused**: the downgrade guard applies in both modes |
+
+- The `DPoP`-scheme refusal happens at the start of `AccessTokenValidationFilter`, before the access token is decoded and before the request reaches a controller, so neither the token nor the request body is examined, and no DPoP proof is parsed or recorded for replay detection.
+- It carries `invalid_token`, not `invalid_dpop_proof`, because no proof takes part in it.
+- Every challenge is a `Bearer` challenge with no `algs` parameter, since a DPoP retry can never succeed against this deployment.
+- `DpopProofValidator` is not created, so the other `mosip.certify.dpop.*` properties are ignored and the `dpopJti` cache does not need to be configured.
+- The effective mode is logged at startup: `DPoP support is enabled: ...` or `DPoP support is disabled: ...`.
 
 ---
 
@@ -62,12 +78,16 @@ The **downgrade guard** (RFC 9449 §7.2, *Compatibility with the Bearer Authenti
 | 7 | **`htu`** | Must equal the request URL, compared ignoring query/fragment |
 | 8 | **`iat` freshness** | Must be within `proof-max-age` (± `clock-skew`) |
 | 9 | **`ath`** | Must equal the base64url SHA-256 hash of the presented access token |
-| 10 | **`cnf.jkt`** | The embedded key's thumbprint must equal `cnf.jkt` in the access token |
-| 11 | **`jti` replay** | Must not have been seen before (single-use) |
+| 10 | **`jti`** | Must be present |
+| 11 | **`cnf.jkt` binding** | The access token must carry `cnf.jkt`, and the embedded key's thumbprint must equal it |
+| 12 | **`jti` replay** | Must not have been seen before (single-use) |
 
-Two design points worth noting:
+Checks 1–10 are about the proof itself, and a failure answers `invalid_dpop_proof`. Check 11 is about the access token: the proof is well-formed but the token is not bound to its key (no `cnf`, no `cnf.jkt`, or a different key), so it answers `invalid_token` (RFC 9449 §7.1, Figure 16). A failure of check 12 answers `invalid_dpop_proof`.
+
+Three design points worth noting:
 
 - **`htu` is compared against the issuer's public domain URL** (`mosip.certify.domain.url` + request URI), **not** `request.getRequestURL()`. Certify typically runs behind a reverse proxy, so the URL Tomcat sees is the internal one, while the wallet signs `htu` over the public `credential_endpoint` it read from the issuer metadata. Comparing against the container's view would reject every proof in a proxied deployment.
+- **The binding is checked after every proof check.** `invalid_token` is reported only for a proof that has passed checks 1–10, so a proof that is itself invalid is always blamed as `invalid_dpop_proof`, even when the token is also unbound.
 - **Replay is checked last.** A proof's `jti` is only marked used once every other DPoP validation check has passed, so a proof rejected by an earlier DPoP validation check does not burn a valid `jti`. (Note: `jti` is marked during proof validation, before the request reaches downstream processing — a request rejected *after* successful proof validation has already consumed its `jti`.)
 
 > **Note:** Used `jti` values are remembered in the `dpopJti` cache. Its TTL (`mosip.certify.dpop.jti.cache-expire-seconds`) **must exceed** `proof-max-age + 2 * clock-skew` — a proof accepted at the maximum future `iat` (`now + clock-skew`) stays fresh for `proof-max-age + 2 * clock-skew` after acceptance, so a shorter TTL could evict its `jti` while the proof is still replayable. Certify **refuses to start** if the `dpopJti` TTL in `mosip.certify.cache.expire-in-seconds` is missing or below `proof-max-age + 2 * clock-skew`, so a misconfigured replay window is caught at startup rather than silently leaving proofs replayable. In multi-replica deployments use a distributed cache (`spring.cache.type=redis`) — with `spring.cache.type=simple` each pod keeps its own `dpopJti` map, so a replayed proof only needs to land on a different pod to slip through.
@@ -95,17 +115,23 @@ sequenceDiagram
     Filter->>Filter: Decode & verify access token against AuthZ JWKS
     Filter->>Filter: Resolve scheme = DPoP
     Filter->>Validator: validate(proof, token, claims, request)
-    Validator->>Validator: typ, alg, signature, htm/htu, iat, ath, cnf.jkt
-    Validator->>Cache: checkAndMarkJti(jkt, jti)
+    Validator->>Validator: typ, alg, signature, htm/htu, iat, ath, jti present
+    Validator->>Validator: cnf.jkt binding
 
-    alt jti already seen (replay)
-        Cache-->>Validator: replay detected
-        Validator-->>Filter: InvalidDpopHeaderException
-        Filter-->>W: 401 WWW-Authenticate: DPoP error="invalid_dpop_proof", algs="..."
-    else fresh jti
-        Cache-->>Validator: marked used
-        Validator-->>Filter: proof valid
-        Filter-->>W: continue chain → 200 with credential
+    alt token not bound to the proof key
+        Validator-->>Filter: DpopBindingException (invalid_token)
+        Filter-->>W: 401 WWW-Authenticate: DPoP error="invalid_token", algs="..."
+    else bound to the proof key
+        Validator->>Cache: checkAndMarkJti(jkt, jti)
+        alt jti already seen (replay)
+            Cache-->>Validator: replay detected
+            Validator-->>Filter: InvalidDpopHeaderException
+            Filter-->>W: 401 WWW-Authenticate: DPoP error="invalid_dpop_proof", algs="..."
+        else fresh jti
+            Cache-->>Validator: marked used
+            Validator-->>Filter: proof valid
+            Filter-->>W: continue chain → 200 with credential
+        end
     end
 ```
 
@@ -113,7 +139,7 @@ sequenceDiagram
 
 ## Failure Responses
 
-A **proof-validation failure** answers **`401 Unauthorized`** with a `WWW-Authenticate` challenge **in the scheme the caller used** (RFC 9449 §7.1) — a DPoP client is challenged with `DPoP`, a Bearer client with `Bearer`. The challenge carries `error`, `error_description`, and — for `invalid_dpop_proof` — an `algs` list advertising which algorithms a proof may be signed with. The `error_description` identifies which specific check rejected the proof — a claim, a JOSE header parameter (such as an unsupported `alg` or `typ`), or another validation step — so a wallet developer is told what failed rather than getting a bare `invalid_dpop_proof`.
+A **proof-validation failure** answers **`401 Unauthorized`** with a `WWW-Authenticate` challenge **in the scheme the caller used** (RFC 9449 §7.1) — a DPoP client is challenged with `DPoP`, a Bearer client with `Bearer`. The challenge carries `error`, `error_description`, and — for `invalid_dpop_proof`, and for the two `invalid_token` cases below — an `algs` list advertising which algorithms a proof may be signed with. The `error_description` identifies which specific check rejected the proof — a claim, a JOSE header parameter (such as an unsupported `alg` or `typ`), or another validation step — so a wallet developer is told what failed rather than getting a bare `invalid_dpop_proof`.
 
 Example challenge for a rejected proof:
 
@@ -121,6 +147,24 @@ Example challenge for a rejected proof:
 HTTP/1.1 401 Unauthorized
 WWW-Authenticate: DPoP error="invalid_dpop_proof", error_description="DPoP proof ath does not match the presented access token", algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
 ```
+
+A failure of the access token answers **`invalid_token`** instead. `algs` is still advertised in two of those cases, because the client can fix them with a DPoP proof:
+
+- **A valid proof with a token that is not bound to its key** (no `cnf`, no `cnf.jkt`, or a different key) stays in the `DPoP` scheme with `algs` (RFC 9449 §7.1, Figure 16). The `error_description` names the cause. The usual fix is on the authorization server side, e.g. a client not registered for DPoP-bound tokens.
+
+  ```
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: DPoP error="invalid_token", error_description="Access token is not DPoP-bound: cnf claim is missing", algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
+  ```
+
+- **A DPoP-bound token presented as `Bearer`** (the downgrade guard) is challenged with `Bearer`, followed by a separate `DPoP` challenge carrying only `algs`, telling the client to retry under DPoP (RFC 9449 §7.2).
+
+  ```
+  HTTP/1.1 401 Unauthorized
+  WWW-Authenticate: Bearer error="invalid_token", error_description="This access token is DPoP-bound and cannot be presented as a Bearer token.", DPoP algs="ES256 ES384 ES512 RS256 PS256 EdDSA"
+  ```
+
+Any other access-token failure, such as an expired token or one with a bad signature, answers `invalid_token` with no `algs`.
 
 > **Note:** A **server misconfiguration** — an invalid `mosip.certify.domain.url` (one with no scheme, so the `htu` reference URL cannot be built) or a missing `dpopJti` replay cache — is not the caller's fault, so it answers **`500` with `error="server_error"` and no `WWW-Authenticate` challenge**. A `401` here would tell every wallet to fix a credential that may be perfectly valid, when the fix is operator-side. The offending value is logged for the operator and kept out of the response.
 
@@ -132,12 +176,13 @@ WWW-Authenticate: DPoP error="invalid_dpop_proof", error_description="DPoP proof
 |---|---|---|
 | `mosip.certify.authn.filter-urls` | URLs on which the access-token (Bearer/DPoP) filter runs. | `{ '${server.servlet.path}/issuance/credential'}` |
 | `mosip.certify.domain.url` | Public issuer address; basis for the `htu` check (see note above). | `http://localhost:8090` |
+| `mosip.certify.dpop.enabled` | Whether the DPoP path is offered. `false` makes Certify Bearer-only and the properties below are ignored (see [Disabling DPoP](#disabling-dpop)). Defaults to `true` when unset; any value other than `true` or `false` fails startup. | `true` |
 | `mosip.certify.dpop.allowed-algorithms` | Signature algorithms accepted on a DPoP proof, and advertised in the `algs` challenge parameter. Asymmetric only. | `ES256,ES384,ES512,RS256,PS256,EdDSA` |
 | `mosip.certify.dpop.proof-max-age` | How old a proof's `iat` may be, in seconds. | `60` |
 | `mosip.certify.dpop.clock-skew` | Tolerance for device clock drift, applied on both sides of the freshness window. | `10` |
 | `mosip.certify.dpop.jti.cache-expire-seconds` | `jti` replay-cache TTL. **Must exceed** `proof-max-age + 2 * clock-skew`, or an evicted `jti` leaves its proof replayable. Certify refuses to start if the resulting `dpopJti` TTL is below this bound. | `120` |
 | `mosip.certify.cache.names` | Must include `dpopJti` for the replay cache to exist. | `...,dpopJti` |
-| `mosip.certify.cache.expire-in-seconds` | Per-cache TTL map; must include a `dpopJti` entry (wired to `mosip.certify.dpop.jti.cache-expire-seconds`), otherwise startup fails and the TTL rule above is never applied. | `{..., 'dpopJti': ${mosip.certify.dpop.jti.cache-expire-seconds}}` |
+| `mosip.certify.cache.expire-in-seconds` | Per-cache TTL map; must include a `dpopJti` entry (wired to `mosip.certify.dpop.jti.cache-expire-seconds`, with `120` as the fallback so a Bearer-only deployment can leave that property out), otherwise startup fails and the TTL rule above is never applied. | `{..., 'dpopJti': ${mosip.certify.dpop.jti.cache-expire-seconds:120}}` |
 | `mosip.certify.cache.size` | Per-cache max-entries map for the `simple` (in-memory) cache. Size `dpopJti` to hold **every proof accepted within its TTL** — size-based eviction can drop a still-fresh `jti` before its TTL expires, letting a captured proof pass the replay check. Bound it for the expected proof rate, or use a cache whose policy guarantees TTL retention (e.g. Redis). | `{..., 'dpopJti': 10000}` |
 
 ---

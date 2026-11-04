@@ -10,10 +10,10 @@ import io.mosip.certify.core.util.CommonUtil;
 import io.mosip.certify.dpop.DpopProofValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.lang.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -53,8 +53,7 @@ import static io.mosip.certify.core.constants.VCIErrorConstants.INVALID_REQUEST;
 @ControllerAdvice
 public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler implements AccessDeniedHandler {
 
-    @Autowired
-    MessageSource messageSource;
+    private final MessageSource messageSource;
 
     /**
      * Source of the {@code algs} parameter advertised in a DPoP challenge (RFC 9449
@@ -63,11 +62,17 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
      * <p>The validator is asked for the list rather than the property being bound here a
      * second time: two bindings of one key can be edited apart, and a challenge that
      * advertises algorithms the validator does not accept sends a wallet developer
-     * chasing a fault that is not theirs. Optional so an advice built outside a Spring
-     * context still answers, just without the {@code algs} hint.
+     * chasing a fault that is not theirs. Optional because the validator does not exist
+     * when {@code mosip.certify.dpop.enabled} is false, and a Bearer-only deployment must
+     * not advertise DPoP algorithms; an advice built outside a Spring context likewise
+     * answers without the {@code algs} hint.
      */
-    @Autowired(required = false)
-    private DpopProofValidator dpopProofValidator;
+    private final DpopProofValidator dpopProofValidator;
+
+    public ExceptionHandlerAdvice(MessageSource messageSource, @Nullable DpopProofValidator dpopProofValidator) {
+        this.messageSource = messageSource;
+        this.dpopProofValidator = dpopProofValidator;
+    }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers,
@@ -219,16 +224,20 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             StringBuilder challenge = new StringBuilder(scheme)
                     .append(" error=\"").append(quoteAuthParam(errorCode)).append('"')
                     .append(", error_description=\"").append(quoteAuthParam(description)).append('"');
-            // algs comes from configuration rather than the request, so it is not
-            // attacker-controlled - but it is still a dynamic value, and escaping it
-            // keeps every quoted auth-param in this header safe by the same rule.
             List<String> algs = dpopProofValidator == null
                     ? List.of()
                     : dpopProofValidator.getAllowedAlgorithms();
-            if(INVALID_DPOP_PROOF.equals(errorCode) && !algs.isEmpty()) {
-                challenge.append(", algs=\"")
-                        .append(quoteAuthParam(String.join(" ", algs)))
-                        .append('"');
+            if((INVALID_DPOP_PROOF.equals(errorCode)
+                    || Boolean.TRUE.equals(request.getAttribute(Constants.AUTH_DPOP_BINDING_FAILED_ATTRIBUTE)))
+                    && !algs.isEmpty()) {
+                // A rejected proof, or a valid proof with a token not bound to its key - the
+                // latter is invalid_token, with algs still on the DPoP challenge (RFC 9449 §7.1,
+                // Figure 16).
+                appendAlgs(challenge.append(", "), algs);
+            } else if(Boolean.TRUE.equals(request.getAttribute(Constants.AUTH_DPOP_REQUIRED_ATTRIBUTE)) && !algs.isEmpty()) {
+                // A bound token presented as Bearer gets a second, error-free DPoP challenge,
+                // telling the client to retry under DPoP (RFC 9449 §7.2, Figure 18).
+                appendAlgs(challenge.append(", ").append(Constants.SCHEME_DPOP).append(' '), algs);
             }
             headers.set(HttpHeaders.WWW_AUTHENTICATE, challenge.toString());
             return new ResponseEntity<>(getVCErrorDto(errorCode, description), headers, HttpStatus.UNAUTHORIZED);
@@ -428,6 +437,17 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             default:
                 return HttpStatus.BAD_REQUEST;
         }
+    }
+
+    /**
+     * Appends the {@code algs} auth-param, listing what a DPoP proof may be signed with.
+     *
+     * <p>algs comes from configuration rather than the request, so it is not
+     * attacker-controlled - but it is still a dynamic value, and escaping it keeps every
+     * quoted auth-param in the header safe by the same rule.
+     */
+    private static void appendAlgs(StringBuilder challenge, List<String> algs) {
+        challenge.append("algs=\"").append(quoteAuthParam(String.join(" ", algs))).append('"');
     }
 
     /**

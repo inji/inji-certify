@@ -27,6 +27,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * The controller on its own, with AccessTokenValidationFilter bypassed on purpose.
+ *
+ * <p>These tests post to {@code /issuance/credential} without the {@code /v1/certify} servlet
+ * path, so the request URI does not match {@code mosip.certify.authn.filter-urls} and the filter
+ * does not run. Authentication state comes from the mocked {@link ParsedAccessToken} instead.
+ * The filter path is covered by {@link VCIssuanceControllerDpopDisabledTest}.
+ */
 @RunWith(SpringRunner.class)
 @WebMvcTest(value = VCIssuanceController.class)
 public class VCIssuanceControllerTest {
@@ -43,8 +51,8 @@ public class VCIssuanceControllerTest {
     @MockBean
     ParsedAccessToken parsedAccessToken;
 
-    // AccessTokenValidationFilter is a @Component, so the web slice builds it
-    // and every collaborator it autowires has to exist here too.
+    // Its presence is what keeps DPoP enabled for this class, as on a default deployment.
+    // VCIssuanceControllerDpopDisabledTest leaves it out to test the disabled mode.
     @MockBean
     io.mosip.certify.dpop.DpopProofValidator dpopProofValidator;
 
