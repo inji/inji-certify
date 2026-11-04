@@ -13,7 +13,8 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
 
 /**
- * OpenID4VCI §8.2: ignore unrecognized request parameters.
+ * OpenID4VCI §8.2 / RFC 6749 §3.1: unknown parameters MUST be ignored. Needed per-DTO because
+ * AppConfig's ObjectMapper fails on unknown properties globally; the admin APIs rely on that strictness.
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)

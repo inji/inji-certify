@@ -13,6 +13,7 @@ import io.mosip.certify.services.VCICacheService;
 import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,6 +32,7 @@ import java.util.Map;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.Assert.assertEquals;
 
 /**
  * The controller on its own, with AccessTokenValidationFilter bypassed on purpose.
@@ -180,6 +182,42 @@ public class VCIssuanceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.credentials").exists());
+        ArgumentCaptor<CredentialRequest> captor = ArgumentCaptor.forClass(CredentialRequest.class);
+        Mockito.verify(vcIssuanceService).getCredential(captor.capture());
+        CredentialRequest processed = captor.getValue();
+        assertEquals("TestId", processed.getCredentialConfigId());
+        assertEquals(List.of("dummy_jwt_proof"), processed.getProofs().get(ProofType.JWT));
+    }
+
+    @Test
+    public void should_rejectMissingConfigId_evenWhenUnknownFieldPresent() throws Exception {
+        //  An unknown field present but no credential_configuration_id still fails with invalid_credential_request.
+        String body = "{\"proofs\":{\"jwt\":[\"dummy_jwt_proof\"]}," +
+                "\"some_unknown_param\":\"x\"}";
+
+        mockMvc.perform(post("/issuance/credential")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_REQUEST));
+
+        Mockito.verify(vcIssuanceService, Mockito.never()).getCredential(Mockito.any());
+    }
+
+    @Test
+    public void should_rejectEmptyProofs_evenWhenUnknownFieldPresent() throws Exception {
+        // an unknown field present but empty proofs still fails with invalid_proof.
+        String body = "{\"credential_configuration_id\":\"TestId\"," +
+                "\"proofs\":{}," +
+                "\"some_unknown_param\":\"x\"}";
+
+        mockMvc.perform(post("/issuance/credential")
+                        .content(body)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(VCIErrorConstants.INVALID_PROOF));
+
+        Mockito.verify(vcIssuanceService, Mockito.never()).getCredential(Mockito.any());
     }
 
     @Test
