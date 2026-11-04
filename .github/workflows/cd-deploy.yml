@@ -1,0 +1,195 @@
+name: CD - Deploy inji-certify to Kubernetes
+
+# Continuous delivery for the Helm chart in ./helm/inji-certify.
+#
+#  * Auto:   after "Maven Package upon a push" succeeds on master -> deploy to `dev`.
+#  * Manual: Actions -> "CD - Deploy inji-certify" -> choose environment / image / tag.
+#            Use this to promote to `staging` and `prod`.
+#
+# PREREQUISITES (one-time, per cluster)
+#  1. The cluster is bootstrapped once with deploy/inji-certify/install.sh
+#     (softhsm, config-server configmaps/secrets, namespace + Istio label, redis, ...).
+#     This workflow only UPGRADES the release; it does not create those.
+#  2. GitHub Environments `dev`, `staging`, `prod` exist (add required reviewers on prod).
+#  3. Per environment:
+#       secret   KUBE_CONFIG          base64 of a kubeconfig that can deploy to the namespace
+#       variable INJICERTIFY_HOST     public hostname for the Istio VirtualService
+#       variable DOCKER_NAMESPACE     Docker Hub namespace the CI pushed images to (e.g. injistack)
+#       variable DOCKER_REGISTRY      (optional) defaults to docker.io
+#       variable CERTIFY_NAMESPACE    (optional) defaults to inji-certify
+#  4. Optional per-environment Helm overrides: deploy/cd/values-<environment>.yaml
+
+on:
+  workflow_run:
+    workflows: ["Maven Package upon a push"]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      image_name:
+        description: "Image to deploy (repository name under the Docker namespace)"
+        type: choice
+        options: [inji-certify-with-plugins, inji-certify]
+        default: inji-certify-with-plugins
+      image_tag:
+        description: "Image tag (CI publishes master as 'latest', other branches by branch name)"
+        type: string
+        default: latest
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    # For workflow_run, only continue when the CI run succeeded.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.p.outputs.environment }}
+      image_name: ${{ steps.p.outputs.image_name }}
+      image_tag: ${{ steps.p.outputs.image_tag }}
+    steps:
+      - id: p
+        env:
+          EVENT: ${{ github.event_name }}
+          IN_ENV: ${{ github.event.inputs.environment }}
+          IN_IMAGE: ${{ github.event.inputs.image_name }}
+          IN_TAG: ${{ github.event.inputs.image_tag }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            env_name="$IN_ENV"; image_name="$IN_IMAGE"; tag="$IN_TAG"
+          else
+            env_name="dev"
+            image_name="inji-certify-with-plugins"
+            # Mirrors the tagging used by the CI docker build (master -> latest).
+            if [ "$HEAD_BRANCH" = "master" ]; then tag="latest"; else tag="$HEAD_BRANCH"; fi
+          fi
+          echo "environment=$env_name" >> "$GITHUB_OUTPUT"
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$tag"         >> "$GITHUB_OUTPUT"
+          echo "Deploying ${image_name}:${tag} to ${env_name}"
+
+  deploy:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.prepare.outputs.environment }}
+    concurrency:
+      group: cd-inji-certify-${{ needs.prepare.outputs.environment }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ needs.prepare.outputs.environment }}
+      IMAGE_NAME: ${{ needs.prepare.outputs.image_name }}
+      IMAGE_TAG: ${{ needs.prepare.outputs.image_tag }}
+      NS: ${{ vars.CERTIFY_NAMESPACE || 'inji-certify' }}
+      RELEASE: inji-certify
+      REGISTRY: ${{ vars.DOCKER_REGISTRY || 'docker.io' }}
+      DOCKER_NAMESPACE: ${{ vars.DOCKER_NAMESPACE }}
+      HOST: ${{ vars.INJICERTIFY_HOST }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # For workflow_run, deploy the chart from the commit that CI built.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Validate configuration
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          missing=0
+          [ -n "$KUBE_CONFIG_B64" ]   || { echo "::error::Secret KUBE_CONFIG is not set for environment '$ENVIRONMENT'"; missing=1; }
+          [ -n "$DOCKER_NAMESPACE" ]  || { echo "::error::Variable DOCKER_NAMESPACE is not set for environment '$ENVIRONMENT'"; missing=1; }
+          [ -n "$HOST" ]              || { echo "::error::Variable INJICERTIFY_HOST is not set for environment '$ENVIRONMENT'"; missing=1; }
+          exit $missing
+
+      - uses: azure/setup-helm@v4
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "$KUBE_CONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+          kubectl version --client
+          kubectl cluster-info
+
+      - name: Check cluster was bootstrapped (install.sh)
+        run: |
+          kubectl get ns "$NS" >/dev/null 2>&1 || {
+            echo "::error::Namespace '$NS' not found. Run deploy/inji-certify/install.sh once on this cluster first."; exit 1; }
+          kubectl -n "$NS" get configmap config-server-share >/dev/null 2>&1 || {
+            echo "::error::ConfigMap 'config-server-share' missing in '$NS'. Bootstrap with deploy/inji-certify/install.sh first."; exit 1; }
+
+      - name: Build chart dependencies
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm dependency build helm/inji-certify
+
+      - name: Lint and render chart
+        run: |
+          helm lint helm/inji-certify \
+            --set "istio.hosts[0]=${HOST}" \
+            --set "image.repository=${DOCKER_NAMESPACE}/${IMAGE_NAME}" \
+            --set "image.tag=${IMAGE_TAG}"
+
+      - name: Helm upgrade --install
+        run: |
+          args=(upgrade --install "$RELEASE" helm/inji-certify
+                -n "$NS"
+                --set "image.registry=${REGISTRY}"
+                --set "image.repository=${DOCKER_NAMESPACE}/${IMAGE_NAME}"
+                --set "image.tag=${IMAGE_TAG}"
+                --set "istio.hosts[0]=${HOST}"
+                # Tags such as 'latest' are mutable; a changing annotation forces a rollout on every deploy.
+                --set-string "podAnnotations.deployRevision=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+                --atomic --wait --timeout 15m)
+
+          overrides="deploy/cd/values-${ENVIRONMENT}.yaml"
+          if [ -f "$overrides" ]; then args+=(-f "$overrides"); fi
+
+          helm "${args[@]}"
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n "$NS" get deploy -o name | xargs -n1 -t kubectl -n "$NS" rollout status --timeout=10m
+
+      - name: Smoke test (actuator health)
+        run: |
+          kubectl -n "$NS" port-forward "svc/${RELEASE}" 18090:80 >/tmp/port-forward.log 2>&1 &
+          pf=$!
+          trap 'kill $pf 2>/dev/null || true' EXIT
+          for i in $(seq 1 12); do
+            if out=$(curl -fsS http://127.0.0.1:18090/v1/certify/actuator/health 2>/dev/null); then
+              echo "$out"
+              echo "$out" | grep -q '"status":"UP"' && exit 0
+            fi
+            echo "Waiting for health endpoint ($i/12)..."; sleep 5
+          done
+          echo "::error::Health check did not report UP"; cat /tmp/port-forward.log || true; exit 1
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          helm -n "$NS" history "$RELEASE" || true
+          kubectl -n "$NS" get pods -o wide || true
+          kubectl -n "$NS" describe pods -l app.kubernetes.io/instance="$RELEASE" | tail -80 || true
+          kubectl -n "$NS" logs -l app.kubernetes.io/instance="$RELEASE" --tail=100 --all-containers || true
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### inji-certify CD"
+            echo "- Environment: \`${ENVIRONMENT}\`"
+            echo "- Image: \`${REGISTRY}/${DOCKER_NAMESPACE}/${IMAGE_NAME}:${IMAGE_TAG}\`"
+            echo "- Namespace / release: \`${NS}\` / \`${RELEASE}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
