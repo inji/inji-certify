@@ -1,5 +1,6 @@
 package io.mosip.certify.controller;
 
+import com.jayway.jsonpath.JsonPath;
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
 import io.mosip.certify.core.dto.ParsedAccessToken;
 import io.mosip.certify.core.exception.InvalidRequestException;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Collections;
@@ -229,6 +231,22 @@ class WellKnownControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.keys").isArray())
                 .andExpect(jsonPath("$.keys").isEmpty());
+    }
+
+    @Test
+    void should_returnJsonError_when_didDocumentThrowsAndAcceptIsApplicationJwt() throws Exception {
+        // In VCIssuance plugin mode did.json always throws this error
+        when(vcIssuanceService.getDIDDocument()).thenThrow(new InvalidRequestException("unsupported_in_current_plugin_mode"));
+
+        MockHttpServletResponse json = mockMvc.perform(get("/.well-known/did.json").accept(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.errors[0].errorCode").value("unsupported_in_current_plugin_mode"))
+                .andReturn().getResponse();
+        List<Object> errors = JsonPath.read(json.getContentAsString(), "$.errors");
+
+        mockMvc.perform(get("/.well-known/did.json").accept("application/jwt"))
+                .andExpect(status().is(json.getStatus()))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.errors").value(errors));
     }
 
     // Certify does not sign its metadata, so Accept: application/jwt gets the unsigned JSON document,
