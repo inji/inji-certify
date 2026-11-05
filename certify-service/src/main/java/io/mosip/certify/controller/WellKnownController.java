@@ -1,9 +1,13 @@
 package io.mosip.certify.controller;
 
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialIssuerMetadataDTO;
+import io.mosip.certify.core.dto.Error;
+import io.mosip.certify.core.dto.ResponseWrapper;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.core.spi.VCIssuanceService;
+import io.mosip.certify.core.util.CommonUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -32,7 +36,7 @@ public class WellKnownController {
         this.jwksService = jwksService;
     }
 
-    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document (#1143)
+    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document
     @GetMapping("/.well-known/openid-credential-issuer")
     public ResponseEntity<CredentialIssuerMetadataDTO> getCredentialIssuerMetadata() {
         return ResponseEntity.ok()
@@ -41,10 +45,21 @@ public class WellKnownController {
     }
 
     @GetMapping("/.well-known/did.json")
-    public ResponseEntity<Map<String, Object>> getDIDDocument() {
+    public ResponseEntity<Object> getDIDDocument() {
+        Map<String, Object> didDocument = vcIssuanceService.getDIDDocument();
+        if (didDocument == null) {
+            // Built here, not thrown: the advice reports errors as 200, and a .well-known
+            // result must not answer success with no document
+            ResponseWrapper notFound = new ResponseWrapper<>();
+            notFound.setResponseTime(CommonUtil.getUTCDateTime());
+            notFound.setErrors(List.of(new Error(ErrorConstants.DID_DOCUMENT_NOT_FOUND, ErrorConstants.DID_DOCUMENT_NOT_FOUND)));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(notFound);
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(vcIssuanceService.getDIDDocument());
+                .body(didDocument);
     }
 
     @GetMapping("/.well-known/jwks.json")

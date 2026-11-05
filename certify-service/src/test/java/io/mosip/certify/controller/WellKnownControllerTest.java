@@ -75,11 +75,15 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getDIDDocument_notFound_returnsEmpty() throws Exception {
+    void should_returnNotFound_when_didDocumentIsNull() throws Exception {
         when(vcIssuanceService.getDIDDocument()).thenReturn(null);
-        mockMvc.perform(get("/.well-known/did.json"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+
+        for (String accept : List.of(MediaType.APPLICATION_JSON_VALUE, "application/jwt")) {
+            mockMvc.perform(get("/.well-known/did.json").accept(accept))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.errors[0].errorCode").value("did_document_not_found"));
+        }
     }
 
     @Test
