@@ -9,6 +9,8 @@ import io.mosip.certify.core.spi.JwksService;
 import io.mosip.certify.core.spi.VCIssuanceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +59,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getCredentialIssuerMetadata() throws Exception {
+    void should_returnIssuerMetadata_when_metadataIsAvailable() throws Exception {
         CredentialIssuerMetadataDTO mockMetadata = mock(CredentialIssuerMetadataDTO.class);
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(mockMetadata);
         mockMvc.perform(get("/.well-known/openid-credential-issuer"))
@@ -66,7 +68,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getDIDDocument_success() throws Exception {
+    void should_returnDidDocument_when_documentIsAvailable() throws Exception {
         Map<String, Object> mockDidDoc = Collections.singletonMap("id", "did:example:123");
         when(vcIssuanceService.getDIDDocument()).thenReturn(mockDidDoc);
         mockMvc.perform(get("/.well-known/did.json"))
@@ -87,7 +89,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getDIDDocument_serviceThrowsException_returnsError() throws Exception {
+    void should_returnError_when_didDocumentServiceThrows() throws Exception {
         when(vcIssuanceService.getDIDDocument()).thenThrow(new InvalidRequestException("unsupported_in_current_plugin_mode"));
         mockMvc.perform(get("/.well-known/did.json"))
                 .andExpect(status().is2xxSuccessful())
@@ -95,7 +97,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_success_returnsJwkSet() throws Exception {
+    void should_returnJwkSet_when_keysAreAvailable() throws Exception {
         Map<String, Object> mockJwks = Map.of(
                 "keys", Collections.singletonList(
                         Map.of(
@@ -119,7 +121,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_emptyKeysList_returnsOkWithEmptyKeys() throws Exception {
+    void should_returnEmptyKeys_when_keysListIsEmpty() throws Exception {
         Map<String, Object> emptyJwks = Map.of("keys", Collections.emptyList());
         when(jwksService.getJwks()).thenReturn(emptyJwks);
 
@@ -132,7 +134,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_nullResponse_returnsServiceUnavailable() throws Exception {
+    void should_returnServiceUnavailable_when_jwksIsNull() throws Exception {
         when(jwksService.getJwks()).thenReturn(null);
 
         mockMvc.perform(get("/.well-known/jwks.json"))
@@ -144,7 +146,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_missingKeysField_returnsServiceUnavailable() throws Exception {
+    void should_returnServiceUnavailable_when_keysFieldIsMissing() throws Exception {
         Map<String, Object> invalidResponse = Collections.singletonMap("invalid", "response");
         when(jwksService.getJwks()).thenReturn(invalidResponse);
 
@@ -157,7 +159,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_serviceThrowsException_returnsServiceUnavailable() throws Exception {
+    void should_returnServiceUnavailable_when_jwksServiceThrows() throws Exception {
         when(jwksService.getJwks()).thenThrow(new RuntimeException("Keymanager service unavailable"));
 
         mockMvc.perform(get("/.well-known/jwks.json"))
@@ -169,7 +171,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_nullKeysList_returnsOkWithEmptyKeys() throws Exception {
+    void should_returnNullKeys_when_keysListIsNull() throws Exception {
         Map<String, Object> nullKeysResponse = Collections.singletonMap("keys", null);
         when(jwksService.getJwks()).thenReturn(nullKeysResponse);
 
@@ -181,7 +183,7 @@ class WellKnownControllerTest {
     }
 
     @Test
-    void getJwks_multipleKeys_returnsAllKeys() throws Exception {
+    void should_returnAllKeys_when_thereAreMultipleKeys() throws Exception {
         Map<String, Object> mockJwks = Map.of(
                 "keys", List.of(
                         Map.of("kty", "RSA", "kid", "key1", "use", "sig"),
@@ -200,30 +202,33 @@ class WellKnownControllerTest {
         verify(jwksService, times(1)).getJwks();
     }
 
-    @Test
-    void should_returnJsonIssuerMetadata_when_acceptIsApplicationJwt() throws Exception {
+    @ParameterizedTest(name = "Accept: {0}")
+    @MethodSource(WellKnownResponseAssertions.ACCEPT_VALUES)
+    void should_returnJsonIssuerMetadata_when_acceptIsAnyMediaType(String accept) throws Exception {
         CredentialIssuerMetadataDTO metadata = new CredentialIssuerMetadataDTO();
         metadata.setCredentialIssuer("http://localhost:8090");
         metadata.setCredentialEndpoint("http://localhost:8090/v1/certify/issuance/credential");
         metadata.setNonceEndpoint("http://localhost:8090/v1/certify/nonce");
         when(credentialConfigurationService.fetchCredentialIssuerMetadata()).thenReturn(metadata);
 
-        assertAcceptJwtServesTheJsonDocument("/.well-known/openid-credential-issuer");
+        WellKnownResponseAssertions.assertServesJsonDocument(mockMvc, "/.well-known/openid-credential-issuer", accept);
     }
 
-    @Test
-    void should_returnJsonDidDocument_when_acceptIsApplicationJwt() throws Exception {
+    @ParameterizedTest(name = "Accept: {0}")
+    @MethodSource(WellKnownResponseAssertions.ACCEPT_VALUES)
+    void should_returnJsonDidDocument_when_acceptIsAnyMediaType(String accept) throws Exception {
         when(vcIssuanceService.getDIDDocument()).thenReturn(Collections.singletonMap("id", "did:example:123"));
 
-        assertAcceptJwtServesTheJsonDocument("/.well-known/did.json");
+        WellKnownResponseAssertions.assertServesJsonDocument(mockMvc, "/.well-known/did.json", accept);
     }
 
-    @Test
-    void should_returnJsonJwkSet_when_acceptIsApplicationJwt() throws Exception {
+    @ParameterizedTest(name = "Accept: {0}")
+    @MethodSource(WellKnownResponseAssertions.ACCEPT_VALUES)
+    void should_returnJsonJwkSet_when_acceptIsAnyMediaType(String accept) throws Exception {
         when(jwksService.getJwks()).thenReturn(Map.of(
                 "keys", Collections.singletonList(Map.of("kty", "RSA", "kid", "test-key-id", "e", "AQAB"))));
 
-        assertAcceptJwtServesTheJsonDocument("/.well-known/jwks.json");
+        WellKnownResponseAssertions.assertServesJsonDocument(mockMvc, "/.well-known/jwks.json", accept);
     }
 
     @Test
@@ -251,18 +256,5 @@ class WellKnownControllerTest {
                 .andExpect(status().is(json.getStatus()))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.errors").value(errors));
-    }
-
-    // Certify does not sign its metadata, so Accept: application/jwt gets the unsigned JSON document,
-    // the form OID4VCI 1.0 section 12.2.2 requires every issuer to support (#1143).
-    private void assertAcceptJwtServesTheJsonDocument(String path) throws Exception {
-        String json = mockMvc.perform(get(path).accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        mockMvc.perform(get(path).accept("application/jwt"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().json(json, true));
     }
 }

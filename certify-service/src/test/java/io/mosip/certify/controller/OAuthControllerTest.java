@@ -11,6 +11,8 @@ import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import io.mosip.certify.services.PreAuthorizedCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -97,23 +99,16 @@ class OAuthControllerTest {
         verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
     }
 
-    @Test
-    void should_returnJsonAuthorizationServerMetadata_when_acceptIsApplicationJwt() throws Exception {
+    @ParameterizedTest(name = "Accept: {0}")
+    @MethodSource(WellKnownResponseAssertions.ACCEPT_VALUES)
+    void should_returnJsonAuthorizationServerMetadata_when_acceptIsAnyMediaType(String accept) throws Exception {
         OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
         mockMetadata.setIssuer("http://localhost:8090");
         mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
         mockMetadata.setGrantTypesSupported(Arrays.asList("authorization_code"));
         when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
 
-        String json = mockMvc.perform(get("/.well-known/oauth-authorization-server").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn().getResponse().getContentAsString();
-
-        // Certify does not sign its metadata, so Accept: application/jwt gets the unsigned JSON document (#1143)
-        mockMvc.perform(get("/.well-known/oauth-authorization-server").accept("application/jwt"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(content().json(json, true));
+        WellKnownResponseAssertions.assertServesJsonDocument(mockMvc, "/.well-known/oauth-authorization-server", accept);
     }
 
     @Test
