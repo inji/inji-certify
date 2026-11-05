@@ -1,6 +1,6 @@
 -- -------------------------------------------------------------------------------------------------
 -- Rollback Script : v1.0.0 to v0.14.0
--- Release name    : 1.0.0-alpha.1, 1.0.0-rc.1
+-- Release name    : 1.0.0-alpha.1, 1.0.0-rc.1, 1.0.0-rc.2
 -- Database        : inji_certify
 -- Purpose         : Revert schema changes introduced across the 1.0.0 pre-releases.
 -- -------------------------------------------------------------------------------------------------
@@ -84,3 +84,11 @@ DROP INDEX IF EXISTS certify.idx_ard_transaction_id;
 DROP TABLE IF EXISTS certify.vp_submission;
 DROP TABLE IF EXISTS certify.vc_submission;
 DROP TABLE IF EXISTS certify.authorization_request_details;
+
+-- -------------------------------------------------------------------------------------------------
+-- SECTION 4: Restore did:jwk / did:key binding methods for SD-JWT
+-- Reverts: 1.0.0-rc.2
+-- -------------------------------------------------------------------------------------------------
+UPDATE certify.credential_config
+SET cryptographic_binding_methods_supported = ARRAY['did:jwk', 'did:key']
+WHERE credential_format = 'vc+sd-jwt';
