@@ -190,7 +190,7 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
-    public void should_rejectMissingConfigId_evenWhenUnknownFieldPresent() throws Exception {
+    public void should_rejectMissingConfigId_when_unknownFieldPresent() throws Exception {
         //  An unknown field present but no credential_configuration_id still fails with invalid_credential_request.
         String body = "{\"proofs\":{\"jwt\":[\"dummy_jwt_proof\"]}," +
                 "\"some_unknown_param\":\"x\"}";
@@ -205,7 +205,7 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
-    public void should_rejectEmptyProofs_evenWhenUnknownFieldPresent() throws Exception {
+    public void should_rejectEmptyProofs_when_unknownFieldPresent() throws Exception {
         // an unknown field present but empty proofs still fails with invalid_proof.
         String body = "{\"credential_configuration_id\":\"TestId\"," +
                 "\"proofs\":{}," +
