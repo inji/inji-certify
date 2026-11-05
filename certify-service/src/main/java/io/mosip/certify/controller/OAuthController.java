@@ -22,6 +22,10 @@ import java.util.Map;
 /**
  * OAuth Authorization Controller
  * Handles OAuth 2.0 authorization flows including Interactive Authorization Request (IAR)
+ * <p>
+ * Unlike the other endpoints here, {@code /.well-known/oauth-authorization-server} has no
+ * {@code produces = "application/json"}: do not add it. Certify does not sign this metadata, so every
+ * Accept value, application/jwt included, must get the JSON document.
  */
 @Slf4j
 @RestController
@@ -39,7 +43,6 @@ public class OAuthController {
         this.preAuthorizedCodeService = preAuthorizedCodeService;
     }
 
-    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document (#1143)
     @GetMapping("/.well-known/oauth-authorization-server")
     public ResponseEntity<OAuthAuthorizationServerMetadataDTO> getOAuthAuthorizationServerMetadata() {
         return ResponseEntity.ok()

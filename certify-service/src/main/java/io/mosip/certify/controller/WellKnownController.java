@@ -19,6 +19,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Serves the .well-known documents: credential issuer metadata, DID document and JWKS.
+ * <p>
+ * Do not add {@code produces = "application/json"} to these mappings, as the other controllers have.
+ * Certify does not sign its metadata, so every Accept value, application/jwt included, must get the
+ * JSON document (OID4VCI 1.0 section 12.2.2). 
+ */
 @RestController
 public class WellKnownController {
 
@@ -36,7 +43,6 @@ public class WellKnownController {
         this.jwksService = jwksService;
     }
 
-    // Metadata is not signed, so every Accept value, application/jwt included, gets the JSON document
     @GetMapping("/.well-known/openid-credential-issuer")
     public ResponseEntity<CredentialIssuerMetadataDTO> getCredentialIssuerMetadata() {
         return ResponseEntity.ok()
