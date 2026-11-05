@@ -88,18 +88,10 @@ An issued `dc+sd-jwt` credential now carries the holder's public key in `cnf.jwk
 + "cnf": { "jwk": { "crv": "P-256", "kty": "EC", "x": "...", "y": "..." } }
 ```
 
-Proofs are accepted as before: the holder key can still be sent as a `jwk` header, or as a `did:jwk` or `did:key` `kid`. `ldp_vc` and `mso_mdoc` credentials are unchanged.
+Proofs are accepted as before: the holder key can still be sent as a `jwk` header, or as a `did:jwk` or `did:key` `kid`.
 
 `cryptographic_binding_methods_supported` describes how the key appears in the issued credential ([OID4VCI 1.0 §12.2.4](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-12.2.4)), not which proofs are accepted. So `dc+sd-jwt` now advertises `jwk` only.
 
-**Action for existing deployments:** set the `dc+sd-jwt` entry of `mosip.certify.credential-config.cryptographic-binding-methods-supported` to `{'jwk'}`:
-
-```properties
-mosip.certify.credential-config.cryptographic-binding-methods-supported={\
-  'ldp_vc': {'did:jwk','did:key'},\
-  'mso_mdoc': {'cose_key'},\
-  'dc+sd-jwt': {'jwk'}\
-}
-```
+**Action for existing deployments:** set the `dc+sd-jwt` entry of `mosip.certify.credential-config.cryptographic-binding-methods-supported` to `{'jwk'}`.
 
 **Action for existing credential configurations:** The upgrade script rewrites stored `dc+sd-jwt` configurations to `["jwk"]`.
