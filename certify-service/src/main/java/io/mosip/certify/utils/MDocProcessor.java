@@ -145,11 +145,19 @@ public class MDocProcessor {
      */
     private List<Map<String, Object>> processNamespaceItems(JsonNode namespaceItems) {
         List<Map<String, Object>> processedItems = new ArrayList<>();
+        // ISO/IEC 18013-5, 9.1.2.4: digestIDs are unique within a namespace and are drawn at random,
+        // so the same element cannot be recognised by its ID across credentials. Any digestID in the
+        // template is therefore ignored.
+        Set<Integer> usedDigestIds = new HashSet<>();
 
         // First, add all items from template
         for (JsonNode item : namespaceItems) {
             Map<String, Object> itemMap = new HashMap<>();
-            itemMap.put(Constants.DIGEST_ID, item.get(Constants.DIGEST_ID).asInt());
+            int digestId;
+            do {
+                digestId = SECURE_RANDOM.nextInt(Integer.MAX_VALUE);
+            } while (!usedDigestIds.add(digestId));
+            itemMap.put(Constants.DIGEST_ID, digestId);
             itemMap.put(Constants.ELEMENT_IDENTIFIER, item.get(Constants.ELEMENT_IDENTIFIER).asText());
 
             // Handle elementValue which could be string or complex object

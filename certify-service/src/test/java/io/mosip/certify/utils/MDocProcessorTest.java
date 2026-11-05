@@ -128,7 +128,9 @@ public class MDocProcessorTest {
 
         assertEquals("family_name", items.getFirst().get("elementIdentifier"));
         assertEquals("Doe", items.getFirst().get("elementValue"));
-        assertEquals(0, items.getFirst().get("digestID"));
+        // the template's digestIDs are replaced by random ones, unique within the namespace
+        assertEquals(3, items.stream().map(item -> item.get("digestID")).distinct().count());
+        items.forEach(item -> assertTrue((Integer) item.get("digestID") >= 0));
 
         assertEquals("ValidityInfo should match", expectedValidityInfo, result.get("validityInfo"));
     }
@@ -612,6 +614,23 @@ public class MDocProcessorTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> MDocProcessor.calculateDigests(salted, new HashMap<>(), "SHA-1"));
+    }
+
+    @Test
+    public void should_assignRandomUniqueDigestIds_when_templateRepeatsOneDigestId() {
+        String template = "{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"digestID\": 0, \"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                + "  {\"digestID\": 0, \"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
+                + "  {\"digestID\": 0, \"elementIdentifier\": \"document_number\", \"elementValue\": \"D1\"},"
+                + "  {\"elementIdentifier\": \"issuing_country\", \"elementValue\": \"IN\"}"
+                + "]}}";
+
+        List<Object> first = digestIds(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        List<Object> second = digestIds(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+
+        assertEquals("unique within the namespace", 4, first.stream().distinct().count());
+        assertNotEquals("drawn again for every mDL", first, second);
     }
 
     @Test
@@ -1222,6 +1241,12 @@ public class MDocProcessorTest {
     }
 
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
+
+    private static List<Object> digestIds(Map<String, Object> mDoc) {
+        List<Map<String, Object>> items = (List<Map<String, Object>>)
+                ((Map<String, Object>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE);
+        return items.stream().map(item -> item.get("digestID")).toList();
+    }
 
     private String createTestDidJwk() {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
