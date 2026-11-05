@@ -6,12 +6,18 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 
 import java.util.Map;
 
+/**
+ * OpenID4VCI §8.2 / RFC 6749 §3.1: unknown parameters MUST be ignored. Needed per-DTO because
+ * AppConfig's ObjectMapper fails on unknown properties globally; the admin APIs rely on that strictness.
+ */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CredentialRequest {
 
     @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_REQUEST)
