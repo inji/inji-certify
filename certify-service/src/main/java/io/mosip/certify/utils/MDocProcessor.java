@@ -93,20 +93,21 @@ public class MDocProcessor {
                     "Missing validUntil"
             );
 
+            // ISO/IEC 18013-5, 9.1.2.4: Certify sets the validityInfo dates, so the template must leave
+            // each one as its placeholder. signed and validFrom are the issuance time and validUntil is
+            // validityPeriodYears (at least 1) later, so signed <= validFrom < validUntil always holds.
+            requirePlaceholder(Constants.SIGNED, signedValue, "${_signed}");
+            requirePlaceholder(VCDM2Constants.VALID_FROM, validFromValue, "${_validFrom}");
+            requirePlaceholder(VCDM2Constants.VALID_UNTIL, validUntilValue, "${_validUntil}");
+
             ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
             String formattedCurrentTime = currentTime.format(VALIDITY_INFO_DATETIME_FORMATTER);
+            String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
+                    .format(VALIDITY_INFO_DATETIME_FORMATTER);
 
-            if ("${_validFrom}".equals(validFromValue)) {
-                validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_signed}".equals(signedValue)) {
-                validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_validUntil}".equals(validUntilValue)) {
-                String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
-                        .format(VALIDITY_INFO_DATETIME_FORMATTER);
-                validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-            }
+            validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
+            validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
+            validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
 
             finalMDoc.put(Constants.VALIDITY_INFO, validity);
 
@@ -137,6 +138,14 @@ public class MDocProcessor {
         } catch (Exception e) {
             log.error("Error processing templated JSON: {}", e.getMessage(), e);
             throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "Error processing templated JSON: " + e.getMessage());
+        }
+    }
+
+    /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */
+    private static void requirePlaceholder(String name, String value, String placeholder) {
+        if (!placeholder.equals(value)) {
+            throw new IllegalArgumentException("validityInfo." + name + " must be " + placeholder
+                    + "; Certify sets the validityInfo dates at issuance");
         }
     }
 

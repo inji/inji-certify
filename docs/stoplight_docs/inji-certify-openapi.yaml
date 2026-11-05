@@ -1560,6 +1560,8 @@ components:
             For an mso_mdoc configuration with docType org.iso.18013.5.1.mDL in DataProvider plugin mode, the template must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the org.iso.18013.5.1 namespace: family_name, given_name, birth_date, issue_date, expiry_date, issuing_country, issuing_authority, document_number, portrait, driving_privileges and un_distinguishing_sign. Otherwise Add and Update are rejected with mdl_mandatory_elements_missing, naming the missing elements. Update checks the template as it would be saved, so a stored template that lacks them is rejected too.
 
             In an mso_mdoc template, digestID is optional and ignored: each issued mdoc gets random digest IDs, unique within each namespace (ISO/IEC 18013-5, 9.1.2.4).
+
+            In an mso_mdoc template, validityInfo.signed, validFrom and validUntil must be the placeholders ${_signed}, ${_validFrom} and ${_validUntil}. Certify sets signed and validFrom to the issuance time and validUntil to mosip.certify.mdoc.validity-period-years (at least 1) later, as tdates in UTC without fractions of seconds (ISO/IEC 18013-5, 9.1.2.4). A template that writes a date instead fails issuance with mdoc_template_processing_failed.
         credentialConfigKeyId:
           type: string
           description: Unique key identifier for the credential configuration.

@@ -634,6 +634,19 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_reject_when_templateWritesAValidityInfoDate() {
+        for (String name : List.of("signed", "validFrom", "validUntil")) {
+            String template = "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                    + getValidityInfoTemplate().replace("${_" + name + "}", "2026-07-20T10:00:00Z")
+                    + ", \"nameSpaces\": {}}";
+
+            CertifyException exception = assertThrows(CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+            assertTrue(name, exception.getMessage().contains("validityInfo." + name + " must be ${_" + name + "}"));
+        }
+    }
+
+    @Test
     public void should_notTag_when_nonDateStringsHandled() throws Exception {
         String[] nonDates = {
                 "2025-13-01", // Invalid month

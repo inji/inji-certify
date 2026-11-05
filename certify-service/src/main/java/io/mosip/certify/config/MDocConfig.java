@@ -46,12 +46,25 @@ public class MDocConfig {
      */
     private Map<String, Map<String, String>> fieldMappings;
 
-    /** A digest algorithm the MSO may not use is refused at startup rather than at issuance. */
+    /** A configuration the MSO can't be built from is refused at startup rather than at issuance. */
     @PostConstruct
+    public void validate() {
+        validateDigestAlgorithm();
+        validateValidityPeriod();
+    }
+
     public void validateDigestAlgorithm() {
         if (!MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
             throw new IllegalStateException("mosip.certify.mdoc.digest-algorithm is '" + digestAlgorithm
                     + "'; it must be one of " + MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS + " (ISO/IEC 18013-5, 9.1.2.5).");
+        }
+    }
+
+    /** validUntil is validityPeriodYears after validFrom and must be later (ISO/IEC 18013-5, 9.1.2.4). */
+    public void validateValidityPeriod() {
+        if (validityPeriodYears < 1) {
+            throw new IllegalStateException("mosip.certify.mdoc.validity-period-years is " + validityPeriodYears
+                    + "; it must be at least 1 so that validUntil is after validFrom (ISO/IEC 18013-5, 9.1.2.4).");
         }
     }
 }

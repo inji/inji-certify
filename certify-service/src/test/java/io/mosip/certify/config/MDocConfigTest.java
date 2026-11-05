@@ -25,4 +25,18 @@ class MDocConfigTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class, config::validateDigestAlgorithm);
         assertTrue(exception.getMessage().contains("mosip.certify.mdoc.digest-algorithm"));
     }
+
+    @Test
+    void should_start_when_defaultsAreUsed() {
+        assertDoesNotThrow(new MDocConfig()::validate);
+    }
+
+    @Test
+    void should_refuseToStart_when_validityPeriodIsLessThanAYear() {
+        MDocConfig config = new MDocConfig();
+        config.setValidityPeriodYears(0);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, config::validate);
+        assertTrue(exception.getMessage().contains("mosip.certify.mdoc.validity-period-years"));
+    }
 }
