@@ -18,7 +18,6 @@ import io.mosip.certify.core.exception.InvalidRequestException;
 import io.mosip.certify.core.exception.NotAuthenticatedException;
 import io.mosip.certify.core.spi.CredentialConfigurationService;
 import io.mosip.certify.core.spi.VCIssuanceService;
-import io.mosip.certify.proof.HolderKey;
 import io.mosip.certify.proof.ProofValidator;
 import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.VCIssuanceUtil;
@@ -117,10 +116,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                         auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
                                 AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
                     }
-                    HolderKey holderKey = proofValidator.getHolderKey(proofValue);
-                    if (holderKey != null) {
-                        holderIds.add(holderKey.did());
-                    }
+                    holderIds.add(proofValidator.getHolderKey(proofValue).did());
                 } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
                             AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
