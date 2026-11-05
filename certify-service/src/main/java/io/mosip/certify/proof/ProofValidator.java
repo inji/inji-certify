@@ -20,9 +20,9 @@ public interface ProofValidator {
     boolean validate(String clientId, String cNonce, String proofJwt, Map<String, Object> proofConfiguration);
 
     /**
-     * Extracts the holders public key for VC cryptographic binding from the proof header
+     * Extracts the holder's key from the proof header, as a DID and as a public JWK.
      * @param proofJwt from the credential request.
-     * @return public key as did:jwk equivalent
+     * @return the holder's key in both forms
      */
-    String getKeyMaterial(String proofJwt);
+    HolderKey getHolderKey(String proofJwt);
 }

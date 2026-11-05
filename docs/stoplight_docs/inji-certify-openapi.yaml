@@ -815,7 +815,7 @@ paths:
                   keyManagerRefId: ED25519_SIGN
                   signatureAlgo: EdDSA
                   cryptographicBindingMethodsSupported:
-                    - 'did:jwk'
+                    - 'jwk'
                   proofTypesSupported:
                     jwt:
                       proof_signing_alg_values_supported:
