@@ -1,6 +1,6 @@
 > ❗ **Important\!** Before you proceed, you should be aware of OpenID4VC & W3C VC. Please read the following standards before proceeding:
 >
->   * [OpenID4VC - OpenID for Verifiable Credential Issuance - draft 13](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html)
+>   * [OpenID4VC - OpenID for Verifiable Credential Issuance - 1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
 >   * [W3C VC - Verifiable Credentials Overview](https://www.w3.org/TR/vc-overview/)
 
 -----
@@ -24,11 +24,11 @@
 ## Overview
 
 Inji Certify enables issuers to generate, sign and issue a verifiable credentials. It follows the standard of OpenID4VCI
-(Open ID For VC Issuance) draft 13. It also issues VC complaints with W3C Verifiable Credentials (1.1 & 2.0). Issuers
+(Open ID For VC Issuance) 1.0. It also issues VC complaints with W3C Verifiable Credentials (1.1 & 2.0). Issuers
 can configure credential schemas for different certificate types, generating credentials in different VC formats such
 JSON-LD, SD-JWT etc.
 
-In particular, certify focuses on the issuer’s role in and provides the following features from OpenID4VC (draft 13):
+In particular, certify focuses on the issuer’s role in and provides the following features from OpenID4VCI (1.0):
 
 | Feature                                                             | Coverage |
 |:--------------------------------------------------------------------|:---------|
@@ -42,7 +42,7 @@ In particular, certify focuses on the issuer’s role in and provides the follow
 | Revocation support for JSON\_LD                                     | ✅        |
 | Credential Offer with Pre Authorization Code Flow                   | ✅        |
 | Credential Issuance with Interactive Authorization Request          | ✅        |
-| Support for mDoc/mDL VC Format                                      | ❌        |
+| Support for mDoc/mDL VC Format                                      | ✅        |
 | Credential Offer with Authorization Code Flow(redirect-to-web)      | ❌        |
 | Credential Binding with cwt proof                                   | ❌        |
 
@@ -177,11 +177,6 @@ mosip.certify.dpop.jti.cache-expire-seconds=120
 `dpop_bound_access_tokens: true`, and only from eSignet **1.8** onward — against an older build no token carries
 `cnf.jkt` and every DPoP request is rejected as unbound.
 
-### Enable VC Issuance with mock mDoc/mDL format
-
-To enable certify to issue VC with mDoc/mDL (mock is supported currently) few properties needed to be updated. Refer
-[here](https://github.com/inji/digital-credential-plugins/tree/master/mock-certify-plugin#mdocmockvcissuanceplugin) to
-know about the properties.
 
 ## Databases
 
