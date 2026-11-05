@@ -30,8 +30,16 @@ SET display = COALESCE((
 ), '[]'::jsonb)
 WHERE display IS NOT NULL;
 
-ALTER TABLE certify.credential_config
-RENAME COLUMN credential_subject TO claims;
+-- Skipped when the column is already renamed (re-run on a 1.0.0 pre-release database).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'certify'
+                 AND table_name = 'credential_config'
+                 AND column_name = 'credential_subject') THEN
+        ALTER TABLE certify.credential_config RENAME COLUMN credential_subject TO claims;
+    END IF;
+END $$;
 COMMENT ON COLUMN certify.credential_config.claims IS 'Claims: JSON object containing subject attributes schema.';
 
 UPDATE certify.credential_config

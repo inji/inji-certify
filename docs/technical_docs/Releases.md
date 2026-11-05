@@ -95,3 +95,5 @@ Proofs are accepted as before: the holder key can still be sent as a `jwk` heade
 **Action for existing deployments:** set the `dc+sd-jwt` entry of `mosip.certify.credential-config.cryptographic-binding-methods-supported` to `{'jwk'}`.
 
 **Action for existing credential configurations:** The upgrade script rewrites stored `dc+sd-jwt` configurations to `["jwk"]`.
+
+Upgrading from 1.0.0-rc.1: re-run `0.14.0_to_1.0.0_upgrade.sql` (`CURRENT_VERSION=0.14.0`, `UPGRADE_VERSION=1.0.0` in `upgrade.properties`). It is safe to re-run.
