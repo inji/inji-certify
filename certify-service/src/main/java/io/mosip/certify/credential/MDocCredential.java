@@ -63,7 +63,8 @@ public class MDocCredential extends Credential {
             Map<String, Object> mDocJson = objectMapper.readValue(vcToSign, Map.class);
             Map<String, Object> saltedNamespaces = MDocProcessor.addRandomSalts(mDocJson);
             Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(
+                    saltedNamespaces, namespaceDigests, mDocProcessor.getDigestAlgorithm());
 
             // Create Mobile Security Object (MSO)
             Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);

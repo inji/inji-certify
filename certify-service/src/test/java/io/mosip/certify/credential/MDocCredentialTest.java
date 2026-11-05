@@ -183,7 +183,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any()))
                     .thenReturn(mso);
@@ -226,7 +226,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), anyString()))
@@ -266,7 +266,7 @@ public class MDocCredentialTest {
             try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
                 when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
                 mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-                mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+                mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                         .thenReturn(taggedNamespaces);
                 when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
                 when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), eq(algorithm)))
@@ -299,7 +299,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), anyString()))
@@ -358,7 +358,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenThrow(new RuntimeException("Digest calculation failed"));
 
             mDocCredential.addProof(
@@ -377,7 +377,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(any(), any()))
                     .thenThrow(new RuntimeException("MSO creation failed"));
@@ -399,7 +399,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))
@@ -424,7 +424,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))
@@ -452,7 +452,7 @@ public class MDocCredentialTest {
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
-            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
             when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))

@@ -1,5 +1,7 @@
 package io.mosip.certify.config;
 
+import io.mosip.certify.utils.MDocProcessor;
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -43,4 +45,13 @@ public class MDocConfig {
      * Format: templateName.sourceField = targetNamespace:targetField
      */
     private Map<String, Map<String, String>> fieldMappings;
+
+    /** A digest algorithm the MSO may not use is refused at startup rather than at issuance. */
+    @PostConstruct
+    public void validateDigestAlgorithm() {
+        if (!MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+            throw new IllegalStateException("mosip.certify.mdoc.digest-algorithm is '" + digestAlgorithm
+                    + "'; it must be one of " + MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS + " (ISO/IEC 18013-5, 9.1.2.5).");
+        }
+    }
 }

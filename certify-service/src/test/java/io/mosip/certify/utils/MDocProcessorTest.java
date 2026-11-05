@@ -24,6 +24,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.security.MessageDigest;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -381,7 +382,7 @@ public class MDocProcessorTest {
         saltedNamespaces.put("org.iso.18013.5.1", elements);
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         assertNotNull("Result should not be null", result);
         assertTrue("Should contain namespace", result.containsKey("org.iso.18013.5.1"));
@@ -403,7 +404,7 @@ public class MDocProcessorTest {
         saltedNamespaces.put("org.iso.18013.5.1", elements);
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         Map<Integer, byte[]> digests = namespaceDigests.get("org.iso.18013.5.1");
         assertEquals("Should have 5 digests", 5, digests.size());
@@ -422,7 +423,7 @@ public class MDocProcessorTest {
         saltedNamespaces.put("org.iso.18013.5.1", elements);
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         List<Object> taggedElements = (List<Object>) result.get("org.iso.18013.5.1");
         assertNotNull("Tagged elements should not be null", taggedElements);
@@ -448,13 +449,13 @@ public class MDocProcessorTest {
         saltedNamespaces.put("test.namespace", Collections.singletonList(element));
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         byte[] digest = namespaceDigests.get("test.namespace").get(0);
 
         // Verify digest is deterministic for same input
         Map<String, Map<Integer, byte[]>> namespaceDigests2 = new HashMap<>();
-        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests2);
+        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests2, "SHA-256");
         byte[] digest2 = namespaceDigests2.get("test.namespace").get(0);
 
         assertArrayEquals("Digests should be deterministic", digest, digest2);
@@ -588,6 +589,29 @@ public class MDocProcessorTest {
                         1004, dateItem.getTag().getValue());
             }
         }
+    }
+
+    @Test
+    public void should_digestWithTheConfiguredAlgorithm_when_algorithmIsSha384() throws Exception {
+        Map<String, Object> salted = new HashMap<>();
+        salted.put(MDL_NAMESPACE, List.of(createSaltedElement(7, "family_name", "Doe")));
+        Map<String, Map<Integer, byte[]>> digests = new HashMap<>();
+
+        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, digests, "SHA-384");
+
+        ByteArrayOutputStream encodedItem = new ByteArrayOutputStream();
+        new CborEncoder(encodedItem).encode((DataItem) ((List<?>) tagged.get(MDL_NAMESPACE)).get(0));
+        assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(encodedItem.toByteArray()),
+                digests.get(MDL_NAMESPACE).get(7));
+    }
+
+    @Test
+    public void should_reject_when_digestAlgorithmIsNotAllowedByIso() {
+        Map<String, Object> salted = new HashMap<>();
+        salted.put(MDL_NAMESPACE, List.of(createSaltedElement(0, "family_name", "Doe")));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> MDocProcessor.calculateDigests(salted, new HashMap<>(), "SHA-1"));
     }
 
     @Test
@@ -950,7 +974,7 @@ public class MDocProcessorTest {
 
         Map<String, Object> saltedNamespaces = MDocProcessor.addRandomSalts(mDocJson);
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         assertEquals("Should have 2 namespaces", 2, namespaceDigests.size());
         assertTrue("Should have ISO namespace", namespaceDigests.containsKey("org.iso.18013.5.1"));
@@ -980,7 +1004,7 @@ public class MDocProcessorTest {
         saltedNamespaces.put("org.iso.18013.5.1", new ArrayList<>());
 
         Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+        Map<String, Object> result = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests, "SHA-256");
 
         assertNotNull("Result should not be null", result);
         assertTrue("Should have namespace", result.containsKey("org.iso.18013.5.1"));
@@ -1196,6 +1220,8 @@ public class MDocProcessorTest {
         element.put("random", new byte[24]);
         return element;
     }
+
+    private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
 
     private String createTestDidJwk() {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","

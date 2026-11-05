@@ -48,6 +48,9 @@ public class MDocProcessor {
     private static final DateTimeFormatter VALIDITY_INFO_DATETIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
+    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
+    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
+
     private final ObjectMapper objectMapper;
 
     private final MDocConfig mDocConfig;
@@ -196,11 +199,21 @@ public class MDocProcessor {
         return saltedNamespaces;
     }
 
+    /** The digest algorithm the MSO declares, which calculateDigests must also use. */
+    public String getDigestAlgorithm() {
+        return mDocConfig.getDigestAlgorithm();
+    }
+
     /**
-     * Calculates SHA-256 digests for salted elements
+     * Calculates the digest of each salted element with the given algorithm, which must be the one
+     * the MSO declares.
      */
     public static Map<String, Object> calculateDigests
-    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests) throws Exception {
+    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests,
+     String digestAlgorithm) throws Exception {
+        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+            throw new IllegalArgumentException("Unsupported MSO digest algorithm: " + digestAlgorithm);
+        }
 
         Map<String, Object> taggedNamespaces = new HashMap<>();
 
@@ -226,7 +239,7 @@ public class MDocProcessor {
                 ByteArrayOutputStream outerBaos = new ByteArrayOutputStream();
                 new CborEncoder(outerBaos).encode(tag24Value);
                 byte[] taggedCbor = outerBaos.toByteArray();
-                byte[] digest = MessageDigest.getInstance("SHA-256").digest(taggedCbor);
+                byte[] digest = MessageDigest.getInstance(digestAlgorithm).digest(taggedCbor);
                 digestMap.put((Integer) element.get(Constants.DIGEST_ID), digest);
             }
 
