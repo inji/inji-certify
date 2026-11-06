@@ -1413,8 +1413,8 @@ public class MDocProcessorTest {
         String validUntil = (String) ((Map<String, Object>) validityInfo.get("validUntil")).get(Constants.__CBOR_VALUE);
 
         assertNotNull("ValidUntil should be set", validUntil);
-        // Verify it's approximately 10 years in the future (allowing for execution time)
-        assertTrue("ValidUntil should be in the future", validUntil.compareTo("2030-01-01") > 0);
+        assertEquals("ValidUntil should reflect the configured period",
+                "2036-07-20T00:00:00Z", validUntil);
     }
 
     @Test
