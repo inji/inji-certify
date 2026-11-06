@@ -15,15 +15,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class MsoMdocCredentialConfigValidator {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-    private static final Pattern ELEMENT_IDENTIFIER_PATTERN =
-            Pattern.compile("\"" + Constants.ELEMENT_IDENTIFIER + "\"\\s*:\\s*\"([^\"]+)\"");
 
     /**
      * An mdoc's issuerAuth is signed with signatureAlgo alone, so that is mandatory in DataProvider mode,
@@ -42,7 +37,9 @@ public class MsoMdocCredentialConfigValidator {
     /**
      * An mDL template must declare every ISO/IEC 18013-5 Table 5 mandatory element in the
      * org.iso.18013.5.1 namespace. Checked in DataProvider mode only, where Certify builds the mDL
-     * from the template; in VCIssuance mode the plugin builds it.
+     * from the template; in VCIssuance mode the plugin builds it. A template whose mDL identifiers
+     * are only known once Velocity renders it (a directive such as #foreach, or an identifier that
+     * is a reference such as ${element.id}) can't be checked here and is accepted.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
      */
@@ -50,27 +47,34 @@ public class MsoMdocCredentialConfigValidator {
         if (!"DataProvider".equals(pluginMode) || !MdlDataElements.DOC_TYPE.equals(credentialConfig.getDocType())) {
             return List.of();
         }
-        Set<String> declared = declaredMdlElements(decodeTemplate(credentialConfig.getVcTemplate()));
-        return MdlDataElements.MANDATORY.stream().filter(element -> !declared.contains(element)).toList();
+        Optional<Set<String>> declared = declaredMdlElements(decodeTemplate(credentialConfig.getVcTemplate()));
+        if (declared.isEmpty()) {
+            return List.of();
+        }
+        return MdlDataElements.MANDATORY.stream().filter(element -> !declared.get().contains(element)).toList();
     }
 
-    private static Set<String> declaredMdlElements(String template) {
+    /** The identifiers in the mDL namespace, or empty when they are only known after rendering. */
+    private static Optional<Set<String>> declaredMdlElements(String template) {
         Set<String> declared = new HashSet<>();
         if (template == null || template.isBlank()) {
-            return declared;
+            return Optional.of(declared);
         }
+        JsonNode items;
         try {
-            JsonNode items = OBJECT_MAPPER.readTree(template).path(Constants.NAMESPACES).path(MdlDataElements.NAMESPACE);
-            items.forEach(item -> declared.add(item.path(Constants.ELEMENT_IDENTIFIER).asText()));
+            items = OBJECT_MAPPER.readTree(template).path(Constants.NAMESPACES).path(MdlDataElements.NAMESPACE);
         } catch (JsonProcessingException e) {
-            // A template using Velocity directives is not JSON until rendered: read the
-            // identifiers from its text instead.
-            Matcher matcher = ELEMENT_IDENTIFIER_PATTERN.matcher(template);
-            while (matcher.find()) {
-                declared.add(matcher.group(1));
-            }
+            // Velocity directives make the template invalid JSON until it is rendered.
+            return Optional.empty();
         }
-        return declared;
+        for (JsonNode item : items) {
+            String identifier = item.path(Constants.ELEMENT_IDENTIFIER).asText();
+            if (identifier.contains("$")) {
+                return Optional.empty();
+            }
+            declared.add(identifier);
+        }
+        return Optional.of(declared);
     }
 
     /** The template as stored is base64; raw JSON is accepted as well. */

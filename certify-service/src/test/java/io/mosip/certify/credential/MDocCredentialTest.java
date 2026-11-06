@@ -3,6 +3,7 @@ package io.mosip.certify.credential;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCResult;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.utils.MDocProcessor;
@@ -134,9 +135,22 @@ public class MDocCredentialTest {
         mDocCredential.createCredential(templateParams, templateName);
     }
 
-    @Test(expected = CertifyException.class)
-    public void should_throwException_when_processingFails() {
-        String templateName = "badTemplate";
+    @Test
+    public void should_keepTemplateProcessingErrorCode_when_processorRejectsTemplate() {
+        Map<String, Object> templateParams = new HashMap<>();
+        String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\"}";
+
+        when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
+        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams))
+                .thenThrow(new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "literal validityInfo date"));
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocCredential.createCredential(templateParams, "mDocTemplate"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+    }
+
+    @Test
+    public void should_throwMdocCreationFailed_when_processingFails() {
         Map<String, Object> templateParams = new HashMap<>();
         String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\"}";
 
@@ -144,7 +158,9 @@ public class MDocCredentialTest {
         when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams))
                 .thenThrow(new RuntimeException("Processing failed"));
 
-        mDocCredential.createCredential(templateParams, templateName);
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocCredential.createCredential(templateParams, "mDocTemplate"));
+        assertEquals("MDOC_CREATION_FAILED", exception.getErrorCode());
     }
 
     @Test(expected = CertifyException.class)
@@ -182,6 +198,7 @@ public class MDocCredentialTest {
 
         try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
             when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
+            when(mDocProcessor.getDigestAlgorithm()).thenReturn("SHA-384");
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
@@ -205,6 +222,8 @@ public class MDocCredentialTest {
 
             verify(mDocProcessor).createMobileSecurityObject(eq(mDocJson), any());
             verify(mDocProcessor).signMSO(mso, appID, refID, signAlgorithm);
+            // The value digests use the configured algorithm, the one written into the MSO
+            mockedStatic.verify(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), eq("SHA-384")));
             // Issuer signed is CBOR encoded and base64 url encoded
             mockedStatic.verify(() -> MDocProcessor.encodeToCBOR(issuerSigned));
             byte[] decodedMdoc = Base64.getUrlDecoder().decode(result.getCredential().toString());

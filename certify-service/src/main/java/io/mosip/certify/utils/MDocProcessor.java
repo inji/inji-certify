@@ -52,6 +52,9 @@ public class MDocProcessor {
     /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
     public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
 
+    /** The CBOR tag of a full-date (RFC 8943). */
+    private static final int FULL_DATE_TAG = 1004;
+
     private final ObjectMapper objectMapper;
 
     private final MDocConfig mDocConfig;
@@ -148,7 +151,10 @@ public class MDocProcessor {
         }
     }
 
-    /** The issue_date of the mDL namespace when it is a date (YYYY-MM-DD), otherwise null. */
+    /**
+     * The issue_date of the mDL namespace when it is a date (YYYY-MM-DD), whether plain or already
+     * tagged as a full-date by the template, otherwise null.
+     */
     private static LocalDate mdlIssueDate(Map<String, Object> nameSpaces) {
         Object items = nameSpaces.get(MdlDataElements.NAMESPACE);
         if (!(items instanceof List<?> elements)) {
@@ -156,10 +162,15 @@ public class MDocProcessor {
         }
         for (Object element : elements) {
             if (element instanceof Map<?, ?> item
-                    && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))
-                    && item.get(Constants.ELEMENT_VALUE) instanceof String text
-                    && isDateOnlyString(text)) {
-                return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
+                    && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))) {
+                Object value = item.get(Constants.ELEMENT_VALUE);
+                if (value instanceof Map<?, ?> tagged
+                        && Integer.valueOf(FULL_DATE_TAG).equals(tagged.get(Constants.__CBOR_TAG))) {
+                    value = tagged.get(Constants.__CBOR_VALUE);
+                }
+                if (value instanceof String text && isDateOnlyString(text)) {
+                    return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
+                }
             }
         }
         return null;
@@ -306,7 +317,11 @@ public class MDocProcessor {
         Object encoded = value;
         if (MdlDataElements.FULL_DATE.contains(identifier)) {
             encoded = asFullDate(value);
-        } else if (MdlDataElements.isByteString(identifier) && value instanceof String text) {
+        } else if (MdlDataElements.isByteString(identifier)) {
+            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
+            if (!(value instanceof String text)) {
+                throw new IllegalArgumentException(identifier + " must be base64 encoded");
+            }
             encoded = decodeBase64(identifier, text);
         } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier) && value instanceof List<?> privileges) {
             List<Object> encodedPrivileges = new ArrayList<>();
@@ -507,7 +522,7 @@ public class MDocProcessor {
      */
     private static Map<String, Object> createCBORTaggedDate(String dateStr) {
         Map<String, Object> taggedDate = new HashMap<>();
-        taggedDate.put(Constants.__CBOR_TAG, 1004);
+        taggedDate.put(Constants.__CBOR_TAG, FULL_DATE_TAG);
         taggedDate.put(Constants.__CBOR_VALUE, dateStr);
         return taggedDate;
     }

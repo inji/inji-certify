@@ -227,6 +227,18 @@ public class MDocProcessorTest {
         assertEquals(expectedValidityInfo, validityInfo);
     }
 
+    @Test
+    public void should_startValidFromOnTheIssueDate_when_templateTagsTheIssueDateAsAFullDate() {
+        String template = mdlTemplateWithIssueDate("2026-08-01").replace("\"2026-08-01\"",
+                "{\"__cbor_tag\": 1004, \"__cbor_value\": \"2026-08-01\"}");
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(template, new HashMap<>()).get("validityInfo");
+
+        assertEquals("2026-07-20T00:00:00Z", cborValue(validityInfo, "signed"));
+        assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
+        assertEquals("2031-08-01T00:00:00Z", cborValue(validityInfo, "validUntil"));
+    }
+
     private static String mdlTemplateWithIssueDate(String issueDate) {
         return "{\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
@@ -708,6 +720,15 @@ public class MDocProcessorTest {
         Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> encodedElementValue(MDL_NAMESPACE, "portrait", "not base64!"));
         assertEquals("portrait must be base64 encoded", exception.getMessage());
+    }
+
+    @Test
+    public void should_reject_when_portraitIsNotText() {
+        for (Object value : List.of(List.of(255, 216, 255), 42, Map.of("data", "AQID"))) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "portrait", value));
+            assertEquals("portrait must be base64 encoded", exception.getMessage());
+        }
     }
 
     @Test

@@ -214,14 +214,25 @@ class MsoMdocCredentialConfigValidatorTest {
     }
 
     @Test
-    void should_readIdentifiersFromText_when_templateUsesVelocityDirectives() {
-        // #foreach makes the template invalid JSON until Velocity renders it
+    void should_notCheckTheTemplate_when_templateUsesVelocityDirectives() {
+        // #foreach makes the template invalid JSON until Velocity renders it, so which namespace
+        // each identifier lands in is unknown: the mandatory ones here are in a custom namespace.
         String elements = MdlDataElements.MANDATORY.stream()
                 .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
                 .collect(Collectors.joining(", "));
-        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [" + elements
-                + "#foreach($extra in $extras), {\"elementIdentifier\": \"$extra\"}#end]}}";
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [{\"elementIdentifier\": \"family_name\"}"
+                + "#foreach($extra in $extras), {\"elementIdentifier\": \"$extra\"}#end],"
+                + " \"org.example.custom\": [" + elements + "]}}";
         CredentialConfigurationDTO config = mdlConfig(Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8)));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_anMdlIdentifierIsAVelocityReference() {
+        // the identifier is only known once rendered, e.g. from elements the DataProvider returns
+        List<String> elements = List.of("family_name", "${element.identifier}");
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, elements));
 
         assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
     }
