@@ -475,15 +475,10 @@ public class MDocProcessor {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> jwk = mapper.readValue(decodedJson, Map.class);
 
+        // ISO/IEC 18013-5, 9.1.5.2 (NOTE 2): the device key carries only the key itself, so alg
+        // and kid are left out. alg was always ES256, which was wrong for a P-384 or P-521 key.
         Map<Object, Object> coseKey = new HashMap<>();
         coseKey.put(1, 2);  // kty: EC2
-        coseKey.put(3, -7); // alg: ES256 (ECDSA with SHA-256)
-
-        if (jwk.containsKey("kid")) {
-            // Pass through the key ID if it exists in the source JWK
-            coseKey.put(2, ((String) jwk.get("kid")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        }
-
 
         // Map curve
         String crv = (String) jwk.get("crv");

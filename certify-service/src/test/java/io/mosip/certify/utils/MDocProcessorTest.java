@@ -641,10 +641,11 @@ public class MDocProcessorTest {
 
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
         assertEquals("kty should be EC2", 2, deviceKey.get(1));
-        assertEquals("alg should be ES256", -7, deviceKey.get(3));
         assertEquals("crv should be P-256", 1, deviceKey.get(-1));
         assertTrue("Should have x coordinate", deviceKey.containsKey(-2));
         assertTrue("Should have y coordinate", deviceKey.containsKey(-3));
+        // ISO/IEC 18013-5, 9.1.5.2: kty, crv, x and y only; no alg (3) and no kid (2)
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
     }
 
     @Test
@@ -663,6 +664,8 @@ public class MDocProcessorTest {
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
         assertEquals("crv should be P-384", 2, deviceKey.get(-1));
+        // alg used to be ES256 whatever the curve
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
     }
 
     @Test
@@ -701,6 +704,7 @@ public class MDocProcessorTest {
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
         assertEquals("crv should be P-521", 3, deviceKey.get(-1));
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -718,7 +722,7 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_preserveKid_when_keyIdProvided() throws Exception {
+    public void should_leaveOutKid_when_holderJwkHasAKeyId() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
                 + "\"kid\":\"test-key-123\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
@@ -733,10 +737,9 @@ public class MDocProcessorTest {
         Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
-        assertTrue("Should have kid", deviceKey.containsKey(2));
-        assertArrayEquals("Kid should match",
-                "test-key-123".getBytes(),
-                (byte[]) deviceKey.get(2));
+        // ISO/IEC 18013-5, 9.1.5.2: the holder JWK's kid is not copied into the device key
+        assertFalse("Should not have kid", deviceKey.containsKey(2));
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
     }
 
     // ==================== MSO Structure Tests ====================
