@@ -135,6 +135,12 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
+                List<String> missingMdlElements = MsoMdocCredentialConfigValidator.findMissingMdlElements(credentialConfig, pluginMode);
+                if (!missingMdlElements.isEmpty()) {
+                    throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                            "An mDL template must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
+                                    + String.join(", ", missingMdlElements) + ".");
+                }
                 break;
             case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig, pluginMode)) {

@@ -48,6 +48,9 @@ public class MDocCredential extends Credential {
             Map<String, Object> finalMDoc = mDocProcessor.processTemplatedJson(templatedJSON, updatedTemplateParams);
             return objectMapper.writeValueAsString(finalMDoc);
 
+        } catch (CertifyException e) {
+            // Keep the specific error code, e.g. mdoc_template_processing_failed for a rejected template.
+            throw e;
         } catch (Exception e) {
             log.error("Error creating mDoc credential: {}", e.getMessage(), e);
             throw new CertifyException("MDOC_CREATION_FAILED", "Failed to create mDoc credential", e);
@@ -63,7 +66,8 @@ public class MDocCredential extends Credential {
             Map<String, Object> mDocJson = objectMapper.readValue(vcToSign, Map.class);
             Map<String, Object> saltedNamespaces = MDocProcessor.addRandomSalts(mDocJson);
             Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(
+                    saltedNamespaces, namespaceDigests, mDocProcessor.getDigestAlgorithm());
 
             // Create Mobile Security Object (MSO)
             Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);

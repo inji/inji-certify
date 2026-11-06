@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
 
@@ -47,6 +48,12 @@ public class MDocProcessor {
      */
     private static final DateTimeFormatter VALIDITY_INFO_DATETIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
+    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
+    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
+
+    /** The CBOR tag of a full-date (RFC 8943). */
+    private static final int FULL_DATE_TAG = 1004;
 
     private final ObjectMapper objectMapper;
 
@@ -90,22 +97,11 @@ public class MDocProcessor {
                     "Missing validUntil"
             );
 
-            ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-            String formattedCurrentTime = currentTime.format(VALIDITY_INFO_DATETIME_FORMATTER);
-
-            if ("${_validFrom}".equals(validFromValue)) {
-                validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_signed}".equals(signedValue)) {
-                validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_validUntil}".equals(validUntilValue)) {
-                String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
-                        .format(VALIDITY_INFO_DATETIME_FORMATTER);
-                validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-            }
-
-            finalMDoc.put(Constants.VALIDITY_INFO, validity);
+            // ISO/IEC 18013-5, 9.1.2.4: Certify sets the validityInfo dates, so the template must leave
+            // each one as its placeholder.
+            requirePlaceholder(Constants.SIGNED, signedValue, "${_signed}");
+            requirePlaceholder(VCDM2Constants.VALID_FROM, validFromValue, "${_validFrom}");
+            requirePlaceholder(VCDM2Constants.VALID_UNTIL, validUntilValue, "${_validUntil}");
 
             if (templateParams.containsKey(Constants.DID_URL)) {
                 finalMDoc.put("_issuer", templateParams.get(Constants.DID_URL));
@@ -128,12 +124,91 @@ public class MDocProcessor {
                 });
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
+            if (MdlDataElements.DOC_TYPE.equals(docType)) {
+                requireMandatoryMdlElements(nameSpaces);
+            }
+
+            // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
+            // linkability, so they are the start of the UTC day of issuance rather than the exact
+            // time. validFrom is not before the mDL issue_date (7.2.1) and validUntil is
+            // validityPeriodYears (at least 1) after validFrom, so signed <= validFrom < validUntil.
+            ZonedDateTime signed = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS);
+            ZonedDateTime validFrom = signed;
+            LocalDate issueDate = mdlIssueDate(nameSpaces);
+            if (issueDate != null && issueDate.atStartOfDay(ZoneOffset.UTC).isAfter(validFrom)) {
+                validFrom = issueDate.atStartOfDay(ZoneOffset.UTC);
+            }
+            ZonedDateTime validUntil = validFrom.plusYears(mDocConfig.getValidityPeriodYears());
+
+            validity.put(Constants.SIGNED, createCBORTaggedDateTime(signed.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(validFrom.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(validUntil.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+
+            finalMDoc.put(Constants.VALIDITY_INFO, validity);
 
             return finalMDoc;
 
+        } catch (CertifyException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error processing templated JSON: {}", e.getMessage(), e);
             throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "Error processing templated JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * The issue_date of the mDL namespace when it is a date (YYYY-MM-DD), whether plain or already
+     * tagged as a full-date by the template, otherwise null.
+     */
+    private static LocalDate mdlIssueDate(Map<String, Object> nameSpaces) {
+        Object items = nameSpaces.get(MdlDataElements.NAMESPACE);
+        if (!(items instanceof List<?> elements)) {
+            return null;
+        }
+        for (Object element : elements) {
+            if (element instanceof Map<?, ?> item
+                    && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))) {
+                Object value = item.get(Constants.ELEMENT_VALUE);
+                if (value instanceof Map<?, ?> tagged
+                        && Integer.valueOf(FULL_DATE_TAG).equals(tagged.get(Constants.__CBOR_TAG))) {
+                    value = tagged.get(Constants.__CBOR_VALUE);
+                }
+                if (value instanceof String text && isDateOnlyString(text)) {
+                    return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * ISO/IEC 18013-5, 7.2.1 (Table 5): the rendered mDL must carry every mandatory element in the
+     * org.iso.18013.5.1 namespace. The configuration check can't see a template whose elements are
+     * only known after Velocity renders it, so the rendered mDL is checked here before it is signed.
+     */
+    private static void requireMandatoryMdlElements(Map<String, Object> nameSpaces) {
+        Set<String> identifiers = new HashSet<>();
+        if (nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements) {
+            for (Object element : elements) {
+                if (element instanceof Map<?, ?> item && item.get(Constants.ELEMENT_IDENTIFIER) instanceof String identifier) {
+                    identifiers.add(identifier);
+                }
+            }
+        }
+        List<String> missing = MdlDataElements.missingMandatory(identifiers);
+        if (!missing.isEmpty()) {
+            log.error("The rendered mDL lacks the ISO/IEC 18013-5 mandatory elements {}", missing);
+            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                    "An mDL must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
+                            + String.join(", ", missing) + ".");
+        }
+    }
+
+    /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */
+    private static void requirePlaceholder(String name, String value, String placeholder) {
+        if (!placeholder.equals(value)) {
+            throw new IllegalArgumentException("validityInfo." + name + " must be " + placeholder
+                    + "; Certify sets the validityInfo dates at issuance");
         }
     }
 
@@ -142,11 +217,19 @@ public class MDocProcessor {
      */
     private List<Map<String, Object>> processNamespaceItems(JsonNode namespaceItems) {
         List<Map<String, Object>> processedItems = new ArrayList<>();
+        // ISO/IEC 18013-5, 9.1.2.4: digestIDs are unique within a namespace and are drawn at random,
+        // so the same element cannot be recognised by its ID across credentials. Any digestID in the
+        // template is therefore ignored.
+        Set<Integer> usedDigestIds = new HashSet<>();
 
         // First, add all items from template
         for (JsonNode item : namespaceItems) {
             Map<String, Object> itemMap = new HashMap<>();
-            itemMap.put(Constants.DIGEST_ID, item.get(Constants.DIGEST_ID).asInt());
+            int digestId;
+            do {
+                digestId = SECURE_RANDOM.nextInt(Integer.MAX_VALUE);
+            } while (!usedDigestIds.add(digestId));
+            itemMap.put(Constants.DIGEST_ID, digestId);
             itemMap.put(Constants.ELEMENT_IDENTIFIER, item.get(Constants.ELEMENT_IDENTIFIER).asText());
 
             // Handle elementValue which could be string or complex object
@@ -196,11 +279,21 @@ public class MDocProcessor {
         return saltedNamespaces;
     }
 
+    /** The digest algorithm the MSO declares, which calculateDigests must also use. */
+    public String getDigestAlgorithm() {
+        return mDocConfig.getDigestAlgorithm();
+    }
+
     /**
-     * Calculates SHA-256 digests for salted elements
+     * Calculates the digest of each salted element with the given algorithm, which must be the one
+     * the MSO declares.
      */
     public static Map<String, Object> calculateDigests
-    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests) throws Exception {
+    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests,
+     String digestAlgorithm) throws Exception {
+        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+            throw new IllegalArgumentException("Unsupported MSO digest algorithm: " + digestAlgorithm);
+        }
 
         Map<String, Object> taggedNamespaces = new HashMap<>();
 
@@ -214,7 +307,7 @@ public class MDocProcessor {
             for (Map<String, Object> element : elements) {
                 // 1) Encode element (IssuerSignedItem) to CBOR
                 ByteArrayOutputStream innerBaos = new ByteArrayOutputStream();
-                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(element)));
+                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(encodeMdlElement(namespaceName, element))));
                 byte[] elementCbor = innerBaos.toByteArray();
 
                 // 2) Build Tag(24) DataItem for final structure
@@ -226,7 +319,7 @@ public class MDocProcessor {
                 ByteArrayOutputStream outerBaos = new ByteArrayOutputStream();
                 new CborEncoder(outerBaos).encode(tag24Value);
                 byte[] taggedCbor = outerBaos.toByteArray();
-                byte[] digest = MessageDigest.getInstance("SHA-256").digest(taggedCbor);
+                byte[] digest = MessageDigest.getInstance(digestAlgorithm).digest(taggedCbor);
                 digestMap.put((Integer) element.get(Constants.DIGEST_ID), digest);
             }
 
@@ -235,6 +328,73 @@ public class MDocProcessor {
         }
 
         return taggedNamespaces;
+    }
+
+    /**
+     * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a
+     * full-date element, including the dates inside each driving privilege, becomes tag 1004, and a
+     * byte-string element is decoded from the base64 text the template carries. Elements of any
+     * other namespace are left as they are; a template tags them explicitly if it needs to.
+     */
+    private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
+        if (!MdlDataElements.NAMESPACE.equals(namespace)) {
+            return element;
+        }
+        String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
+        Object value = element.get(Constants.ELEMENT_VALUE);
+        Object encoded = value;
+        if (MdlDataElements.FULL_DATE.contains(identifier)) {
+            encoded = asFullDate(value);
+        } else if (MdlDataElements.isByteString(identifier)) {
+            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
+            if (!(value instanceof String text)) {
+                throw new IllegalArgumentException(identifier + " must be base64 encoded");
+            }
+            encoded = decodeBase64(identifier, text);
+        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier) && value instanceof List<?> privileges) {
+            List<Object> encodedPrivileges = new ArrayList<>();
+            for (Object privilege : privileges) {
+                if (privilege instanceof Map<?, ?> fields) {
+                    Map<Object, Object> encodedFields = new HashMap<>(fields);
+                    for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
+                        if (encodedFields.containsKey(dateField)) {
+                            encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
+                        }
+                    }
+                    encodedPrivileges.add(encodedFields);
+                } else {
+                    encodedPrivileges.add(privilege);
+                }
+            }
+            encoded = encodedPrivileges;
+        }
+        if (encoded == value) {
+            return element;
+        }
+        Map<String, Object> encodedElement = new HashMap<>(element);
+        encodedElement.put(Constants.ELEMENT_VALUE, encoded);
+        return encodedElement;
+    }
+
+    private static Object asFullDate(Object value) {
+        return value instanceof String text && isDateOnlyString(text) ? createCBORTaggedDate(text) : value;
+    }
+
+    /**
+     * Accepts base64 and base64url, with or without padding, alone or as a base64 data URI
+     * (data:image/jpeg;base64,...), the form identity sources keep photos in.
+     */
+    private static byte[] decodeBase64(String identifier, String text) {
+        String base64 = text.trim();
+        int comma = base64.indexOf(',');
+        if (base64.startsWith("data:") && comma > 0 && base64.substring(0, comma).endsWith(";base64")) {
+            base64 = base64.substring(comma + 1);
+        }
+        try {
+            return Base64.getDecoder().decode(base64.replace('-', '+').replace('_', '/'));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(identifier + " must be base64 encoded");
+        }
     }
 
     public static byte[] encodeToCBOR(Object obj) throws Exception {
@@ -279,14 +439,6 @@ public class MDocProcessor {
         // Handle byte arrays directly - don't convert to hex
         if (obj instanceof byte[]) {
             return obj;
-        }
-
-        if (obj instanceof String) {
-            String str = (String) obj;
-            if (isDateOnlyString(str)) {
-                return createCBORTaggedDate(str);
-            }
-            return str;
         }
 
         if (obj instanceof Map) {
@@ -398,7 +550,7 @@ public class MDocProcessor {
      */
     private static Map<String, Object> createCBORTaggedDate(String dateStr) {
         Map<String, Object> taggedDate = new HashMap<>();
-        taggedDate.put(Constants.__CBOR_TAG, 1004);
+        taggedDate.put(Constants.__CBOR_TAG, FULL_DATE_TAG);
         taggedDate.put(Constants.__CBOR_VALUE, dateStr);
         return taggedDate;
     }
