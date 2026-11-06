@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
 
@@ -94,22 +95,10 @@ public class MDocProcessor {
             );
 
             // ISO/IEC 18013-5, 9.1.2.4: Certify sets the validityInfo dates, so the template must leave
-            // each one as its placeholder. signed and validFrom are the issuance time and validUntil is
-            // validityPeriodYears (at least 1) later, so signed <= validFrom < validUntil always holds.
+            // each one as its placeholder.
             requirePlaceholder(Constants.SIGNED, signedValue, "${_signed}");
             requirePlaceholder(VCDM2Constants.VALID_FROM, validFromValue, "${_validFrom}");
             requirePlaceholder(VCDM2Constants.VALID_UNTIL, validUntilValue, "${_validUntil}");
-
-            ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-            String formattedCurrentTime = currentTime.format(VALIDITY_INFO_DATETIME_FORMATTER);
-            String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
-                    .format(VALIDITY_INFO_DATETIME_FORMATTER);
-
-            validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-            validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
-            validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-
-            finalMDoc.put(Constants.VALIDITY_INFO, validity);
 
             if (templateParams.containsKey(Constants.DID_URL)) {
                 finalMDoc.put("_issuer", templateParams.get(Constants.DID_URL));
@@ -133,12 +122,47 @@ public class MDocProcessor {
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
 
+            // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
+            // linkability, so they are the start of the UTC day of issuance rather than the exact
+            // time. validFrom is not before the mDL issue_date (7.2.1) and validUntil is
+            // validityPeriodYears (at least 1) after validFrom, so signed <= validFrom < validUntil.
+            ZonedDateTime signed = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS);
+            ZonedDateTime validFrom = signed;
+            LocalDate issueDate = mdlIssueDate(nameSpaces);
+            if (issueDate != null && issueDate.atStartOfDay(ZoneOffset.UTC).isAfter(validFrom)) {
+                validFrom = issueDate.atStartOfDay(ZoneOffset.UTC);
+            }
+            ZonedDateTime validUntil = validFrom.plusYears(mDocConfig.getValidityPeriodYears());
+
+            validity.put(Constants.SIGNED, createCBORTaggedDateTime(signed.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(validFrom.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(validUntil.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+
+            finalMDoc.put(Constants.VALIDITY_INFO, validity);
+
             return finalMDoc;
 
         } catch (Exception e) {
             log.error("Error processing templated JSON: {}", e.getMessage(), e);
             throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "Error processing templated JSON: " + e.getMessage());
         }
+    }
+
+    /** The issue_date of the mDL namespace when it is a date (YYYY-MM-DD), otherwise null. */
+    private static LocalDate mdlIssueDate(Map<String, Object> nameSpaces) {
+        Object items = nameSpaces.get(MdlDataElements.NAMESPACE);
+        if (!(items instanceof List<?> elements)) {
+            return null;
+        }
+        for (Object element : elements) {
+            if (element instanceof Map<?, ?> item
+                    && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))
+                    && item.get(Constants.ELEMENT_VALUE) instanceof String text
+                    && isDateOnlyString(text)) {
+                return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+        }
+        return null;
     }
 
     /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */

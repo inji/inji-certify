@@ -56,15 +56,15 @@ public class MDocProcessorTest {
     private static final Map<String, Map<String, ? extends Serializable>> expectedValidityInfo = Map.of(
             "signed", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00Z"
+                    Constants.__CBOR_VALUE, "2026-07-20T00:00:00Z"
             ),
             "validFrom", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2026-07-20T10:00:00Z"
+                    Constants.__CBOR_VALUE, "2026-07-20T00:00:00Z"
             ),
             "validUntil", Map.of(
                     Constants.__CBOR_TAG, 0,
-                    Constants.__CBOR_VALUE, "2031-07-20T10:00:00Z"
+                    Constants.__CBOR_VALUE, "2031-07-20T00:00:00Z"
             )
     );
 
@@ -185,6 +185,57 @@ public class MDocProcessorTest {
         } finally {
             mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
         }
+    }
+
+    @Test
+    public void should_giveTheSameTimestamps_when_twoMdlsAreIssuedOnTheSameUtcDay() {
+        // ISO/IEC 18013-5, 9.1.2.4: the timestamps must not link the mDLs issued on one day
+        String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {}}";
+        // computed before stubbing: they call ZonedDateTime's static methods
+        ZonedDateTime justAfterMidnight = FIXED_NOW.withHour(0).withSecond(1);
+        ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
+        try {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justAfterMidnight);
+            Object morning = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>()).get("validityInfo");
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
+            Object night = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>()).get("validityInfo");
+
+            assertEquals(expectedValidityInfo, morning);
+            assertEquals(expectedValidityInfo, night);
+        } finally {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
+        }
+    }
+
+    @Test
+    public void should_startValidFromOnTheIssueDate_when_issueDateIsAfterTheIssuanceDay() {
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01"), new HashMap<>()).get("validityInfo");
+
+        assertEquals("2026-07-20T00:00:00Z", cborValue(validityInfo, "signed"));
+        assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
+        assertEquals("2031-08-01T00:00:00Z", cborValue(validityInfo, "validUntil"));
+    }
+
+    @Test
+    public void should_startValidFromOnTheIssuanceDay_when_issueDateIsEarlier() {
+        Object validityInfo = mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"), new HashMap<>()).get("validityInfo");
+
+        assertEquals(expectedValidityInfo, validityInfo);
+    }
+
+    private static String mdlTemplateWithIssueDate(String issueDate) {
+        return "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "{\"elementIdentifier\": \"issue_date\", \"elementValue\": \"" + issueDate + "\"}]}}";
+    }
+
+    private static String cborValue(Map<String, Object> validityInfo, String name) {
+        return (String) ((Map<String, Object>) validityInfo.get(name)).get(Constants.__CBOR_VALUE);
     }
 
     @Test
