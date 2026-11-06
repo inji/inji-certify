@@ -78,6 +78,9 @@ public class MDocCredential extends Credential {
             vcResult.setFormat(VCFormats.MSO_MDOC);
             return vcResult;
 
+        } catch (CertifyException e) {
+            // Keep the specific error code, e.g. invalid_proof for a holder key that can't be a device key.
+            throw e;
         } catch (Exception e) {
             log.error("Error adding proof to mDoc: {}", e.getMessage(), e);
             throw new CertifyException("MDOC_PROOF_FAILED", "Failed to add proof to mDoc", e);

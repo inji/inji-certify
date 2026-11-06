@@ -4,6 +4,7 @@ import io.mosip.kernel.signature.service.CoseSignatureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.core.constants.VCFormats;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.vcformatters.VCFormatter;
@@ -385,6 +386,26 @@ public class MDocCredentialTest {
             mDocCredential.addProof(
                     vcToSign, null, "ES256", "appID", "refID", "https://example.com/did", "Ed25519Signature2020"
             );
+        }
+    }
+
+    @Test
+    public void should_keepInvalidProofErrorCode_when_holderKeyCantBeADeviceKey() throws Exception {
+        String vcToSign = "{\"_docType\":\"org.iso.18013.5.1.mDL\"}";
+        Map<String, Object> mDocJson = createTestMDocJson();
+        Map<String, Object> saltedNamespaces = createTestSaltedNamespaces();
+
+        try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
+            when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
+            mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any()))
+                    .thenReturn(createTestTaggedNamespaces());
+            when(mDocProcessor.createMobileSecurityObject(any(), any()))
+                    .thenThrow(new CertifyException(VCIErrorConstants.INVALID_PROOF, "The holder key (kty RSA) can't be an mDL device key"));
+
+            CertifyException exception = assertThrows(CertifyException.class, () -> mDocCredential.addProof(
+                    vcToSign, null, "ES256", "appID", "refID", "https://example.com/did", "Ed25519Signature2020"));
+            assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
         }
     }
 

@@ -11,6 +11,7 @@ import io.mosip.certify.config.MDocConfig;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
@@ -477,26 +478,52 @@ public class MDocProcessor {
 
         // ISO/IEC 18013-5, 9.1.5.2 (NOTE 2): the device key carries only the key itself, so alg
         // and kid are left out. alg was always ES256, which was wrong for a P-384 or P-521 key.
+        // The key type and curve come from the holder's JWK (9.1.5.2, Table 22): EC keys become
+        // EC2 with x and y, OKP keys become OKP with x only. No other key type can be a device key.
         Map<Object, Object> coseKey = new HashMap<>();
-        coseKey.put(1, 2);  // kty: EC2
-
-        // Map curve
+        String kty = (String) jwk.get("kty");
         String crv = (String) jwk.get("crv");
-        switch (crv) {
-            case "P-256" -> coseKey.put(-1, 1);
-            case "P-384" -> coseKey.put(-1, 2);
-            case "P-521" -> coseKey.put(-1, 3);
-            case null, default -> throw new IllegalArgumentException("Unsupported curve for EC2 key type: " + crv);
-        }
-
-        coseKey.put(-2, Base64.getUrlDecoder().decode((String) jwk.get("x")));
-        if (jwk.containsKey("y")) {
-            coseKey.put(-3, Base64.getUrlDecoder().decode((String) jwk.get("y")));
+        if ("EC".equals(kty)) {
+            coseKey.put(1, 2);  // kty: EC2
+            switch (crv) {
+                case "P-256" -> coseKey.put(-1, 1);
+                case "P-384" -> coseKey.put(-1, 2);
+                case "P-521" -> coseKey.put(-1, 3);
+                case null, default -> throw unsupportedDeviceKey(kty, crv);
+            }
+            coseKey.put(-2, decodeCoordinate(jwk, "x"));
+            coseKey.put(-3, decodeCoordinate(jwk, "y"));
+        } else if ("OKP".equals(kty)) {
+            coseKey.put(1, 1);  // kty: OKP
+            switch (crv) {
+                case "Ed25519" -> coseKey.put(-1, 6);
+                case "Ed448" -> coseKey.put(-1, 7);
+                case null, default -> throw unsupportedDeviceKey(kty, crv);
+            }
+            coseKey.put(-2, decodeCoordinate(jwk, "x"));
+        } else {
+            throw unsupportedDeviceKey(kty, crv);
         }
 
         Map<String, Object> deviceKeyInfo = new HashMap<>();
         deviceKeyInfo.put("deviceKey", coseKey);
         return deviceKeyInfo;
+    }
+
+    /** The holder's key can't be an mDL device key: the proof is refused with invalid_proof. */
+    private static CertifyException unsupportedDeviceKey(String kty, String crv) {
+        return new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                "The holder key (kty " + kty + (crv == null ? "" : ", crv " + crv) + ") can't be an mDL device key: "
+                        + "it must be an EC key on P-256, P-384 or P-521, or an OKP key on Ed25519 or Ed448 "
+                        + "(ISO/IEC 18013-5, 9.1.5.2).");
+    }
+
+    private static byte[] decodeCoordinate(Map<String, Object> jwk, String name) {
+        if (!(jwk.get(name) instanceof String value)) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key has no '" + name + "' member, so it can't be an mDL device key.");
+        }
+        return Base64.getUrlDecoder().decode(value);
     }
 
     /**
