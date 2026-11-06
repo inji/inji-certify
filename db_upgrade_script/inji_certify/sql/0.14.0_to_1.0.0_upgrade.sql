@@ -1,6 +1,6 @@
 -- -------------------------------------------------------------------------------------------------
 -- Upgrade Script : v0.14.0 to v1.0.0
--- Release name   : 1.0.0-alpha.1, 1.0.0-rc.1
+-- Release name   : 1.0.0-alpha.1, 1.0.0-rc.1, 1.0.0-rc.2
 -- Database       : inji_certify
 -- Purpose        : Apply schema changes introduced across the 1.0.0 pre-releases.
 -- -------------------------------------------------------------------------------------------------
@@ -30,8 +30,16 @@ SET display = COALESCE((
 ), '[]'::jsonb)
 WHERE display IS NOT NULL;
 
-ALTER TABLE certify.credential_config
-RENAME COLUMN credential_subject TO claims;
+-- Skipped when the column is already renamed (re-run on a 1.0.0 pre-release database).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_schema = 'certify'
+                 AND table_name = 'credential_config'
+                 AND column_name = 'credential_subject') THEN
+        ALTER TABLE certify.credential_config RENAME COLUMN credential_subject TO claims;
+    END IF;
+END $$;
 COMMENT ON COLUMN certify.credential_config.claims IS 'Claims: JSON object containing subject attributes schema.';
 
 UPDATE certify.credential_config
@@ -128,3 +136,11 @@ COMMENT ON COLUMN certify.vp_submission.response_code_expiry_at IS 'Expiry of th
 COMMENT ON COLUMN certify.vp_submission.response_code_used IS 'Whether the response code has been consumed';
 
 CREATE INDEX IF NOT EXISTS idx_vp_submission_response_code ON certify.vp_submission (response_code);
+
+-- -------------------------------------------------------------------------------------------------
+-- SECTION 4: dc+sd-jwt binds the holder key as cnf.jwk
+-- Introduced in: 1.0.0-rc.2
+-- -------------------------------------------------------------------------------------------------
+UPDATE certify.credential_config
+SET cryptographic_binding_methods_supported = ARRAY['jwk']
+WHERE credential_format = 'dc+sd-jwt';

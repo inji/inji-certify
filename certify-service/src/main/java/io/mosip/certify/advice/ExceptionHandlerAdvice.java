@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.lang.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -119,6 +120,14 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
         }
         if (path != null && path.contains("/issuance/")) {
             return handleVCIControllerExceptions(ex, servletRequest);
+        }
+        if (path != null && path.contains("/.well-known/")) {
+            // .well-known endpoints answer every Accept value with JSON (#1143). Without a preset
+            // Content-Type, Spring cannot write this error for e.g. Accept: application/jwt.
+            ResponseEntity<ResponseWrapper> response = handleInternalControllerException(ex);
+            return ResponseEntity.status(response.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response.getBody());
         }
 
         return handleInternalControllerException(ex);

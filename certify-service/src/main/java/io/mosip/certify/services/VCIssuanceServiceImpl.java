@@ -116,10 +116,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
                         auditWrapper.logAudit(Action.NONCE_VALIDATION, ActionStatus.SUCCESS,
                                 AuditHelper.buildAuditDto(validCNonce, "cNonce"), null);
                     }
-                    String keyMaterial = proofValidator.getKeyMaterial(proofValue);
-                    if (keyMaterial != null) {
-                        holderIds.add(keyMaterial);
-                    }
+                    holderIds.add(proofValidator.getHolderKey(proofValue).did());
                 } catch (CertifyException e) {
                     auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
                             AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);

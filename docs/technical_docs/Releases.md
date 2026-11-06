@@ -74,3 +74,26 @@ Nothing is resolved from the properties for it any more. Existing configurations
 **Action for existing automation:** every Update request must send both attributes, and `signatureAlgo` in DataProvider plugin mode, even one that only changes an unrelated field such as the display name. This includes configurations created before these attributes were stored. `credentialSigningAlgValuesSupported` must be removed from every request body.
 
 See [Credential Issuer Configuration](./Credential_Issuer_Configuration.md) for the validation rules.
+
+---
+
+# Changes in release 1.0.0-rc.2
+
+## `dc+sd-jwt` credentials carry the holder key as `cnf.jwk`
+
+An issued `dc+sd-jwt` credential now carries the holder's public key in `cnf.jwk` ([RFC 7800 §3.2](https://www.rfc-editor.org/rfc/rfc7800.html#section-3.2)), where it previously carried a DID in `cnf.kid` ([#1141](https://github.com/inji/inji-certify/issues/1141)). `cnf.jwk` holds only the key members (`kty` with `n`, `e` for RSA, `crv`, `x`, `y` for EC, or `crv`, `x` for OKP), never `kid`, `use`, `alg` or a private member:
+
+```diff
+- "cnf": { "kid": "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2Iiwi..." }
++ "cnf": { "jwk": { "crv": "P-256", "kty": "EC", "x": "...", "y": "..." } }
+```
+
+Proofs are accepted as before: the holder key can still be sent as a `jwk` header, or as a `did:jwk` or `did:key` `kid`.
+
+`cryptographic_binding_methods_supported` describes how the key appears in the issued credential ([OID4VCI 1.0 §12.2.4](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-12.2.4)), not which proofs are accepted. So `dc+sd-jwt` now advertises `jwk` only.
+
+**Action for existing deployments:** set the `dc+sd-jwt` entry of `mosip.certify.credential-config.cryptographic-binding-methods-supported` to `{'jwk'}`.
+
+**Action for existing credential configurations:** The upgrade script rewrites stored `dc+sd-jwt` configurations to `["jwk"]`.
+
+Upgrading from 1.0.0-rc.1: re-run `0.14.0_to_1.0.0_upgrade.sql` (`CURRENT_VERSION=0.14.0`, `UPGRADE_VERSION=1.0.0` in `upgrade.properties`). It is safe to re-run.

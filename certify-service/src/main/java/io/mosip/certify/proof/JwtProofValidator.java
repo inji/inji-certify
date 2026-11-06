@@ -22,6 +22,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -144,21 +145,33 @@ public class JwtProofValidator implements ProofValidator {
 
     /**
      * @param proofJwt from the credential request.
-     * @return the key material from the proof in a did:jwk or did:key format
+     * @return the holder's key from the proof, as the DID the proof gave and as a JWK holding only its key members
      */
     @Override
-    public String getKeyMaterial(String proofJwt) {
+    public HolderKey getHolderKey(String proofJwt) {
+        JWSHeader header = parseProofHeader(proofJwt);
+        JwtProofKeyManager keyManager = getInstance(header.getKeyID());
+        // The DID is read from the header, not built from the JWK, so a did:key holder stays did:key.
+        String did = keyManager.getDID(header)
+                .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+        JWK jwk = keyManager.getKeyFromHeader(header)
+                .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+        // The required members are the key itself: kty with n,e (RSA), crv,x,y (EC) or crv,x (OKP), as
+        // hashed for a thumbprint (RFC 7638 §3.2). kid, use, alg, x5c and any private member are left out.
+        return new HolderKey(did, new LinkedHashMap<>(jwk.getRequiredParams()));
+    }
+
+    /**
+     * The proof header carries the holder's key, either as a jwk or as a did:jwk or did:key kid.
+     * @throws InvalidRequestException INVALID_PROOF when the proof is not a parsable JWT
+     */
+    private JWSHeader parseProofHeader(String proofJwt) {
         try {
-            SignedJWT jwt = (SignedJWT) JWTParser.parse(proofJwt);
-            JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
-            return jpkm.getDID(jwt.getHeader())
-                    .orElseThrow(() -> new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY));
+            return ((SignedJWT) JWTParser.parse(proofJwt)).getHeader();
         } catch (ParseException e) {
             log.error("Failed to parse jwt in the credential proof", e);
-        } catch (InvalidRequestException e) {
-            log.error("Invalid proof : {}", e.getErrorCode());
+            throw new InvalidRequestException(VCIErrorConstants.INVALID_PROOF);
         }
-        throw new InvalidRequestException(ErrorConstants.PROOF_HEADER_INVALID_KEY);
     }
 
     private void validateHeaderClaims(JWSHeader jwsHeader, List<String> algorithms) {

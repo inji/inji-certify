@@ -11,6 +11,8 @@ import io.mosip.certify.services.OAuthAuthorizationServerMetadataService;
 import io.mosip.certify.services.PreAuthorizedCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -95,6 +97,18 @@ class OAuthControllerTest {
                 .andExpect(jsonPath("$.token_endpoint_auth_methods_supported").doesNotExist());
 
         verify(oAuthAuthorizationServerMetadataService, times(1)).getOAuthAuthorizationServerMetadata();
+    }
+
+    @ParameterizedTest(name = "Accept: {0}")
+    @MethodSource(WellKnownResponseAssertions.ACCEPT_VALUES)
+    void should_returnJsonAuthorizationServerMetadata_when_acceptIsAnyMediaType(String accept) throws Exception {
+        OAuthAuthorizationServerMetadataDTO mockMetadata = new OAuthAuthorizationServerMetadataDTO();
+        mockMetadata.setIssuer("http://localhost:8090");
+        mockMetadata.setTokenEndpoint("http://localhost:8090/v1/certify/oauth/token");
+        mockMetadata.setGrantTypesSupported(Arrays.asList("authorization_code"));
+        when(oAuthAuthorizationServerMetadataService.getOAuthAuthorizationServerMetadata()).thenReturn(mockMetadata);
+
+        WellKnownResponseAssertions.assertServesJsonDocument(mockMvc, "/.well-known/oauth-authorization-server", accept);
     }
 
     @Test
