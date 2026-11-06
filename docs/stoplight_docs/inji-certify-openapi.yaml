@@ -1564,6 +1564,8 @@ components:
             In an mso_mdoc template, validityInfo.signed, validFrom and validUntil must be the placeholders ${_signed}, ${_validFrom} and ${_validUntil}. Certify sets signed and validFrom to the issuance time and validUntil to mosip.certify.mdoc.validity-period-years (at least 1) later, as tdates in UTC without fractions of seconds (ISO/IEC 18013-5, 9.1.2.4). A template that writes a date instead fails issuance with mdoc_template_processing_failed.
 
             In an mDL template (org.iso.18013.5.1 namespace), birth_date, issue_date, expiry_date and the issue_date and expiry_date inside each driving_privileges entry are encoded as full-dates (CBOR tag 1004) when their value is a date (YYYY-MM-DD) (ISO/IEC 18013-5, 7.2.1 and 7.2.4). No other value is tagged as a date, whatever it looks like. In any other namespace, a template that needs a full-date tags the value itself, for example {"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}.
+
+            In an mDL template, portrait, signature_usual_mark and every biometric_template_xx (for example biometric_template_face) carry base64 or base64url text that is encoded as a byte string.
         credentialConfigKeyId:
           type: string
           description: Unique key identifier for the credential configuration.

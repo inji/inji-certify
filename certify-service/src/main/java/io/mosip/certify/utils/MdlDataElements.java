@@ -33,6 +33,18 @@ public final class MdlDataElements {
     /** The dates inside each driving_privileges entry, also full-dates (7.2.4). */
     public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
 
+    /** Elements encoded as a byte string; a template carries them as base64 text. */
+    public static final Set<String> BYTE_STRING = Set.of("portrait", "signature_usual_mark");
+
+    /** biometric_template_xx, where xx names the biometric type (7.2.7), is a byte string too. */
+    public static final String BIOMETRIC_TEMPLATE_PREFIX = "biometric_template_";
+
     private MdlDataElements() {
+    }
+
+    /** Whether Table 5 encodes the element as a byte string. */
+    public static boolean isByteString(String identifier) {
+        return identifier != null
+                && (BYTE_STRING.contains(identifier) || identifier.startsWith(BIOMETRIC_TEMPLATE_PREFIX));
     }
 }

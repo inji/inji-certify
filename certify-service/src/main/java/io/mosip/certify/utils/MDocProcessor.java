@@ -269,9 +269,9 @@ public class MDocProcessor {
 
     /**
      * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a
-     * full-date element, including the dates inside each driving privilege, becomes tag 1004.
-     * Elements of any other namespace are left as they are; a template tags them explicitly if it
-     * needs to.
+     * full-date element, including the dates inside each driving privilege, becomes tag 1004, and a
+     * byte-string element is decoded from the base64 text the template carries. Elements of any
+     * other namespace are left as they are; a template tags them explicitly if it needs to.
      */
     private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
         if (!MdlDataElements.NAMESPACE.equals(namespace)) {
@@ -282,6 +282,8 @@ public class MDocProcessor {
         Object encoded = value;
         if (MdlDataElements.FULL_DATE.contains(identifier)) {
             encoded = asFullDate(value);
+        } else if (MdlDataElements.isByteString(identifier) && value instanceof String text) {
+            encoded = decodeBase64(identifier, text);
         } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier) && value instanceof List<?> privileges) {
             List<Object> encodedPrivileges = new ArrayList<>();
             for (Object privilege : privileges) {
@@ -309,6 +311,23 @@ public class MDocProcessor {
 
     private static Object asFullDate(Object value) {
         return value instanceof String text && isDateOnlyString(text) ? createCBORTaggedDate(text) : value;
+    }
+
+    /**
+     * Accepts base64 and base64url, with or without padding, alone or as a base64 data URI
+     * (data:image/jpeg;base64,...), the form identity sources keep photos in.
+     */
+    private static byte[] decodeBase64(String identifier, String text) {
+        String base64 = text.trim();
+        int comma = base64.indexOf(',');
+        if (base64.startsWith("data:") && comma > 0 && base64.substring(0, comma).endsWith(";base64")) {
+            base64 = base64.substring(comma + 1);
+        }
+        try {
+            return Base64.getDecoder().decode(base64.replace('-', '+').replace('_', '/'));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(identifier + " must be base64 encoded");
+        }
     }
 
     public static byte[] encodeToCBOR(Object obj) throws Exception {

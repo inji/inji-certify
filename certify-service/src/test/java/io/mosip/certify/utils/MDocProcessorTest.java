@@ -631,6 +631,52 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_encodePortraitAsBytes_when_templateCarriesBase64() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, (byte) 0xFB};
+
+        // base64url without padding and plain base64 with padding are both accepted
+        for (String text : List.of(Base64.getUrlEncoder().withoutPadding().encodeToString(jpeg),
+                Base64.getEncoder().encodeToString(jpeg))) {
+            DataItem portrait = encodedElementValue(MDL_NAMESPACE, "portrait", text);
+            assertEquals(new ByteString(jpeg), portrait);
+        }
+    }
+
+    @Test
+    public void should_encodePortraitAsBytes_when_templateCarriesADataUri() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, (byte) 0xFB};
+
+        DataItem portrait = encodedElementValue(MDL_NAMESPACE, "portrait",
+                "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(jpeg));
+
+        assertEquals(new ByteString(jpeg), portrait);
+    }
+
+    @Test
+    public void should_reject_when_portraitIsNotBase64() {
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> encodedElementValue(MDL_NAMESPACE, "portrait", "not base64!"));
+        assertEquals("portrait must be base64 encoded", exception.getMessage());
+    }
+
+    @Test
+    public void should_encodeAsBytes_when_elementIsASignatureMarkOrBiometricTemplate() throws Exception {
+        byte[] data = {0x01, 0x02, (byte) 0xFE, (byte) 0xFF};
+        String base64 = Base64.getEncoder().encodeToString(data);
+
+        for (String identifier : List.of("signature_usual_mark", "biometric_template_face",
+                "biometric_template_finger")) {
+            assertEquals(identifier, new ByteString(data), encodedElementValue(MDL_NAMESPACE, identifier, base64));
+        }
+    }
+
+    @Test
+    public void should_keepPortraitAsText_when_namespaceIsNotTheMdlNamespace() throws Exception {
+        DataItem value = encodedElementValue("org.example.custom", "portrait", "AQID");
+        assertEquals(new UnicodeString("AQID"), value);
+    }
+
+    @Test
     public void should_digestWithTheConfiguredAlgorithm_when_algorithmIsSha384() throws Exception {
         Map<String, Object> salted = new HashMap<>();
         salted.put(MDL_NAMESPACE, List.of(createSaltedElement(7, "family_name", "Doe")));
