@@ -206,7 +206,8 @@ public class SimplePostForAutoGenId extends InjiCertifyUtil implements ITest {
 					bindMosipIdDpopClient(inputJson, response, testCaseDTO);
 				}
 				if (InjiCertifyUtil.shouldUpdateExistingMosipIdCredentialConfig(testCaseDTO, response)
-						|| InjiCertifyUtil.shouldUpdateExistingLandRegistryCredentialConfig(testCaseDTO, response)) {
+						|| InjiCertifyUtil.shouldUpdateExistingLandRegistryCredentialConfig(testCaseDTO, response)
+						|| InjiCertifyUtil.shouldUpdateExistingSvgRenderingCredentialConfig(testCaseDTO, response)) {
 					String keyId = new JSONObject(inputJson).optString("credentialConfigKeyId", "");
 					if (!keyId.isBlank()) {
 						String updateUrl = tempUrl.replaceAll("/+$", "")
