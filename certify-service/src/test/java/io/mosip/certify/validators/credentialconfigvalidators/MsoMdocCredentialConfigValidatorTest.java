@@ -238,6 +238,14 @@ class MsoMdocCredentialConfigValidatorTest {
     }
 
     @Test
+    void should_notCheckTheTemplate_when_theNamespaceIsAVelocityReference() {
+        // ${namespace} may render as org.iso.18013.5.1, so the mDL namespace can't be found before rendering
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate("${namespace}", MdlDataElements.MANDATORY));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
     void should_notCheckTheTemplate_when_docTypeIsNotAnMdl() {
         CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, List.of("family_name")));
         config.setDocType("org.example.custom.document");

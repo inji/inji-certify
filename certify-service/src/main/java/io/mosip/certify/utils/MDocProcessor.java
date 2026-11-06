@@ -124,6 +124,9 @@ public class MDocProcessor {
                 });
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
+            if (MdlDataElements.DOC_TYPE.equals(docType)) {
+                requireMandatoryMdlElements(nameSpaces);
+            }
 
             // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
             // linkability, so they are the start of the UTC day of issuance rather than the exact
@@ -145,6 +148,8 @@ public class MDocProcessor {
 
             return finalMDoc;
 
+        } catch (CertifyException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error processing templated JSON: {}", e.getMessage(), e);
             throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "Error processing templated JSON: " + e.getMessage());
@@ -174,6 +179,29 @@ public class MDocProcessor {
             }
         }
         return null;
+    }
+
+    /**
+     * ISO/IEC 18013-5, 7.2.1 (Table 5): the rendered mDL must carry every mandatory element in the
+     * org.iso.18013.5.1 namespace. The configuration check can't see a template whose elements are
+     * only known after Velocity renders it, so the rendered mDL is checked here before it is signed.
+     */
+    private static void requireMandatoryMdlElements(Map<String, Object> nameSpaces) {
+        Set<String> identifiers = new HashSet<>();
+        if (nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements) {
+            for (Object element : elements) {
+                if (element instanceof Map<?, ?> item && item.get(Constants.ELEMENT_IDENTIFIER) instanceof String identifier) {
+                    identifiers.add(identifier);
+                }
+            }
+        }
+        List<String> missing = MdlDataElements.missingMandatory(identifiers);
+        if (!missing.isEmpty()) {
+            log.error("The rendered mDL lacks the ISO/IEC 18013-5 mandatory elements {}", missing);
+            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                    "An mDL must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
+                            + String.join(", ", missing) + ".");
+        }
     }
 
     /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */

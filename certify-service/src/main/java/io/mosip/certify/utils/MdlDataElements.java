@@ -1,5 +1,6 @@
 package io.mosip.certify.utils;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -40,6 +41,11 @@ public final class MdlDataElements {
     public static final String BIOMETRIC_TEMPLATE_PREFIX = "biometric_template_";
 
     private MdlDataElements() {
+    }
+
+    /** The mandatory elements missing from the given identifiers, in Table 5 order. */
+    public static List<String> missingMandatory(Collection<String> identifiers) {
+        return MANDATORY.stream().filter(element -> !identifiers.contains(element)).toList();
     }
 
     /** Whether Table 5 encodes the element as a byte string. */

@@ -4,8 +4,11 @@ import co.nstant.in.cbor.CborDecoder;
 import co.nstant.in.cbor.CborEncoder;
 import co.nstant.in.cbor.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.mosip.certify.config.MDocConfig;
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
@@ -107,7 +110,7 @@ public class MDocProcessorTest {
 
     @Test
     public void should_mapToISO18013Elements_when_validmDLTemplateIsProcessed() {
-        String templatedJSON = createFullmDLTemplate();
+        String templatedJSON = withMandatoryMdlElements(createFullmDLTemplate());
 
         Map<String, Object> templateParams = new HashMap<>();
         templateParams.put("didUrl", "https://issuer.example.com/did");
@@ -124,12 +127,12 @@ public class MDocProcessorTest {
         assertNotNull("NameSpaces should not be null", nameSpaces);
 
         List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
-        assertEquals("Should have 3 elements", 3, items.size());
+        assertEquals("the template's 3 elements plus the other mandatory ones", MdlDataElements.MANDATORY.size(), items.size());
 
         assertEquals("family_name", items.getFirst().get("elementIdentifier"));
         assertEquals("Doe", items.getFirst().get("elementValue"));
         // the template's digestIDs are replaced by random ones, unique within the namespace
-        assertEquals(3, items.stream().map(item -> item.get("digestID")).distinct().count());
+        assertEquals(items.size(), items.stream().map(item -> item.get("digestID")).distinct().count());
         items.forEach(item -> assertTrue((Integer) item.get("digestID") >= 0));
 
         assertEquals("ValidityInfo should match", expectedValidityInfo, result.get("validityInfo"));
@@ -147,7 +150,7 @@ public class MDocProcessorTest {
                 + "\"nameSpaces\": {}"
                 + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
 
         Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
         assertNotNull("ValidityInfo should not be null", validityInfo);
@@ -178,7 +181,7 @@ public class MDocProcessorTest {
                     + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                     + "\"nameSpaces\": {}}";
 
-            Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+            Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
 
             // Truncated, not rounded up to the next second
             assertEquals(expectedValidityInfo, result.get("validityInfo"));
@@ -198,9 +201,9 @@ public class MDocProcessorTest {
         ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
         try {
             mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justAfterMidnight);
-            Object morning = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>()).get("validityInfo");
+            Object morning = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>()).get("validityInfo");
             mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
-            Object night = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>()).get("validityInfo");
+            Object night = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>()).get("validityInfo");
 
             assertEquals(expectedValidityInfo, morning);
             assertEquals(expectedValidityInfo, night);
@@ -240,10 +243,43 @@ public class MDocProcessorTest {
     }
 
     private static String mdlTemplateWithIssueDate(String issueDate) {
-        return "{\"docType\": \"org.iso.18013.5.1.mDL\","
+        return withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                 + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
-                + "{\"elementIdentifier\": \"issue_date\", \"elementValue\": \"" + issueDate + "\"}]}}";
+                + "{\"elementIdentifier\": \"issue_date\", \"elementValue\": \"" + issueDate + "\"}]}}");
+    }
+
+    /** Sample values for the mandatory elements a test template leaves out. */
+    private static final Map<String, Object> MANDATORY_SAMPLE_VALUES = Map.ofEntries(
+            Map.entry("family_name", "Doe"), Map.entry("given_name", "John"),
+            Map.entry("birth_date", "1990-08-25"),
+            // before FIXED_NOW, so it doesn't move validFrom
+            Map.entry("issue_date", "2024-06-15"), Map.entry("expiry_date", "2031-06-15"),
+            Map.entry("issuing_country", "IN"), Map.entry("issuing_authority", "Test Authority"),
+            Map.entry("document_number", "D1"), Map.entry("portrait", "AQID"),
+            Map.entry("driving_privileges", List.of()), Map.entry("un_distinguishing_sign", "IND"));
+
+    /**
+     * The template with every ISO/IEC 18013-5 mandatory element it doesn't declare added to the mDL
+     * namespace, so that an mDL can be issued from it. The template's own elements are kept first.
+     */
+    private static String withMandatoryMdlElements(String template) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode root = (ObjectNode) mapper.readTree(template);
+            ObjectNode nameSpaces = root.has("nameSpaces") ? (ObjectNode) root.get("nameSpaces") : root.putObject("nameSpaces");
+            ArrayNode items = nameSpaces.has(MDL_NAMESPACE) ? (ArrayNode) nameSpaces.get(MDL_NAMESPACE) : nameSpaces.putArray(MDL_NAMESPACE);
+            Set<String> declared = new HashSet<>();
+            items.forEach(item -> declared.add(item.path("elementIdentifier").asText()));
+            for (String element : MdlDataElements.missingMandatory(declared)) {
+                items.addObject()
+                        .put("elementIdentifier", element)
+                        .set("elementValue", mapper.valueToTree(MANDATORY_SAMPLE_VALUES.get(element)));
+            }
+            return mapper.writeValueAsString(root);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static String cborValue(Map<String, Object> validityInfo, String name) {
@@ -255,7 +291,7 @@ public class MDocProcessorTest {
         String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                 + "\"nameSpaces\": {}}";
-        Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+        Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
         mDocJson.put("_holderId", createTestDidJwk());
 
         Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
@@ -298,7 +334,7 @@ public class MDocProcessorTest {
                 + "}"
                 + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
 
         Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
         List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
@@ -781,11 +817,85 @@ public class MDocProcessorTest {
                 + "  {\"elementIdentifier\": \"issuing_country\", \"elementValue\": \"IN\"}"
                 + "]}}";
 
-        List<Object> first = digestIds(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
-        List<Object> second = digestIds(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        List<Object> first = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>()));
+        List<Object> second = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>()));
 
-        assertEquals("unique within the namespace", 4, first.stream().distinct().count());
+        assertEquals("unique within the namespace", MdlDataElements.MANDATORY.size(), first.stream().distinct().count());
         assertNotEquals("drawn again for every mDL", first, second);
+    }
+
+    @Test
+    public void should_keepDigestId_when_idIsTheLargestThatCanBeDrawn() throws Exception {
+        // digestIDs are drawn below Integer.MAX_VALUE; the largest must survive in the item and in the MSO
+        int id = Integer.MAX_VALUE - 1;
+        Map<String, Object> salted = new HashMap<>();
+        salted.put(MDL_NAMESPACE, List.of(createSaltedElement(id, "family_name", "Doe")));
+        Map<String, Map<Integer, byte[]>> digests = new HashMap<>();
+
+        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, digests, "SHA-256");
+        ByteString item = (ByteString) ((List<?>) tagged.get(MDL_NAMESPACE)).get(0);
+        co.nstant.in.cbor.model.Map decodedItem = (co.nstant.in.cbor.model.Map)
+                new CborDecoder(new ByteArrayInputStream(item.getBytes())).decode().get(0);
+        assertEquals(new UnsignedInteger(id), decodedItem.get(new UnicodeString("digestID")));
+
+        Map<String, Object> mDoc = new HashMap<>();
+        mDoc.put("_holderId", createTestDidJwk());
+        mDoc.put("_docType", "org.iso.18013.5.1.mDL");
+        byte[] encodedMso = MDocProcessor.encodeToCBOR(mDocProcessor.createMobileSecurityObject(mDoc, digests));
+        co.nstant.in.cbor.model.Map decodedMso = (co.nstant.in.cbor.model.Map)
+                new CborDecoder(new ByteArrayInputStream(encodedMso)).decode().get(0);
+        co.nstant.in.cbor.model.Map valueDigests = (co.nstant.in.cbor.model.Map)
+                decodedMso.get(new UnicodeString("valueDigests"));
+        co.nstant.in.cbor.model.Map namespaceDigests = (co.nstant.in.cbor.model.Map)
+                valueDigests.get(new UnicodeString(MDL_NAMESPACE));
+        assertArrayEquals(digests.get(MDL_NAMESPACE).get(id),
+                ((ByteString) namespaceDigests.get(new UnsignedInteger(id))).getBytes());
+    }
+
+    @Test
+    public void should_reject_when_renderedMdlLacksMandatoryElements() {
+        // e.g. a template whose #if dropped elements, which the configuration check can't see
+        String template = "{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}"
+                + "]}}";
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().endsWith("Missing: given_name, birth_date, issue_date, "
+                + "expiry_date, issuing_country, issuing_authority, document_number, portrait, driving_privileges, "
+                + "un_distinguishing_sign."));
+    }
+
+    @Test
+    public void should_reject_when_mandatoryElementsAreRenderedInAnotherNamespace() {
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + "}")
+                .replace("\"" + MDL_NAMESPACE + "\"", "\"org.example.custom\"");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+    }
+
+    @Test
+    public void should_issue_when_renderedMdlHasEveryMandatoryElement() {
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + "}");
+
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+
+        List<?> items = (List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE);
+        assertEquals(MdlDataElements.MANDATORY.size(), items.size());
+    }
+
+    @Test
+    public void should_notRequireMdlElements_when_docTypeIsNotAnMdl() {
+        String template = "{\"docType\": \"org.example.custom.document\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.example.custom\": ["
+                + "  {\"elementIdentifier\": \"member_id\", \"elementValue\": \"M1\"}"
+                + "]}}";
+
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
     }
 
     @Test

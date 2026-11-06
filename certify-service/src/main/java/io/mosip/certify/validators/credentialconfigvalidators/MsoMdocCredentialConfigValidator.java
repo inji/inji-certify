@@ -12,6 +12,7 @@ import io.mosip.certify.utils.MdlDataElements;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -38,8 +39,9 @@ public class MsoMdocCredentialConfigValidator {
      * An mDL template must declare every ISO/IEC 18013-5 Table 5 mandatory element in the
      * org.iso.18013.5.1 namespace. Checked in DataProvider mode only, where Certify builds the mDL
      * from the template; in VCIssuance mode the plugin builds it. A template whose mDL identifiers
-     * are only known once Velocity renders it (a directive such as #foreach, or an identifier that
-     * is a reference such as ${element.id}) can't be checked here and is accepted.
+     * are only known once Velocity renders it (a directive such as #foreach, or an identifier or
+     * namespace that is a reference such as ${element.id}) can't be checked here; MDocProcessor
+     * checks the rendered mDL at issuance instead.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
      */
@@ -51,7 +53,7 @@ public class MsoMdocCredentialConfigValidator {
         if (declared.isEmpty()) {
             return List.of();
         }
-        return MdlDataElements.MANDATORY.stream().filter(element -> !declared.get().contains(element)).toList();
+        return MdlDataElements.missingMandatory(declared.get());
     }
 
     /** The identifiers in the mDL namespace, or empty when they are only known after rendering. */
@@ -60,14 +62,22 @@ public class MsoMdocCredentialConfigValidator {
         if (template == null || template.isBlank()) {
             return Optional.of(declared);
         }
-        JsonNode items;
+        JsonNode namespaces;
         try {
-            items = OBJECT_MAPPER.readTree(template).path(Constants.NAMESPACES).path(MdlDataElements.NAMESPACE);
+            namespaces = OBJECT_MAPPER.readTree(template).path(Constants.NAMESPACES);
         } catch (JsonProcessingException e) {
             // Velocity directives make the template invalid JSON until it is rendered.
             return Optional.empty();
         }
-        for (JsonNode item : items) {
+        if (!namespaces.has(MdlDataElements.NAMESPACE)) {
+            // A namespace written as a reference such as ${namespace} may render as the mDL one.
+            for (Iterator<String> names = namespaces.fieldNames(); names.hasNext(); ) {
+                if (names.next().contains("$")) {
+                    return Optional.empty();
+                }
+            }
+        }
+        for (JsonNode item : namespaces.path(MdlDataElements.NAMESPACE)) {
             String identifier = item.path(Constants.ELEMENT_IDENTIFIER).asText();
             if (identifier.contains("$")) {
                 return Optional.empty();
