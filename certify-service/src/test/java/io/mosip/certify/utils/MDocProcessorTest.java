@@ -516,22 +516,19 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_applyTag1004_when_dateStringEncoded() throws Exception {
+    public void should_leaveDateStringUntagged_when_encodedOutsideAnMdlElement() throws Exception {
+        // Only Table 5 full-date elements are tagged 1004 (ISO/IEC 18013-5); a date-looking
+        // string anywhere else stays text.
         Map<String, Object> data = new HashMap<>();
         data.put("birthDate", "1990-08-25");
 
         byte[] result = MDocProcessor.encodeToCBOR(data);
 
-        assertNotNull("Result should not be null", result);
-        assertTrue("Result should have data", result.length > 0);
-
-        // Verify it decodes without error and contains the date
-        List<DataItem> decoded = new CborDecoder(new ByteArrayInputStream(result)).decode();
-        assertNotNull("Should decode successfully", decoded);
-        assertFalse("Decoded data should not be empty", decoded.isEmpty());
-
-        // Just verify the structure is valid - tag handling is implementation detail
-        assertTrue("Should decode to a Map", decoded.get(0) instanceof co.nstant.in.cbor.model.Map);
+        co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map)
+                new CborDecoder(new ByteArrayInputStream(result)).decode().get(0);
+        DataItem date = map.get(new UnicodeString("birthDate"));
+        assertEquals(new UnicodeString("1990-08-25"), date);
+        assertFalse(date.hasTag());
     }
 
     @Test
@@ -565,7 +562,7 @@ public class MDocProcessorTest {
     // ==================== Date Handling Tests ====================
 
     @Test
-    public void should_recognizeCorrectly_when_validDatesHandled() throws Exception {
+    public void should_tagFullDate_when_mdlBirthDateIsAValidDate() throws Exception {
         String[] validDates = {
                 "2025-01-15",
                 "1990-12-31",
@@ -574,23 +571,63 @@ public class MDocProcessorTest {
         };
 
         for (String date : validDates) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("date", date);
-
-            byte[] encoded = MDocProcessor.encodeToCBOR(data);
-            assertNotNull("Should encode date: " + date, encoded);
-
-            // Decode and verify date was tagged
-            List<DataItem> decoded = new CborDecoder(new ByteArrayInputStream(encoded)).decode();
-            co.nstant.in.cbor.model.Map map = (co.nstant.in.cbor.model.Map) decoded.get(0);
-            DataItem dateItem = map.get(new UnicodeString("date"));
-            assertNotNull("Date item should exist for: " + date, dateItem);
-            // Verify it has tag 1004
-            if (dateItem.getTag() != null) {
-                assertEquals("Should have tag 1004 for date: " + date,
-                        1004, dateItem.getTag().getValue());
-            }
+            DataItem dateItem = encodedElementValue(MDL_NAMESPACE, "birth_date", date);
+            // UnicodeString.equals compares the tag too, so the text is compared on its own
+            assertEquals(date, ((UnicodeString) dateItem).getString());
+            assertEquals("Should have tag 1004 for date: " + date, 1004, dateItem.getTag().getValue());
         }
+    }
+
+    @Test
+    public void should_tagEveryFullDateElement_when_mdlValuesAreDateOnly() throws Exception {
+        for (String identifier : List.of("birth_date", "issue_date", "expiry_date")) {
+            assertEquals(identifier, 1004, encodedElementValue(MDL_NAMESPACE, identifier, "2024-06-15").getTag().getValue());
+        }
+    }
+
+    @Test
+    public void should_notTagDate_when_mdlTextElementLooksLikeADate() throws Exception {
+        // document_number is text in Table 5, whatever its value looks like.
+        DataItem value = encodedElementValue(MDL_NAMESPACE, "document_number", "2024-06-15");
+        assertEquals(new UnicodeString("2024-06-15"), value);
+        assertFalse(value.hasTag());
+    }
+
+    @Test
+    public void should_notTagDate_when_namespaceIsNotTheMdlNamespace() throws Exception {
+        DataItem value = encodedElementValue("org.example.custom", "birth_date", "1990-08-25");
+        assertEquals(new UnicodeString("1990-08-25"), value);
+        assertFalse(value.hasTag());
+    }
+
+    @Test
+    public void should_keepExplicitTag_when_templateTagsAValueOutsideTheMdlNamespace() throws Exception {
+        // A non-mDL template that needs a full-date says so itself.
+        Map<String, Object> tagged = new HashMap<>();
+        tagged.put(Constants.__CBOR_TAG, 1004);
+        tagged.put(Constants.__CBOR_VALUE, "1990-08-25");
+
+        DataItem value = encodedElementValue("org.example.custom", "birth_date", tagged);
+
+        assertEquals("1990-08-25", ((UnicodeString) value).getString());
+        assertEquals(1004, value.getTag().getValue());
+    }
+
+    @Test
+    public void should_tagNestedDates_when_drivingPrivilegesCarryIssueAndExpiryDates() throws Exception {
+        Map<String, Object> category = new HashMap<>();
+        category.put("vehicle_category_code", "B");
+        category.put("issue_date", "2024-06-15");
+        category.put("expiry_date", "2044-06-14");
+
+        Array privileges = (Array) encodedElementValue(MDL_NAMESPACE, "driving_privileges",
+                List.of(category, Map.of("vehicle_category_code", "A")));
+
+        co.nstant.in.cbor.model.Map first = (co.nstant.in.cbor.model.Map) privileges.getDataItems().get(0);
+        assertEquals(1004, first.get(new UnicodeString("issue_date")).getTag().getValue());
+        assertEquals(1004, first.get(new UnicodeString("expiry_date")).getTag().getValue());
+        assertFalse(first.get(new UnicodeString("vehicle_category_code")).hasTag());
+        assertEquals(2, privileges.getDataItems().size());
     }
 
     @Test
@@ -1254,6 +1291,17 @@ public class MDocProcessorTest {
     }
 
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
+
+    /** The elementValue of an element as calculateDigests encodes it into its IssuerSignedItem. */
+    private DataItem encodedElementValue(String namespace, String identifier, Object value) throws Exception {
+        Map<String, Object> salted = new HashMap<>();
+        salted.put(namespace, List.of(createSaltedElement(0, identifier, value)));
+        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, new HashMap<>(), "SHA-256");
+        ByteString item = (ByteString) ((List<?>) tagged.get(namespace)).get(0);
+        co.nstant.in.cbor.model.Map element = (co.nstant.in.cbor.model.Map)
+                new CborDecoder(new ByteArrayInputStream(item.getBytes())).decode().get(0);
+        return element.get(new UnicodeString("elementValue"));
+    }
 
     private static List<Object> digestIds(Map<String, Object> mDoc) {
         List<Map<String, Object>> items = (List<Map<String, Object>>)

@@ -1,6 +1,7 @@
 package io.mosip.certify.utils;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * What ISO/IEC 18013-5 Table 5 says about the data elements of an mDL, in the one place the
@@ -25,6 +26,12 @@ public final class MdlDataElements {
             "family_name", "given_name", "birth_date", ISSUE_DATE, EXPIRY_DATE,
             "issuing_country", "issuing_authority", "document_number", "portrait",
             DRIVING_PRIVILEGES, "un_distinguishing_sign");
+
+    /** Elements whose date-only value is a full-date (CBOR tag 1004). */
+    public static final Set<String> FULL_DATE = Set.of("birth_date", ISSUE_DATE, EXPIRY_DATE);
+
+    /** The dates inside each driving_privileges entry, also full-dates (7.2.4). */
+    public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
 
     private MdlDataElements() {
     }

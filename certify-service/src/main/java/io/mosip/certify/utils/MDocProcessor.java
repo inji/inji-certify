@@ -244,7 +244,7 @@ public class MDocProcessor {
             for (Map<String, Object> element : elements) {
                 // 1) Encode element (IssuerSignedItem) to CBOR
                 ByteArrayOutputStream innerBaos = new ByteArrayOutputStream();
-                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(element)));
+                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(encodeMdlElement(namespaceName, element))));
                 byte[] elementCbor = innerBaos.toByteArray();
 
                 // 2) Build Tag(24) DataItem for final structure
@@ -265,6 +265,50 @@ public class MDocProcessor {
         }
 
         return taggedNamespaces;
+    }
+
+    /**
+     * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a
+     * full-date element, including the dates inside each driving privilege, becomes tag 1004.
+     * Elements of any other namespace are left as they are; a template tags them explicitly if it
+     * needs to.
+     */
+    private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
+        if (!MdlDataElements.NAMESPACE.equals(namespace)) {
+            return element;
+        }
+        String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
+        Object value = element.get(Constants.ELEMENT_VALUE);
+        Object encoded = value;
+        if (MdlDataElements.FULL_DATE.contains(identifier)) {
+            encoded = asFullDate(value);
+        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier) && value instanceof List<?> privileges) {
+            List<Object> encodedPrivileges = new ArrayList<>();
+            for (Object privilege : privileges) {
+                if (privilege instanceof Map<?, ?> fields) {
+                    Map<Object, Object> encodedFields = new HashMap<>(fields);
+                    for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
+                        if (encodedFields.containsKey(dateField)) {
+                            encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
+                        }
+                    }
+                    encodedPrivileges.add(encodedFields);
+                } else {
+                    encodedPrivileges.add(privilege);
+                }
+            }
+            encoded = encodedPrivileges;
+        }
+        if (encoded == value) {
+            return element;
+        }
+        Map<String, Object> encodedElement = new HashMap<>(element);
+        encodedElement.put(Constants.ELEMENT_VALUE, encoded);
+        return encodedElement;
+    }
+
+    private static Object asFullDate(Object value) {
+        return value instanceof String text && isDateOnlyString(text) ? createCBORTaggedDate(text) : value;
     }
 
     public static byte[] encodeToCBOR(Object obj) throws Exception {
@@ -309,14 +353,6 @@ public class MDocProcessor {
         // Handle byte arrays directly - don't convert to hex
         if (obj instanceof byte[]) {
             return obj;
-        }
-
-        if (obj instanceof String) {
-            String str = (String) obj;
-            if (isDateOnlyString(str)) {
-                return createCBORTaggedDate(str);
-            }
-            return str;
         }
 
         if (obj instanceof Map) {
