@@ -261,6 +261,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     credentialConfig.getCredentialFormat(), COSE_ALGORITHM_INTEGER_MAP.keySet(), errors);
         }
         CredentialConfigMetadataValidator.validateProofTypes(proofTypes, proofTypesSupported, errors);
+        CredentialConfigMetadataValidator.validateMdocProofSigningAlgs(credentialConfig.getCredentialFormat(),
+                proofTypes, proofTypesSupported, errors);
 
         if (!errors.isEmpty()) {
             throw new CredentialConfigValidationException(errors);

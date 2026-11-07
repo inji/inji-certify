@@ -18,11 +18,18 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mosip.certify.config.MDocConfig;
+import io.mosip.certify.utils.MDocProcessor;
+import io.mosip.kernel.signature.service.CoseSignatureService;
+import org.bouncycastle.crypto.params.Ed448PrivateKeyParameters;
+import org.bouncycastle.crypto.signers.Ed448Signer;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.text.ParseException;
 import java.util.*;
 
@@ -604,6 +611,99 @@ class JwtProofValidatorTest {
         jwt.sign(signer);
 
         return jwt.serialize();
+    }
+
+    // ---------- EdDSA with an Ed448 key (RFC 8037), which Nimbus can't verify ----------
+
+    @Test
+    void should_acceptProof_when_holderKeyIsEd448() throws Exception {
+        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
+
+        String proof = ed448Proof(holderKey, holderKey.generatePublicKey().getEncoded());
+
+        assertTrue(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    @Test
+    void should_rejectProof_when_ed448SignatureIsNotTheHolderKeys() throws Exception {
+        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
+        Ed448PrivateKeyParameters otherKey = new Ed448PrivateKeyParameters(new SecureRandom());
+
+        // the header names the holder key, but the proof is signed with another one
+        String proof = ed448Proof(otherKey, holderKey.generatePublicKey().getEncoded());
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    @Test
+    void should_rejectProof_when_ed448KeyHasTheWrongLength() throws Exception {
+        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
+
+        // an Ed448 public key is 57 bytes; 32 is an Ed25519 key's size
+        String proof = ed448Proof(holderKey, new byte[32]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    @Test
+    void should_buildAnEd448DeviceKey_when_mdocProofIsSignedWithEd448() throws Exception {
+        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
+        byte[] publicKey = holderKey.generatePublicKey().getEncoded();
+        String proof = ed448Proof(holderKey, publicKey);
+
+        // the proof is accepted, and its key becomes the mDL device key, as at issuance
+        assertTrue(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+        Map<String, Object> mDocJson = new HashMap<>();
+        mDocJson.put("_holderId", jwtProofValidator.getHolderKey(proof).did());
+        Map<String, Object> mso = new MDocProcessor(new ObjectMapper(), new MDocConfig(), mock(CoseSignatureService.class))
+                .createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<Object, Object> deviceKey = (Map<Object, Object>) ((Map<String, Object>) mso.get("deviceKeyInfo")).get("deviceKey");
+
+        // ISO/IEC 18013-5, 9.1.5.2 (Table 22): kty OKP (1), crv Ed448 (7), x only
+        assertEquals(Set.of(1, -1, -2), deviceKey.keySet());
+        assertEquals(1, deviceKey.get(1));
+        assertEquals(7, deviceKey.get(-1));
+        assertArrayEquals(publicKey, (byte[]) deviceKey.get(-2));
+    }
+
+    @Test
+    void should_rejectProofWithoutThrowing_when_eddsaProofCarriesAnEcKey() throws Exception {
+        // the header claims EdDSA but names a P-256 key, which can't verify an EdDSA signature
+        ECKey ecKey = new ECKeyGenerator(Curve.P_256).generate();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(ecKey.toPublicJWK())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .build();
+        String proof = header.toBase64URL() + "." + claims.toPayload().toBase64URL() + "." + Base64URL.encode(new byte[64]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    /** A proof JWT whose jwk header names the given Ed448 public key, signed with the given private key. */
+    private String ed448Proof(Ed448PrivateKeyParameters signingKey, byte[] headerPublicKey) throws Exception {
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(new OctetKeyPair.Builder(Curve.Ed448, Base64URL.encode(headerPublicKey)).build())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .expirationTime(new Date(System.currentTimeMillis() + 60000))
+                .build();
+        String signingInput = header.toBase64URL() + "." + claims.toPayload().toBase64URL();
+        Ed448Signer signer = new Ed448Signer(new byte[0]);
+        signer.init(true, signingKey);
+        byte[] input = signingInput.getBytes(StandardCharsets.US_ASCII);
+        signer.update(input, 0, input.length);
+        return signingInput + "." + Base64URL.encode(signer.generateSignature());
     }
 
     @Test
