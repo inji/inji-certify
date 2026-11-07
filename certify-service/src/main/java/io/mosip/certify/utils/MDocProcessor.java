@@ -523,7 +523,12 @@ public class MDocProcessor {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
                     "The holder key has no '" + name + "' member, so it can't be an mDL device key.");
         }
-        return Base64.getUrlDecoder().decode(value);
+        try {
+            return Base64.getUrlDecoder().decode(value);
+        } catch (IllegalArgumentException e) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key has an invalid '" + name + "' member, so it can't be an mDL device key.");
+        }
     }
 
     /**

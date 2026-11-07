@@ -795,6 +795,17 @@ public class MDocProcessorTest {
         assertEquals("The holder key has no 'y' member, so it can't be an mDL device key.", exception.getMessage());
     }
 
+    @Test
+    public void should_rejectWithInvalidProof_when_coordinateIsNotBase64url() {
+        // A stray character that the proof's signature check skips over, but that isn't base64url
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"MKBCTNIcKU!SDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key has an invalid 'x' member, so it can't be an mDL device key.", exception.getMessage());
+    }
+
     /** The MSO device key built for a did:jwk holder with the given public JWK. */
     private Map<Object, Object> deviceKeyFor(String jwkJson) throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
