@@ -123,7 +123,10 @@ public class JwtProofValidator implements ProofValidator {
             } else if (JWSAlgorithm.EdDSA.equals(jwt.getHeader().getAlgorithm()))
             {
                 // EdDSA covers two curves (RFC 8037): Ed25519, which Nimbus verifies, and Ed448, which it doesn't.
-                OctetKeyPair holderKey = jwk.toOctetKeyPair();
+                if (!(jwk instanceof OctetKeyPair holderKey)) {
+                    log.error("EdDSA proof requires an OKP holder key");
+                    return false;
+                }
                 boolean verified = Curve.Ed448.equals(holderKey.getCurve())
                         ? verifyEd448(jwt, holderKey)
                         : jwt.verify(new Ed25519Verifier(holderKey));

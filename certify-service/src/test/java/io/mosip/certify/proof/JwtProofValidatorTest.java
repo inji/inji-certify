@@ -666,6 +666,25 @@ class JwtProofValidatorTest {
         assertArrayEquals(publicKey, (byte[]) deviceKey.get(-2));
     }
 
+    @Test
+    void should_rejectProofWithoutThrowing_when_eddsaProofCarriesAnEcKey() throws Exception {
+        // the header claims EdDSA but names a P-256 key, which can't verify an EdDSA signature
+        ECKey ecKey = new ECKeyGenerator(Curve.P_256).generate();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(ecKey.toPublicJWK())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .build();
+        String proof = header.toBase64URL() + "." + claims.toPayload().toBase64URL() + "." + Base64URL.encode(new byte[64]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
     /** A proof JWT whose jwk header names the given Ed448 public key, signed with the given private key. */
     private String ed448Proof(Ed448PrivateKeyParameters signingKey, byte[] headerPublicKey) throws Exception {
         JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)

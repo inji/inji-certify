@@ -804,6 +804,8 @@ public class MDocProcessorTest {
 
         assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
         assertEquals("The holder key has an invalid 'x' member, so it can't be an mDL device key.", exception.getMessage());
+        // the decoding error is kept as the cause, for the server logs
+        assertTrue(exception.getCause() instanceof IllegalArgumentException);
     }
 
     /** The MSO device key built for a did:jwk holder with the given public JWK. */
