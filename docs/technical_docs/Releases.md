@@ -97,3 +97,15 @@ Proofs are accepted as before: the holder key can still be sent as a `jwk` heade
 **Action for existing credential configurations:** The upgrade script rewrites stored `dc+sd-jwt` configurations to `["jwk"]`.
 
 Upgrading from 1.0.0-rc.1: re-run `0.14.0_to_1.0.0_upgrade.sql` (`CURRENT_VERSION=0.14.0`, `UPGRADE_VERSION=1.0.0` in `upgrade.properties`). It is safe to re-run.
+
+## `mso_mdoc` device keys follow ISO/IEC 18013-5
+
+The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 ([#1148](https://github.com/inji/inji-certify/issues/1148)):
+
+- The device key carries only the key: `kty`, `crv`, `x` and, for EC keys, `y`. `alg` and `kid` are left out. `alg` was always ES256 before, even for a P-384 or P-521 key.
+- The key type comes from the holder's key. An EC key on P-256, P-384 or P-521 becomes an EC2 key, and an OKP key on Ed25519 or Ed448 becomes an OKP key, so Ed25519 and Ed448 wallet keys are now accepted. Any other key, such as RSA, is refused with `invalid_proof` and a message naming the key type.
+- An `mso_mdoc` configuration's `proofTypesSupported` may only list `ES256`, `ES384`, `ES512` and `EdDSA`, since the proof key becomes the device key. `RS256`, `PS256` or any other algorithm is rejected on Add and Update with `unsupported_proof_signing_alg`. `ES384` and `ES512` are added to the default `mosip.certify.credential-config.proof-types-supported`.
+
+**Action for existing deployments:** add `ES384` and `ES512` to `mosip.certify.credential-config.proof-types-supported` if `mso_mdoc` configurations should accept them.
+
+**Action for existing `mso_mdoc` configurations:** remove `RS256` and `PS256` from `proofTypesSupported`. A stored configuration that still lists them keeps issuing to EC and EdDSA wallet keys, but is rejected on its next Update until they are removed.
