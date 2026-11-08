@@ -651,9 +651,10 @@ public class MDocProcessorTest {
 
     @Test
     public void should_mapCorrectly_when_p384CurveUsed() throws Exception {
+        // RFC 6979, A.2.6: a P-384 public key, with 48-byte coordinates
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-384\","
-                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
-                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
+                + "\"x\":\"7DpOQVtOGaRWhhgCn0J_pdqai8SukuAuBqrlKGswDGTe-PDqkFWGYGSiVFFUgLwT\","
+                + "\"y\":\"gBXZty19VyROqO-awMYhiWcIpZNn-d-59UyoSz8cnbEoiyMcOuDU_nNE_SUzJkcg\"}";
         String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
         String didJwk = "did:jwk:" + encodedKey+"#0";
 
@@ -691,9 +692,10 @@ public class MDocProcessorTest {
 
     @Test
     public void should_mapCorrectly_when_p521CurveUsed() throws Exception {
+        // RFC 7515, A.4: a P-521 public key, with 66-byte coordinates; y starts with a zero byte
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-521\","
-                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
-                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
+                + "\"x\":\"" + P521_X + "\","
+                + "\"y\":\"" + P521_Y + "\"}";
         String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
         String didJwk = "did:jwk:" + encodedKey;
 
@@ -706,6 +708,35 @@ public class MDocProcessorTest {
 
         assertEquals("crv should be P-521", 3, deviceKey.get(-1));
         assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
+        // the coordinates keep their full length, leading zero included (RFC 9053, 7.1.1)
+        assertArrayEquals(Base64.getUrlDecoder().decode(P521_X), (byte[]) deviceKey.get(-2));
+        assertArrayEquals(Base64.getUrlDecoder().decode(P521_Y), (byte[]) deviceKey.get(-3));
+    }
+
+    private static final String P521_X = "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk";
+    private static final String P521_Y = "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2";
+
+    @Test
+    public void should_rejectWithInvalidProof_when_ecCoordinateHasLostItsLeadingZero() {
+        // P521_Y without its leading zero byte: the same number, but 65 bytes, so no longer a full-length coordinate
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-521\","
+                + "\"x\":\"" + P521_X + "\","
+                + "\"y\":\"NKZEDjdnUNI3H9G9wsjztx0vTuXqNDLIFcyjFWD-XZOH7HdLVYOGMOXLv1qMvgqR3QBkxpmaH25uZ_rd7eTIyPY\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key's 'y' member has 65 bytes instead of 66 for crv P-521, so it can't be an mDL device key.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_okpKeyHasTheWrongLength() {
+        // a 32-byte (Ed25519-sized) key labelled Ed448, whose keys are 57 bytes
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed448\",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key's 'x' member has 32 bytes instead of 57 for crv Ed448, so it can't be an mDL device key.",
+                exception.getMessage());
     }
 
     @Test

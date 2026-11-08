@@ -646,6 +646,18 @@ class JwtProofValidatorTest {
     }
 
     @Test
+    void should_rejectProofWithoutThrowing_when_ed448KeyIsNotACurvePoint() throws Exception {
+        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
+        // 57 bytes, the right length, but not a point: the y coordinate (all ones) is larger than the field prime
+        byte[] notAPoint = new byte[57];
+        Arrays.fill(notAPoint, (byte) 0xFF);
+
+        String proof = ed448Proof(holderKey, notAPoint);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    @Test
     void should_buildAnEd448DeviceKey_when_mdocProofIsSignedWithEd448() throws Exception {
         Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
         byte[] publicKey = holderKey.generatePublicKey().getEncoded();

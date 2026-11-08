@@ -480,27 +480,31 @@ public class MDocProcessor {
         // and kid are left out. alg was always ES256, which was wrong for a P-384 or P-521 key.
         // The key type and curve come from the holder's JWK (9.1.5.2, Table 22): EC keys become
         // EC2 with x and y, OKP keys become OKP with x only. No other key type can be a device key.
+        // Each coordinate must have its curve's full length (RFC 9053, 7.1.1 and 7.2), as a JWK's
+        // must (RFC 7518, 6.2.1.2; RFC 8037, 2), so a coordinate missing its leading zeros is refused.
         Map<Object, Object> coseKey = new HashMap<>();
         String kty = (String) jwk.get("kty");
         String crv = (String) jwk.get("crv");
         if ("EC".equals(kty)) {
             coseKey.put(1, 2);  // kty: EC2
+            int coordinateLength;
             switch (crv) {
-                case "P-256" -> coseKey.put(-1, 1);
-                case "P-384" -> coseKey.put(-1, 2);
-                case "P-521" -> coseKey.put(-1, 3);
+                case "P-256" -> { coseKey.put(-1, 1); coordinateLength = 32; }
+                case "P-384" -> { coseKey.put(-1, 2); coordinateLength = 48; }
+                case "P-521" -> { coseKey.put(-1, 3); coordinateLength = 66; }
                 case null, default -> throw unsupportedDeviceKey(kty, crv);
             }
-            coseKey.put(-2, decodeCoordinate(jwk, "x"));
-            coseKey.put(-3, decodeCoordinate(jwk, "y"));
+            coseKey.put(-2, decodeCoordinate(jwk, "x", coordinateLength));
+            coseKey.put(-3, decodeCoordinate(jwk, "y", coordinateLength));
         } else if ("OKP".equals(kty)) {
             coseKey.put(1, 1);  // kty: OKP
+            int keyLength;
             switch (crv) {
-                case "Ed25519" -> coseKey.put(-1, 6);
-                case "Ed448" -> coseKey.put(-1, 7);
+                case "Ed25519" -> { coseKey.put(-1, 6); keyLength = 32; }
+                case "Ed448" -> { coseKey.put(-1, 7); keyLength = 57; }
                 case null, default -> throw unsupportedDeviceKey(kty, crv);
             }
-            coseKey.put(-2, decodeCoordinate(jwk, "x"));
+            coseKey.put(-2, decodeCoordinate(jwk, "x", keyLength));
         } else {
             throw unsupportedDeviceKey(kty, crv);
         }
@@ -518,17 +522,24 @@ public class MDocProcessor {
                         + "(ISO/IEC 18013-5, 9.1.5.2).");
     }
 
-    private static byte[] decodeCoordinate(Map<String, Object> jwk, String name) {
+    private static byte[] decodeCoordinate(Map<String, Object> jwk, String name, int expectedLength) {
         if (!(jwk.get(name) instanceof String value)) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
                     "The holder key has no '" + name + "' member, so it can't be an mDL device key.");
         }
+        byte[] coordinate;
         try {
-            return Base64.getUrlDecoder().decode(value);
+            coordinate = Base64.getUrlDecoder().decode(value);
         } catch (IllegalArgumentException e) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
                     "The holder key has an invalid '" + name + "' member, so it can't be an mDL device key.", e);
         }
+        if (coordinate.length != expectedLength) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key's '" + name + "' member has " + coordinate.length + " bytes instead of "
+                            + expectedLength + " for crv " + jwk.get("crv") + ", so it can't be an mDL device key.");
+        }
+        return coordinate;
     }
 
     /**

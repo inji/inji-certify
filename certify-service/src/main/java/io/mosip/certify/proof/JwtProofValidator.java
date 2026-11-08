@@ -155,7 +155,8 @@ public class JwtProofValidator implements ProofValidator {
 
     /**
      * Verifies an EdDSA signature made with an Ed448 key (RFC 8037: Ed448 with an empty context) with
-     * BouncyCastle, as Nimbus only verifies Ed25519. A key of the wrong length fails the proof.
+     * BouncyCastle, as Nimbus only verifies Ed25519. A key of the wrong length, or one that isn't a
+     * point on the curve, fails the proof.
      */
     private static boolean verifyEd448(SignedJWT jwt, OctetKeyPair holderKey) {
         byte[] publicKey = holderKey.getDecodedX();
@@ -164,7 +165,12 @@ public class JwtProofValidator implements ProofValidator {
             return false;
         }
         Ed448Signer verifier = new Ed448Signer(new byte[0]);
-        verifier.init(false, new Ed448PublicKeyParameters(publicKey, 0));
+        try {
+            verifier.init(false, new Ed448PublicKeyParameters(publicKey, 0));
+        } catch (IllegalArgumentException e) {
+            log.error("Ed448 proof key is not a point on the curve", e);
+            return false;
+        }
         byte[] signingInput = jwt.getSigningInput();
         verifier.update(signingInput, 0, signingInput.length);
         return verifier.verifySignature(jwt.getSignature().decode());
