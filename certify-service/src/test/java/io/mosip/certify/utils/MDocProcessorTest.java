@@ -879,6 +879,51 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_reject_when_mandatoryElementValueIsNull() {
+        // e.g. a template that writes "elementValue": null, or an #if that renders null
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": null}"
+                + "]}}");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        assertEquals("An mDL mandatory element has a null value: family_name.", exception.getMessage());
+    }
+
+    @Test
+    public void should_reject_when_mandatoryElementValueIsAnUnrenderedReference() {
+        // Velocity leaves a reference to a value the data provider didn't supply as it is, so a
+        // quoted ${familyName} reaches the mDL as that text
+        for (String unrendered : List.of("${familyName}", "$familyName", "$!{familyName}", "${holder.familyName}")) {
+            String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                    + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                    + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": \"" + unrendered + "\"}"
+                    + "]}}");
+
+            CertifyException exception = assertThrows(unrendered, CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+            assertEquals(unrendered, ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+            assertEquals(unrendered, "An mDL mandatory element has no value: family_name is the template reference "
+                    + unrendered + ", which the data provider did not supply.", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_issue_when_mandatoryElementValueOnlyContainsADollarSign() {
+        // a real value with a $ in it is not a template reference
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"elementIdentifier\": \"issuing_authority\", \"elementValue\": \"Licensing $ Fees Office\"}"
+                + "]}}");
+
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+
+        assertEquals(MdlDataElements.MANDATORY.size(), ((List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE)).size());
+    }
+
+    @Test
     public void should_issue_when_renderedMdlHasEveryMandatoryElement() {
         String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + "}");
 

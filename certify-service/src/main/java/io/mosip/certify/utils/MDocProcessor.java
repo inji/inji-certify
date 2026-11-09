@@ -27,6 +27,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +55,13 @@ public class MDocProcessor {
 
     /** The CBOR tag of a full-date (RFC 8943). */
     private static final int FULL_DATE_TAG = 1004;
+
+    /**
+     * A whole value that is a Velocity reference such as ${familyName}, $familyName, $!{familyName} or
+     * ${holder.familyName}. Velocity renders a reference to a missing value as this text.
+     */
+    private static final Pattern UNRENDERED_REFERENCE =
+            Pattern.compile("\\$!?(\\{[A-Za-z][\\w.-]*}|[A-Za-z][\\w.-]*)");
 
     private final ObjectMapper objectMapper;
 
@@ -185,12 +193,26 @@ public class MDocProcessor {
      * ISO/IEC 18013-5, 7.2.1 (Table 5): the rendered mDL must carry every mandatory element in the
      * org.iso.18013.5.1 namespace. The configuration check can't see a template whose elements are
      * only known after Velocity renders it, so the rendered mDL is checked here before it is signed.
+     * A mandatory element must also have a value: not null, and not a template reference that Velocity
+     * left as it is because the data provider did not supply it.
      */
     private static void requireMandatoryMdlElements(Map<String, Object> nameSpaces) {
         Set<String> identifiers = new HashSet<>();
         if (nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements) {
             for (Object element : elements) {
                 if (element instanceof Map<?, ?> item && item.get(Constants.ELEMENT_IDENTIFIER) instanceof String identifier) {
+                    if (MdlDataElements.MANDATORY.contains(identifier)
+                            && item.get(Constants.ELEMENT_VALUE) == null) {
+                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                "An mDL mandatory element has a null value: " + identifier + ".");
+                    }
+                    if (MdlDataElements.MANDATORY.contains(identifier)
+                            && item.get(Constants.ELEMENT_VALUE) instanceof String value
+                            && UNRENDERED_REFERENCE.matcher(value).matches()) {
+                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                "An mDL mandatory element has no value: " + identifier + " is the template reference "
+                                        + value + ", which the data provider did not supply.");
+                    }
                     identifiers.add(identifier);
                 }
             }
