@@ -911,6 +911,75 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_reject_when_mandatoryElementValueIsEmpty() {
+        // a quiet reference such as $!{familyName} renders as "" when the data provider didn't supply it
+        for (String empty : List.of("", "   ")) {
+            String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                    + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                    + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": \"" + empty + "\"}"
+                    + "]}}");
+
+            CertifyException exception = assertThrows("'" + empty + "'", CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+            assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+            assertEquals("An mDL mandatory element has an empty value: family_name.", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_reject_when_drivingPrivilegeHasNoValue() {
+        // a template that builds driving_privileges itself can leave a value unrendered, empty or null,
+        // in an entry or in one of its codes
+        Map<String, String> privileges = new LinkedHashMap<>();
+        privileges.put("[{\"vehicle_category_code\": \"${code}\", \"issue_date\": \"2024-01-01\"}]",
+                "the template reference ${code}, which the data provider did not supply");
+        privileges.put("[{\"vehicle_category_code\": \"A\", \"codes\": [{\"code\": \"$!{restriction}\"}]}]",
+                "the template reference $!{restriction}, which the data provider did not supply");
+        privileges.put("[{\"vehicle_category_code\": \"\", \"issue_date\": \"2024-01-01\"}]", "an empty value");
+        privileges.put("[{\"vehicle_category_code\": \"A\", \"expiry_date\": null}]", "a null value");
+        for (Map.Entry<String, String> privilege : privileges.entrySet()) {
+            String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                    + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                    + "  {\"elementIdentifier\": \"driving_privileges\", \"elementValue\": " + privilege.getKey() + "}"
+                    + "]}}");
+
+            CertifyException exception = assertThrows(privilege.getKey(), CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+            assertEquals(privilege.getKey(), ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+            assertEquals(privilege.getKey(), "An mDL mandatory element has no value: driving_privileges contains "
+                    + privilege.getValue() + ".", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_issue_when_everyDrivingPrivilegeValueIsGiven() {
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"elementIdentifier\": \"driving_privileges\", \"elementValue\": [{\"vehicle_category_code\": \"A\","
+                + "    \"issue_date\": \"2024-01-01\", \"codes\": [{\"code\": \"01\", \"sign\": \"<=\", \"value\": \"$5\"}]}]}"
+                + "]}}");
+
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+
+        assertEquals(MdlDataElements.MANDATORY.size(), ((List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE)).size());
+    }
+
+    @Test
+    public void should_reject_when_mdlElementIdentifierIsRenderedTwice() {
+        // e.g. a #foreach that renders an element the template also declares
+        String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                + "  {\"elementIdentifier\": \"family_name\", \"elementValue\": \"Smith\"}"
+                + "]}}");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertEquals("Duplicate mDL element identifier: family_name.", exception.getMessage());
+    }
+
+    @Test
     public void should_issue_when_mandatoryElementValueOnlyContainsADollarSign() {
         // a real value with a $ in it is not a template reference
         String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + ","

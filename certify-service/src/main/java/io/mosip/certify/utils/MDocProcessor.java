@@ -193,8 +193,9 @@ public class MDocProcessor {
      * ISO/IEC 18013-5, 7.2.1 (Table 5): the rendered mDL must carry every mandatory element in the
      * org.iso.18013.5.1 namespace. The configuration check can't see a template whose elements are
      * only known after Velocity renders it, so the rendered mDL is checked here before it is signed.
-     * A mandatory element must also have a value: not null, and not a template reference that Velocity
-     * left as it is because the data provider did not supply it.
+     * A mandatory element must also have a value: not null, not empty, and not a template reference that
+     * Velocity left as it is because the data provider did not supply it; the same goes for every value
+     * inside a structured one such as driving_privileges.
      */
     private static void requireMandatoryMdlElements(Map<String, Object> nameSpaces) {
         Set<String> identifiers = new HashSet<>();
@@ -213,7 +214,21 @@ public class MDocProcessor {
                                 "An mDL mandatory element has no value: " + identifier + " is the template reference "
                                         + value + ", which the data provider did not supply.");
                     }
-                    identifiers.add(identifier);
+                    if (MdlDataElements.MANDATORY.contains(identifier)
+                            && item.get(Constants.ELEMENT_VALUE) instanceof String value && value.isBlank()) {
+                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                "An mDL mandatory element has an empty value: " + identifier + ".");
+                    }
+                    String nestedMissing = MdlDataElements.MANDATORY.contains(identifier)
+                            ? findMissingNestedValue(item.get(Constants.ELEMENT_VALUE)) : null;
+                    if (nestedMissing != null) {
+                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                "An mDL mandatory element has no value: " + identifier + " contains " + nestedMissing + ".");
+                    }
+                    if (!identifiers.add(identifier)) {
+                        throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
+                                "Duplicate mDL element identifier: " + identifier + ".");
+                    }
                 }
             }
         }
@@ -224,6 +239,40 @@ public class MDocProcessor {
                     "An mDL must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
                             + String.join(", ", missing) + ".");
         }
+    }
+
+    /**
+     * Describes the first value missing inside a structured element such as driving_privileges: a null,
+     * an empty string, or a template reference Velocity left as it is. Null when every value is there,
+     * and for a value that isn't a map or a list (the caller checks those itself).
+     */
+    private static String findMissingNestedValue(Object value) {
+        Collection<?> children;
+        if (value instanceof Map<?, ?> map) {
+            children = map.values();
+        } else if (value instanceof List<?> list) {
+            children = list;
+        } else {
+            return null;
+        }
+        for (Object child : children) {
+            if (child == null) {
+                return "a null value";
+            }
+            if (child instanceof String text) {
+                if (UNRENDERED_REFERENCE.matcher(text).matches()) {
+                    return "the template reference " + text + ", which the data provider did not supply";
+                }
+                if (text.isBlank()) {
+                    return "an empty value";
+                }
+            }
+            String missing = findMissingNestedValue(child);
+            if (missing != null) {
+                return missing;
+            }
+        }
+        return null;
     }
 
     /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */
