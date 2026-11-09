@@ -903,6 +903,31 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_notStoreALedgerEntry_when_signingTheCredentialFails() throws Exception {
+        ReflectionTestUtils.setField(issuanceService, "isLedgerEnabled", true);
+        request = createValidCredentialRequest(DEFAULT_FORMAT_MDOC);
+
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("key", "value"));
+
+        MDocCredential mockMdoc = mock(MDocCredential.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_MDOC)).thenReturn(Optional.of(mockMdoc));
+        when(mockMdoc.createCredential(anyMap(), anyString())).thenReturn("unsigned_mdoc_data");
+        // The proof passed, but its key can't be the mDL device key, which only signing finds out
+        when(mockMdoc.addProof(eq("unsigned_mdoc_data"), eq(""), any(), any(), any(), any(), any()))
+                .thenThrow(new CertifyException(VCIErrorConstants.INVALID_PROOF, "The holder key (kty RSA) can't be an mDL device key"));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     public void getCredential_MDOC_Success() throws Exception {
         // Create MDOC request with matching doctype
         request = createValidCredentialRequest(DEFAULT_FORMAT_MDOC);

@@ -484,7 +484,7 @@ public class MDocProcessor {
         // must (RFC 7518, 6.2.1.2; RFC 8037, 2), so a coordinate missing its leading zeros is refused.
         Map<Object, Object> coseKey = new HashMap<>();
         String kty = (String) jwk.get("kty");
-        String crv = (String) jwk.get("crv");
+        String crv = jwk.get("crv") instanceof String s ? s : null;
         if ("EC".equals(kty)) {
             coseKey.put(1, 2);  // kty: EC2
             int coordinateLength;

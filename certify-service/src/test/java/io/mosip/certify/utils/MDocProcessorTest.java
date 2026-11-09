@@ -808,6 +808,18 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_rejectWithInvalidProof_when_rsaHolderKeyHasACrvThatIsNotAString() {
+        // The proof check accepts an RSA did:jwk with any extra crv, so only the device key check sees it
+        for (String crv : List.of("5", "{\"a\":1}")) {
+            CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor(
+                    "{\"kty\":\"RSA\",\"crv\":" + crv + ",\"e\":\"AQAB\",\"n\":\"sXchDaQebHnPiGvyDOAT4saGEUetSyo9MKLOoWFsueri\"}"));
+
+            assertEquals(crv, VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+            assertTrue(exception.getMessage(), exception.getMessage().startsWith("The holder key (kty RSA) can't be an mDL device key"));
+        }
+    }
+
+    @Test
     public void should_rejectWithInvalidProof_when_okpCurveIsNotASignatureCurve() {
         // X25519 is a key agreement curve, not one a device can sign with
         CertifyException exception = assertThrows(CertifyException.class,
