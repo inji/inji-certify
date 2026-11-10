@@ -202,28 +202,26 @@ public class MDocProcessor {
         if (nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements) {
             for (Object element : elements) {
                 if (element instanceof Map<?, ?> item && item.get(Constants.ELEMENT_IDENTIFIER) instanceof String identifier) {
-                    if (MdlDataElements.MANDATORY.contains(identifier)
-                            && item.get(Constants.ELEMENT_VALUE) == null) {
-                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
-                                "An mDL mandatory element has a null value: " + identifier + ".");
-                    }
-                    if (MdlDataElements.MANDATORY.contains(identifier)
-                            && item.get(Constants.ELEMENT_VALUE) instanceof String value
-                            && UNRENDERED_REFERENCE.matcher(value).matches()) {
-                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
-                                "An mDL mandatory element has no value: " + identifier + " is the template reference "
-                                        + value + ", which the data provider did not supply.");
-                    }
-                    if (MdlDataElements.MANDATORY.contains(identifier)
-                            && item.get(Constants.ELEMENT_VALUE) instanceof String value && value.isBlank()) {
-                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
-                                "An mDL mandatory element has an empty value: " + identifier + ".");
-                    }
-                    String nestedMissing = MdlDataElements.MANDATORY.contains(identifier)
-                            ? findMissingNestedValue(item.get(Constants.ELEMENT_VALUE)) : null;
-                    if (nestedMissing != null) {
-                        throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
-                                "An mDL mandatory element has no value: " + identifier + " contains " + nestedMissing + ".");
+                    if (MdlDataElements.MANDATORY.contains(identifier)) {
+                        Object elementValue = item.get(Constants.ELEMENT_VALUE);
+                        if (elementValue == null) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has a null value: " + identifier + ".");
+                        }
+                        if (elementValue instanceof String s && UNRENDERED_REFERENCE.matcher(s).matches()) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has no value: " + identifier + " is the template reference "
+                                            + s + ", which the data provider did not supply.");
+                        }
+                        if (elementValue instanceof String s && s.isBlank()) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has an empty value: " + identifier + ".");
+                        }
+                        String nestedMissing = findMissingNestedValue(elementValue);
+                        if (nestedMissing != null) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has no value: " + identifier + " contains " + nestedMissing + ".");
+                        }
                     }
                     if (!identifiers.add(identifier)) {
                         throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
