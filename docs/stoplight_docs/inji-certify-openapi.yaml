@@ -600,11 +600,16 @@ paths:
                   value:
                     error: unknown_credential_configuration
                     error_description: 'The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id.'
-                outsideTokenScope:
-                  summary: The credential configuration is outside the access token's scope
+                outsideTokenScopeDataProvider:
+                  summary: Configuration outside token scope in DataProvider mode
                   value:
                     error: invalid_scope
                     error_description: No credential mapping found for the provided scope.
+                outsideTokenScopeVCIssuance:
+                  summary: Configuration outside token scope in VCIssuance mode
+                  value:
+                    error: invalid_scope
+                    error_description: invalid_scope
                 missingCredentialConfigurationId:
                   summary: The request has no credential_configuration_id
                   value:
