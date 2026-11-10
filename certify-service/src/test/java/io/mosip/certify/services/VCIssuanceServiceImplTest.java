@@ -466,6 +466,18 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_rejectWithUnknownCredentialConfiguration_when_configIdIsNotOffered() throws Exception {
+        request = createValidCredentialRequest(VCFormats.LDP_VC);
+        request.setCredentialConfigId("not-a-real-config");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION, ex.getErrorCode());
+    }
+
+    @Test
     public void getCredential_InvalidProof_Fail() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         when(parsedAccessToken.isActive()).thenReturn(true);
