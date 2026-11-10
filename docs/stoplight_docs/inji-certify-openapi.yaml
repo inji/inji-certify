@@ -583,11 +583,33 @@ paths:
                     credentials:
                       - credential: eyJ4NXQjUzI1NiI6InAxRkps....
         '400':
-          description: Bad Request
+          description: >-
+            The credential request was rejected. Among the error codes, three tell apart what is
+            wrong with the requested credential configuration. A credential_configuration_id that
+            this credential issuer does not offer is answered with unknown_credential_configuration
+            (OpenID4VCI 1.0, section 8.3.1.2). One the issuer offers, but outside the access token's
+            scope, is answered with invalid_scope. A request without a credential_configuration_id,
+            or with an empty one, is malformed and answered with invalid_credential_request.
           content:
             '*/*':
               schema:
                 $ref: '#/components/schemas/VCError'
+              examples:
+                unknownCredentialConfiguration:
+                  summary: The credential_configuration_id is not offered by this issuer
+                  value:
+                    error: unknown_credential_configuration
+                    error_description: 'The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id.'
+                outsideTokenScope:
+                  summary: The credential configuration is outside the access token's scope
+                  value:
+                    error: invalid_scope
+                    error_description: No credential mapping found for the provided scope.
+                missingCredentialConfigurationId:
+                  summary: The request has no credential_configuration_id
+                  value:
+                    error: invalid_credential_request
+                    error_description: invalid_credential_request
         '401':
           description: >-
             The access token or the DPoP proof was rejected. The WWW-Authenticate header
