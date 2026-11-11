@@ -133,7 +133,14 @@ Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digita
 | Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
 | Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
 
-- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and restart the `certify` service.
+- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and run `docker compose up -d --no-deps certify` to recreate the service.
+
+- If the database was created before this seed changed, restart the stack with a fresh database to load the new configuration. This removes the Compose volumes and their data:
+
+  ```bash
+  docker-compose down -v
+  docker-compose up -d
+  ```
 
 
 ### Recommended
@@ -154,6 +161,7 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 
 
 - If you are proceeding with the Mobile driving license use case, no issuer key or certificate needs to be onboarded: Certify signs the mDL with its own `CERTIFY_VC_SIGN_EC_R1` key and puts that key's certificate in the mDL. The `DrivingLicenseCredential` configuration is seeded by [certify_init.sql](./certify_init.sql), and the holders' data is in [driving_license_data.csv](config/driving_license_data.csv): one row per holder, whose `id` must match the `sub` of the access token. Add or edit rows to issue mDLs for other holders.
+- After adding or editing rows, run `docker-compose up -d --no-deps --force-recreate certify` to reload the CSV.
 
 ### Registering a custom JSON-LD `@context`
 

@@ -261,7 +261,7 @@ VALUES (
     'sample_vc_mdoc',  -- scope
     ARRAY['cose_key'],  -- cryptographic_binding_methods_supported
     ARRAY['ES256'],  -- credential_signing_alg_values_supported
-    '{"jwt": {"proof_signing_alg_values_supported": ["RS256", "PS256", "ES256", "EdDSA"]}}'::JSONB,  -- proof_types_supported
+    '{"jwt": {"proof_signing_alg_values_supported": ["ES256"]}}'::JSONB,  -- proof_types_supported
     NULL,  -- claims (not used by mso_mdoc)
     '{"org.iso.18013.5.1": {"family_name": {"display": [{"name": "Family Name", "locale": "en"}]}, "given_name": {"display": [{"name": "Given Name", "locale": "en"}]}, "birth_date": {"display": [{"name": "Date of Birth", "locale": "en"}]}, "issue_date": {"display": [{"name": "Date of Issue", "locale": "en"}]}, "expiry_date": {"display": [{"name": "Date of Expiry", "locale": "en"}]}, "document_number": {"display": [{"name": "Document Number", "locale": "en"}]}, "issuing_country": {"display": [{"name": "Issuing Country", "locale": "en"}]}, "issuing_authority": {"display": [{"name": "Issuing Authority", "locale": "en"}]}, "un_distinguishing_sign": {"display": [{"name": "Distinguishing Sign", "locale": "en"}]}, "portrait": {"display": [{"name": "Portrait", "locale": "en"}]}, "driving_privileges": {"display": [{"name": "Driving Privileges", "locale": "en"}]}}}'::JSONB,  -- mso_mdoc_claims
     '[{"mosip.certify.mock.data-provider.csv.identifier-column": "id", "mosip.certify.mock.data-provider.csv.data-columns": "id,givenName,familyName,birthDate,documentNumber,issueDate,expiryDate,portrait,drivingPrivileges", "mosip.certify.mock.data-provider.csv-registry-uri": "/home/mosip/config/driving_license_data.csv"}]'::JSONB,  -- plugin_configurations
