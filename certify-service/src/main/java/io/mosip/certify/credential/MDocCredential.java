@@ -1,5 +1,6 @@
 package io.mosip.certify.credential;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import io.mosip.certify.core.constants.Constants;
@@ -45,7 +46,11 @@ public class MDocCredential extends Credential {
     public String createCredential(Map<String, Object> updatedTemplateParams, String templateName) {
         try {
             String templatedJSON = super.createCredential(updatedTemplateParams, templateName);
-            Map<String, Object> finalMDoc = mDocProcessor.processTemplatedJson(templatedJSON, updatedTemplateParams);
+            // addProof signs with this key, so the MSO's signed timestamp must not precede its certificate.
+            ZonedDateTime certificateNotBefore = mDocProcessor.signingCertificateNotBefore(
+                    vcFormatter.getAppID(templateName), vcFormatter.getRefID(templateName));
+            Map<String, Object> finalMDoc = mDocProcessor.processTemplatedJson(
+                    templatedJSON, updatedTemplateParams, certificateNotBefore);
             return objectMapper.writeValueAsString(finalMDoc);
 
         } catch (CertifyException e) {

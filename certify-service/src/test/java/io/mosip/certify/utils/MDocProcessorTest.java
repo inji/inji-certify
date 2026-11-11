@@ -11,9 +11,14 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.kernel.keymanagerservice.dto.KeyPairGenerateResponseDto;
+import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.dto.CoseSignResponseDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.AfterClass;
@@ -27,6 +32,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
@@ -56,6 +64,8 @@ public class MDocProcessorTest {
 
     private static MockedStatic<ZonedDateTime> mockedZonedDateTime;
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
+    /** The notBefore of a signing certificate generated well before the issuance day. */
+    private static final ZonedDateTime CERT_NOT_BEFORE = ZonedDateTime.of(2026, 1, 1, 9, 15, 0, 0, ZoneOffset.UTC);
     private static final Map<String, Map<String, ? extends Serializable>> expectedValidityInfo = Map.of(
             "signed", Map.of(
                     Constants.__CBOR_TAG, 0,
@@ -91,6 +101,9 @@ public class MDocProcessorTest {
     @Mock
     private CoseSignatureService coseSignatureService;
 
+    @Mock
+    private KeymanagerService keymanagerService;
+
     private MDocProcessor mDocProcessor;
 
     private ObjectMapper objectMapper;
@@ -98,7 +111,7 @@ public class MDocProcessorTest {
     @Before
     public void setUp() {
         objectMapper = new ObjectMapper();
-        mDocProcessor = new MDocProcessor(objectMapper, mDocConfig, coseSignatureService);
+        mDocProcessor = new MDocProcessor(objectMapper, mDocConfig, coseSignatureService, keymanagerService);
 
         // Setup default mock behavior
         when(mDocConfig.getValidityPeriodYears()).thenReturn(5);
@@ -116,7 +129,7 @@ public class MDocProcessorTest {
         templateParams.put("didUrl", "https://issuer.example.com/did");
         templateParams.put("_holderId", "did:jwk:test123");
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams);
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, templateParams, CERT_NOT_BEFORE);
 
         assertNotNull("Result should not be null", result);
         assertEquals("DocType should match", "org.iso.18013.5.1.mDL", result.get("_docType"));
@@ -150,7 +163,7 @@ public class MDocProcessorTest {
                 + "\"nameSpaces\": {}"
                 + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
 
         Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
         assertNotNull("ValidityInfo should not be null", validityInfo);
@@ -181,7 +194,7 @@ public class MDocProcessorTest {
                     + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                     + "\"nameSpaces\": {}}";
 
-            Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
+            Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
 
             // Truncated, not rounded up to the next second
             assertEquals(expectedValidityInfo, result.get("validityInfo"));
@@ -201,9 +214,9 @@ public class MDocProcessorTest {
         ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
         try {
             mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justAfterMidnight);
-            Object morning = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>()).get("validityInfo");
+            Object morning = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
             mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
-            Object night = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>()).get("validityInfo");
+            Object night = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
 
             assertEquals(expectedValidityInfo, morning);
             assertEquals(expectedValidityInfo, night);
@@ -215,7 +228,7 @@ public class MDocProcessorTest {
     @Test
     public void should_startValidFromOnTheIssueDate_when_issueDateIsAfterTheIssuanceDay() {
         Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
-                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01"), new HashMap<>()).get("validityInfo");
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01"), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
 
         assertEquals("2026-07-20T00:00:00Z", cborValue(validityInfo, "signed"));
         assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
@@ -225,7 +238,7 @@ public class MDocProcessorTest {
     @Test
     public void should_startValidFromOnTheIssuanceDay_when_issueDateIsEarlier() {
         Object validityInfo = mDocProcessor
-                .processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"), new HashMap<>()).get("validityInfo");
+                .processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
 
         assertEquals(expectedValidityInfo, validityInfo);
     }
@@ -235,11 +248,82 @@ public class MDocProcessorTest {
         String template = mdlTemplateWithIssueDate("2026-08-01").replace("\"2026-08-01\"",
                 "{\"__cbor_tag\": 1004, \"__cbor_value\": \"2026-08-01\"}");
         Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
-                .processTemplatedJson(template, new HashMap<>()).get("validityInfo");
+                .processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
 
         assertEquals("2026-07-20T00:00:00Z", cborValue(validityInfo, "signed"));
         assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
         assertEquals("2031-08-01T00:00:00Z", cborValue(validityInfo, "validUntil"));
+    }
+
+    @Test
+    public void should_notSignBeforeTheSigningCertificate_when_certificateStartedEarlierOnTheIssuanceDay() {
+        // ISO/IEC 18013-5, 9.3.1: signed must fall within the validity of the certificate in the MSO
+        // header. The certificate starts at 08:30:15Z on the issuance day, after 00:00:00Z.
+        ZonedDateTime certificateNotBefore = FIXED_NOW.withHour(8).withMinute(30).withSecond(15);
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"), new HashMap<>(), certificateNotBefore)
+                .get("validityInfo");
+
+        assertEquals("2026-07-20T08:30:15Z", cborValue(validityInfo, "signed"));
+        assertEquals("2026-07-20T08:30:15Z", cborValue(validityInfo, "validFrom"));
+        assertEquals("2031-07-20T08:30:15Z", cborValue(validityInfo, "validUntil"));
+    }
+
+    @Test
+    public void should_giveTheSameTimestamps_when_twoMdlsAreSignedWithANewCertificateOnTheSameDay() {
+        // On the day the certificate starts, every mDL signed with it still shares one value
+        ZonedDateTime certificateNotBefore = FIXED_NOW.withHour(8).withMinute(30).withSecond(15);
+        ZonedDateTime soonAfter = FIXED_NOW.withHour(8).withMinute(31);
+        ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
+        try {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(soonAfter);
+            Object first = mDocProcessor.processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
+                    new HashMap<>(), certificateNotBefore).get("validityInfo");
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
+            Object second = mDocProcessor.processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
+                    new HashMap<>(), certificateNotBefore).get("validityInfo");
+
+            assertEquals(first, second);
+        } finally {
+            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
+        }
+    }
+
+    @Test
+    public void should_startValidFromOnTheIssueDate_when_issueDateIsAfterTheSigningCertificateStart() {
+        ZonedDateTime certificateNotBefore = FIXED_NOW.withHour(8).withMinute(30).withSecond(15);
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01"), new HashMap<>(), certificateNotBefore)
+                .get("validityInfo");
+
+        assertEquals("2026-07-20T08:30:15Z", cborValue(validityInfo, "signed"));
+        assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
+        assertEquals("2031-08-01T00:00:00Z", cborValue(validityInfo, "validUntil"));
+    }
+
+    @Test
+    public void should_returnTheCertificateNotBefore_when_keymanagerReturnsTheSigningCertificate() throws Exception {
+        ZonedDateTime notBefore = ZonedDateTime.of(2026, 7, 20, 8, 30, 15, 0, ZoneOffset.UTC);
+        KeyPairGenerateResponseDto certificate = new KeyPairGenerateResponseDto();
+        certificate.setCertificate(selfSignedCertificatePem(notBefore));
+        when(keymanagerService.getCertificate("CERTIFY_VC_SIGN_EC_R1", Optional.of("EC_SECP256R1_SIGN")))
+                .thenReturn(certificate);
+
+        assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore("CERTIFY_VC_SIGN_EC_R1", "EC_SECP256R1_SIGN"));
+    }
+
+    private static String selfSignedCertificatePem(ZonedDateTime notBefore) throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
+        generator.initialize(256);
+        KeyPair keyPair = generator.generateKeyPair();
+        X500Name subject = new X500Name("CN=Test Document Signer");
+        byte[] der = new JcaX509v3CertificateBuilder(subject, BigInteger.ONE, Date.from(notBefore.toInstant()),
+                Date.from(notBefore.plusYears(1).toInstant()), subject, keyPair.getPublic())
+                .build(new JcaContentSignerBuilder("SHA256withECDSA").build(keyPair.getPrivate()))
+                .getEncoded();
+        return "-----BEGIN CERTIFICATE-----\n"
+                + Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(der)
+                + "\n-----END CERTIFICATE-----\n";
     }
 
     private static String mdlTemplateWithIssueDate(String issueDate) {
@@ -291,7 +375,7 @@ public class MDocProcessorTest {
         String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                 + "\"nameSpaces\": {}}";
-        Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
+        Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
         mDocJson.put("_holderId", createTestDidJwk());
 
         Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
@@ -334,7 +418,7 @@ public class MDocProcessorTest {
                 + "}"
                 + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
 
         Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
         List<Map<String, Object>> items = (List<Map<String, Object>>) nameSpaces.get("org.iso.18013.5.1");
@@ -353,7 +437,7 @@ public class MDocProcessorTest {
         String invalidJSON = "{invalid json}";
         Map<String, Object> result;
         try {
-            result = mDocProcessor.processTemplatedJson(invalidJSON, new HashMap<>());
+            result = mDocProcessor.processTemplatedJson(invalidJSON, new HashMap<>(), CERT_NOT_BEFORE);
         } catch (Exception e) {
             result = Collections.emptyMap();
         }
@@ -373,7 +457,7 @@ public class MDocProcessorTest {
             templateParams.put("_holderId", "did:jwk:test123");
 
             CertifyException exception = assertThrows(CertifyException.class, () ->
-                    mDocProcessor.processTemplatedJson(templatedJSON, templateParams));
+                    mDocProcessor.processTemplatedJson(templatedJSON, templateParams, CERT_NOT_BEFORE));
 
             assertEquals("Test case [" + testName + "] failed", "Error processing templated JSON: "+expectedErrorMessage, exception.getMessage());
         });
@@ -391,7 +475,7 @@ public class MDocProcessorTest {
         templateParams.put("_holderId", "did:jwk:test123");
 
         CertifyException exception = assertThrows(CertifyException.class, () ->
-                mDocProcessor.processTemplatedJson(templatedJSON, templateParams));
+                mDocProcessor.processTemplatedJson(templatedJSON, templateParams, CERT_NOT_BEFORE));
 
         assertEquals("Error processing templated JSON: Missing docType", exception.getMessage());
     }
@@ -411,7 +495,7 @@ public class MDocProcessorTest {
                 + "}"
                 + "}";
 
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(templatedJSON, new HashMap<>(), CERT_NOT_BEFORE);
 
         Map<String, Object> nameSpaces = (Map<String, Object>) result.get("nameSpaces");
         assertTrue("Should contain ISO namespace", nameSpaces.containsKey("org.iso.18013.5.1"));
@@ -817,8 +901,8 @@ public class MDocProcessorTest {
                 + "  {\"elementIdentifier\": \"issuing_country\", \"elementValue\": \"IN\"}"
                 + "]}}";
 
-        List<Object> first = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>()));
-        List<Object> second = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>()));
+        List<Object> first = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>(), CERT_NOT_BEFORE));
+        List<Object> second = digestIds(mDocProcessor.processTemplatedJson(withMandatoryMdlElements(template), new HashMap<>(), CERT_NOT_BEFORE));
 
         assertEquals("unique within the namespace", MdlDataElements.MANDATORY.size(), first.stream().distinct().count());
         assertNotEquals("drawn again for every mDL", first, second);
@@ -861,7 +945,7 @@ public class MDocProcessorTest {
                 + "]}}";
 
         CertifyException exception = assertThrows(CertifyException.class,
-                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
         assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
         assertTrue(exception.getMessage(), exception.getMessage().endsWith("Missing: given_name, birth_date, issue_date, "
                 + "expiry_date, issuing_country, issuing_authority, document_number, portrait, driving_privileges, "
@@ -874,7 +958,7 @@ public class MDocProcessorTest {
                 .replace("\"" + MDL_NAMESPACE + "\"", "\"org.example.custom\"");
 
         CertifyException exception = assertThrows(CertifyException.class,
-                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
         assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
     }
 
@@ -887,7 +971,7 @@ public class MDocProcessorTest {
                 + "]}}");
 
         CertifyException exception = assertThrows(CertifyException.class,
-                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
         assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
         assertEquals("An mDL mandatory element has a null value: family_name.", exception.getMessage());
     }
@@ -903,7 +987,7 @@ public class MDocProcessorTest {
                     + "]}}");
 
             CertifyException exception = assertThrows(unrendered, CertifyException.class,
-                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
             assertEquals(unrendered, ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
             assertEquals(unrendered, "An mDL mandatory element has no value: family_name is the template reference "
                     + unrendered + ", which the data provider did not supply.", exception.getMessage());
@@ -920,7 +1004,7 @@ public class MDocProcessorTest {
                     + "]}}");
 
             CertifyException exception = assertThrows("'" + empty + "'", CertifyException.class,
-                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
             assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
             assertEquals("An mDL mandatory element has an empty value: family_name.", exception.getMessage());
         }
@@ -944,7 +1028,7 @@ public class MDocProcessorTest {
                     + "]}}");
 
             CertifyException exception = assertThrows(privilege.getKey(), CertifyException.class,
-                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
             assertEquals(privilege.getKey(), ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
             assertEquals(privilege.getKey(), "An mDL mandatory element has no value: driving_privileges contains "
                     + privilege.getValue() + ".", exception.getMessage());
@@ -959,7 +1043,7 @@ public class MDocProcessorTest {
                 + "    \"issue_date\": \"2024-01-01\", \"codes\": [{\"code\": \"01\", \"sign\": \"<=\", \"value\": \"$5\"}]}]}"
                 + "]}}");
 
-        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE);
 
         assertEquals(MdlDataElements.MANDATORY.size(), ((List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE)).size());
     }
@@ -974,7 +1058,7 @@ public class MDocProcessorTest {
                 + "]}}");
 
         CertifyException exception = assertThrows(CertifyException.class,
-                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
         assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
         assertEquals("Duplicate mDL element identifier: family_name.", exception.getMessage());
     }
@@ -987,7 +1071,7 @@ public class MDocProcessorTest {
                 + "  {\"elementIdentifier\": \"issuing_authority\", \"elementValue\": \"Licensing $ Fees Office\"}"
                 + "]}}");
 
-        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE);
 
         assertEquals(MdlDataElements.MANDATORY.size(), ((List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE)).size());
     }
@@ -996,7 +1080,7 @@ public class MDocProcessorTest {
     public void should_issue_when_renderedMdlHasEveryMandatoryElement() {
         String template = withMandatoryMdlElements("{\"docType\": \"org.iso.18013.5.1.mDL\"," + getValidityInfoTemplate() + "}");
 
-        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+        Map<String, Object> mDoc = mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE);
 
         List<?> items = (List<?>) ((Map<?, ?>) mDoc.get("nameSpaces")).get(MDL_NAMESPACE);
         assertEquals(MdlDataElements.MANDATORY.size(), items.size());
@@ -1009,7 +1093,7 @@ public class MDocProcessorTest {
                 + "  {\"elementIdentifier\": \"member_id\", \"elementValue\": \"M1\"}"
                 + "]}}";
 
-        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
     }
 
     @Test
@@ -1020,7 +1104,7 @@ public class MDocProcessorTest {
                     + ", \"nameSpaces\": {}}";
 
             CertifyException exception = assertThrows(CertifyException.class,
-                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>()));
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
             assertTrue(name, exception.getMessage().contains("validityInfo." + name + " must be ${_" + name + "}"));
         }
     }
@@ -1521,7 +1605,7 @@ public class MDocProcessorTest {
         when(mDocConfig.getValidityPeriodYears()).thenReturn(10);
 
         String template = "{\"validityInfo\": {\"validFrom\": \"${_validFrom}\",\"signed\": \"${_signed}\", \"validUntil\": \"${_validUntil}\"}, \"docType\": \"${_docType}\"}";
-        Map<String, Object> result = mDocProcessor.processTemplatedJson(template, new HashMap<>());
+        Map<String, Object> result = mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE);
 
         Map<String, Object> validityInfo = (Map<String, Object>) result.get("validityInfo");
         String validUntil = (String) ((Map<String, Object>) validityInfo.get("validUntil")).get(Constants.__CBOR_VALUE);

@@ -16,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import static org.junit.Assert.*;
@@ -86,7 +88,7 @@ public class MDocCredentialTest {
         String expectedResult = "{\"_docType\":\"org.iso.18013.5.1.mDL\",\"nameSpaces\":{}}";
 
         when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
-        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams)).thenReturn(finalMDoc);
+        when(mDocProcessor.processTemplatedJson(eq(templatedJSON), eq(templateParams), any())).thenReturn(finalMDoc);
         when(objectMapper.writeValueAsString(finalMDoc)).thenReturn(expectedResult);
 
         String result = mDocCredential.createCredential(templateParams, templateName);
@@ -95,7 +97,7 @@ public class MDocCredentialTest {
         assertEquals("Result should match expected JSON", expectedResult, result);
 
         verify(vcFormatter).format(templateParams);
-        verify(mDocProcessor).processTemplatedJson(templatedJSON, templateParams);
+        verify(mDocProcessor).processTemplatedJson(eq(templatedJSON), eq(templateParams), any());
         verify(objectMapper).writeValueAsString(finalMDoc);
     }
 
@@ -115,13 +117,13 @@ public class MDocCredentialTest {
         finalMDoc.put("nameSpaces", nameSpaces);
 
         when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
-        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams)).thenReturn(finalMDoc);
+        when(mDocProcessor.processTemplatedJson(eq(templatedJSON), eq(templateParams), any())).thenReturn(finalMDoc);
         when(objectMapper.writeValueAsString(finalMDoc)).thenReturn("{}");
 
         String result = mDocCredential.createCredential(templateParams, templateName);
 
         assertNotNull("Result should not be null", result);
-        verify(mDocProcessor).processTemplatedJson(templatedJSON, templateParams);
+        verify(mDocProcessor).processTemplatedJson(eq(templatedJSON), eq(templateParams), any());
     }
 
     @Test(expected = CertifyException.class)
@@ -141,7 +143,7 @@ public class MDocCredentialTest {
         String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\"}";
 
         when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
-        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams))
+        when(mDocProcessor.processTemplatedJson(eq(templatedJSON), eq(templateParams), any()))
                 .thenThrow(new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "literal validityInfo date"));
 
         CertifyException exception = assertThrows(CertifyException.class,
@@ -155,12 +157,32 @@ public class MDocCredentialTest {
         String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\"}";
 
         when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
-        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams))
+        when(mDocProcessor.processTemplatedJson(eq(templatedJSON), eq(templateParams), any()))
                 .thenThrow(new RuntimeException("Processing failed"));
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> mDocCredential.createCredential(templateParams, "mDocTemplate"));
         assertEquals("MDOC_CREATION_FAILED", exception.getErrorCode());
+    }
+
+    @Test
+    public void should_passTheSigningCertificateNotBefore_when_credentialIsCreated() throws Exception {
+        String templateName = "mDocTemplate";
+        Map<String, Object> templateParams = new HashMap<>();
+        String templatedJSON = "{\"docType\":\"org.iso.18013.5.1.mDL\",\"nameSpaces\":{}}";
+        ZonedDateTime certificateNotBefore = ZonedDateTime.of(2026, 7, 20, 8, 30, 15, 0, ZoneOffset.UTC);
+        Map<String, Object> finalMDoc = new HashMap<>();
+
+        when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
+        when(vcFormatter.getAppID(templateName)).thenReturn("CERTIFY_VC_SIGN_EC_R1");
+        when(vcFormatter.getRefID(templateName)).thenReturn("EC_SECP256R1_SIGN");
+        when(mDocProcessor.signingCertificateNotBefore("CERTIFY_VC_SIGN_EC_R1", "EC_SECP256R1_SIGN"))
+                .thenReturn(certificateNotBefore);
+        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams, certificateNotBefore)).thenReturn(finalMDoc);
+        when(objectMapper.writeValueAsString(finalMDoc)).thenReturn("{}");
+
+        assertEquals("{}", mDocCredential.createCredential(templateParams, templateName));
+        verify(mDocProcessor).processTemplatedJson(templatedJSON, templateParams, certificateNotBefore);
     }
 
     @Test(expected = CertifyException.class)
@@ -171,7 +193,7 @@ public class MDocCredentialTest {
         Map<String, Object> finalMDoc = new HashMap<>();
 
         when(vcFormatter.format(templateParams)).thenReturn(templatedJSON);
-        when(mDocProcessor.processTemplatedJson(templatedJSON, templateParams)).thenReturn(finalMDoc);
+        when(mDocProcessor.processTemplatedJson(eq(templatedJSON), eq(templateParams), any())).thenReturn(finalMDoc);
         when(objectMapper.writeValueAsString(finalMDoc))
                 .thenThrow(new RuntimeException("Serialization failed"));
 

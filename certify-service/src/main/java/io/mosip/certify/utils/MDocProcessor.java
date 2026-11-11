@@ -12,13 +12,19 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -69,18 +75,36 @@ public class MDocProcessor {
 
     private final CoseSignatureService coseSignatureService;
 
+    private final KeymanagerService keymanagerService;
+
     public MDocProcessor(ObjectMapper objectMapper,
                          MDocConfig mDocConfig,
-                         CoseSignatureService coseSignatureService) {
+                         CoseSignatureService coseSignatureService,
+                         KeymanagerService keymanagerService) {
         this.objectMapper = objectMapper;
         this.mDocConfig = mDocConfig;
         this.coseSignatureService = coseSignatureService;
+        this.keymanagerService = keymanagerService;
     }
 
     /**
-     * Process templated JSON to create final mDoc structure
+     * The notBefore of the certificate that signing with this key puts in the MSO header (x5chain):
+     * keymanager signs with the key's current certificate, which getCertificate returns.
      */
-    public Map<String, Object> processTemplatedJson(String templatedJSON, Map<String, Object> templateParams) {
+    public ZonedDateTime signingCertificateNotBefore(String appID, String refID) throws CertificateException {
+        String certificatePem = keymanagerService.getCertificate(appID, Optional.of(refID)).getCertificate();
+        X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
+                .generateCertificate(new ByteArrayInputStream(certificatePem.getBytes(StandardCharsets.UTF_8)));
+        return certificate.getNotBefore().toInstant().atZone(ZoneOffset.UTC);
+    }
+
+    /**
+     * Process templated JSON to create final mDoc structure. signingCertificateNotBefore is the
+     * notBefore of the certificate the MSO will be signed with; validityInfo.signed is not set
+     * before it.
+     */
+    public Map<String, Object> processTemplatedJson(String templatedJSON, Map<String, Object> templateParams,
+                                                    ZonedDateTime signingCertificateNotBefore) {
         try {
             JsonNode templateNode = objectMapper.readTree(templatedJSON);
             Map<String, Object> finalMDoc = new HashMap<>();
@@ -138,9 +162,16 @@ public class MDocProcessor {
 
             // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
             // linkability, so they are the start of the UTC day of issuance rather than the exact
-            // time. validFrom is not before the mDL issue_date (7.2.1) and validUntil is
-            // validityPeriodYears (at least 1) after validFrom, so signed <= validFrom < validUntil.
+            // time. signed is not before the signing certificate's notBefore, though: it must fall
+            // within the validity of the certificate in the MSO header (9.3.1), and on the day a
+            // signing key is generated or rotated its certificate starts after 00:00:00Z. Every mDL
+            // signed with that certificate on that day still gets the same value. validFrom is not
+            // before signed or the mDL issue_date (7.2.1) and validUntil is validityPeriodYears
+            // (at least 1) after validFrom, so signed <= validFrom < validUntil.
             ZonedDateTime signed = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS);
+            if (signingCertificateNotBefore.isAfter(signed)) {
+                signed = signingCertificateNotBefore.withZoneSameInstant(ZoneOffset.UTC);
+            }
             ZonedDateTime validFrom = signed;
             LocalDate issueDate = mdlIssueDate(nameSpaces);
             if (issueDate != null && issueDate.atStartOfDay(ZoneOffset.UTC).isAfter(validFrom)) {
