@@ -915,12 +915,105 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_reject_when_drivingPrivilegesEntryHasNoVehicleCategoryCode() {
+        // 7.2.4: each entry is a map with a text vehicle_category_code
+        Map<String, Object> blankCode = new HashMap<>();
+        blankCode.put("vehicle_category_code", " ");
+        for (Object entry : List.of("B", Map.of("issue_date", "2024-06-15"), blankCode,
+                Map.of("vehicle_category_code", 5))) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
+            assertEquals("Invalid driving_privileges entry", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_reject_when_drivingPrivilegesEntryHasAKeyOutsideDrivingPrivilege() {
+        Map<String, Object> entry = Map.of("vehicle_category_code", "B", "category", "car");
+
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
+        assertEquals("Invalid driving_privileges entry", exception.getMessage());
+    }
+
+    @Test
+    public void should_reject_when_drivingPrivilegeCodesAreNotCodeEntries() {
+        // 7.2.4: codes is [+ Code], Code = {code: tstr, ? sign: tstr, ? value: tstr}
+        List<Object> invalidCodes = List.of("78", List.of(), List.of("78"), List.of(Map.of("sign", "<=")),
+                List.of(Map.of("code", " ")), List.of(Map.of("code", 78)),
+                List.of(Map.of("code", "78", "sign", 1)), List.of(Map.of("code", "78", "value", 3500)),
+                List.of(Map.of("code", "78", "note", "automatic")));
+        for (Object codes : invalidCodes) {
+            Map<String, Object> entry = Map.of("vehicle_category_code", "B", "codes", codes);
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
+            assertEquals("codes " + codes, "Invalid driving_privileges entry", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_encodeCodes_when_drivingPrivilegeCodesAreCodeEntries() throws Exception {
+        Map<String, Object> entry = Map.of("vehicle_category_code", "C", "issue_date", "2024-06-15",
+                "codes", List.of(Map.of("code", "78"), Map.of("code", "01", "sign", "<=", "value", "3500")));
+
+        Array privileges = (Array) encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry));
+
+        co.nstant.in.cbor.model.Map encoded = (co.nstant.in.cbor.model.Map) privileges.getDataItems().get(0);
+        Array codes = (Array) encoded.get(new UnicodeString("codes"));
+        assertEquals(2, codes.getDataItems().size());
+        co.nstant.in.cbor.model.Map second = (co.nstant.in.cbor.model.Map) codes.getDataItems().get(1);
+        assertEquals(new UnicodeString("3500"), second.get(new UnicodeString("value")));
+        assertEquals(1004, encoded.get(new UnicodeString("issue_date")).getTag().getValue());
+    }
+
+    @Test
+    public void should_acceptAnEmptyArray_when_drivingPrivilegesHasNoEntries() throws Exception {
+        assertEquals(0, ((Array) encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of())).getDataItems().size());
+    }
+
+    @Test
+    public void should_reject_when_fullDateHasTheWrongTypeOrTag() {
+        List<Object> invalidBirthDates = List.of(19900825, List.of("1990-08-25"),
+                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "1990-08-25T00:00:00Z"),
+                Map.of(Constants.__CBOR_TAG, 1004, Constants.__CBOR_VALUE, "not-a-date"));
+        for (Object value : invalidBirthDates) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "birth_date", value));
+            assertEquals("Invalid mDL full-date", exception.getMessage());
+        }
+        // a tdate holds a date-time, and no other tag is allowed
+        List<Object> invalidIssueDates = List.of(
+                Map.of(Constants.__CBOR_TAG, 5, Constants.__CBOR_VALUE, "2024-06-15"),
+                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "not-a-date-time"),
+                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "2024-06-15"));
+        for (Object value : invalidIssueDates) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "issue_date", value));
+            assertEquals("Invalid mDL full-date", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_keepTheTag_when_templateTagsAValidMdlDate() throws Exception {
+        DataItem birthDate = encodedElementValue(MDL_NAMESPACE, "birth_date",
+                Map.of(Constants.__CBOR_TAG, 1004, Constants.__CBOR_VALUE, "1990-08-25"));
+        assertEquals("1990-08-25", ((UnicodeString) birthDate).getString());
+        assertEquals(1004, birthDate.getTag().getValue());
+
+        DataItem issueDate = encodedElementValue(MDL_NAMESPACE, "issue_date",
+                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "2024-06-15T10:00:00+02:00"));
+        assertEquals("2024-06-15T08:00:00Z", ((UnicodeString) issueDate).getString());
+        assertEquals(0, issueDate.getTag().getValue());
+    }
+
+    @Test
     public void should_reject_when_mdlFullDateIsNotADate() {
         // birth_date is a full-date only, so a date-time is rejected as well
         for (String text : List.of("not-a-date", "1990-08-25T00:00:00Z")) {
             Exception exception = assertThrows(IllegalArgumentException.class,
                     () -> encodedElementValue(MDL_NAMESPACE, "birth_date", text));
-            assertEquals("Invalid mDL full-date: " + text, exception.getMessage());
+            // the value is left out of the message, so a date of birth is not logged
+            assertEquals("Invalid mDL full-date", exception.getMessage());
         }
     }
 
@@ -930,7 +1023,7 @@ public class MDocProcessorTest {
 
         Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(category)));
-        assertEquals("Invalid mDL full-date: 2024-06-15T10:00:00Z", exception.getMessage());
+        assertEquals("Invalid mDL full-date", exception.getMessage());
     }
 
     @Test
@@ -949,7 +1042,7 @@ public class MDocProcessorTest {
     public void should_reject_when_issueDateIsNeitherADateNorADateTime() {
         Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> encodedElementValue(MDL_NAMESPACE, "issue_date", "15/06/2024"));
-        assertEquals("Invalid mDL full-date: 15/06/2024", exception.getMessage());
+        assertEquals("Invalid mDL full-date", exception.getMessage());
     }
 
     @Test

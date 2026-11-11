@@ -513,17 +513,19 @@ public class MDocProcessor {
             }
             List<Object> encodedPrivileges = new ArrayList<>();
             for (Object privilege : privileges) {
-                if (privilege instanceof Map<?, ?> fields) {
-                    Map<Object, Object> encodedFields = new HashMap<>(fields);
-                    for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
-                        if (encodedFields.containsKey(dateField)) {
-                            encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
-                        }
-                    }
-                    encodedPrivileges.add(encodedFields);
-                } else {
-                    encodedPrivileges.add(privilege);
+                if (!(privilege instanceof Map<?, ?> fields)
+                        || !(fields.get("vehicle_category_code") instanceof String code)
+                        || code.isBlank()) {
+                    throw new IllegalArgumentException("Invalid driving_privileges entry");
                 }
+                requireDrivingPrivilegeStructure(fields);
+                Map<Object, Object> encodedFields = new HashMap<>(fields);
+                for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
+                    if (encodedFields.containsKey(dateField)) {
+                        encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
+                    }
+                }
+                encodedPrivileges.add(encodedFields);
             }
             encoded = encodedPrivileges;
         }
@@ -535,22 +537,75 @@ public class MDocProcessor {
         return encodedElement;
     }
 
-    private static Object asFullDate(Object value) {
-        if (value instanceof String text) {
-            if (!isDateOnlyString(text)) {
-                throw new IllegalArgumentException("Invalid mDL full-date: " + text);
-            }
-            return createCBORTaggedDate(text);
+    /**
+     * ISO/IEC 18013-5, 7.2.4: a DrivingPrivilege has no keys other than vehicle_category_code,
+     * issue_date, expiry_date and codes. vehicle_category_code and the dates are checked by the caller.
+     */
+    private static void requireDrivingPrivilegeStructure(Map<?, ?> fields) {
+        if (!MdlDataElements.DRIVING_PRIVILEGE_KEYS.containsAll(fields.keySet())) {
+            throw new IllegalArgumentException("Invalid driving_privileges entry");
         }
-        return value;
+        if (fields.containsKey("codes")) {
+            requireDrivingPrivilegeCodes(fields.get("codes"));
+        }
     }
 
     /**
-     * Table 5: issue_date and expiry_date are a full-date or a tdate. A date-time becomes a tdate
-     * (tag 0) in UTC without fractions of seconds; anything else is handled as a full-date.
+     * ISO/IEC 18013-5, 7.2.4: codes is a non-empty array of Code maps, each with a text code and,
+     * optionally, a text sign and value, and no other keys.
+     */
+    private static void requireDrivingPrivilegeCodes(Object codes) {
+        if (!(codes instanceof List<?> entries) || entries.isEmpty()) {
+            throw new IllegalArgumentException("Invalid driving_privileges entry");
+        }
+        for (Object entry : entries) {
+            if (!(entry instanceof Map<?, ?> code)
+                    || !MdlDataElements.DRIVING_PRIVILEGE_CODE_KEYS.containsAll(code.keySet())
+                    || !(code.get("code") instanceof String text) || text.isBlank()
+                    || !isAbsentOrText(code, "sign") || !isAbsentOrText(code, "value")) {
+                throw new IllegalArgumentException("Invalid driving_privileges entry");
+            }
+        }
+    }
+
+    private static boolean isAbsentOrText(Map<?, ?> map, String key) {
+        return !map.containsKey(key) || map.get(key) instanceof String;
+    }
+
+    /**
+     * A Table 5 full-date: a date (YYYY-MM-DD) as text becomes tag 1004, and one the template already
+     * tagged 1004 is kept. Any other value, type or tag is rejected. The message leaves the value out
+     * so that a holder's data does not end up in the logs.
+     */
+    private static Object asFullDate(Object value) {
+        if (value instanceof String text) {
+            if (!isDateOnlyString(text)) {
+                throw new IllegalArgumentException("Invalid mDL full-date");
+            }
+            return createCBORTaggedDate(text);
+        }
+        if (tagContent(value, FULL_DATE_TAG) instanceof String text && isDateOnlyString(text)) {
+            return value;
+        }
+        throw new IllegalArgumentException("Invalid mDL full-date");
+    }
+
+    /** The content of a value the template tagged with this CBOR tag, or null. */
+    private static Object tagContent(Object value, int tag) {
+        if (value instanceof Map<?, ?> tagged && Integer.valueOf(tag).equals(tagged.get(Constants.__CBOR_TAG))) {
+            return tagged.get(Constants.__CBOR_VALUE);
+        }
+        return null;
+    }
+
+    /**
+     * Table 5: issue_date and expiry_date are a full-date or a tdate. A date-time, as text or already
+     * tagged 0 by the template, becomes a tdate (tag 0) in UTC without fractions of seconds; anything
+     * else must be a full-date.
      */
     private static Object asFullDateOrTdate(Object value) {
-        if (value instanceof String text && !isDateOnlyString(text)) {
+        Object dateTimeText = value instanceof String ? value : tagContent(value, TDATE_TAG);
+        if (dateTimeText instanceof String text && !isDateOnlyString(text)) {
             ZonedDateTime dateTime = parseDateTime(text);
             if (dateTime != null) {
                 return createCBORTaggedDateTime(dateTime.format(VALIDITY_INFO_DATETIME_FORMATTER));

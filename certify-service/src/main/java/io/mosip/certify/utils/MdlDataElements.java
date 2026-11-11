@@ -37,6 +37,12 @@ public final class MdlDataElements {
     /** The dates inside each driving_privileges entry, also full-dates (7.2.4). */
     public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
 
+    /** The keys a DrivingPrivilege may have (7.2.4); vehicle_category_code is required. */
+    public static final Set<String> DRIVING_PRIVILEGE_KEYS = Set.of("vehicle_category_code", ISSUE_DATE, EXPIRY_DATE, "codes");
+
+    /** The keys a Code in a DrivingPrivilege's codes may have (7.2.4); code is required. */
+    public static final Set<String> DRIVING_PRIVILEGE_CODE_KEYS = Set.of("code", "sign", "value");
+
     /** Elements encoded as a byte string; a template carries them as base64 text. */
     public static final Set<String> BYTE_STRING = Set.of("portrait", "signature_usual_mark");
 
