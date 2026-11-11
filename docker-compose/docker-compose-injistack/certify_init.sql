@@ -207,6 +207,71 @@ VALUES (
     NULL  -- upd_dtimes (optional)
 );
 
+-- Mobile driving licence (mock-mdl profile): an ISO/IEC 18013-5 mDL in mso_mdoc, built and signed by Certify
+-- from the driving_license_data.csv row. Same configuration as the mDoc Postman collection's "Add New Config".
+INSERT INTO certify.credential_config (
+    credential_config_key_id,
+    config_id,
+    status,
+    vc_template,
+    doctype,
+    sd_jwt_vct,
+    context,
+    credential_type,
+    credential_format,
+    did_url,
+    key_manager_app_id,
+    key_manager_ref_id,
+    signature_algo,
+    signature_crypto_suite,
+    sd_claim,
+    display,
+    display_order,
+    scope,
+    cryptographic_binding_methods_supported,
+    credential_signing_alg_values_supported,
+    proof_types_supported,
+    claims,
+    mso_mdoc_claims,
+    plugin_configurations,
+    credential_status_purpose,
+    qr_settings,
+    qr_signature_algo,
+    cr_dtimes,
+    upd_dtimes
+)
+VALUES (
+    'DrivingLicenseCredential',
+    gen_random_uuid()::VARCHAR(255),  -- generating a unique config_id
+    'active',  -- assuming an active status
+    'ewogICJuYW1lU3BhY2VzIjogewogICAgIm9yZy5pc28uMTgwMTMuNS4xIjogWwogICAgICB7ICJkaWdlc3RJRCI6IDAsICAiZWxlbWVudElkZW50aWZpZXIiOiAiZmFtaWx5X25hbWUiLCAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtmYW1pbHlOYW1lfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImdpdmVuX25hbWUiLCAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7Z2l2ZW5OYW1lfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAyLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImJpcnRoX2RhdGUiLCAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7YmlydGhEYXRlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAzLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImlzc3VlX2RhdGUiLCAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7aXNzdWVEYXRlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA0LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImV4cGlyeV9kYXRlIiwgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7ZXhwaXJ5RGF0ZX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNSwgICJlbGVtZW50SWRlbnRpZmllciI6ICJkb2N1bWVudF9udW1iZXIiLCAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2RvY3VtZW50TnVtYmVyfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA2LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImlzc3VpbmdfY291bnRyeSIsICAgICAgICAiZWxlbWVudFZhbHVlIjogIklOIiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDcsICAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWluZ19hdXRob3JpdHkiLCAgICAgICJlbGVtZW50VmFsdWUiOiAiUmVnaW9uYWwgVHJhbnNwb3J0IE9mZmljZSwgQmVuZ2FsdXJ1IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDgsICAiZWxlbWVudElkZW50aWZpZXIiOiAidW5fZGlzdGluZ3Vpc2hpbmdfc2lnbiIsICJlbGVtZW50VmFsdWUiOiAiSU5EIiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDksICAiZWxlbWVudElkZW50aWZpZXIiOiAicG9ydHJhaXQiLCAgICAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtwb3J0cmFpdH0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMTAsICJlbGVtZW50SWRlbnRpZmllciI6ICJkcml2aW5nX3ByaXZpbGVnZXMiLCAgICAgImVsZW1lbnRWYWx1ZSI6ICR7ZHJpdmluZ1ByaXZpbGVnZXN9IH0KICAgIF0KICB9LAogICJkb2NUeXBlIjogIiR7X2RvY3R5cGV9IiwKICAidmFsaWRpdHlJbmZvIjogewogICAgInZhbGlkRnJvbSI6ICIke192YWxpZEZyb219IiwKICAgICJ2YWxpZFVudGlsIjogIiR7X3ZhbGlkVW50aWx9IiwKICAgICJzaWduZWQiOiAiJHtfc2lnbmVkfSIKICB9Cn0K',  -- the mDL template (base64)
+    'org.iso.18013.5.1.mDL',  -- doctype
+    NULL,  -- vct for SD-JWT VC
+    NULL,  -- context (not used by mso_mdoc)
+    NULL,  -- credential_type (not used by mso_mdoc)
+    'mso_mdoc',  -- credential_format
+    'did:web:inji.github.io:inji-config:dev-int-inji:mock-mdl',  -- did_url
+    'CERTIFY_VC_SIGN_EC_R1',  -- key_manager_app_id
+    'EC_SECP256R1_SIGN',  -- key_manager_ref_id
+    'ES256',  -- signature_algo
+    NULL,  -- signature_crypto_suite (not used by mso_mdoc)
+    NULL,  -- sd_claim (optional)
+    '[{"logo": {"uri": "https://example.com/logo.png", "alt_text": "Driving License Logo"}, "name": "DrivingLicenseCredential", "locale": "en", "text_color": "#FFFFFF", "background_color": "#12107c", "background_image": {"uri": "https://inji.github.io/inji-config/logos/agro-vertias-logo.png"}}]'::JSONB,  -- display
+    ARRAY['org.iso.18013.5.1~family_name', 'org.iso.18013.5.1~given_name', 'org.iso.18013.5.1~birth_date', 'org.iso.18013.5.1~issue_date', 'org.iso.18013.5.1~expiry_date', 'org.iso.18013.5.1~document_number', 'org.iso.18013.5.1~issuing_country', 'org.iso.18013.5.1~issuing_authority', 'org.iso.18013.5.1~un_distinguishing_sign', 'org.iso.18013.5.1~portrait', 'org.iso.18013.5.1~driving_privileges'],  -- display_order
+    'sample_vc_mdoc',  -- scope
+    ARRAY['cose_key'],  -- cryptographic_binding_methods_supported
+    ARRAY['ES256'],  -- credential_signing_alg_values_supported
+    '{"jwt": {"proof_signing_alg_values_supported": ["RS256", "PS256", "ES256", "EdDSA"]}}'::JSONB,  -- proof_types_supported
+    NULL,  -- claims (not used by mso_mdoc)
+    '{"org.iso.18013.5.1": {"family_name": {"display": [{"name": "Family Name", "locale": "en"}]}, "given_name": {"display": [{"name": "Given Name", "locale": "en"}]}, "birth_date": {"display": [{"name": "Date of Birth", "locale": "en"}]}, "issue_date": {"display": [{"name": "Date of Issue", "locale": "en"}]}, "expiry_date": {"display": [{"name": "Date of Expiry", "locale": "en"}]}, "document_number": {"display": [{"name": "Document Number", "locale": "en"}]}, "issuing_country": {"display": [{"name": "Issuing Country", "locale": "en"}]}, "issuing_authority": {"display": [{"name": "Issuing Authority", "locale": "en"}]}, "un_distinguishing_sign": {"display": [{"name": "Distinguishing Sign", "locale": "en"}]}, "portrait": {"display": [{"name": "Portrait", "locale": "en"}]}, "driving_privileges": {"display": [{"name": "Driving Privileges", "locale": "en"}]}}}'::JSONB,  -- mso_mdoc_claims
+    '[{"mosip.certify.mock.data-provider.csv.identifier-column": "id", "mosip.certify.mock.data-provider.csv.data-columns": "id,givenName,familyName,birthDate,documentNumber,issueDate,expiryDate,portrait,drivingPrivileges", "mosip.certify.mock.data-provider.csv-registry-uri": "/home/mosip/config/driving_license_data.csv"}]'::JSONB,  -- plugin_configurations
+    NULL,  -- credential_status_purpose (optional)
+    NULL,  -- qr_settings (optional)
+    NULL,  -- qr_signature_algo (optional)
+    NOW(),  -- cr_dtimes
+    NULL  -- upd_dtimes (optional)
+);
+
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('ROOT', 2920, 1125, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_SERVICE', 1095, 60, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_PARTNER', 1095, 60, 'NA', true, 'mosipadmin', now());
