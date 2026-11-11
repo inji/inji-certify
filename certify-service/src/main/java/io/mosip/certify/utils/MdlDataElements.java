@@ -31,6 +31,9 @@ public final class MdlDataElements {
     /** Elements whose date-only value is a full-date (CBOR tag 1004). */
     public static final Set<String> FULL_DATE = Set.of("birth_date", ISSUE_DATE, EXPIRY_DATE);
 
+    /** Elements that may also be a date-time instead, a tdate (CBOR tag 0). */
+    public static final Set<String> FULL_DATE_OR_TDATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
+
     /** The dates inside each driving_privileges entry, also full-dates (7.2.4). */
     public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
 

@@ -254,6 +254,33 @@ public class MDocCredentialTest {
     }
 
     @Test
+    public void should_failProof_when_signedIsOutsideTheCertificateInTheMsoHeader() throws Exception {
+        String vcToSign = "{\"_docType\":\"org.iso.18013.5.1.mDL\"}";
+        Map<String, Object> mDocJson = createTestMDocJson();
+        Map<String, Object> saltedNamespaces = createTestSaltedNamespaces();
+        Map<String, Object> taggedNamespaces = createTestTaggedNamespaces();
+        Map<String, Object> mso = createTestMSO();
+        byte[] signedMSO = new byte[]{1, 2, 3, 4};
+
+        try (MockedStatic<MDocProcessor> mockedStatic = mockStatic(MDocProcessor.class)) {
+            when(objectMapper.readValue(vcToSign, Map.class)).thenReturn(mDocJson);
+            mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
+            mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
+                    .thenReturn(taggedNamespaces);
+            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
+            when(mDocProcessor.signMSO(mso, "appId", "refId", "ES256")).thenReturn(signedMSO);
+            mockedStatic.when(() -> MDocProcessor.requireSignedWithinCertificate(mso, signedMSO))
+                    .thenThrow(new IllegalStateException("signed is outside the certificate's validity"));
+
+            CertifyException exception = assertThrows(CertifyException.class, () -> mDocCredential.addProof(
+                    vcToSign, null, "ES256", "appId", "refId", "https://example.com/did", null));
+
+            assertEquals("MDOC_PROOF_FAILED", exception.getErrorCode());
+            mockedStatic.verify(() -> MDocProcessor.createIssuerSignedStructure(any(), any()), never());
+        }
+    }
+
+    @Test
     public void should_returnBase64UrlEncodedCredential_when_addProofCalled() throws Exception {
         String vcToSign = "{\"_docType\":\"org.iso.18013.5.1.mDL\"}";
         Map<String, Object> mDocJson = createTestMDocJson();

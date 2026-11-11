@@ -26,6 +26,7 @@ import org.junit.Test;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.runner.RunWith;
 import org.mockito.*;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.ByteArrayInputStream;
@@ -312,18 +313,109 @@ public class MDocProcessorTest {
         assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore("CERTIFY_VC_SIGN_EC_R1", "EC_SECP256R1_SIGN"));
     }
 
+    @Test
+    public void should_readTheSignersDefaultCertificate_when_applicationIdIsBlank() throws Exception {
+        // keymanager's COSE signer signs with mosip.sign.applicationid / mosip.sign.refid then
+        ReflectionTestUtils.setField(mDocProcessor, "defaultSignApplicationId", "KERNEL");
+        ReflectionTestUtils.setField(mDocProcessor, "defaultSignReferenceId", "SIGN");
+        ZonedDateTime notBefore = ZonedDateTime.of(2026, 7, 20, 8, 30, 15, 0, ZoneOffset.UTC);
+        KeyPairGenerateResponseDto certificate = new KeyPairGenerateResponseDto();
+        certificate.setCertificate(selfSignedCertificatePem(notBefore));
+        when(keymanagerService.getCertificate("KERNEL", Optional.of("SIGN"))).thenReturn(certificate);
+
+        assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore(null, null));
+        assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore(" ", ""));
+    }
+
+    @Test
+    public void should_reject_when_signedIsBeforeTheCertificateInTheMsoHeader() throws Exception {
+        // the key was rotated after signed was set: x5chain now starts at 08:30:15Z
+        byte[] signedMSO = coseSign1With(new ByteString(
+                selfSignedCertificateDer(ZonedDateTime.of(2026, 7, 20, 8, 30, 15, 0, ZoneOffset.UTC))));
+
+        Exception exception = assertThrows(IllegalStateException.class,
+                () -> MDocProcessor.requireSignedWithinCertificate(msoSignedAt("2026-07-20T00:00:00Z"), signedMSO));
+        assertEquals("validityInfo.signed 2026-07-20T00:00:00Z is outside the validity of the certificate in the MSO header",
+                exception.getMessage());
+    }
+
+    @Test
+    public void should_accept_when_signedIsWithinTheCertificateInTheMsoHeader() throws Exception {
+        byte[] der = selfSignedCertificateDer(CERT_NOT_BEFORE);
+        Array chain = new Array();
+        chain.add(new ByteString(der));
+
+        // x5chain is a single certificate or an array with the leaf first
+        MDocProcessor.requireSignedWithinCertificate(msoSignedAt("2026-07-20T00:00:00Z"), coseSign1With(new ByteString(der)));
+        MDocProcessor.requireSignedWithinCertificate(msoSignedAt("2026-07-20T00:00:00Z"), coseSign1With(chain));
+    }
+
+    @Test
+    public void should_startValidFromTheNextDay_when_issueDateIsADateTimeAfterTheIssuanceDay() {
+        // Table 5 allows a tdate issue_date; validFrom keeps day precision, so it is the next 00:00:00Z
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01T10:00:00Z"), new HashMap<>(), CERT_NOT_BEFORE)
+                .get("validityInfo");
+
+        assertEquals("2026-07-20T00:00:00Z", cborValue(validityInfo, "signed"));
+        assertEquals("2026-08-02T00:00:00Z", cborValue(validityInfo, "validFrom"));
+        assertEquals("2031-08-02T00:00:00Z", cborValue(validityInfo, "validUntil"));
+    }
+
+    @Test
+    public void should_startValidFromOnTheIssueDate_when_issueDateIsADateTimeAtMidnight() {
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01T02:00:00+02:00"), new HashMap<>(), CERT_NOT_BEFORE)
+                .get("validityInfo");
+
+        assertEquals("2026-08-01T00:00:00Z", cborValue(validityInfo, "validFrom"));
+    }
+
+    @Test
+    public void should_startValidFromTheNextDay_when_templateTagsTheIssueDateAsATdate() {
+        String template = mdlTemplateWithIssueDate("2026-08-01T10:00:00Z").replace("\"2026-08-01T10:00:00Z\"",
+                "{\"__cbor_tag\": 0, \"__cbor_value\": \"2026-08-01T10:00:00Z\"}");
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
+
+        assertEquals("2026-08-02T00:00:00Z", cborValue(validityInfo, "validFrom"));
+    }
+
     private static String selfSignedCertificatePem(ZonedDateTime notBefore) throws Exception {
+        byte[] der = selfSignedCertificateDer(notBefore);
+        return "-----BEGIN CERTIFICATE-----\n"
+                + Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(der)
+                + "\n-----END CERTIFICATE-----\n";
+    }
+
+    private static byte[] selfSignedCertificateDer(ZonedDateTime notBefore) throws Exception {
         KeyPairGenerator generator = KeyPairGenerator.getInstance("EC");
         generator.initialize(256);
         KeyPair keyPair = generator.generateKeyPair();
         X500Name subject = new X500Name("CN=Test Document Signer");
-        byte[] der = new JcaX509v3CertificateBuilder(subject, BigInteger.ONE, Date.from(notBefore.toInstant()),
+        return new JcaX509v3CertificateBuilder(subject, BigInteger.ONE, Date.from(notBefore.toInstant()),
                 Date.from(notBefore.plusYears(1).toInstant()), subject, keyPair.getPublic())
                 .build(new JcaContentSignerBuilder("SHA256withECDSA").build(keyPair.getPrivate()))
                 .getEncoded();
-        return "-----BEGIN CERTIFICATE-----\n"
-                + Base64.getMimeEncoder(64, "\n".getBytes()).encodeToString(der)
-                + "\n-----END CERTIFICATE-----\n";
+    }
+
+    /** A COSE_Sign1 whose unprotected header carries x5chain (label 33). */
+    private static byte[] coseSign1With(DataItem x5chain) throws Exception {
+        co.nstant.in.cbor.model.Map unprotectedHeader = new co.nstant.in.cbor.model.Map();
+        unprotectedHeader.put(new UnsignedInteger(33), x5chain);
+        Array cose = new Array();
+        cose.add(new ByteString(new byte[0]));
+        cose.add(unprotectedHeader);
+        cose.add(new ByteString(new byte[]{1}));
+        cose.add(new ByteString(new byte[]{2}));
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        new CborEncoder(out).encode(cose);
+        return out.toByteArray();
+    }
+
+    private static Map<String, Object> msoSignedAt(String signed) {
+        return Map.of(Constants.VALIDITY_INFO,
+                Map.of(Constants.SIGNED, Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, signed)));
     }
 
     private static String mdlTemplateWithIssueDate(String issueDate) {
@@ -811,6 +903,53 @@ public class MDocProcessorTest {
         assertEquals(1004, first.get(new UnicodeString("expiry_date")).getTag().getValue());
         assertFalse(first.get(new UnicodeString("vehicle_category_code")).hasTag());
         assertEquals(2, privileges.getDataItems().size());
+    }
+
+    @Test
+    public void should_reject_when_drivingPrivilegesIsNotAnArray() {
+        for (Object value : List.of("B", Map.of("vehicle_category_code", "B"))) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", value));
+            assertEquals("driving_privileges must be an array", exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_reject_when_mdlFullDateIsNotADate() {
+        // birth_date is a full-date only, so a date-time is rejected as well
+        for (String text : List.of("not-a-date", "1990-08-25T00:00:00Z")) {
+            Exception exception = assertThrows(IllegalArgumentException.class,
+                    () -> encodedElementValue(MDL_NAMESPACE, "birth_date", text));
+            assertEquals("Invalid mDL full-date: " + text, exception.getMessage());
+        }
+    }
+
+    @Test
+    public void should_reject_when_drivingPrivilegeDateIsNotAFullDate() {
+        Map<String, Object> category = Map.of("vehicle_category_code", "B", "issue_date", "2024-06-15T10:00:00Z");
+
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(category)));
+        assertEquals("Invalid mDL full-date: 2024-06-15T10:00:00Z", exception.getMessage());
+    }
+
+    @Test
+    public void should_encodeAsTdate_when_issueOrExpiryDateIsADateTime() throws Exception {
+        // a tdate is in UTC without fractions of seconds
+        DataItem issueDate = encodedElementValue(MDL_NAMESPACE, "issue_date", "2024-06-15T10:00:00+02:00");
+        assertEquals("2024-06-15T08:00:00Z", ((UnicodeString) issueDate).getString());
+        assertEquals(0, issueDate.getTag().getValue());
+
+        DataItem expiryDate = encodedElementValue(MDL_NAMESPACE, "expiry_date", "2044-06-14T23:59:59.500Z");
+        assertEquals("2044-06-14T23:59:59Z", ((UnicodeString) expiryDate).getString());
+        assertEquals(0, expiryDate.getTag().getValue());
+    }
+
+    @Test
+    public void should_reject_when_issueDateIsNeitherADateNorADateTime() {
+        Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> encodedElementValue(MDL_NAMESPACE, "issue_date", "15/06/2024"));
+        assertEquals("Invalid mDL full-date: 15/06/2024", exception.getMessage());
     }
 
     @Test

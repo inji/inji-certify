@@ -25,7 +25,9 @@ import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -37,6 +39,7 @@ import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -62,6 +65,9 @@ public class MDocProcessor {
     /** The CBOR tag of a full-date (RFC 8943). */
     private static final int FULL_DATE_TAG = 1004;
 
+    /** The CBOR tag of a tdate, an RFC 3339 date-time (RFC 8949). */
+    private static final int TDATE_TAG = 0;
+
     /**
      * A whole value that is a Velocity reference such as ${familyName}, $familyName, $!{familyName} or
      * ${holder.familyName}. Velocity renders a reference to a missing value as this text.
@@ -76,6 +82,13 @@ public class MDocProcessor {
     private final CoseSignatureService coseSignatureService;
 
     private final KeymanagerService keymanagerService;
+
+    /** The keys keymanager's COSE signer signs with when the request has no application ID. */
+    @Value("${mosip.sign.applicationid:KERNEL}")
+    private String defaultSignApplicationId;
+
+    @Value("${mosip.sign.refid:SIGN}")
+    private String defaultSignReferenceId;
 
     public MDocProcessor(ObjectMapper objectMapper,
                          MDocConfig mDocConfig,
@@ -92,6 +105,12 @@ public class MDocProcessor {
      * keymanager signs with the key's current certificate, which getCertificate returns.
      */
     public ZonedDateTime signingCertificateNotBefore(String appID, String refID) throws CertificateException {
+        // The COSE signer uses its configured keys when the application ID is blank, so the lookup
+        // does the same to read the certificate it will sign with.
+        if (appID == null || appID.isBlank()) {
+            appID = defaultSignApplicationId;
+            refID = defaultSignReferenceId;
+        }
         String certificatePem = keymanagerService.getCertificate(appID, Optional.of(refID)).getCertificate();
         X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
                 .generateCertificate(new ByteArrayInputStream(certificatePem.getBytes(StandardCharsets.UTF_8)));
@@ -173,9 +192,9 @@ public class MDocProcessor {
                 signed = signingCertificateNotBefore.withZoneSameInstant(ZoneOffset.UTC);
             }
             ZonedDateTime validFrom = signed;
-            LocalDate issueDate = mdlIssueDate(nameSpaces);
-            if (issueDate != null && issueDate.atStartOfDay(ZoneOffset.UTC).isAfter(validFrom)) {
-                validFrom = issueDate.atStartOfDay(ZoneOffset.UTC);
+            ZonedDateTime issueDateStart = mdlIssueDateStart(nameSpaces);
+            if (issueDateStart != null && issueDateStart.isAfter(validFrom)) {
+                validFrom = issueDateStart;
             }
             ZonedDateTime validUntil = validFrom.plusYears(mDocConfig.getValidityPeriodYears());
 
@@ -196,10 +215,12 @@ public class MDocProcessor {
     }
 
     /**
-     * The issue_date of the mDL namespace when it is a date (YYYY-MM-DD), whether plain or already
-     * tagged as a full-date by the template, otherwise null.
+     * The earliest validFrom the mDL issue_date allows (7.2.1), or null when there is none. Table 5
+     * allows a full-date or a tdate: a full-date gives the start of that day, and a date-time gives
+     * the next 00:00:00Z at or after it, so validFrom keeps the precision of a day. The value may be
+     * plain or already tagged by the template (1004 or 0).
      */
-    private static LocalDate mdlIssueDate(Map<String, Object> nameSpaces) {
+    private static ZonedDateTime mdlIssueDateStart(Map<String, Object> nameSpaces) {
         Object items = nameSpaces.get(MdlDataElements.NAMESPACE);
         if (!(items instanceof List<?> elements)) {
             return null;
@@ -207,17 +228,50 @@ public class MDocProcessor {
         for (Object element : elements) {
             if (element instanceof Map<?, ?> item
                     && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))) {
-                Object value = item.get(Constants.ELEMENT_VALUE);
-                if (value instanceof Map<?, ?> tagged
-                        && Integer.valueOf(FULL_DATE_TAG).equals(tagged.get(Constants.__CBOR_TAG))) {
-                    value = tagged.get(Constants.__CBOR_VALUE);
-                }
-                if (value instanceof String text && isDateOnlyString(text)) {
-                    return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE);
-                }
+                return startOfDayAtOrAfter(untagDate(item.get(Constants.ELEMENT_VALUE)));
             }
         }
         return null;
+    }
+
+    /** The value inside a full-date (1004) or tdate (0) tag the template wrote, or the value itself. */
+    private static Object untagDate(Object value) {
+        if (value instanceof Map<?, ?> tagged) {
+            Object tag = tagged.get(Constants.__CBOR_TAG);
+            if (Integer.valueOf(FULL_DATE_TAG).equals(tag) || Integer.valueOf(TDATE_TAG).equals(tag)) {
+                return tagged.get(Constants.__CBOR_VALUE);
+            }
+        }
+        return value;
+    }
+
+    /**
+     * The start of a full-date, or the next 00:00:00Z at or after a date-time, or null when the
+     * value is neither.
+     */
+    private static ZonedDateTime startOfDayAtOrAfter(Object value) {
+        if (!(value instanceof String text)) {
+            return null;
+        }
+        if (isDateOnlyString(text)) {
+            return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay(ZoneOffset.UTC);
+        }
+        ZonedDateTime dateTime = parseDateTime(text);
+        if (dateTime == null) {
+            return null;
+        }
+        ZonedDateTime startOfDay = dateTime.truncatedTo(ChronoUnit.DAYS);
+        return startOfDay.equals(dateTime) ? startOfDay : startOfDay.plusDays(1);
+    }
+
+    /** An RFC 3339 date-time in UTC without fractions of seconds, or null when the text is not one. */
+    private static ZonedDateTime parseDateTime(String text) {
+        try {
+            return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    .atZoneSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
     }
 
     /**
@@ -443,7 +497,9 @@ public class MDocProcessor {
         String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
         Object value = element.get(Constants.ELEMENT_VALUE);
         Object encoded = value;
-        if (MdlDataElements.FULL_DATE.contains(identifier)) {
+        if (MdlDataElements.FULL_DATE_OR_TDATE.contains(identifier)) {
+            encoded = asFullDateOrTdate(value);
+        } else if (MdlDataElements.FULL_DATE.contains(identifier)) {
             encoded = asFullDate(value);
         } else if (MdlDataElements.isByteString(identifier)) {
             // Values come from the templated JSON, so a byte string can only arrive as base64 text.
@@ -451,7 +507,10 @@ public class MDocProcessor {
                 throw new IllegalArgumentException(identifier + " must be base64 encoded");
             }
             encoded = decodeBase64(identifier, text);
-        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier) && value instanceof List<?> privileges) {
+        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
+            if (!(value instanceof List<?> privileges)) {
+                throw new IllegalArgumentException("driving_privileges must be an array");
+            }
             List<Object> encodedPrivileges = new ArrayList<>();
             for (Object privilege : privileges) {
                 if (privilege instanceof Map<?, ?> fields) {
@@ -477,7 +536,27 @@ public class MDocProcessor {
     }
 
     private static Object asFullDate(Object value) {
-        return value instanceof String text && isDateOnlyString(text) ? createCBORTaggedDate(text) : value;
+        if (value instanceof String text) {
+            if (!isDateOnlyString(text)) {
+                throw new IllegalArgumentException("Invalid mDL full-date: " + text);
+            }
+            return createCBORTaggedDate(text);
+        }
+        return value;
+    }
+
+    /**
+     * Table 5: issue_date and expiry_date are a full-date or a tdate. A date-time becomes a tdate
+     * (tag 0) in UTC without fractions of seconds; anything else is handled as a full-date.
+     */
+    private static Object asFullDateOrTdate(Object value) {
+        if (value instanceof String text && !isDateOnlyString(text)) {
+            ZonedDateTime dateTime = parseDateTime(text);
+            if (dateTime != null) {
+                return createCBORTaggedDateTime(dateTime.format(VALIDITY_INFO_DATETIME_FORMATTER));
+            }
+        }
+        return asFullDate(value);
     }
 
     /**
@@ -795,6 +874,38 @@ public class MDocProcessor {
             data[i / 2] = (byte) ((Character.digit(hexStr.charAt(i), 16) << 4) + Character.digit(hexStr.charAt(i + 1), 16));
         }
         return data;
+    }
+
+    /**
+     * ISO/IEC 18013-5, 9.3.1: validityInfo.signed must fall within the validity of the certificate in
+     * the MSO header. signed is set from the certificate read before signing, so if the key is rotated
+     * in between, x5chain can carry a certificate that starts after signed; such an mDL is refused
+     * rather than issued.
+     */
+    public static void requireSignedWithinCertificate(Map<String, Object> mso, byte[] signedMSO) throws Exception {
+        Object signedValue = untagDate(((Map<?, ?>) mso.get(Constants.VALIDITY_INFO)).get(Constants.SIGNED));
+        Instant signed = Instant.parse((String) signedValue);
+        X509Certificate certificate = x5chainLeaf(signedMSO);
+        if (signed.isBefore(certificate.getNotBefore().toInstant())
+                || signed.isAfter(certificate.getNotAfter().toInstant())) {
+            throw new IllegalStateException("validityInfo.signed " + signedValue
+                    + " is outside the validity of the certificate in the MSO header");
+        }
+    }
+
+    /** The leaf certificate of the x5chain (label 33) in the unprotected header of a COSE_Sign1. */
+    private static X509Certificate x5chainLeaf(byte[] signedMSO) throws Exception {
+        DataItem cose = new CborDecoder(new ByteArrayInputStream(signedMSO)).decode().get(0);
+        DataItem unprotectedHeader = ((Array) cose).getDataItems().get(1);
+        DataItem x5chain = ((co.nstant.in.cbor.model.Map) unprotectedHeader).get(new UnsignedInteger(33));
+        if (x5chain instanceof Array chain) {
+            x5chain = chain.getDataItems().get(0);
+        }
+        if (!(x5chain instanceof ByteString certificate)) {
+            throw new IllegalStateException("The MSO header has no x5chain certificate");
+        }
+        return (X509Certificate) CertificateFactory.getInstance("X.509")
+                .generateCertificate(new ByteArrayInputStream(certificate.getBytes()));
     }
 
     /**
