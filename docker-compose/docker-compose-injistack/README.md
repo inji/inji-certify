@@ -108,7 +108,7 @@ public interface VCIssuancePlugin {
 - Place the resultant JAR in `loader_path/certify/`
 - uncomment volume mount for certify-service in `docker-compose.yaml`
 
-Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockVCIssuancePlugin.java).
 
 ## Certificate Setup
 
