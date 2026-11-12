@@ -1,6 +1,8 @@
 package io.mosip.certify.validators.credentialconfigvalidators;
 
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialConfigurationDTO;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MdlDataElements;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MsoMdocCredentialConfigValidatorTest {
@@ -309,6 +312,25 @@ class MsoMdocCredentialConfigValidatorTest {
         // "${...}" inside a string, including one with an escaped quote, is already JSON and is left as it is
         String template = STANDARD_MDL_TEMPLATE.replace("\"Regional Transport Office, Bengaluru\"",
                 "\"Office \\\" ${office} $!{x}\"");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reject_when_anMdlElementIdentifierIsDeclaredTwice() {
+        String template = STANDARD_MDL_TEMPLATE.replace("\"elementIdentifier\": \"given_name\"", "\"elementIdentifier\": \"family_name\"");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertEquals("Duplicate mDL element identifier: family_name.", exception.getMessage());
+    }
+
+    @Test
+    void should_accept_when_anIdentifierIsRepeatedInAnotherNamespace() {
+        // only the mDL namespace is checked; the same identifier may appear once in each namespace
+        String template = STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {",
+                "\"nameSpaces\": {\n    \"org.example.custom\": [{ \"elementIdentifier\": \"family_name\", \"elementValue\": \"x\" }],");
 
         assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
     }

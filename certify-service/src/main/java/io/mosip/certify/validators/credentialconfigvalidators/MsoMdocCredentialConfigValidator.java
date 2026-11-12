@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialConfigurationDTO;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MdlDataElements;
@@ -44,6 +46,7 @@ public class MsoMdocCredentialConfigValidator {
      * reference such as ${element.id}) is not checked.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
+     * @throws CertifyException when the template declares an mDL element identifier twice
      */
     public static List<String> findMissingMdlElements(CredentialConfigurationDTO credentialConfig, String pluginMode) {
         if (!"DataProvider".equals(pluginMode) || !MdlDataElements.DOC_TYPE.equals(credentialConfig.getDocType())) {
@@ -82,7 +85,11 @@ public class MsoMdocCredentialConfigValidator {
             if (identifier.contains("$")) {
                 return Optional.empty();
             }
-            declared.add(identifier);
+            if (!declared.add(identifier)) {
+                // A verifier asking for this element could not tell which of the two values is the mDL's.
+                throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
+                        "Duplicate mDL element identifier: " + identifier + ".");
+            }
         }
         return Optional.of(declared);
     }
