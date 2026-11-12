@@ -10,6 +10,7 @@ import io.mosip.certify.core.dto.CredentialConfigurationDTO;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
+import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.utils.MdlDataElements;
 
 import java.nio.charset.StandardCharsets;
@@ -103,6 +104,39 @@ public class MsoMdocCredentialConfigValidator {
                 throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
                         "validityInfo." + field.getKey() + " must be \"" + field.getValue()
                                 + "\"; Certify sets the validityInfo dates at issuance.");
+            }
+        }
+    }
+
+    /**
+     * An mso_mdoc template may tag a value itself, as {"__cbor_tag": 1004, "__cbor_value": "2024-06-15"},
+     * which is how a full-date or tdate is written outside the mDL namespace. In DataProvider mode, wherever
+     * it appears, the tag must be the integer 1004 (full-date, RFC 8943) or 0 (tdate, RFC 8949); Certify
+     * encodes no other. The tagged value is checked at issuance, once rendered. A template that can't be
+     * parsed before Velocity renders it is not checked here; issuance checks it.
+     *
+     * @throws CertifyException naming where the first other tag is
+     */
+    public static void requireSupportedCborTags(CredentialConfigurationDTO credentialConfig, String pluginMode) {
+        if ("DataProvider".equals(pluginMode)) {
+            parseTemplate(decodeTemplate(credentialConfig.getVcTemplate()))
+                    .ifPresent(template -> requireSupportedCborTags(template, ""));
+        }
+    }
+
+    private static void requireSupportedCborTags(JsonNode node, String path) {
+        if (node.isObject()) {
+            JsonNode tag = node.get(Constants.__CBOR_TAG);
+            if (tag != null && !(tag.isInt() && (tag.intValue() == MDocProcessor.FULL_DATE_TAG || tag.intValue() == MDocProcessor.TDATE_TAG))) {
+                throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
+                        "The __cbor_tag at " + (path.isEmpty() ? "the top of the template" : path)
+                                + " must be the integer 0 (tdate) or 1004 (full-date).");
+            }
+            node.fields().forEachRemaining(field ->
+                    requireSupportedCborTags(field.getValue(), path.isEmpty() ? field.getKey() : path + "." + field.getKey()));
+        } else if (node.isArray()) {
+            for (int i = 0; i < node.size(); i++) {
+                requireSupportedCborTags(node.get(i), path + "[" + i + "]");
             }
         }
     }

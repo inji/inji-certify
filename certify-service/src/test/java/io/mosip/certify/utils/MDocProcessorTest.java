@@ -594,6 +594,66 @@ public class MDocProcessorTest {
         assertTrue("Should contain custom namespace", nameSpaces.containsKey("org.mosip.farmer"));
     }
 
+    @Test
+    public void should_reject_when_anExplicitCborTagIsNot0Or1004() {
+        // "1004" is a string, 1004.0 a float, 24 a tag Certify doesn't encode
+        for (String tag : List.of("\"1004\"", "1004.0", "24")) {
+            String template = customDocumentWith("{\"__cbor_tag\": " + tag + ", \"__cbor_value\": \"2024-06-15\"}");
+
+            CertifyException exception = assertThrows(tag, CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+            assertEquals(tag, ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+            assertTrue(tag, exception.getMessage().endsWith("member_since: __cbor_tag must be the integer 0 (tdate) or 1004 (full-date)"));
+        }
+    }
+
+    @Test
+    public void should_reject_when_aFullDateTagWrapsSomethingElse() {
+        for (String content : List.of("\"not-a-date\"", "\"2024-06-15T10:00:00Z\"", "20240615")) {
+            String template = customDocumentWith("{\"__cbor_tag\": 1004, \"__cbor_value\": " + content + "}");
+
+            CertifyException exception = assertThrows(content, CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+            assertTrue(content, exception.getMessage().endsWith("member_since: a value tagged 1004 must be a full-date (YYYY-MM-DD)"));
+        }
+    }
+
+    @Test
+    public void should_reject_when_aTdateTagWrapsSomethingElse() {
+        for (String content : List.of("\"yesterday\"", "\"2024-06-15\"", "0")) {
+            String template = customDocumentWith("{\"__cbor_tag\": 0, \"__cbor_value\": " + content + "}");
+
+            CertifyException exception = assertThrows(content, CertifyException.class,
+                    () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+            assertTrue(content, exception.getMessage().endsWith("member_since: a value tagged 0 must be an RFC 3339 date-time"));
+        }
+    }
+
+    @Test
+    public void should_reject_when_aNestedExplicitTagIsInvalid() {
+        String template = customDocumentWith("{\"history\": [{\"since\": {\"__cbor_tag\": 1004, \"__cbor_value\": \"soon\"}}]}");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        assertTrue(exception.getMessage(), exception.getMessage().endsWith("a value tagged 1004 must be a full-date (YYYY-MM-DD)"));
+    }
+
+    @Test
+    public void should_accept_when_explicitTagsWrapAFullDateAndADateTime() {
+        for (String tagged : List.of("{\"__cbor_tag\": 1004, \"__cbor_value\": \"2024-06-15\"}",
+                "{\"__cbor_tag\": 0, \"__cbor_value\": \"2024-06-15T10:00:00Z\"}")) {
+            assertNotNull(tagged, mDocProcessor.processTemplatedJson(customDocumentWith(tagged), new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    /** A non-mDL template whose member_since element has the given JSON value. */
+    private static String customDocumentWith(String memberSince) {
+        return "{\"docType\": \"org.example.custom.document\"," + getValidityInfoTemplate() + ","
+                + "\"nameSpaces\": {\"org.example.custom\": ["
+                + "  {\"elementIdentifier\": \"member_since\", \"elementValue\": " + memberSince + "}"
+                + "]}}";
+    }
+
     // ==================== Random Salt Generation Tests ====================
 
     @Test

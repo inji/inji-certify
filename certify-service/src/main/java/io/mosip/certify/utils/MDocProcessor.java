@@ -62,10 +62,10 @@ public class MDocProcessor {
     public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
 
     /** The CBOR tag of a full-date (RFC 8943). */
-    private static final int FULL_DATE_TAG = 1004;
+    public static final int FULL_DATE_TAG = 1004;
 
     /** The CBOR tag of a tdate, an RFC 3339 date-time (RFC 8949). */
-    private static final int TDATE_TAG = 0;
+    public static final int TDATE_TAG = 0;
 
     private final ObjectMapper objectMapper;
 
@@ -298,6 +298,7 @@ public class MDocProcessor {
             } else {
                 // Convert complex objects (like driving_privileges)
                 Object value = objectMapper.convertValue(elementValue, Object.class);
+                requireSupportedCborTags((String) itemMap.get(Constants.ELEMENT_IDENTIFIER), value);
                 itemMap.put(Constants.ELEMENT_VALUE, value);
             }
 
@@ -305,6 +306,37 @@ public class MDocProcessor {
         }
 
         return processedItems;
+    }
+
+    /**
+     * A value the template tagged itself, {"__cbor_tag": tag, "__cbor_value": value}, in any namespace and at
+     * any depth: the tag must be the integer 1004 with a full-date (YYYY-MM-DD) or 0 with an RFC 3339
+     * date-time, the values the mDL date elements accept. The configuration check rejects any other tag,
+     * but not a template it can't parse before rendering, nor the value a tag wraps. The message names the
+     * element but not its value, so that a holder's data does not end up in the logs.
+     */
+    private static void requireSupportedCborTags(String identifier, Object value) {
+        if (value instanceof Map<?, ?> map) {
+            if (map.containsKey(Constants.__CBOR_TAG)) {
+                Object tag = map.get(Constants.__CBOR_TAG);
+                Object content = map.get(Constants.__CBOR_VALUE);
+                if (Integer.valueOf(FULL_DATE_TAG).equals(tag)) {
+                    if (!(content instanceof String text && isDateOnlyString(text))) {
+                        throw new IllegalArgumentException(identifier + ": a value tagged 1004 must be a full-date (YYYY-MM-DD)");
+                    }
+                } else if (Integer.valueOf(TDATE_TAG).equals(tag)) {
+                    if (!(content instanceof String text && parseDateTime(text) != null)) {
+                        throw new IllegalArgumentException(identifier + ": a value tagged 0 must be an RFC 3339 date-time");
+                    }
+                } else {
+                    throw new IllegalArgumentException(identifier + ": __cbor_tag must be the integer 0 (tdate) or 1004 (full-date)");
+                }
+                return;
+            }
+            map.values().forEach(child -> requireSupportedCborTags(identifier, child));
+        } else if (value instanceof List<?> list) {
+            list.forEach(child -> requireSupportedCborTags(identifier, child));
+        }
     }
 
     /**

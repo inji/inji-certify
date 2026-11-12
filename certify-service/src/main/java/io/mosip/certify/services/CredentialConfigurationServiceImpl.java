@@ -142,6 +142,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                                     + String.join(", ", missingMdlElements) + ".");
                 }
                 MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(credentialConfig, pluginMode);
+                MsoMdocCredentialConfigValidator.requireSupportedCborTags(credentialConfig, pluginMode);
                 break;
             case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig, pluginMode)) {

@@ -409,6 +409,45 @@ class MsoMdocCredentialConfigValidatorTest {
         MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "VCIssuance");
     }
 
+    // ---------- explicit CBOR tags ----------
+
+    @Test
+    void should_reject_when_aCborTagIsNotTheInteger0Or1004() {
+        // a string, a float, a tag Certify doesn't encode, and a reference that is only known once rendered
+        for (String tag : List.of("\"1004\"", "1004.0", "24", "${tag}")) {
+            CredentialConfigurationDTO config = mdlConfig(base64(withCustomElement(
+                    "{\"__cbor_tag\": " + tag + ", \"__cbor_value\": \"2024-06-15\"}")));
+
+            CertifyException exception = assertThrows(CertifyException.class,
+                    () -> MsoMdocCredentialConfigValidator.requireSupportedCborTags(config, "DataProvider"), tag);
+            assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode(), tag);
+            assertEquals("The __cbor_tag at nameSpaces.org.example.custom[0].elementValue must be the integer 0 (tdate) or 1004 (full-date).",
+                    exception.getMessage(), tag);
+        }
+    }
+
+    @Test
+    void should_accept_when_cborTagsAre0Or1004() {
+        // the tagged value is only known once rendered, so it is checked at issuance
+        for (String tagged : List.of("{\"__cbor_tag\": 1004, \"__cbor_value\": \"${since}\"}",
+                "{\"history\": [{\"__cbor_tag\": 0, \"__cbor_value\": \"2024-06-15T10:00:00Z\"}]}")) {
+            MsoMdocCredentialConfigValidator.requireSupportedCborTags(mdlConfig(base64(withCustomElement(tagged))), "DataProvider");
+        }
+    }
+
+    @Test
+    void should_notCheckCborTags_when_pluginModeIsVcIssuance() {
+        String template = withCustomElement("{\"__cbor_tag\": 24, \"__cbor_value\": \"x\"}");
+
+        MsoMdocCredentialConfigValidator.requireSupportedCborTags(mdlConfig(base64(template)), "VCIssuance");
+    }
+
+    /** The standard mDL template with an org.example.custom namespace whose one element has the given value. */
+    private static String withCustomElement(String elementValue) {
+        return STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {", "\"nameSpaces\": {\n    \"org.example.custom\": "
+                + "[{ \"elementIdentifier\": \"member_since\", \"elementValue\": " + elementValue + " }],");
+    }
+
     /** The mDL template of the docs and the mock mDoc Postman collection. */
     private static final String STANDARD_MDL_TEMPLATE = """
             {

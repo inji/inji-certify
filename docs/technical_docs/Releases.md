@@ -114,5 +114,5 @@ Certify now builds the Mobile Security Object and encodes the mDL data elements 
 **Action for existing `mso_mdoc` templates:**
 - Replace any date written in `validityInfo` with its placeholder. A stored template is checked on its next Update.
 - Give `portrait`, `signature_usual_mark` and `biometric_template_xx` as base64 text.
-- Outside the `org.iso.18013.5.1` namespace, tag a value that must be a full-date explicitly: `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`. It was tagged automatically before.
+- Outside the `org.iso.18013.5.1` namespace, tag a value that must be a full-date explicitly: `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`. It was tagged automatically before. An explicit `__cbor_tag` must be the integer `1004` (full-date) or `0` (tdate): Add and Update reject any other with `mdoc_template_processing_failed`, and issuance fails with the same error when a value tagged `1004` is not a date (YYYY-MM-DD) or one tagged `0` is not an RFC 3339 date-time.
 - Make sure an mDL template declares all 11 mandatory elements. A stored template is checked on its next Update.
