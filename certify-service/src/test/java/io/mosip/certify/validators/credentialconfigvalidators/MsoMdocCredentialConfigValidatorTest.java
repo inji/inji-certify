@@ -267,6 +267,83 @@ class MsoMdocCredentialConfigValidatorTest {
                 MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(null), "DataProvider"));
     }
 
+    @Test
+    void should_reportNothing_when_standardMdlTemplateHasEveryMandatoryElement() {
+        // driving_privileges is the unquoted reference ${drivingPrivileges}, so the template is JSON only once rendered
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(STANDARD_MDL_TEMPLATE)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reportTheElement_when_itIsRemovedFromTheStandardMdlTemplate() {
+        for (String element : MdlDataElements.MANDATORY) {
+            String template = STANDARD_MDL_TEMPLATE.lines()
+                    .filter(line -> !line.contains("\"elementIdentifier\": \"" + element + "\""))
+                    .collect(Collectors.joining("\n"))
+                    // the element removed may have been the last one, which had no trailing comma
+                    .replace("},\n    ]", "}\n    ]");
+
+            assertEquals(List.of(element),
+                    MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"), element);
+        }
+    }
+
+    @Test
+    void should_reportTheMissingElements_when_aValueIsAQuietUnquotedReference() {
+        String template = STANDARD_MDL_TEMPLATE.replace("${drivingPrivileges}", "$!{drivingPrivileges}")
+                .replace("\"elementIdentifier\": \"portrait\"", "\"elementIdentifier\": \"photo\"");
+
+        assertEquals(List.of("portrait"),
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_anUnquotedReferenceIsAnMdlIdentifier() {
+        // quoted, the reference still contains $, so the identifier is only known once rendered
+        String template = STANDARD_MDL_TEMPLATE.replace("\"elementIdentifier\": \"portrait\"", "\"elementIdentifier\": ${portraitId}");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_keepQuotedText_when_aStringContainsAReference() {
+        // "${...}" inside a string, including one with an escaped quote, is already JSON and is left as it is
+        String template = STANDARD_MDL_TEMPLATE.replace("\"Regional Transport Office, Bengaluru\"",
+                "\"Office \\\" ${office} $!{x}\"");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    /** The mDL template of the docs and the mock mDoc Postman collection. */
+    private static final String STANDARD_MDL_TEMPLATE = """
+            {
+              "nameSpaces": {
+                "org.iso.18013.5.1": [
+                  { "digestID": 0,  "elementIdentifier": "family_name",            "elementValue": "${familyName}" },
+                  { "digestID": 1,  "elementIdentifier": "given_name",             "elementValue": "${givenName}" },
+                  { "digestID": 2,  "elementIdentifier": "birth_date",             "elementValue": "${birthDate}" },
+                  { "digestID": 3,  "elementIdentifier": "issue_date",             "elementValue": "${issueDate}" },
+                  { "digestID": 4,  "elementIdentifier": "expiry_date",            "elementValue": "${expiryDate}" },
+                  { "digestID": 5,  "elementIdentifier": "document_number",        "elementValue": "${documentNumber}" },
+                  { "digestID": 6,  "elementIdentifier": "issuing_country",        "elementValue": "IN" },
+                  { "digestID": 7,  "elementIdentifier": "issuing_authority",      "elementValue": "Regional Transport Office, Bengaluru" },
+                  { "digestID": 8,  "elementIdentifier": "un_distinguishing_sign", "elementValue": "IND" },
+                  { "digestID": 9,  "elementIdentifier": "portrait",               "elementValue": "${portrait}" },
+                  { "digestID": 10, "elementIdentifier": "driving_privileges",     "elementValue": ${drivingPrivileges} }
+                ]
+              },
+              "docType": "${_doctype}",
+              "validityInfo": {
+                "validFrom": "${_validFrom}",
+                "validUntil": "${_validUntil}",
+                "signed": "${_signed}"
+              }
+            }
+            """;
+
+    private static String base64(String template) {
+        return Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8));
+    }
+
     private static CredentialConfigurationDTO mdlConfig(String vcTemplate) {
         CredentialConfigurationDTO config = new CredentialConfigurationDTO();
         config.setDocType(MdlDataElements.DOC_TYPE);

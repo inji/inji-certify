@@ -38,10 +38,10 @@ public class MsoMdocCredentialConfigValidator {
     /**
      * An mDL template must declare every ISO/IEC 18013-5 Table 5 mandatory element in the
      * org.iso.18013.5.1 namespace. Checked in DataProvider mode only, where Certify builds the mDL
-     * from the template; in VCIssuance mode the plugin builds it. A template whose mDL identifiers
-     * are only known once Velocity renders it (a directive such as #foreach, or an identifier or
-     * namespace that is a reference such as ${element.id}) can't be checked here; MDocProcessor
-     * checks the rendered mDL at issuance instead.
+     * from the template; in VCIssuance mode the plugin builds it. A value may be an unquoted reference
+     * such as "elementValue": ${drivingPrivileges}. A template whose mDL identifiers are only known once
+     * Velocity renders it (a directive such as #foreach, or an identifier or namespace that is a
+     * reference such as ${element.id}) is not checked.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
      */
@@ -64,7 +64,7 @@ public class MsoMdocCredentialConfigValidator {
         }
         JsonNode namespaces;
         try {
-            namespaces = OBJECT_MAPPER.readTree(template).path(Constants.NAMESPACES);
+            namespaces = OBJECT_MAPPER.readTree(quoteUnquotedReferences(template)).path(Constants.NAMESPACES);
         } catch (JsonProcessingException e) {
             // Velocity directives make the template invalid JSON until it is rendered.
             return Optional.empty();
@@ -85,6 +85,58 @@ public class MsoMdocCredentialConfigValidator {
             declared.add(identifier);
         }
         return Optional.of(declared);
+    }
+
+    /**
+     * The template with each Velocity reference written outside a JSON string (${...} or $!{...}, such as
+     * "elementValue": ${drivingPrivileges}) quoted as the text of that reference, so that a template whose
+     * values are rendered as JSON parses. Only the identifiers are checked, never the values, and a
+     * quoted reference still contains $, so an identifier or namespace written as one is still found.
+     */
+    private static String quoteUnquotedReferences(String template) {
+        StringBuilder quoted = new StringBuilder(template.length());
+        boolean inString = false;
+        for (int i = 0; i < template.length(); i++) {
+            char c = template.charAt(i);
+            if (inString) {
+                quoted.append(c);
+                if (c == '\\' && i + 1 < template.length()) {
+                    quoted.append(template.charAt(++i));
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else if (c == '"') {
+                inString = true;
+                quoted.append(c);
+            } else if (c == '$' && (template.startsWith("{", i + 1) || template.startsWith("!{", i + 1))) {
+                int end = endOfReference(template, template.indexOf('{', i));
+                if (end < 0) {
+                    // An unterminated reference is left as it is, and the template does not parse.
+                    quoted.append(template, i, template.length());
+                    break;
+                }
+                String reference = template.substring(i, end + 1);
+                quoted.append('"').append(reference.replace("\\", "\\\\").replace("\"", "\\\"")).append('"');
+                i = end;
+            } else {
+                quoted.append(c);
+            }
+        }
+        return quoted.toString();
+    }
+
+    /** The index of the } that closes the { at open, or -1 when there is none. */
+    private static int endOfReference(String template, int open) {
+        int depth = 0;
+        for (int i = open; i < template.length(); i++) {
+            char c = template.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}' && --depth == 0) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** The template as stored is base64; raw JSON is accepted as well. */
