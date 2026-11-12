@@ -177,6 +177,8 @@ public class CredentialConfigMetadataAttributesTest {
         dto.setDocType("org.iso.18013.5.1.mDL");
         dto.setSignatureAlgo("ES256");
         dto.setSignatureCryptoSuite("EcdsaSecp256r1Signature2019");
+        dto.setKeyManagerAppId("TEST_EC");
+        dto.setKeyManagerRefId("TEST_EC-REF");
         return dto;
     }
 
@@ -629,6 +631,57 @@ public class CredentialConfigMetadataAttributesTest {
 
         Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdoc_when_keyManagerAppIdOrRefIdIsMissingOrNotAMappedPair() {
+        // Certify signs the MSO with this key, so it must be a key-alias-mapper pair for signatureAlgo (ES256)
+        List<Consumer<CredentialConfigurationDTO>> wrongKeys = List.of(
+                dto -> dto.setKeyManagerAppId(null),
+                dto -> dto.setKeyManagerRefId(null),
+                dto -> { dto.setKeyManagerAppId(null); dto.setKeyManagerRefId(null); },
+                dto -> dto.setKeyManagerAppId("TEST2019"),
+                dto -> dto.setKeyManagerRefId("TEST2019-REF"));
+        for (Consumer<CredentialConfigurationDTO> wrongKey : wrongKeys) {
+            CredentialConfigurationDTO request = msoMdocRequest();
+            wrongKey.accept(request);
+
+            CertifyException exception = Assert.assertThrows(CertifyException.class,
+                    () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+            Assert.assertEquals(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, exception.getErrorCode());
+        }
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocUpdate_when_mergedConfigHasNoKeyManagerAppId() {
+        // An update is validated as it would be saved, so a stored config without a key is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setKeyManagerAppId(null);
+        merged.setKeyManagerRefId(null);
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_notRequireAKey_when_msoMdocIsAddedInVcIssuanceMode() {
+        // the VCIssuance plugin signs the mdoc, not Certify
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "VCIssuance");
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setKeyManagerAppId(null);
+        request.setKeyManagerRefId(null);
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        when(credentialConfigRepository.save(any(CredentialConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Assert.assertNotNull(credentialConfigurationService.addCredentialConfiguration(request));
     }
 
     /** MDL_TEMPLATE with validityInfo.validFrom written as the given value instead of its placeholder. */

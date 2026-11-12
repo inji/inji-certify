@@ -26,7 +26,6 @@ import org.junit.Test;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.runner.RunWith;
 import org.mockito.*;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.ByteArrayInputStream;
@@ -311,20 +310,6 @@ public class MDocProcessorTest {
                 .thenReturn(certificate);
 
         assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore("CERTIFY_VC_SIGN_EC_R1", "EC_SECP256R1_SIGN"));
-    }
-
-    @Test
-    public void should_readTheSignersDefaultCertificate_when_applicationIdIsBlank() throws Exception {
-        // keymanager's COSE signer signs with mosip.sign.applicationid / mosip.sign.refid then
-        ReflectionTestUtils.setField(mDocProcessor, "defaultSignApplicationId", "KERNEL");
-        ReflectionTestUtils.setField(mDocProcessor, "defaultSignReferenceId", "SIGN");
-        ZonedDateTime notBefore = ZonedDateTime.of(2026, 7, 20, 8, 30, 15, 0, ZoneOffset.UTC);
-        KeyPairGenerateResponseDto certificate = new KeyPairGenerateResponseDto();
-        certificate.setCertificate(selfSignedCertificatePem(notBefore));
-        when(keymanagerService.getCertificate("KERNEL", Optional.of("SIGN"))).thenReturn(certificate);
-
-        assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore(null, null));
-        assertEquals(notBefore, mDocProcessor.signingCertificateNotBefore(" ", ""));
     }
 
     @Test

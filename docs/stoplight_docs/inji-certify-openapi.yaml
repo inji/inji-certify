@@ -1594,10 +1594,10 @@ components:
           description: URL of the Decentralized Identifier (DID) document. Mandatory for DataProvider plugin mode.
         keyManagerAppId:
           type: string
-          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode.
+          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode. For ldp_vc, and for mso_mdoc in DataProvider plugin mode, keyManagerAppId and keyManagerRefId must be one of the pairs mosip.certify.signature-algo.key-alias-mapper gives for signatureAlgo, otherwise rejected with key_chooser_app_ref_not_found; an mso_mdoc configuration has no default key.
         keyManagerRefId:
           type: string
-          description: Reference ID for the key manager. Applicable for DataProvider plugin mode.
+          description: Reference ID for the key manager. Applicable for DataProvider plugin mode. Checked together with keyManagerAppId; it may be empty when the key-alias-mapper pair's is.
         signatureAlgo:
           description: |-
             In DataProvider plugin mode, mandatory on Add and Update for every credential format; a missing or empty value is rejected, and nothing is filled in from the deployment configuration. It is the algorithm the credential is signed with, and the signing key is selected by it through mosip.certify.signature-algo.key-alias-mapper.

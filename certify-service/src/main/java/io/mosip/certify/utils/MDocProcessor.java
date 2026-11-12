@@ -38,7 +38,6 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -75,13 +74,6 @@ public class MDocProcessor {
 
     private final KeymanagerService keymanagerService;
 
-    /** The keys keymanager's COSE signer signs with when the request has no application ID. */
-    @Value("${mosip.sign.applicationid:KERNEL}")
-    private String defaultSignApplicationId;
-
-    @Value("${mosip.sign.refid:SIGN}")
-    private String defaultSignReferenceId;
-
     public MDocProcessor(ObjectMapper objectMapper,
                          MDocConfig mDocConfig,
                          CoseSignatureService coseSignatureService,
@@ -97,13 +89,9 @@ public class MDocProcessor {
      * keymanager signs with the key's current certificate, which getCertificate returns.
      */
     public ZonedDateTime signingCertificateNotBefore(String appID, String refID) throws CertificateException {
-        // The COSE signer uses its configured keys when the application ID is blank, so the lookup
-        // does the same to read the certificate it will sign with.
-        if (appID == null || appID.isBlank()) {
-            appID = defaultSignApplicationId;
-            refID = defaultSignReferenceId;
-        }
-        String certificatePem = keymanagerService.getCertificate(appID, Optional.of(refID)).getCertificate();
+        // An mso_mdoc configuration names its key (keyManagerAppId / keyManagerRefId), so there is no default
+        // key to fall back to; the key-alias-mapper allows an empty refId.
+        String certificatePem = keymanagerService.getCertificate(appID, Optional.ofNullable(refID)).getCertificate();
         X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
                 .generateCertificate(new ByteArrayInputStream(certificatePem.getBytes(StandardCharsets.UTF_8)));
         return certificate.getNotBefore().toInstant().atZone(ZoneOffset.UTC);

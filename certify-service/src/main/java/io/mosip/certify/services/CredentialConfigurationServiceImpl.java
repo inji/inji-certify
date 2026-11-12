@@ -143,6 +143,13 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 }
                 MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(credentialConfig, pluginMode);
                 MsoMdocCredentialConfigValidator.requireSupportedCborTags(credentialConfig, pluginMode);
+                // Certify signs the MSO with this key in DataProvider mode. signatureCryptoSuite plays no part
+                // in an mdoc (see MsoMdocCredentialConfigValidator.isValidCheck), so only the key is checked.
+                // An algorithm with no key at all is reported by CredentialConfigMetadataValidator instead.
+                if (pluginMode.equals("DataProvider")
+                        && !keyAliasMapper.getOrDefault(credentialConfig.getSignatureAlgo(), List.of()).isEmpty()) {
+                    validateKeyAliasMapperKey(credentialConfig);
+                }
                 break;
             case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig, pluginMode)) {
@@ -211,6 +218,14 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             }
         }
 
+        validateKeyAliasMapperKey(credentialConfig);
+    }
+
+    /**
+     * keyManagerAppId and keyManagerRefId must be one of the pairs mosip.certify.signature-algo.key-alias-mapper
+     * gives for signatureAlgo: the key Certify signs the credential with.
+     */
+    private void validateKeyAliasMapperKey(CredentialConfigurationDTO credentialConfig) {
         List<List<String>> keyAliasList = keyAliasMapper.get(credentialConfig.getSignatureAlgo());
         if (keyAliasList == null || keyAliasList.isEmpty()) {
             throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND, "No key chooser configuration found for the signature crypto suite: " + credentialConfig.getSignatureCryptoSuite());

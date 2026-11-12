@@ -464,6 +464,8 @@ public class CredentialConfigurationSupportedServiceImplTest {
         mdocDTO.setVcTemplate("mdoc_template");
         mdocDTO.setSignatureCryptoSuite("EcdsaSecp256r1Signature2019"); // optional, not stored
         mdocDTO.setSignatureAlgo("ES256"); // required
+        mdocDTO.setKeyManagerAppId("TEST_EC"); // required: the key-alias-mapper pair for ES256
+        mdocDTO.setKeyManagerRefId("TEST_EC-REF");
         // An mdoc is signed with signatureAlgo, so the deployment must hold a key for it.
         ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper",
                 Map.of("ES256", List.of(List.of("TEST_EC", "TEST_EC-REF"))));
