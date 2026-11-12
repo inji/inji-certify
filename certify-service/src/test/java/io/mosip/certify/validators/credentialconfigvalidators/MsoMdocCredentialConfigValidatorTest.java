@@ -335,6 +335,80 @@ class MsoMdocCredentialConfigValidatorTest {
         assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
     }
 
+    // ---------- validityInfo placeholders (ISO/IEC 18013-5, 9.1.2.4) ----------
+
+    @Test
+    void should_accept_when_standardMdlTemplateLeavesTheValidityInfoPlaceholders() {
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(STANDARD_MDL_TEMPLATE)), "DataProvider");
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoFieldIsWrittenAsADate() {
+        for (String field : List.of("signed", "validFrom", "validUntil")) {
+            String template = STANDARD_MDL_TEMPLATE.replace("\"${_" + field + "}\"", "\"2026-07-20T00:00:00Z\"");
+
+            CertifyException exception = assertThrows(CertifyException.class, () ->
+                    MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"), field);
+            assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode(), field);
+            assertEquals("validityInfo." + field + " must be \"${_" + field + "}\"; Certify sets the validityInfo dates at issuance.",
+                    exception.getMessage(), field);
+        }
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoFieldIsMissing() {
+        String template = STANDARD_MDL_TEMPLATE.replace("\"validUntil\": \"${_validUntil}\",", "");
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertTrue(exception.getMessage().startsWith("validityInfo.validUntil must be"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_templateHasNoValidityInfo() {
+        String template = "{\"docType\": \"${_doctype}\", \"nameSpaces\": {}}";
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertTrue(exception.getMessage().startsWith("An mso_mdoc template must have validityInfo"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoPlaceholderIsUnquoted() {
+        // Certify fills the placeholder in after Velocity, so an unquoted ${_signed} stays invalid JSON at issuance
+        String template = STANDARD_MDL_TEMPLATE.replace("\"${_signed}\"", "${_signed}");
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertTrue(exception.getMessage().startsWith("validityInfo.signed must be"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_aTemplateForAnotherDocTypeWritesAValidityInfoDate() {
+        CredentialConfigurationDTO config = mdlConfig(base64(STANDARD_MDL_TEMPLATE.replace("\"${_validFrom}\"", "\"2026-07-20T00:00:00Z\"")));
+        config.setDocType("org.example.custom.document");
+
+        assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(config, "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckValidityInfo_when_templateUsesVelocityDirectives() {
+        // not JSON until rendered; issuance checks the placeholders instead
+        String template = "#if($x){\"validityInfo\": {\"signed\": \"2026-07-20T00:00:00Z\"}}#end";
+
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider");
+    }
+
+    @Test
+    void should_notCheckValidityInfo_when_pluginModeIsVcIssuance() {
+        // the VCIssuance plugin builds and signs the mdoc, not this template
+        String template = STANDARD_MDL_TEMPLATE.replace("\"${_signed}\"", "\"2026-07-20T00:00:00Z\"");
+
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "VCIssuance");
+    }
+
     /** The mDL template of the docs and the mock mDoc Postman collection. */
     private static final String STANDARD_MDL_TEMPLATE = """
             {

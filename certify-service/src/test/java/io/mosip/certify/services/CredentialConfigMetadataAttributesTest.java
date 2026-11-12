@@ -156,9 +156,13 @@ public class CredentialConfigMetadataAttributesTest {
         return entity;
     }
 
-    /** An mDL template declaring every mandatory element, so the template check passes. */
+    /** The validityInfo an mso_mdoc template must leave for Certify to fill in. */
+    private static final String VALIDITY_INFO_PLACEHOLDERS =
+            "\"validityInfo\": {\"signed\": \"${_signed}\", \"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\"}";
+
+    /** An mDL template declaring every mandatory element and the validityInfo placeholders, so the template checks pass. */
     private static final String MDL_TEMPLATE = java.util.Base64.getEncoder().encodeToString(
-            ("{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
+            ("{" + VALIDITY_INFO_PLACEHOLDERS + ", \"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
                     + MdlDataElements.MANDATORY.stream()
                     .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
                     .collect(java.util.stream.Collectors.joining(", "))
@@ -596,6 +600,42 @@ public class CredentialConfigMetadataAttributesTest {
         Assert.assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
         Assert.assertTrue(exception.getMessage().contains("portrait"));
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdoc_when_templateWritesAValidityInfoDate() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setVcTemplate(withValidFrom("2026-07-20T00:00:00Z"));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().startsWith("validityInfo.validFrom must be"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocUpdate_when_mergedTemplateWritesAValidityInfoDate() {
+        // An update is validated as it would be saved, so a stored template with a literal date is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setVcTemplate(withValidFrom("2026-07-20T00:00:00Z"));
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    /** MDL_TEMPLATE with validityInfo.validFrom written as the given value instead of its placeholder. */
+    private static String withValidFrom(String validFrom) {
+        String template = new String(java.util.Base64.getDecoder().decode(MDL_TEMPLATE), java.nio.charset.StandardCharsets.UTF_8);
+        return java.util.Base64.getEncoder().encodeToString(template.replace("${_validFrom}", validFrom)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     @Test

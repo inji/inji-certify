@@ -141,6 +141,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                             "An mDL template must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
                                     + String.join(", ", missingMdlElements) + ".");
                 }
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(credentialConfig, pluginMode);
                 break;
             case VCFormats.DC_SD_JWT:
                 if (!SdJwtCredentialConfigValidator.isValidCheck(credentialConfig, pluginMode)) {
