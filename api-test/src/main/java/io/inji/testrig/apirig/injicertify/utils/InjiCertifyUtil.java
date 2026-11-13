@@ -761,8 +761,11 @@ public static void configureOtp() {
 	private static final String OIDC_JWK_DPOP = "oidcJWKDpop";
 	private static final String DPOP_WALLET_KEY = "dpopWalletJwk";
 	private static final String DPOP_CASE_MARKER = "_DPoP_";
+	private static final String REUSE_PROOF_SECOND_USE_MARKER = "_Second_Use_";
 	private static RSAKey dpopWalletKey;
 	private static final Map<String, String> oidcJwkStore = new HashMap<>();
+	private static final Map<String, String> reusedProofJwtStore = new HashMap<>();
+	private static final Map<String, Date> reusedProofJwtExpiryStore = new HashMap<>();
 	
 	protected static boolean triggerESignetKeyGen1 = true;
 	protected static boolean triggerESignetKeyGen13 = true;
@@ -1149,6 +1152,61 @@ public static void configureOtp() {
 
 			jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_ES256$",
 					signES256JWT(clientId, accessToken, cNonce, testCaseName, tempUrl));
+		}
+
+		if (jsonString.contains("$PROOF_JWT_ES256_REUSED$")) {
+			JSONObject request = new JSONObject(jsonString);
+			String clientId = "";
+			String accessToken = "";
+			String cNonce = "";
+			String tempUrl = "";
+			if (request.has("client_id")) {
+				clientId = request.getString("client_id");
+				request.remove("client_id");
+			}
+			if (request.has("idpAccessToken")) {
+				accessToken = request.getString("idpAccessToken");
+			}
+			if (request.has("c_nonce")) {
+				cNonce = request.getString("c_nonce");
+				request.remove("c_nonce");
+			}
+			jsonString = request.toString();
+			tempUrl = getBaseURL(testCaseName, InjiCertifyConfigManager.getInjiCertifyBaseUrl());
+
+			// The proof has to be byte-identical across the test cases that replay it, so it is
+			// signed once per token/nonce/audience and served from the cache afterwards.
+			String reuseKey = String.join("|", clientId, accessToken, cNonce, tempUrl);
+			String reusedProofJWT = reusedProofJwtStore.get(reuseKey);
+			if (reusedProofJWT == null || reusedProofJWT.isBlank()) {
+				// A "second use" case must replay a proof that an earlier "first use" case already
+				// signed and cached. If that cache entry is missing here (e.g. the first-use case
+				// was skipped), silently signing a fresh proof would let this case pass without ever
+				// exercising proof reuse, so it is failed explicitly instead.
+				if (testCaseName.contains(REUSE_PROOF_SECOND_USE_MARKER)) {
+					throw new IllegalStateException("No cached reused proof_jwt found for test case '" + testCaseName
+							+ "'; the corresponding first-use test case must run (and cache its proof) before this one.");
+				}
+				reusedProofJWT = signES256JWT(clientId, accessToken, cNonce, testCaseName, tempUrl);
+				reusedProofJwtStore.put(reuseKey, reusedProofJWT);
+				try {
+					Date expiryTime = SignedJWT.parse(reusedProofJWT).getJWTClaimsSet().getExpirationTime();
+					reusedProofJwtExpiryStore.put(reuseKey, expiryTime);
+				} catch (java.text.ParseException e) {
+					logger.error("Exception while parsing expiry of cached reused proof_jwt: " + e.getMessage());
+				}
+			} else {
+				// Fail fast and explicitly here instead of letting the issuer's generic
+				// invalid_proof response surface, so an expired cached proof is never mistaken
+				// for a genuine proof-reuse failure.
+				Date expiryTime = reusedProofJwtExpiryStore.get(reuseKey);
+				if (expiryTime != null && new Date().after(expiryTime)) {
+					throw new IllegalStateException("Cached reused proof_jwt for test case '" + testCaseName
+							+ "' has expired (exp=" + expiryTime + "); re-run the reuse scenario before the proof expires.");
+				}
+			}
+
+			jsonString = replaceKeywordValue(jsonString, "$PROOF_JWT_ES256_REUSED$", reusedProofJWT);
 		}
 		
 		if (jsonString.contains("$PROOF_JWT_ES256K$")) {
