@@ -475,6 +475,9 @@ public class VCIssuanceServiceImplTest {
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
 
         assertEquals(VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION, ex.getErrorCode());
+        assertEquals("The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id.",
+                ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
     }
 
     @Test
