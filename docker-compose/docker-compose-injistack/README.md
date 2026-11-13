@@ -133,7 +133,7 @@ Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digita
 | Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
 | Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
 
-- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and run `docker compose up -d --no-deps certify` to recreate the service.
+- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and run `docker-compose up -d --no-deps certify` to recreate the service.
 
 - If the database was created before this seed changed, restart the stack with a fresh database to load the new configuration. This removes the Compose volumes and their data:
 
@@ -299,7 +299,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 4. Postman throws an error `pmlib is not defined`
     - Follow the steps defined in the pre-requsites above.
 
-5. The container images for Certify aren't published for the `linux/arm64` architecture yet, if your container runtime returns an error, you can try to run the engine in an emulated mode. This applies to Apple Silicon Mac users running Docker, they'd have to set `export DOCKER_DEFAULT_PLATFORM=linux/amd64` before doing `docker compose up -d`.
+5. The container images for Certify aren't published for the `linux/arm64` architecture yet, if your container runtime returns an error, you can try to run the engine in an emulated mode. This applies to Apple Silicon Mac users running Docker, they'd have to set `export DOCKER_DEFAULT_PLATFORM=linux/amd64` before doing `docker-compose up -d`.
 
 6. Apple users using Colima may have issues with the permission of the `data/` directory.
     - Set the owner, group and the permission mode-bits & the file's group & user ownership correctly so that the `local.p12` file can be created inside the data directory.
@@ -308,11 +308,11 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
     - Check if the DID is updated & resolvable. The Multibase hash changes on each restart, please update it whenever a newer instance of Certify is setup.
     - Check if the hosted DID matches with the [DID endpoint](http://localhost:8090/v1/certify/.well-known/did.json)
 
-8. While running `docker compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
+8. While running `docker-compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
    ```bash
    docker network create mosip_network
    ```
-   Then re-run `docker compose up -d`.
+   Then re-run `docker-compose up -d`.
 
 
 # Explanation of NGINX Directives
