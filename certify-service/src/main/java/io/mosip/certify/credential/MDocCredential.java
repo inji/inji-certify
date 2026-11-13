@@ -1,5 +1,6 @@
 package io.mosip.certify.credential;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 
 import io.mosip.certify.core.constants.Constants;
@@ -45,9 +46,16 @@ public class MDocCredential extends Credential {
     public String createCredential(Map<String, Object> updatedTemplateParams, String templateName) {
         try {
             String templatedJSON = super.createCredential(updatedTemplateParams, templateName);
-            Map<String, Object> finalMDoc = mDocProcessor.processTemplatedJson(templatedJSON, updatedTemplateParams);
+            // addProof signs with this key, so the MSO's signed timestamp must not precede its certificate.
+            ZonedDateTime certificateNotBefore = mDocProcessor.signingCertificateNotBefore(
+                    vcFormatter.getAppID(templateName), vcFormatter.getRefID(templateName));
+            Map<String, Object> finalMDoc = mDocProcessor.processTemplatedJson(
+                    templatedJSON, updatedTemplateParams, certificateNotBefore);
             return objectMapper.writeValueAsString(finalMDoc);
 
+        } catch (CertifyException e) {
+            // Keep the specific error code, e.g. mdoc_template_processing_failed for a rejected template.
+            throw e;
         } catch (Exception e) {
             log.error("Error creating mDoc credential: {}", e.getMessage(), e);
             throw new CertifyException("MDOC_CREATION_FAILED", "Failed to create mDoc credential", e);
@@ -63,11 +71,13 @@ public class MDocCredential extends Credential {
             Map<String, Object> mDocJson = objectMapper.readValue(vcToSign, Map.class);
             Map<String, Object> saltedNamespaces = MDocProcessor.addRandomSalts(mDocJson);
             Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
-            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(saltedNamespaces, namespaceDigests);
+            Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(
+                    saltedNamespaces, namespaceDigests, mDocProcessor.getDigestAlgorithm());
 
             // Create Mobile Security Object (MSO)
             Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);
             byte[] signedMSO = mDocProcessor.signMSO(mso, appID, refID, signAlgorithm);
+            MDocProcessor.requireSignedWithinCertificate(mso, signedMSO);
             Map<String, Object> issuerSigned = MDocProcessor.createIssuerSignedStructure(taggedNamespaces, signedMSO);
 
             // Encode to CBOR, then to Base64

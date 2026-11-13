@@ -12,23 +12,34 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
 import io.mosip.certify.core.exception.CertifyException;
+import io.mosip.kernel.keymanagerservice.service.KeymanagerService;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -48,24 +59,71 @@ public class MDocProcessor {
     private static final DateTimeFormatter VALIDITY_INFO_DATETIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
+    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
+    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
+
+    /** The CBOR tag of a full-date (RFC 8943). */
+    private static final int FULL_DATE_TAG = 1004;
+
+    /** The CBOR tag of a tdate, an RFC 3339 date-time (RFC 8949). */
+    private static final int TDATE_TAG = 0;
+
+    /**
+     * A whole value that is a Velocity reference such as ${familyName}, $familyName, $!{familyName} or
+     * ${holder.familyName}. Velocity renders a reference to a missing value as this text.
+     */
+    private static final Pattern UNRENDERED_REFERENCE =
+            Pattern.compile("\\$!?(\\{[A-Za-z][\\w.-]*}|[A-Za-z][\\w.-]*)");
+
     private final ObjectMapper objectMapper;
 
     private final MDocConfig mDocConfig;
 
     private final CoseSignatureService coseSignatureService;
 
+    private final KeymanagerService keymanagerService;
+
+    /** The keys keymanager's COSE signer signs with when the request has no application ID. */
+    @Value("${mosip.sign.applicationid:KERNEL}")
+    private String defaultSignApplicationId;
+
+    @Value("${mosip.sign.refid:SIGN}")
+    private String defaultSignReferenceId;
+
     public MDocProcessor(ObjectMapper objectMapper,
                          MDocConfig mDocConfig,
-                         CoseSignatureService coseSignatureService) {
+                         CoseSignatureService coseSignatureService,
+                         KeymanagerService keymanagerService) {
         this.objectMapper = objectMapper;
         this.mDocConfig = mDocConfig;
         this.coseSignatureService = coseSignatureService;
+        this.keymanagerService = keymanagerService;
     }
 
     /**
-     * Process templated JSON to create final mDoc structure
+     * The notBefore of the certificate that signing with this key puts in the MSO header (x5chain):
+     * keymanager signs with the key's current certificate, which getCertificate returns.
      */
-    public Map<String, Object> processTemplatedJson(String templatedJSON, Map<String, Object> templateParams) {
+    public ZonedDateTime signingCertificateNotBefore(String appID, String refID) throws CertificateException {
+        // The COSE signer uses its configured keys when the application ID is blank, so the lookup
+        // does the same to read the certificate it will sign with.
+        if (appID == null || appID.isBlank()) {
+            appID = defaultSignApplicationId;
+            refID = defaultSignReferenceId;
+        }
+        String certificatePem = keymanagerService.getCertificate(appID, Optional.of(refID)).getCertificate();
+        X509Certificate certificate = (X509Certificate) CertificateFactory.getInstance("X.509")
+                .generateCertificate(new ByteArrayInputStream(certificatePem.getBytes(StandardCharsets.UTF_8)));
+        return certificate.getNotBefore().toInstant().atZone(ZoneOffset.UTC);
+    }
+
+    /**
+     * Process templated JSON to create final mDoc structure. signingCertificateNotBefore is the
+     * notBefore of the certificate the MSO will be signed with; validityInfo.signed is not set
+     * before it.
+     */
+    public Map<String, Object> processTemplatedJson(String templatedJSON, Map<String, Object> templateParams,
+                                                    ZonedDateTime signingCertificateNotBefore) {
         try {
             JsonNode templateNode = objectMapper.readTree(templatedJSON);
             Map<String, Object> finalMDoc = new HashMap<>();
@@ -90,22 +148,11 @@ public class MDocProcessor {
                     "Missing validUntil"
             );
 
-            ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-            String formattedCurrentTime = currentTime.format(VALIDITY_INFO_DATETIME_FORMATTER);
-
-            if ("${_validFrom}".equals(validFromValue)) {
-                validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_signed}".equals(signedValue)) {
-                validity.put(Constants.SIGNED, createCBORTaggedDateTime(formattedCurrentTime));
-            }
-            if ("${_validUntil}".equals(validUntilValue)) {
-                String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
-                        .format(VALIDITY_INFO_DATETIME_FORMATTER);
-                validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
-            }
-
-            finalMDoc.put(Constants.VALIDITY_INFO, validity);
+            // ISO/IEC 18013-5, 9.1.2.4: Certify sets the validityInfo dates, so the template must leave
+            // each one as its placeholder.
+            requirePlaceholder(Constants.SIGNED, signedValue, "${_signed}");
+            requirePlaceholder(VCDM2Constants.VALID_FROM, validFromValue, "${_validFrom}");
+            requirePlaceholder(VCDM2Constants.VALID_UNTIL, validUntilValue, "${_validUntil}");
 
             if (templateParams.containsKey(Constants.DID_URL)) {
                 finalMDoc.put("_issuer", templateParams.get(Constants.DID_URL));
@@ -128,12 +175,194 @@ public class MDocProcessor {
                 });
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
+            if (MdlDataElements.DOC_TYPE.equals(docType)) {
+                requireMandatoryMdlElements(nameSpaces);
+            }
+
+            // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
+            // linkability, so they are the start of the UTC day of issuance rather than the exact
+            // time. signed is not before the signing certificate's notBefore, though: it must fall
+            // within the validity of the certificate in the MSO header (9.3.1), and on the day a
+            // signing key is generated or rotated its certificate starts after 00:00:00Z. Every mDL
+            // signed with that certificate on that day still gets the same value. validFrom is not
+            // before signed or the mDL issue_date (7.2.1) and validUntil is validityPeriodYears
+            // (at least 1) after validFrom, so signed <= validFrom < validUntil.
+            ZonedDateTime signed = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS);
+            if (signingCertificateNotBefore.isAfter(signed)) {
+                signed = signingCertificateNotBefore.withZoneSameInstant(ZoneOffset.UTC);
+            }
+            ZonedDateTime validFrom = signed;
+            ZonedDateTime issueDateStart = mdlIssueDateStart(nameSpaces);
+            if (issueDateStart != null && issueDateStart.isAfter(validFrom)) {
+                validFrom = issueDateStart;
+            }
+            ZonedDateTime validUntil = validFrom.plusYears(mDocConfig.getValidityPeriodYears());
+
+            validity.put(Constants.SIGNED, createCBORTaggedDateTime(signed.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(validFrom.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+            validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(validUntil.format(VALIDITY_INFO_DATETIME_FORMATTER)));
+
+            finalMDoc.put(Constants.VALIDITY_INFO, validity);
 
             return finalMDoc;
 
+        } catch (CertifyException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error processing templated JSON: {}", e.getMessage(), e);
             throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, "Error processing templated JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * The earliest validFrom the mDL issue_date allows (7.2.1), or null when there is none. Table 5
+     * allows a full-date or a tdate: a full-date gives the start of that day, and a date-time gives
+     * the next 00:00:00Z at or after it, so validFrom keeps the precision of a day. The value may be
+     * plain or already tagged by the template (1004 or 0).
+     */
+    private static ZonedDateTime mdlIssueDateStart(Map<String, Object> nameSpaces) {
+        Object items = nameSpaces.get(MdlDataElements.NAMESPACE);
+        if (!(items instanceof List<?> elements)) {
+            return null;
+        }
+        for (Object element : elements) {
+            if (element instanceof Map<?, ?> item
+                    && MdlDataElements.ISSUE_DATE.equals(item.get(Constants.ELEMENT_IDENTIFIER))) {
+                return startOfDayAtOrAfter(untagDate(item.get(Constants.ELEMENT_VALUE)));
+            }
+        }
+        return null;
+    }
+
+    /** The value inside a full-date (1004) or tdate (0) tag the template wrote, or the value itself. */
+    private static Object untagDate(Object value) {
+        if (value instanceof Map<?, ?> tagged) {
+            Object tag = tagged.get(Constants.__CBOR_TAG);
+            if (Integer.valueOf(FULL_DATE_TAG).equals(tag) || Integer.valueOf(TDATE_TAG).equals(tag)) {
+                return tagged.get(Constants.__CBOR_VALUE);
+            }
+        }
+        return value;
+    }
+
+    /**
+     * The start of a full-date, or the next 00:00:00Z at or after a date-time, or null when the
+     * value is neither.
+     */
+    private static ZonedDateTime startOfDayAtOrAfter(Object value) {
+        if (!(value instanceof String text)) {
+            return null;
+        }
+        if (isDateOnlyString(text)) {
+            return LocalDate.parse(text, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay(ZoneOffset.UTC);
+        }
+        ZonedDateTime dateTime = parseDateTime(text);
+        if (dateTime == null) {
+            return null;
+        }
+        ZonedDateTime startOfDay = dateTime.truncatedTo(ChronoUnit.DAYS);
+        return startOfDay.equals(dateTime) ? startOfDay : startOfDay.plusDays(1);
+    }
+
+    /** An RFC 3339 date-time in UTC without fractions of seconds, or null when the text is not one. */
+    private static ZonedDateTime parseDateTime(String text) {
+        try {
+            return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    .atZoneSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    /**
+     * ISO/IEC 18013-5, 7.2.1 (Table 5): the rendered mDL must carry every mandatory element in the
+     * org.iso.18013.5.1 namespace. The configuration check can't see a template whose elements are
+     * only known after Velocity renders it, so the rendered mDL is checked here before it is signed.
+     * A mandatory element must also have a value: not null, not empty, and not a template reference that
+     * Velocity left as it is because the data provider did not supply it; the same goes for every value
+     * inside a structured one such as driving_privileges.
+     */
+    private static void requireMandatoryMdlElements(Map<String, Object> nameSpaces) {
+        Set<String> identifiers = new HashSet<>();
+        if (nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements) {
+            for (Object element : elements) {
+                if (element instanceof Map<?, ?> item && item.get(Constants.ELEMENT_IDENTIFIER) instanceof String identifier) {
+                    if (MdlDataElements.MANDATORY.contains(identifier)) {
+                        Object elementValue = item.get(Constants.ELEMENT_VALUE);
+                        if (elementValue == null) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has a null value: " + identifier + ".");
+                        }
+                        if (elementValue instanceof String s && UNRENDERED_REFERENCE.matcher(s).matches()) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has no value: " + identifier + " is the template reference "
+                                            + s + ", which the data provider did not supply.");
+                        }
+                        if (elementValue instanceof String s && s.isBlank()) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has an empty value: " + identifier + ".");
+                        }
+                        String nestedMissing = findMissingNestedValue(elementValue);
+                        if (nestedMissing != null) {
+                            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                                    "An mDL mandatory element has no value: " + identifier + " contains " + nestedMissing + ".");
+                        }
+                    }
+                    if (!identifiers.add(identifier)) {
+                        throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
+                                "Duplicate mDL element identifier: " + identifier + ".");
+                    }
+                }
+            }
+        }
+        List<String> missing = MdlDataElements.missingMandatory(identifiers);
+        if (!missing.isEmpty()) {
+            log.error("The rendered mDL lacks the ISO/IEC 18013-5 mandatory elements {}", missing);
+            throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                    "An mDL must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
+                            + String.join(", ", missing) + ".");
+        }
+    }
+
+    /**
+     * Describes the first value missing inside a structured element such as driving_privileges: a null,
+     * an empty string, or a template reference Velocity left as it is. Null when every value is there,
+     * and for a value that isn't a map or a list (the caller checks those itself).
+     */
+    private static String findMissingNestedValue(Object value) {
+        Collection<?> children;
+        if (value instanceof Map<?, ?> map) {
+            children = map.values();
+        } else if (value instanceof List<?> list) {
+            children = list;
+        } else {
+            return null;
+        }
+        for (Object child : children) {
+            if (child == null) {
+                return "a null value";
+            }
+            if (child instanceof String text) {
+                if (UNRENDERED_REFERENCE.matcher(text).matches()) {
+                    return "the template reference " + text + ", which the data provider did not supply";
+                }
+                if (text.isBlank()) {
+                    return "an empty value";
+                }
+            }
+            String missing = findMissingNestedValue(child);
+            if (missing != null) {
+                return missing;
+            }
+        }
+        return null;
+    }
+
+    /** A validityInfo date written out in the template is refused: only its placeholder is accepted. */
+    private static void requirePlaceholder(String name, String value, String placeholder) {
+        if (!placeholder.equals(value)) {
+            throw new IllegalArgumentException("validityInfo." + name + " must be " + placeholder
+                    + "; Certify sets the validityInfo dates at issuance");
         }
     }
 
@@ -142,11 +371,19 @@ public class MDocProcessor {
      */
     private List<Map<String, Object>> processNamespaceItems(JsonNode namespaceItems) {
         List<Map<String, Object>> processedItems = new ArrayList<>();
+        // ISO/IEC 18013-5, 9.1.2.4: digestIDs are unique within a namespace and are drawn at random,
+        // so the same element cannot be recognised by its ID across credentials. Any digestID in the
+        // template is therefore ignored.
+        Set<Integer> usedDigestIds = new HashSet<>();
 
         // First, add all items from template
         for (JsonNode item : namespaceItems) {
             Map<String, Object> itemMap = new HashMap<>();
-            itemMap.put(Constants.DIGEST_ID, item.get(Constants.DIGEST_ID).asInt());
+            int digestId;
+            do {
+                digestId = SECURE_RANDOM.nextInt(Integer.MAX_VALUE);
+            } while (!usedDigestIds.add(digestId));
+            itemMap.put(Constants.DIGEST_ID, digestId);
             itemMap.put(Constants.ELEMENT_IDENTIFIER, item.get(Constants.ELEMENT_IDENTIFIER).asText());
 
             // Handle elementValue which could be string or complex object
@@ -196,11 +433,21 @@ public class MDocProcessor {
         return saltedNamespaces;
     }
 
+    /** The digest algorithm the MSO declares, which calculateDigests must also use. */
+    public String getDigestAlgorithm() {
+        return mDocConfig.getDigestAlgorithm();
+    }
+
     /**
-     * Calculates SHA-256 digests for salted elements
+     * Calculates the digest of each salted element with the given algorithm, which must be the one
+     * the MSO declares.
      */
     public static Map<String, Object> calculateDigests
-    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests) throws Exception {
+    (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests,
+     String digestAlgorithm) throws Exception {
+        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+            throw new IllegalArgumentException("Unsupported MSO digest algorithm: " + digestAlgorithm);
+        }
 
         Map<String, Object> taggedNamespaces = new HashMap<>();
 
@@ -214,7 +461,7 @@ public class MDocProcessor {
             for (Map<String, Object> element : elements) {
                 // 1) Encode element (IssuerSignedItem) to CBOR
                 ByteArrayOutputStream innerBaos = new ByteArrayOutputStream();
-                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(element)));
+                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(encodeMdlElement(namespaceName, element))));
                 byte[] elementCbor = innerBaos.toByteArray();
 
                 // 2) Build Tag(24) DataItem for final structure
@@ -226,7 +473,7 @@ public class MDocProcessor {
                 ByteArrayOutputStream outerBaos = new ByteArrayOutputStream();
                 new CborEncoder(outerBaos).encode(tag24Value);
                 byte[] taggedCbor = outerBaos.toByteArray();
-                byte[] digest = MessageDigest.getInstance("SHA-256").digest(taggedCbor);
+                byte[] digest = MessageDigest.getInstance(digestAlgorithm).digest(taggedCbor);
                 digestMap.put((Integer) element.get(Constants.DIGEST_ID), digest);
             }
 
@@ -235,6 +482,153 @@ public class MDocProcessor {
         }
 
         return taggedNamespaces;
+    }
+
+    /**
+     * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a
+     * full-date element, including the dates inside each driving privilege, becomes tag 1004, and a
+     * byte-string element is decoded from the base64 text the template carries. Elements of any
+     * other namespace are left as they are; a template tags them explicitly if it needs to.
+     */
+    private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
+        if (!MdlDataElements.NAMESPACE.equals(namespace)) {
+            return element;
+        }
+        String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
+        Object value = element.get(Constants.ELEMENT_VALUE);
+        Object encoded = value;
+        if (MdlDataElements.FULL_DATE_OR_TDATE.contains(identifier)) {
+            encoded = asFullDateOrTdate(value);
+        } else if (MdlDataElements.FULL_DATE.contains(identifier)) {
+            encoded = asFullDate(value);
+        } else if (MdlDataElements.isByteString(identifier)) {
+            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
+            if (!(value instanceof String text)) {
+                throw new IllegalArgumentException(identifier + " must be base64 encoded");
+            }
+            encoded = decodeBase64(identifier, text);
+        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
+            if (!(value instanceof List<?> privileges)) {
+                throw new IllegalArgumentException("driving_privileges must be an array");
+            }
+            List<Object> encodedPrivileges = new ArrayList<>();
+            for (Object privilege : privileges) {
+                if (!(privilege instanceof Map<?, ?> fields)
+                        || !(fields.get("vehicle_category_code") instanceof String code)
+                        || code.isBlank()) {
+                    throw new IllegalArgumentException("Invalid driving_privileges entry");
+                }
+                requireDrivingPrivilegeStructure(fields);
+                Map<Object, Object> encodedFields = new HashMap<>(fields);
+                for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
+                    if (encodedFields.containsKey(dateField)) {
+                        encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
+                    }
+                }
+                encodedPrivileges.add(encodedFields);
+            }
+            encoded = encodedPrivileges;
+        }
+        if (encoded == value) {
+            return element;
+        }
+        Map<String, Object> encodedElement = new HashMap<>(element);
+        encodedElement.put(Constants.ELEMENT_VALUE, encoded);
+        return encodedElement;
+    }
+
+    /**
+     * ISO/IEC 18013-5, 7.2.4: a DrivingPrivilege has no keys other than vehicle_category_code,
+     * issue_date, expiry_date and codes. vehicle_category_code and the dates are checked by the caller.
+     */
+    private static void requireDrivingPrivilegeStructure(Map<?, ?> fields) {
+        if (!MdlDataElements.DRIVING_PRIVILEGE_KEYS.containsAll(fields.keySet())) {
+            throw new IllegalArgumentException("Invalid driving_privileges entry");
+        }
+        if (fields.containsKey("codes")) {
+            requireDrivingPrivilegeCodes(fields.get("codes"));
+        }
+    }
+
+    /**
+     * ISO/IEC 18013-5, 7.2.4: codes is a non-empty array of Code maps, each with a text code and,
+     * optionally, a text sign and value, and no other keys.
+     */
+    private static void requireDrivingPrivilegeCodes(Object codes) {
+        if (!(codes instanceof List<?> entries) || entries.isEmpty()) {
+            throw new IllegalArgumentException("Invalid driving_privileges entry");
+        }
+        for (Object entry : entries) {
+            if (!(entry instanceof Map<?, ?> code)
+                    || !MdlDataElements.DRIVING_PRIVILEGE_CODE_KEYS.containsAll(code.keySet())
+                    || !(code.get("code") instanceof String text) || text.isBlank()
+                    || !isAbsentOrText(code, "sign") || !isAbsentOrText(code, "value")) {
+                throw new IllegalArgumentException("Invalid driving_privileges entry");
+            }
+        }
+    }
+
+    private static boolean isAbsentOrText(Map<?, ?> map, String key) {
+        return !map.containsKey(key) || map.get(key) instanceof String;
+    }
+
+    /**
+     * A Table 5 full-date: a date (YYYY-MM-DD) as text becomes tag 1004, and one the template already
+     * tagged 1004 is kept. Any other value, type or tag is rejected. The message leaves the value out
+     * so that a holder's data does not end up in the logs.
+     */
+    private static Object asFullDate(Object value) {
+        if (value instanceof String text) {
+            if (!isDateOnlyString(text)) {
+                throw new IllegalArgumentException("Invalid mDL full-date");
+            }
+            return createCBORTaggedDate(text);
+        }
+        if (tagContent(value, FULL_DATE_TAG) instanceof String text && isDateOnlyString(text)) {
+            return value;
+        }
+        throw new IllegalArgumentException("Invalid mDL full-date");
+    }
+
+    /** The content of a value the template tagged with this CBOR tag, or null. */
+    private static Object tagContent(Object value, int tag) {
+        if (value instanceof Map<?, ?> tagged && Integer.valueOf(tag).equals(tagged.get(Constants.__CBOR_TAG))) {
+            return tagged.get(Constants.__CBOR_VALUE);
+        }
+        return null;
+    }
+
+    /**
+     * Table 5: issue_date and expiry_date are a full-date or a tdate. A date-time, as text or already
+     * tagged 0 by the template, becomes a tdate (tag 0) in UTC without fractions of seconds; anything
+     * else must be a full-date.
+     */
+    private static Object asFullDateOrTdate(Object value) {
+        Object dateTimeText = value instanceof String ? value : tagContent(value, TDATE_TAG);
+        if (dateTimeText instanceof String text && !isDateOnlyString(text)) {
+            ZonedDateTime dateTime = parseDateTime(text);
+            if (dateTime != null) {
+                return createCBORTaggedDateTime(dateTime.format(VALIDITY_INFO_DATETIME_FORMATTER));
+            }
+        }
+        return asFullDate(value);
+    }
+
+    /**
+     * Accepts base64 and base64url, with or without padding, alone or as a base64 data URI
+     * (data:image/jpeg;base64,...), the form identity sources keep photos in.
+     */
+    private static byte[] decodeBase64(String identifier, String text) {
+        String base64 = text.trim();
+        int comma = base64.indexOf(',');
+        if (base64.startsWith("data:") && comma > 0 && base64.substring(0, comma).endsWith(";base64")) {
+            base64 = base64.substring(comma + 1);
+        }
+        try {
+            return Base64.getDecoder().decode(base64.replace('-', '+').replace('_', '/'));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(identifier + " must be base64 encoded");
+        }
     }
 
     public static byte[] encodeToCBOR(Object obj) throws Exception {
@@ -279,14 +673,6 @@ public class MDocProcessor {
         // Handle byte arrays directly - don't convert to hex
         if (obj instanceof byte[]) {
             return obj;
-        }
-
-        if (obj instanceof String) {
-            String str = (String) obj;
-            if (isDateOnlyString(str)) {
-                return createCBORTaggedDate(str);
-            }
-            return str;
         }
 
         if (obj instanceof Map) {
@@ -398,7 +784,7 @@ public class MDocProcessor {
      */
     private static Map<String, Object> createCBORTaggedDate(String dateStr) {
         Map<String, Object> taggedDate = new HashMap<>();
-        taggedDate.put(Constants.__CBOR_TAG, 1004);
+        taggedDate.put(Constants.__CBOR_TAG, FULL_DATE_TAG);
         taggedDate.put(Constants.__CBOR_VALUE, dateStr);
         return taggedDate;
     }
@@ -543,6 +929,38 @@ public class MDocProcessor {
             data[i / 2] = (byte) ((Character.digit(hexStr.charAt(i), 16) << 4) + Character.digit(hexStr.charAt(i + 1), 16));
         }
         return data;
+    }
+
+    /**
+     * ISO/IEC 18013-5, 9.3.1: validityInfo.signed must fall within the validity of the certificate in
+     * the MSO header. signed is set from the certificate read before signing, so if the key is rotated
+     * in between, x5chain can carry a certificate that starts after signed; such an mDL is refused
+     * rather than issued.
+     */
+    public static void requireSignedWithinCertificate(Map<String, Object> mso, byte[] signedMSO) throws Exception {
+        Object signedValue = untagDate(((Map<?, ?>) mso.get(Constants.VALIDITY_INFO)).get(Constants.SIGNED));
+        Instant signed = Instant.parse((String) signedValue);
+        X509Certificate certificate = x5chainLeaf(signedMSO);
+        if (signed.isBefore(certificate.getNotBefore().toInstant())
+                || signed.isAfter(certificate.getNotAfter().toInstant())) {
+            throw new IllegalStateException("validityInfo.signed " + signedValue
+                    + " is outside the validity of the certificate in the MSO header");
+        }
+    }
+
+    /** The leaf certificate of the x5chain (label 33) in the unprotected header of a COSE_Sign1. */
+    private static X509Certificate x5chainLeaf(byte[] signedMSO) throws Exception {
+        DataItem cose = new CborDecoder(new ByteArrayInputStream(signedMSO)).decode().get(0);
+        DataItem unprotectedHeader = ((Array) cose).getDataItems().get(1);
+        DataItem x5chain = ((co.nstant.in.cbor.model.Map) unprotectedHeader).get(new UnsignedInteger(33));
+        if (x5chain instanceof Array chain) {
+            x5chain = chain.getDataItems().get(0);
+        }
+        if (!(x5chain instanceof ByteString certificate)) {
+            throw new IllegalStateException("The MSO header has no x5chain certificate");
+        }
+        return (X509Certificate) CertificateFactory.getInstance("X.509")
+                .generateCertificate(new ByteArrayInputStream(certificate.getBytes()));
     }
 
     /**

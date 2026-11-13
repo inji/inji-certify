@@ -57,7 +57,7 @@ The Inji Certify uses several configuration properties to control how credential
 
 **Note** : 
 In case of VCIssuance plugin mode, `ldp_vc` and `mso_mdoc` formats are supported by credential-configurations endpoints. 
-In case of DataProviderPlugin mode, `ldp_vc` and `dc+sd-jwt` formats are supported by credential-configurations endpoints.
+In case of DataProviderPlugin mode, `ldp_vc`, `mso_mdoc` and `dc+sd-jwt` formats are supported by credential-configurations endpoints.
 
 Inji Certify checks your configuration for required fields and possible duplicates:
 
@@ -66,6 +66,9 @@ Inji Certify checks your configuration for required fields and possible duplicat
   - for `ldp_vc` format, combination of context & type should be unique. 
   - for `mso_mdoc` format, docType value should be unique.
   - for `dc+sd-jwt` format, sdJwtVct value should be unique.
+- **Mandatory mDL elements**: in DataProvider plugin mode, an `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the `org.iso.18013.5.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `issue_date`, `expiry_date`, `issuing_country`, `issuing_authority`, `document_number`, `portrait`, `driving_privileges` and `un_distinguishing_sign`. Otherwise Add and Update are rejected with `mdl_mandatory_elements_missing`, naming the missing elements.
+  - A template that can only be read once Velocity renders it is not checked at Add and Update: one that is not valid JSON before rendering (a directive such as `#if`, or an unquoted reference such as `"elementValue": ${drivingPrivileges}`), or one whose mDL element identifiers or namespace are references such as `${element.id}`.
+  - In DataProvider mode, each rendered mDL is checked before signing. If it lacks a mandatory element, issuance fails with `mdl_mandatory_elements_missing`. A mandatory element whose value is null, empty, or a template reference the data provider did not supply (such as `${familyName}`), fails issuance with the same error, as does one with such a value inside it, for example in a `driving_privileges` entry. An mDL that renders the same element identifier twice fails issuance with `mdoc_template_processing_failed`. In VCIssuance mode, Certify does not check the plugin's signed mDL for mandatory elements.
 - **Validation for `signatureCryptoSuite`, `signatureAlgo`, `keyManagerAppId`, `keyManagerRefId`**.
   - In DataProvider plugin mode, `signatureAlgo` is mandatory for every credential format, on Add and on Update. It is the algorithm the credential is signed with, and nothing is filled in for it from the properties: a request that leaves it out is rejected with the format's mandatory-fields code, `ldp_vc_mandatory_fields_missing`, `mso_mdoc_mandatory_fields_missing` or `dc_sd_jwt_mandatory_fields_missing`.
   - In VCIssuance plugin mode the plugin signs the credential, so `signatureAlgo` is optional. A value that is sent is validated as below, in both modes. An `mso_mdoc` or `dc+sd-jwt` configuration without `signatureAlgo` leaves `credential_signing_alg_values_supported` out of the credential issuer metadata; an `ldp_vc` one still advertises its crypto suite.

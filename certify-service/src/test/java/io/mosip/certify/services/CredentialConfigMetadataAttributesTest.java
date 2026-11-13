@@ -12,6 +12,7 @@ import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.utils.CredentialConfigMetadataResolver;
+import io.mosip.certify.utils.MdlDataElements;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -155,11 +156,19 @@ public class CredentialConfigMetadataAttributesTest {
         return entity;
     }
 
+    /** An mDL template declaring every mandatory element, so the template check passes. */
+    private static final String MDL_TEMPLATE = java.util.Base64.getEncoder().encodeToString(
+            ("{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
+                    + MdlDataElements.MANDATORY.stream()
+                    .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
+                    .collect(java.util.stream.Collectors.joining(", "))
+                    + "]}}").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
     private CredentialConfigurationDTO msoMdocConfig() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialConfigKeyId("test-mso-mdoc");
         dto.setMetaDataDisplay(List.of(new MetaDataDisplayDTO()));
-        dto.setVcTemplate("test_template");
+        dto.setVcTemplate(MDL_TEMPLATE);
         dto.setCredentialFormat("mso_mdoc");
         dto.setDocType("org.iso.18013.5.1.mDL");
         dto.setSignatureAlgo("ES256");
@@ -181,6 +190,7 @@ public class CredentialConfigMetadataAttributesTest {
         entity.setCredentialFormat("mso_mdoc");
         entity.setDocType("org.iso.18013.5.1.mDL");
         entity.setSignatureAlgo("ES256");
+        entity.setVcTemplate(MDL_TEMPLATE);
         return entity;
     }
 
@@ -570,6 +580,39 @@ public class CredentialConfigMetadataAttributesTest {
         credentialConfigurationService.addCredentialConfiguration(sdJwtRequest());
 
         Assert.assertEquals(List.of("ES256"), entity.getCredentialSigningAlgValuesSupported());
+    }
+
+    @Test
+    public void should_rejectMdl_when_templateLacksMandatoryElements() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setVcTemplate(java.util.Base64.getEncoder().encodeToString(
+                ("{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
+                        + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"x\"}]}}")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        Assert.assertTrue(exception.getMessage().contains("portrait"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMdlUpdate_when_mergedTemplateLacksMandatoryElements() {
+        // An update is validated as it would be saved, so a stored template missing elements is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setVcTemplate(java.util.Base64.getEncoder().encodeToString(
+                "{\"nameSpaces\": {}}".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
 
     @Test
