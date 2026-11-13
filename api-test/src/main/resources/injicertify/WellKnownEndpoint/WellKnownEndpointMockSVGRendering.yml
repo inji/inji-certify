@@ -1,0 +1,14 @@
+WellKnownEndpointMockSVGRendering:
+   InjiCertify_WellKnownEndpoint_Mock_SVGRendering:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Mock_02
+      description: Verify SVG rendering credential configuration in well-known metadata
+      role: resident
+      checkErrorsOnlyInResponse: true
+      restMethod: get
+      validityCheckRequired: true
+      additionalDependencies: TC_InjiCertify_Mock_SVGRendering_addConfig_01
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointMockSVGRenderingResult
+      input: '{}'
+      output: '{}'

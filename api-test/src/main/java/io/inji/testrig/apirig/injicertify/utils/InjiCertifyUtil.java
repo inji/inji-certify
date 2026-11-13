@@ -1620,6 +1620,19 @@ public static void configureOtp() {
 				|| "TC_InjiCertify_LandRegistry_AddRegistrationReceipt_01".equals(uniqueIdentifier);
 	}
 
+	/**
+	 * The SVG rendering config must exist on a fresh issuer, but environments that already carry it
+	 * reject the create on the (credentialFormat, credentialType, context) uniqueness check. Falling
+	 * back to an update keeps the prerequisite idempotent and leaves the stored template identical
+	 * either way.
+	 */
+	public static boolean shouldUpdateExistingSvgRenderingCredentialConfig(TestCaseDTO testCaseDTO,
+			Response response) {
+		return testCaseDTO != null
+				&& "TC_InjiCertify_Mock_SVGRendering_addConfig_01".equals(testCaseDTO.getUniqueIdentifier())
+				&& isDuplicateMosipIdCredentialConfig(response);
+	}
+
 	public static boolean isDuplicateMosipIdCredentialConfig(Response response) {
 		if (response == null) {
 			return false;
@@ -3376,5 +3389,70 @@ public static void configureOtp() {
 				"mDoc 'credential' is not valid base64url for " + testCaseName);
 		}
 	}
-	
+
+	private static final Pattern RENDER_METHOD_TEMPLATE_ID = Pattern
+			.compile("^https?://\\S+/rendering-template/[0-9a-fA-F-]{36}$");
+
+	/** Base58btc multibase, as produced by Certify's CredentialUtils.getDigestMultibase. */
+	private static final Pattern RENDER_METHOD_DIGEST = Pattern
+			.compile("^z[1-9A-HJ-NP-Za-km-z]{40,}$");
+
+	/**
+	 * The generic output validation flattens a response into a map keyed by the last segment of
+	 * each json path, so every "id" in an issued credential (credential.id, credentialSubject.id
+	 * and renderMethod[].template.id) collapses onto the same key and only the last one visited
+	 * survives. renderMethod[0].template.id can therefore never be asserted from an expected
+	 * result template and is validated here instead.
+	 */
+	public static void validateSvgRenderMethodResponse(Response response, String testCaseName) {
+		JSONObject json;
+		try {
+			json = new JSONObject(response.asString());
+		} catch (JSONException e) {
+			throw new RuntimeException("Credential response is not valid JSON for " + testCaseName);
+		}
+
+		JSONArray credentials = json.optJSONArray("credentials");
+		if (credentials == null || credentials.length() == 0) {
+			throw new RuntimeException(
+				"Credential response has no 'credentials' entries for " + testCaseName);
+		}
+
+		JSONObject credential = credentials.getJSONObject(0).optJSONObject("credential");
+		if (credential == null) {
+			throw new RuntimeException(
+				"Credential response first entry has no 'credential' object for " + testCaseName);
+		}
+
+		JSONArray renderMethod = credential.optJSONArray("renderMethod");
+		if (renderMethod == null || renderMethod.length() == 0) {
+			throw new RuntimeException(
+				"Issued credential has no 'renderMethod' entries for " + testCaseName);
+		}
+
+		JSONObject template = renderMethod.getJSONObject(0).optJSONObject("template");
+		if (template == null) {
+			throw new RuntimeException(
+				"renderMethod[0] has no 'template' object for " + testCaseName);
+		}
+
+		String templateId = template.optString("id", "");
+		if (!RENDER_METHOD_TEMPLATE_ID.matcher(templateId).matches()) {
+			throw new RuntimeException(
+				"renderMethod[0].template.id is not a rendering template URL for " + testCaseName
+				+ ", found: " + (templateId.isBlank() ? "<absent>" : templateId));
+		}
+
+		String digestMultibase = template.optString("digestMultibase", "");
+		if (!RENDER_METHOD_DIGEST.matcher(digestMultibase).matches()) {
+			throw new RuntimeException(
+				"renderMethod[0].template.digestMultibase is not a base58btc multibase value for "
+				+ testCaseName + ", found: "
+				+ (digestMultibase.isBlank() ? "<absent>" : digestMultibase));
+		}
+
+		logger.info(testCaseName + ": renderMethod validated — template.id=" + templateId
+			+ ", template.digestMultibase=" + digestMultibase);
+	}
+
 }
