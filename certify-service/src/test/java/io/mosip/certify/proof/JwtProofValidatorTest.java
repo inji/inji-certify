@@ -18,10 +18,6 @@ import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.mosip.certify.config.MDocConfig;
-import io.mosip.certify.utils.MDocProcessor;
-import io.mosip.kernel.signature.service.CoseSignatureService;
 import org.bouncycastle.crypto.params.Ed448PrivateKeyParameters;
 import org.bouncycastle.crypto.signers.Ed448Signer;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -613,69 +609,16 @@ class JwtProofValidatorTest {
         return jwt.serialize();
     }
 
-    // ---------- EdDSA with an Ed448 key (RFC 8037), which Nimbus can't verify ----------
+    // ---------- EdDSA with an Ed448 key (RFC 8037): not supported, only Ed25519 is verified ----------
 
     @Test
-    void should_acceptProof_when_holderKeyIsEd448() throws Exception {
+    void should_rejectProof_when_holderKeyIsEd448() throws Exception {
         Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
 
+        // a correctly signed Ed448 proof: Ed25519Verifier refuses the Ed448 key, so the proof fails without throwing
         String proof = ed448Proof(holderKey, holderKey.generatePublicKey().getEncoded());
 
-        assertTrue(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
-    }
-
-    @Test
-    void should_rejectProof_when_ed448SignatureIsNotTheHolderKeys() throws Exception {
-        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
-        Ed448PrivateKeyParameters otherKey = new Ed448PrivateKeyParameters(new SecureRandom());
-
-        // the header names the holder key, but the proof is signed with another one
-        String proof = ed448Proof(otherKey, holderKey.generatePublicKey().getEncoded());
-
         assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
-    }
-
-    @Test
-    void should_rejectProof_when_ed448KeyHasTheWrongLength() throws Exception {
-        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
-
-        // an Ed448 public key is 57 bytes; 32 is an Ed25519 key's size
-        String proof = ed448Proof(holderKey, new byte[32]);
-
-        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
-    }
-
-    @Test
-    void should_rejectProofWithoutThrowing_when_ed448KeyIsNotACurvePoint() throws Exception {
-        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
-        // 57 bytes, the right length, but not a point: the y coordinate (all ones) is larger than the field prime
-        byte[] notAPoint = new byte[57];
-        Arrays.fill(notAPoint, (byte) 0xFF);
-
-        String proof = ed448Proof(holderKey, notAPoint);
-
-        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
-    }
-
-    @Test
-    void should_buildAnEd448DeviceKey_when_mdocProofIsSignedWithEd448() throws Exception {
-        Ed448PrivateKeyParameters holderKey = new Ed448PrivateKeyParameters(new SecureRandom());
-        byte[] publicKey = holderKey.generatePublicKey().getEncoded();
-        String proof = ed448Proof(holderKey, publicKey);
-
-        // the proof is accepted, and its key becomes the mDL device key, as at issuance
-        assertTrue(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", jwtProofValidator.getHolderKey(proof).did());
-        Map<String, Object> mso = new MDocProcessor(new ObjectMapper(), new MDocConfig(), mock(CoseSignatureService.class))
-                .createMobileSecurityObject(mDocJson, new HashMap<>());
-        Map<Object, Object> deviceKey = (Map<Object, Object>) ((Map<String, Object>) mso.get("deviceKeyInfo")).get("deviceKey");
-
-        // ISO/IEC 18013-5, 9.1.5.2 (Table 22): kty OKP (1), crv Ed448 (7), x only
-        assertEquals(Set.of(1, -1, -2), deviceKey.keySet());
-        assertEquals(1, deviceKey.get(1));
-        assertEquals(7, deviceKey.get(-1));
-        assertArrayEquals(publicKey, (byte[]) deviceKey.get(-2));
     }
 
     @Test

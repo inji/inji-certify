@@ -7,7 +7,6 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.Ed25519Verifier;
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton;
-import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.OctetKeyPair;
@@ -28,8 +27,6 @@ import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.bouncycastle.crypto.params.Ed448PublicKeyParameters;
-import org.bouncycastle.crypto.signers.Ed448Signer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -122,14 +119,11 @@ public class JwtProofValidator implements ProofValidator {
                 return verified;
             } else if (JWSAlgorithm.EdDSA.equals(jwt.getHeader().getAlgorithm()))
             {
-                // EdDSA covers two curves (RFC 8037): Ed25519, which Nimbus verifies, and Ed448, which it doesn't.
                 if (!(jwk instanceof OctetKeyPair holderKey)) {
                     log.error("EdDSA proof requires an OKP holder key");
                     return false;
                 }
-                boolean verified = Curve.Ed448.equals(holderKey.getCurve())
-                        ? verifyEd448(jwt, holderKey)
-                        : jwt.verify(new Ed25519Verifier(holderKey));
+                boolean verified = jwt.verify(new Ed25519Verifier(holderKey));
                 claimsSetVerifier.verify(jwt.getJWTClaimsSet(), null);
                 return verified;
             } else {
@@ -152,29 +146,6 @@ public class JwtProofValidator implements ProofValidator {
         return false;
     }
 
-
-    /**
-     * Verifies an EdDSA signature made with an Ed448 key (RFC 8037: Ed448 with an empty context) with
-     * BouncyCastle, as Nimbus only verifies Ed25519. A key of the wrong length, or one that isn't a
-     * point on the curve, fails the proof.
-     */
-    private static boolean verifyEd448(SignedJWT jwt, OctetKeyPair holderKey) {
-        byte[] publicKey = holderKey.getDecodedX();
-        if (publicKey.length != Ed448PublicKeyParameters.KEY_SIZE) {
-            log.error("Ed448 proof key has {} bytes instead of {}", publicKey.length, Ed448PublicKeyParameters.KEY_SIZE);
-            return false;
-        }
-        Ed448Signer verifier = new Ed448Signer(new byte[0]);
-        try {
-            verifier.init(false, new Ed448PublicKeyParameters(publicKey, 0));
-        } catch (IllegalArgumentException e) {
-            log.error("Ed448 proof key is not a point on the curve", e);
-            return false;
-        }
-        byte[] signingInput = jwt.getSigningInput();
-        verifier.update(signingInput, 0, signingInput.length);
-        return verifier.verifySignature(jwt.getSignature().decode());
-    }
 
     /**
      * @param proofJwt from the credential request.

@@ -650,24 +650,23 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_mapCorrectly_when_p384CurveUsed() throws Exception {
-        // RFC 6979, A.2.6: a P-384 public key, with 48-byte coordinates
-        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-384\","
-                + "\"x\":\"7DpOQVtOGaRWhhgCn0J_pdqai8SukuAuBqrlKGswDGTe-PDqkFWGYGSiVFFUgLwT\","
-                + "\"y\":\"gBXZty19VyROqO-awMYhiWcIpZNn-d-59UyoSz8cnbEoiyMcOuDU_nNE_SUzJkcg\"}";
-        String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey+"#0";
+    public void should_rejectWithInvalidProof_when_ecKeyIsOnP384OrP521() {
+        // Only P-256 device keys are supported; RFC 6979 A.2.6 (P-384) and RFC 7515 A.4 (P-521) public keys
+        Map<String, String> keys = Map.of(
+                "P-384", "{\"kty\":\"EC\",\"crv\":\"P-384\","
+                        + "\"x\":\"7DpOQVtOGaRWhhgCn0J_pdqai8SukuAuBqrlKGswDGTe-PDqkFWGYGSiVFFUgLwT\","
+                        + "\"y\":\"gBXZty19VyROqO-awMYhiWcIpZNn-d-59UyoSz8cnbEoiyMcOuDU_nNE_SUzJkcg\"}",
+                "P-521", "{\"kty\":\"EC\",\"crv\":\"P-521\","
+                        + "\"x\":\"AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk\","
+                        + "\"y\":\"ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2\"}");
 
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", didJwk);
+        keys.forEach((crv, jwk) -> {
+            CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor(jwk));
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
-        Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
-        Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
-
-        assertEquals("crv should be P-384", 2, deviceKey.get(-1));
-        // alg used to be ES256 whatever the curve
-        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
+            assertEquals(crv, VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+            assertEquals("The holder key (kty EC, crv " + crv + ") can't be an mDL device key: "
+                    + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
+        });
     }
 
     @Test
@@ -691,51 +690,15 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_mapCorrectly_when_p521CurveUsed() throws Exception {
-        // RFC 7515, A.4: a P-521 public key, with 66-byte coordinates; y starts with a zero byte
-        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-521\","
-                + "\"x\":\"" + P521_X + "\","
-                + "\"y\":\"" + P521_Y + "\"}";
-        String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey;
-
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", didJwk);
-
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
-        Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
-        Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
-
-        assertEquals("crv should be P-521", 3, deviceKey.get(-1));
-        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
-        // the coordinates keep their full length, leading zero included (RFC 9053, 7.1.1)
-        assertArrayEquals(Base64.getUrlDecoder().decode(P521_X), (byte[]) deviceKey.get(-2));
-        assertArrayEquals(Base64.getUrlDecoder().decode(P521_Y), (byte[]) deviceKey.get(-3));
-    }
-
-    private static final String P521_X = "AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk";
-    private static final String P521_Y = "ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2";
-
-    @Test
     public void should_rejectWithInvalidProof_when_ecCoordinateHasLostItsLeadingZero() {
-        // P521_Y without its leading zero byte: the same number, but 65 bytes, so no longer a full-length coordinate
-        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-521\","
-                + "\"x\":\"" + P521_X + "\","
-                + "\"y\":\"NKZEDjdnUNI3H9G9wsjztx0vTuXqNDLIFcyjFWD-XZOH7HdLVYOGMOXLv1qMvgqR3QBkxpmaH25uZ_rd7eTIyPY\"}"));
+        // a P-256 x of 31 bytes, as when a coordinate starting with a zero byte is encoded without it
+        String shortX = Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[31]);
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"" + shortX + "\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}"));
 
         assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
-        assertEquals("The holder key's 'y' member has 65 bytes instead of 66 for crv P-521, so it can't be an mDL device key.",
-                exception.getMessage());
-    }
-
-    @Test
-    public void should_rejectWithInvalidProof_when_okpKeyHasTheWrongLength() {
-        // a 32-byte (Ed25519-sized) key labelled Ed448, whose keys are 57 bytes
-        CertifyException exception = assertThrows(CertifyException.class,
-                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed448\",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}"));
-
-        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
-        assertEquals("The holder key's 'x' member has 32 bytes instead of 57 for crv Ed448, so it can't be an mDL device key.",
+        assertEquals("The holder key's 'x' member has 31 bytes instead of 32 for crv P-256, so it can't be an mDL device key.",
                 exception.getMessage());
     }
 
@@ -771,31 +734,37 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_encodeAnOkpDeviceKey_when_holderKeyIsEd25519() throws Exception {
+    public void should_rejectWithInvalidProof_when_holderKeyIsEd25519() {
         // RFC 8037, A.2: an Ed25519 public key
-        String x = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}"));
 
-        Map<Object, Object> deviceKey = deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"x\":\"" + x + "\"}");
-
-        // ISO/IEC 18013-5, 9.1.5.2 (Table 22): kty OKP (1), crv Ed25519 (6), x only
-        assertEquals(Set.of(1, -1, -2), deviceKey.keySet());
-        assertEquals(1, deviceKey.get(1));
-        assertEquals(6, deviceKey.get(-1));
-        assertArrayEquals(Base64.getUrlDecoder().decode(x), (byte[]) deviceKey.get(-2));
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key (kty OKP, crv Ed25519) can't be an mDL device key: "
+                + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
     }
 
     @Test
-    public void should_encodeAnOkpDeviceKey_when_holderKeyIsEd448() throws Exception {
-        byte[] publicKey = new byte[57];
-        Arrays.fill(publicKey, (byte) 0x5A);
-        String x = Base64.getUrlEncoder().withoutPadding().encodeToString(publicKey);
+    public void should_rejectWithInvalidProof_when_holderKeyIsEd448() {
+        String x = Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[57]);
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed448\",\"x\":\"" + x + "\"}"));
 
-        Map<Object, Object> deviceKey = deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed448\",\"x\":\"" + x + "\"}");
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().startsWith("The holder key (kty OKP, crv Ed448) can't be an mDL device key"));
+    }
 
-        assertEquals(Set.of(1, -1, -2), deviceKey.keySet());
-        assertEquals(1, deviceKey.get(1));
-        assertEquals(7, deviceKey.get(-1));
-        assertArrayEquals(publicKey, (byte[]) deviceKey.get(-2));
+    @Test
+    public void should_rejectWithInvalidProof_when_holderKeyIsADidKey() {
+        Map<String, Object> mDocJson = new HashMap<>();
+        mDocJson.put("_holderId", "did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169#zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>()));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key can't be an mDL device key: it must be sent as a JWK (jwk header or did:jwk), not as a did:key.",
+                exception.getMessage());
     }
 
     @Test
