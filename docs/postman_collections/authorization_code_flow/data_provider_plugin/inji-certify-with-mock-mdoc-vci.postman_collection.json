@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a5eeb326-3ce8-451c-86db-fcd205dd4a16",
     "name": "Inji Certify With Mock Mdoc VCI",
-    "description": "Before running 3. VCI, add DrivingLicenseCredential from the \"Inji Certify Credential Configuration\" collection (docs/postman_collections/credential_configuration/): mso_mdoc > Mobile Driving Licence (MockCSVDataProviderPlugin).",
+    "description": "Before running 3. VCI, add DrivingLicenseCredential from the \"Inji Certify Credential Configuration\" collection (docs/postman_collections/credential_configuration/): mso_mdoc > Mobile Driving Licence.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "12594460",
     "_collection_link": "https://go.postman.co/collection/12594460-a5eeb326-3ce8-451c-86db-fcd205dd4a16?source=collection_link"

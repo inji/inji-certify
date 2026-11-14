@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "6e03a109-6aea-423e-8ebb-45e8bb5ad85a",
 		"name": "Inji Certify Pre Auth Code",
-		"description": "Before running the Pre-Authorized Code Flow, add FarmerCredential from the \"Inji Certify Credential Configuration\" collection (docs/postman_collections/credential_configuration/): ldp_vc > Pre-Auth (PreAuthDataProviderPlugin). credential_config_id in the environment must match its credentialConfigKeyId.",
+		"description": "Before running the Pre-Authorized Code Flow, add FarmerCredential from the \"Inji Certify Credential Configuration\" collection (docs/postman_collections/credential_configuration/): ldp_vc > Pre-Auth. credential_config_id in the environment must match its credentialConfigKeyId.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "41350892"
 	},
