@@ -155,6 +155,7 @@ public class MDocProcessor {
                 });
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
+            requireValidMdlElements(nameSpaces);
 
             // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
             // linkability, so they are the start of the UTC day of issuance rather than the exact
@@ -410,10 +411,63 @@ public class MDocProcessor {
     }
 
     /**
-     * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a
-     * full-date element, including the dates inside each driving privilege, becomes tag 1004, and a
-     * byte-string element is decoded from the base64 text the template carries. Elements of any
-     * other namespace are left as they are; a template tags them explicitly if it needs to.
+     * ISO/IEC 18013-5, 7.2 (Table 5): the values of the mDL namespace are checked on the rendered template,
+     * before anything is signed, so that invalid data fails as mdoc_template_processing_failed rather than
+     * as a signing failure. A full-date element must be a date (YYYY-MM-DD), or for issue_date and
+     * expiry_date a date-time, as text or already tagged (1004, 0) by the template; a byte-string element
+     * must be base64 text; driving_privileges must be an array of DrivingPrivilege entries (7.2.4).
+     * calculateDigests then only tags and decodes them: a byte string can't cross the JSON hand-off to
+     * addProof, so it is decoded there.
+     */
+    private static void requireValidMdlElements(Map<String, Object> nameSpaces) {
+        if (!(nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements)) {
+            return;
+        }
+        for (Object element : elements) {
+            Map<?, ?> item = (Map<?, ?>) element;
+            requireValidMdlElement((String) item.get(Constants.ELEMENT_IDENTIFIER), item.get(Constants.ELEMENT_VALUE));
+        }
+    }
+
+    private static void requireValidMdlElement(String identifier, Object value) {
+        if (MdlDataElements.FULL_DATE_OR_TDATE.contains(identifier)) {
+            if (tdate(value) == null) {
+                requireFullDate(value);
+            }
+        } else if (MdlDataElements.FULL_DATE.contains(identifier)) {
+            requireFullDate(value);
+        } else if (MdlDataElements.isByteString(identifier)) {
+            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
+            if (!(value instanceof String text)) {
+                throw new IllegalArgumentException(identifier + " must be base64 encoded");
+            }
+            decodeBase64(identifier, text);
+        } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
+            if (!(value instanceof List<?> privileges)) {
+                throw new IllegalArgumentException("driving_privileges must be an array");
+            }
+            for (Object privilege : privileges) {
+                if (!(privilege instanceof Map<?, ?> fields)
+                        || !(fields.get("vehicle_category_code") instanceof String code)
+                        || code.isBlank()) {
+                    throw new IllegalArgumentException("Invalid driving_privileges entry");
+                }
+                requireDrivingPrivilegeStructure(fields);
+                for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
+                    if (fields.containsKey(dateField)) {
+                        requireFullDate(fields.get(dateField));
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Applies the Table 5 encodings to an element of the mDL namespace, whose value processTemplatedJson
+     * has checked: a date-only value of a full-date element, including the dates inside each driving
+     * privilege, becomes tag 1004, a date-time of issue_date or expiry_date a tdate (tag 0), and a
+     * byte-string element is decoded from the base64 text the template carries. Elements of any other
+     * namespace are left as they are; a template tags them explicitly if it needs to.
      */
     private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
         if (!MdlDataElements.NAMESPACE.equals(namespace)) {
@@ -427,24 +481,11 @@ public class MDocProcessor {
         } else if (MdlDataElements.FULL_DATE.contains(identifier)) {
             encoded = asFullDate(value);
         } else if (MdlDataElements.isByteString(identifier)) {
-            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
-            if (!(value instanceof String text)) {
-                throw new IllegalArgumentException(identifier + " must be base64 encoded");
-            }
-            encoded = decodeBase64(identifier, text);
+            encoded = decodeBase64(identifier, (String) value);
         } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
-            if (!(value instanceof List<?> privileges)) {
-                throw new IllegalArgumentException("driving_privileges must be an array");
-            }
             List<Object> encodedPrivileges = new ArrayList<>();
-            for (Object privilege : privileges) {
-                if (!(privilege instanceof Map<?, ?> fields)
-                        || !(fields.get("vehicle_category_code") instanceof String code)
-                        || code.isBlank()) {
-                    throw new IllegalArgumentException("Invalid driving_privileges entry");
-                }
-                requireDrivingPrivilegeStructure(fields);
-                Map<Object, Object> encodedFields = new HashMap<>(fields);
+            for (Object privilege : (List<?>) value) {
+                Map<Object, Object> encodedFields = new HashMap<>((Map<?, ?>) privilege);
                 for (String dateField : MdlDataElements.DRIVING_PRIVILEGE_FULL_DATE) {
                     if (encodedFields.containsKey(dateField)) {
                         encodedFields.put(dateField, asFullDate(encodedFields.get(dateField)));
@@ -498,21 +539,20 @@ public class MDocProcessor {
     }
 
     /**
-     * A Table 5 full-date: a date (YYYY-MM-DD) as text becomes tag 1004, and one the template already
-     * tagged 1004 is kept. Any other value, type or tag is rejected. The message leaves the value out
-     * so that a holder's data does not end up in the logs.
+     * A Table 5 full-date: a date (YYYY-MM-DD) as text, or one the template already tagged 1004. Any
+     * other value, type or tag is rejected. The message leaves the value out so that a holder's data
+     * does not end up in the logs.
      */
+    private static void requireFullDate(Object value) {
+        Object date = value instanceof String ? value : tagContent(value, FULL_DATE_TAG);
+        if (!(date instanceof String text && isDateOnlyString(text))) {
+            throw new IllegalArgumentException("Invalid mDL full-date");
+        }
+    }
+
+    /** A checked full-date: text becomes tag 1004, and one the template already tagged is kept. */
     private static Object asFullDate(Object value) {
-        if (value instanceof String text) {
-            if (!isDateOnlyString(text)) {
-                throw new IllegalArgumentException("Invalid mDL full-date");
-            }
-            return createCBORTaggedDate(text);
-        }
-        if (tagContent(value, FULL_DATE_TAG) instanceof String text && isDateOnlyString(text)) {
-            return value;
-        }
-        throw new IllegalArgumentException("Invalid mDL full-date");
+        return value instanceof String text ? createCBORTaggedDate(text) : value;
     }
 
     /** The content of a value the template tagged with this CBOR tag, or null. */
@@ -523,18 +563,23 @@ public class MDocProcessor {
         return null;
     }
 
-    /**
-     * Table 5: issue_date and expiry_date are a full-date or a tdate. A date-time, as text or already
-     * tagged 0 by the template, becomes a tdate (tag 0) in UTC without fractions of seconds; anything
-     * else must be a full-date.
-     */
-    private static Object asFullDateOrTdate(Object value) {
+    /** A date-time, as text or already tagged 0 by the template, in UTC; null when the value is not one. */
+    private static ZonedDateTime tdate(Object value) {
         Object dateTimeText = value instanceof String ? value : tagContent(value, TDATE_TAG);
         if (dateTimeText instanceof String text && !isDateOnlyString(text)) {
-            ZonedDateTime dateTime = parseDateTime(text);
-            if (dateTime != null) {
-                return createCBORTaggedDateTime(dateTime.format(VALIDITY_INFO_DATETIME_FORMATTER));
-            }
+            return parseDateTime(text);
+        }
+        return null;
+    }
+
+    /**
+     * Table 5: issue_date and expiry_date are a full-date or a tdate. A checked date-time becomes a tdate
+     * (tag 0) in UTC without fractions of seconds; anything else is a full-date.
+     */
+    private static Object asFullDateOrTdate(Object value) {
+        ZonedDateTime dateTime = tdate(value);
+        if (dateTime != null) {
+            return createCBORTaggedDateTime(dateTime.format(VALIDITY_INFO_DATETIME_FORMATTER));
         }
         return asFullDate(value);
     }

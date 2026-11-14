@@ -953,9 +953,7 @@ public class MDocProcessorTest {
     @Test
     public void should_reject_when_drivingPrivilegesIsNotAnArray() {
         for (Object value : List.of("B", Map.of("vehicle_category_code", "B"))) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", value));
-            assertEquals("driving_privileges must be an array", exception.getMessage());
+            assertEquals("driving_privileges must be an array", rejectionMessage("driving_privileges", value));
         }
     }
 
@@ -966,9 +964,7 @@ public class MDocProcessorTest {
         blankCode.put("vehicle_category_code", " ");
         for (Object entry : List.of("B", Map.of("issue_date", "2024-06-15"), blankCode,
                 Map.of("vehicle_category_code", 5))) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
-            assertEquals("Invalid driving_privileges entry", exception.getMessage());
+            assertEquals("Invalid driving_privileges entry", rejectionMessage("driving_privileges", List.of(entry)));
         }
     }
 
@@ -976,9 +972,7 @@ public class MDocProcessorTest {
     public void should_reject_when_drivingPrivilegesEntryHasAKeyOutsideDrivingPrivilege() {
         Map<String, Object> entry = Map.of("vehicle_category_code", "B", "category", "car");
 
-        Exception exception = assertThrows(IllegalArgumentException.class,
-                () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
-        assertEquals("Invalid driving_privileges entry", exception.getMessage());
+        assertEquals("Invalid driving_privileges entry", rejectionMessage("driving_privileges", List.of(entry)));
     }
 
     @Test
@@ -990,9 +984,7 @@ public class MDocProcessorTest {
                 List.of(Map.of("code", "78", "note", "automatic")));
         for (Object codes : invalidCodes) {
             Map<String, Object> entry = Map.of("vehicle_category_code", "B", "codes", codes);
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(entry)));
-            assertEquals("codes " + codes, "Invalid driving_privileges entry", exception.getMessage());
+            assertEquals("codes " + codes, "Invalid driving_privileges entry", rejectionMessage("driving_privileges", List.of(entry)));
         }
     }
 
@@ -1018,24 +1010,27 @@ public class MDocProcessorTest {
 
     @Test
     public void should_reject_when_fullDateHasTheWrongTypeOrTag() {
-        List<Object> invalidBirthDates = List.of(19900825, List.of("1990-08-25"),
-                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "1990-08-25T00:00:00Z"),
-                Map.of(Constants.__CBOR_TAG, 1004, Constants.__CBOR_VALUE, "not-a-date"));
-        for (Object value : invalidBirthDates) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "birth_date", value));
-            assertEquals("Invalid mDL full-date", exception.getMessage());
-        }
+        // A value the template tagged itself meets the explicit-tag check first (any namespace), so a
+        // tag that is not 0 or 1004, or does not wrap a date or date-time, is rejected there.
+        Map<Object, String> invalidBirthDates = new LinkedHashMap<>();
+        invalidBirthDates.put(19900825, "Invalid mDL full-date");
+        invalidBirthDates.put(List.of("1990-08-25"), "Invalid mDL full-date");
+        invalidBirthDates.put(Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "1990-08-25T00:00:00Z"),
+                "Invalid mDL full-date");
+        invalidBirthDates.put(Map.of(Constants.__CBOR_TAG, 1004, Constants.__CBOR_VALUE, "not-a-date"),
+                "birth_date: a value tagged 1004 must be a full-date (YYYY-MM-DD)");
+        invalidBirthDates.forEach((value, message) ->
+                assertEquals(String.valueOf(value), message, rejectionMessage("birth_date", value)));
         // a tdate holds a date-time, and no other tag is allowed
-        List<Object> invalidIssueDates = List.of(
-                Map.of(Constants.__CBOR_TAG, 5, Constants.__CBOR_VALUE, "2024-06-15"),
-                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "not-a-date-time"),
-                Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "2024-06-15"));
-        for (Object value : invalidIssueDates) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "issue_date", value));
-            assertEquals("Invalid mDL full-date", exception.getMessage());
-        }
+        Map<Object, String> invalidIssueDates = new LinkedHashMap<>();
+        invalidIssueDates.put(Map.of(Constants.__CBOR_TAG, 5, Constants.__CBOR_VALUE, "2024-06-15"),
+                "issue_date: __cbor_tag must be the integer 0 (tdate) or 1004 (full-date)");
+        invalidIssueDates.put(Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "not-a-date-time"),
+                "issue_date: a value tagged 0 must be an RFC 3339 date-time");
+        invalidIssueDates.put(Map.of(Constants.__CBOR_TAG, 0, Constants.__CBOR_VALUE, "2024-06-15"),
+                "issue_date: a value tagged 0 must be an RFC 3339 date-time");
+        invalidIssueDates.forEach((value, message) ->
+                assertEquals(String.valueOf(value), message, rejectionMessage("issue_date", value)));
     }
 
     @Test
@@ -1055,10 +1050,8 @@ public class MDocProcessorTest {
     public void should_reject_when_mdlFullDateIsNotADate() {
         // birth_date is a full-date only, so a date-time is rejected as well
         for (String text : List.of("not-a-date", "1990-08-25T00:00:00Z")) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "birth_date", text));
             // the value is left out of the message, so a date of birth is not logged
-            assertEquals("Invalid mDL full-date", exception.getMessage());
+            assertEquals("Invalid mDL full-date", rejectionMessage("birth_date", text));
         }
     }
 
@@ -1066,9 +1059,7 @@ public class MDocProcessorTest {
     public void should_reject_when_drivingPrivilegeDateIsNotAFullDate() {
         Map<String, Object> category = Map.of("vehicle_category_code", "B", "issue_date", "2024-06-15T10:00:00Z");
 
-        Exception exception = assertThrows(IllegalArgumentException.class,
-                () -> encodedElementValue(MDL_NAMESPACE, "driving_privileges", List.of(category)));
-        assertEquals("Invalid mDL full-date", exception.getMessage());
+        assertEquals("Invalid mDL full-date", rejectionMessage("driving_privileges", List.of(category)));
     }
 
     @Test
@@ -1085,9 +1076,7 @@ public class MDocProcessorTest {
 
     @Test
     public void should_reject_when_issueDateIsNeitherADateNorADateTime() {
-        Exception exception = assertThrows(IllegalArgumentException.class,
-                () -> encodedElementValue(MDL_NAMESPACE, "issue_date", "15/06/2024"));
-        assertEquals("Invalid mDL full-date", exception.getMessage());
+        assertEquals("Invalid mDL full-date", rejectionMessage("issue_date", "15/06/2024"));
     }
 
     @Test
@@ -1114,17 +1103,13 @@ public class MDocProcessorTest {
 
     @Test
     public void should_reject_when_portraitIsNotBase64() {
-        Exception exception = assertThrows(IllegalArgumentException.class,
-                () -> encodedElementValue(MDL_NAMESPACE, "portrait", "not base64!"));
-        assertEquals("portrait must be base64 encoded", exception.getMessage());
+        assertEquals("portrait must be base64 encoded", rejectionMessage("portrait", "not base64!"));
     }
 
     @Test
     public void should_reject_when_portraitIsNotText() {
         for (Object value : List.of(List.of(255, 216, 255), 42, Map.of("data", "AQID"))) {
-            Exception exception = assertThrows(IllegalArgumentException.class,
-                    () -> encodedElementValue(MDL_NAMESPACE, "portrait", value));
-            assertEquals("portrait must be base64 encoded", exception.getMessage());
+            assertEquals("portrait must be base64 encoded", rejectionMessage("portrait", value));
         }
     }
 
@@ -1836,6 +1821,30 @@ public class MDocProcessorTest {
     private static final String MDL_NAMESPACE = "org.iso.18013.5.1";
 
     /** The elementValue of an element as calculateDigests encodes it into its IssuerSignedItem. */
+    /**
+     * The reason processTemplatedJson rejects an mDL whose one element has this value: it fails with
+     * mdoc_template_processing_failed, before anything is signed.
+     */
+    private String rejectionMessage(String identifier, Object value) {
+        Map<String, Object> element = new HashMap<>();
+        element.put("elementIdentifier", identifier);
+        element.put("elementValue", value);
+        Map<String, Object> template = new LinkedHashMap<>();
+        template.put("docType", MdlDataElements.DOC_TYPE);
+        template.put("validityInfo", Map.of("signed", "${_signed}", "validFrom", "${_validFrom}", "validUntil", "${_validUntil}"));
+        template.put("nameSpaces", Map.of(MDL_NAMESPACE, List.of(element)));
+        String json;
+        try {
+            json = new ObjectMapper().writeValueAsString(template);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(json, new HashMap<>(), CERT_NOT_BEFORE));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        return exception.getMessage().replaceFirst("^Error processing templated JSON: ", "");
+    }
+
     private DataItem encodedElementValue(String namespace, String identifier, Object value) throws Exception {
         Map<String, Object> salted = new HashMap<>();
         salted.put(namespace, List.of(createSaltedElement(0, identifier, value)));
