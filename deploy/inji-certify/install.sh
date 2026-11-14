@@ -183,19 +183,6 @@ function installing_inji-certify() {
         echo "Please provide the hostname for the esignet mock:"
         read -p "esignet mock host (e.g., esignet-mock.sandbox.xyz.net): " ESIGNET_MOCK_HOST
 
-        echo "Running mdoc.sh to generate issuer keycert"
-        chmod +x mdoc.sh
-        ./mdoc.sh
-
-        if [[ ! -f issuerSecret.txt ]]; then
-          echo "issuerSecret.txt not found after running mdoc.sh"
-          exit 1
-        fi
-
-        echo "Creating  secret 'mdoc issuer keycert' "
-        kubectl create secret generic mosip-certify-mock-mdoc-issuer-keycert --from-file=mosip-certify-mock-mdoc-issuer-keycert=issuerSecret.txt -n config-server --dry-run=client -o yaml | kubectl apply -f -
-        rm issuerSecret.txt
-
         kubectl patch configmap inji-stack-config -n config-server --type merge -p "{\"data\": {\"injicertify-mdl-host\": \"$INJICERTIFY_HOST\"}}"
         kubectl patch configmap inji-stack-config -n default --type merge -p "{\"data\": {\"injicertify-mdl-host\": \"$INJICERTIFY_HOST\"}}"
         kubectl patch configmap inji-stack-config -n config-server --type merge -p "{\"data\": {\"esignet-mock-host\": \"$ESIGNET_MOCK_HOST\"}}"
@@ -204,11 +191,9 @@ function installing_inji-certify() {
         kubectl -n config-server set env --keys=injicertify-mdl-host --from configmap/inji-stack-config deployment/config-server --prefix=SPRING_CLOUD_CONFIG_SERVER_OVERRIDES_MOSIP_
         kubectl -n config-server set env --keys=esignet-mock-host --from configmap/inji-stack-config deployment/config-server --prefix=SPRING_CLOUD_CONFIG_SERVER_OVERRIDES_MOSIP_
 
-        kubectl -n config-server set env --keys=mosip-certify-mock-mdoc-issuer-keycert --from secret/mosip-certify-mock-mdoc-issuer-keycert deployment/config-server --prefix=SPRING_CLOUD_CONFIG_SERVER_OVERRIDES_
         kubectl -n config-server set env --keys=security-pin --from secret/softhsm-certify deployment/config-server --prefix=SPRING_CLOUD_CONFIG_SERVER_OVERRIDES_SOFTHSM_CERTIFY_
         kubectl -n config-server get deploy -o name | xargs -n1 -t kubectl -n config-server rollout status
-        echo "Copy secrets"
-        ../copy_cm_func.sh secret mosip-certify-mock-mdoc-issuer-keycert config-server $NS
+
         break
         ;;
       *)

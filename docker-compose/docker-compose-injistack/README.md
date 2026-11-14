@@ -12,7 +12,9 @@ Expected time to setup: ~10 minutes
 You have two options for the certify plugin which gives Verifiable Credentials of different types
 
 1. Farmer Credential: returns an JSON-LD VC and is implemented using the [CSV Plugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
-2. Mobile Driving License Credential: returns an mDL VC and is implemented using the [mock-mdl Plugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+2. Mobile Driving License Credential: returns an ISO/IEC 18013-5 mDL (`mso_mdoc`). Certify builds and signs it from the driving licence data in a CSV file, read by the same [CSV Plugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java).
+
+Only one of the two is issued at a time: the one whose profile is active (see [Configuration Setup](#configuration-setup)).
 
 
 ## Prerequisites
@@ -49,6 +51,7 @@ docker-compose-injistack/
 │   ├── certify-csvdp-farmer.properties
 │   ├── certify-mock-mdl.properties
 │   ├── farmer_identity_data.csv
+│   ├── driving_license_data.csv
 │   ├── vp_request_config.json
 │   ├── mimoto-bootstrap.properties
 │   ├── mimoto-default.properties
@@ -105,7 +108,7 @@ public interface VCIssuancePlugin {
 - Place the resultant JAR in `loader_path/certify/`
 - uncomment volume mount for certify-service in `docker-compose.yaml`
 
-Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MDocMockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MDocMockVCIssuancePlugin.java).
+Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockCSVDataProviderPlugin.java) or [MockVCIssuancePlugin](https://github.com/inji/digital-credential-plugins/blob/release-1.0.x/mock-certify-plugin/src/main/java/io.mosip.certify.mock.integration/service/MockVCIssuancePlugin.java).
 
 ## Certificate Setup
 
@@ -130,6 +133,15 @@ Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digita
 | Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
 | Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
 
+- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and run `docker-compose up -d --no-deps certify` to recreate the service.
+
+- If the database was created before this seed changed, restart the stack with a fresh database to load the new configuration. This removes the Compose volumes and their data:
+
+  ```bash
+  docker-compose down -v
+  docker-compose up -d
+  ```
+
 
 ### Recommended
 
@@ -148,7 +160,8 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 - **Note**: For updating the default vc type in this setup, please refer to the insert query present in the [certify_init.sql](./certify_init.sql) file for `credential_config`.
 
 
-- (required if Mobile driving license configured) Onboard issuer key and certificate data into property `mosip.certify.mock.mdoc.issuer-key-cert` using the creation script, please read the [plugin README](https://github.com/inji/digital-credential-plugins/tree/release-1.0.x/mock-certify-plugin) for the same.
+- If you are proceeding with the Mobile driving license use case, no issuer key or certificate needs to be onboarded: Certify signs the mDL with its own `CERTIFY_VC_SIGN_EC_R1` key and puts that key's certificate in the mDL. The `DrivingLicenseCredential` configuration is seeded by [certify_init.sql](./certify_init.sql), and the holders' data is in [driving_license_data.csv](config/driving_license_data.csv): one row per holder, whose `id` must match the `sub` of the access token. Add or edit rows to issue mDLs for other holders.
+- After adding or editing rows, run `docker-compose up -d --no-deps --force-recreate certify` to reload the CSV.
 
 ### Registering a custom JSON-LD `@context`
 
@@ -164,6 +177,7 @@ Ensure each of the following files is updated in its documented directory if you
 - config/certify-csvdp-farmer.properties
 - config/certify-mock-mdl.properties
 - config/farmer_identity_data.csv
+- config/driving_license_data.csv
 - config/vp_request_config.json (drives the Presentation During Issuance flow)
 - context/farmer-context.json (JSON-LD `@context` file under the `context/` directory)
 
@@ -212,7 +226,7 @@ The following services will be available:
 2. You can:
     - Download credentials
     - View credential status at a Standards Compliant VC Verfier such as [Inji Verify](https://injiverify.collab.mosip.net).
-3. As a sample, you can try downloading VC with the UIN `5860356276` or `2154189532`. The OTP for this purpose can be given as `111111` which is the Mock OTP for eSignet Collab Environment. The above sample identities should be present at both the Identity Provider(here, National ID) and at the Local Issuer(here, Agriculture Department or Transport Department).
+3. As a sample, you can try downloading VC with the UIN `5860356276` or `2154189532` (Farmer credential), or `2154189532` (Mobile driving license). The OTP for this purpose can be given as `111111` which is the Mock OTP for eSignet Collab Environment. The above sample identities should be present at both the Identity Provider(here, National ID) and at the Local Issuer(here, Agriculture Department or Transport Department).
 
 ### Running only certify service - Accessing the Credentials via the Postman Interface
 
@@ -285,7 +299,7 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
 4. Postman throws an error `pmlib is not defined`
     - Follow the steps defined in the pre-requsites above.
 
-5. The container images for Certify aren't published for the `linux/arm64` architecture yet, if your container runtime returns an error, you can try to run the engine in an emulated mode. This applies to Apple Silicon Mac users running Docker, they'd have to set `export DOCKER_DEFAULT_PLATFORM=linux/amd64` before doing `docker compose up -d`.
+5. The container images for Certify aren't published for the `linux/arm64` architecture yet, if your container runtime returns an error, you can try to run the engine in an emulated mode. This applies to Apple Silicon Mac users running Docker, they'd have to set `export DOCKER_DEFAULT_PLATFORM=linux/amd64` before doing `docker-compose up -d`.
 
 6. Apple users using Colima may have issues with the permission of the `data/` directory.
     - Set the owner, group and the permission mode-bits & the file's group & user ownership correctly so that the `local.p12` file can be created inside the data directory.
@@ -294,11 +308,11 @@ The digest multibase can be hardcoded or if the template has been stored with Ce
     - Check if the DID is updated & resolvable. The Multibase hash changes on each restart, please update it whenever a newer instance of Certify is setup.
     - Check if the hosted DID matches with the [DID endpoint](http://localhost:8090/v1/certify/.well-known/did.json)
 
-8. While running `docker compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
+8. While running `docker-compose up -d`, if any error is encountered related to network like `network mosip_network declared as external, but could not be found` and containers are not starting up properly, try to create the network manually using the command:
    ```bash
    docker network create mosip_network
    ```
-   Then re-run `docker compose up -d`.
+   Then re-run `docker-compose up -d`.
 
 
 # Explanation of NGINX Directives
