@@ -590,7 +590,7 @@ public class CredentialConfigMetadataAttributesTest {
     public void should_rejectMsoMdocAdd_when_proofSigningAlgsIncludeRsa() {
         when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
         CredentialConfigurationDTO request = msoMdocRequest();
-        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("RS256", "PS256", "ES256", "EdDSA"))));
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("RS256", "PS256", "ES256"))));
 
         CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
                 () -> credentialConfigurationService.addCredentialConfiguration(request));
@@ -600,9 +600,26 @@ public class CredentialConfigMetadataAttributesTest {
         exception.getErrors().forEach(error ->
                 Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, error.getErrorCode()));
         Assert.assertEquals("The proof signing algorithm RS256 can't be used for the credential format mso_mdoc: "
-                        + "the proof key becomes the mDL device key, which must be an EC or EdDSA key (ISO/IEC 18013-5, "
-                        + "9.1.5.2). The supported values are: [ES256, ES384, ES512, EdDSA]",
+                        + "the proof key becomes the mDL device key, which must be an EC key on P-256 (ISO/IEC 18013-5, "
+                        + "9.1.5.2). The supported values are: [ES256]",
                 exception.getErrors().getFirst().getErrorMessage());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocAdd_when_proofSigningAlgsIncludeEdDsa() {
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256", "EdDSA"))));
+
+        CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        // EdDSA is declared for the deployment, but Certify supports only P-256 device keys
+        Assert.assertEquals(1, exception.getErrors().size());
+        Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, exception.getErrors().getFirst().getErrorCode());
+        Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage(),
+                exception.getErrors().getFirst().getErrorMessage().startsWith("The proof signing algorithm EdDSA can't be used"));
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
 
@@ -624,23 +641,23 @@ public class CredentialConfigMetadataAttributesTest {
     }
 
     @Test
-    public void should_acceptMsoMdoc_when_proofSigningAlgsAreEcAndEdDsa() {
+    public void should_acceptMsoMdoc_when_proofSigningAlgIsEs256() {
         CredentialConfig entity = msoMdocEntity();
         when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(entity);
         when(credentialConfigRepository.save(any(CredentialConfig.class))).thenReturn(entity);
         CredentialConfigurationDTO request = msoMdocRequest();
-        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256", "EdDSA"))));
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256"))));
 
         credentialConfigurationService.addCredentialConfiguration(request);
 
-        Assert.assertEquals(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256", "EdDSA"))), entity.getProofTypesSupported());
+        Assert.assertEquals(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256"))), entity.getProofTypesSupported());
     }
 
     @Test
     public void should_reportUndeclaredMsoMdocProofSigningAlgOnce_when_deploymentDoesNotDeclareIt() {
         when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
         CredentialConfigurationDTO request = msoMdocRequest();
-        // ES384 suits a device key but this deployment's allow-list doesn't declare it
+        // ES384 isn't declared for this deployment, so only the undeclared-algorithm error is reported
         request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES384"))));
 
         CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,

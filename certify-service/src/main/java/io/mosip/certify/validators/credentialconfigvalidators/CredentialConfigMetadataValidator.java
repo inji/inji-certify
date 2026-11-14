@@ -32,10 +32,10 @@ public class CredentialConfigMetadataValidator {
 
     /**
      * The proof signing algorithms an mso_mdoc configuration may list. The proof key becomes the mDL
-     * device key, which ISO/IEC 18013-5 (9.1.5.2, Table 22) allows to be an EC2 key on P-256, P-384 or
-     * P-521 (ES256, ES384, ES512) or an OKP key on Ed25519 or Ed448 (EdDSA), never RSA.
+     * device key (ISO/IEC 18013-5, 9.1.5.2, Table 22), and Certify supports only P-256 device keys,
+     * so ES256 is the only one.
      */
-    public static final List<String> MDOC_PROOF_SIGNING_ALGS = List.of("ES256", "ES384", "ES512", "EdDSA");
+    public static final List<String> MDOC_PROOF_SIGNING_ALGS = List.of("ES256");
 
     private CredentialConfigMetadataValidator() {
     }
@@ -185,7 +185,7 @@ public class CredentialConfigMetadataValidator {
                     errors.add(buildError(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG,
                             "The proof signing algorithm " + proofSigningAlg + " can't be used for the credential format "
                                     + VCFormats.MSO_MDOC + ": the proof key becomes the mDL device key, which must be an EC "
-                                    + "or EdDSA key (ISO/IEC 18013-5, 9.1.5.2). The supported values are: "
+                                    + "key on P-256 (ISO/IEC 18013-5, 9.1.5.2). The supported values are: "
                                     + MDOC_PROOF_SIGNING_ALGS));
                 }
             }
