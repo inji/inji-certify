@@ -110,3 +110,13 @@ A credential request whose `credential_configuration_id` this credential issuer 
 The other two cases are unchanged: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`, and a request without a `credential_configuration_id`, or with an empty one, with `invalid_credential_request`.
 
 **Action for clients:** a client or test that expects `invalid_credential_request` for an unknown `credential_configuration_id` must expect `unknown_credential_configuration`.
+
+## `mso_mdoc` device keys follow ISO/IEC 18013-5
+
+The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 ([#1148](https://github.com/inji/inji-certify/issues/1148)):
+
+- The device key carries only the key: `kty`, `crv`, `x` and `y`. `alg` and `kid` are left out.
+- Only an EC key on P-256 can be a device key. Any other holder key (RSA, secp256k1, P-384, P-521, Ed25519, Ed448), or a holder key sent as a DID other than `did:jwk` (for example `did:key`), is refused with `invalid_proof`. Before, these passed proof validation and then failed while the MSO was built, with `MDOC_PROOF_FAILED`. Each coordinate must be 32 bytes, leading zero bytes included (RFC 9053, 7.1.1; RFC 7518, 6.2.1.2), or the key is refused with `invalid_proof`.
+- An `mso_mdoc` configuration's `proofTypesSupported` may only list `ES256`, since the proof key becomes the device key. Any other algorithm is rejected on Add and Update with `unsupported_proof_signing_alg`.
+
+**Action for existing `mso_mdoc` configurations:** this applies to each stored `mso_mdoc` credential configuration (the `proof_types_supported` column of the `credential_config` table), not to the deployment property `mosip.certify.credential-config.proof-types-supported`, which stays as it is for the other formats. Update each configuration (`PUT /credential-configurations/{credentialConfigKeyId}`) with `proofTypesSupported` listing only `ES256`, for example `{"jwt": {"proof_signing_alg_values_supported": ["ES256"]}}`. Until then, a configuration that still lists other algorithms keeps advertising them and refuses proofs made with those keys with `invalid_proof`, and an Update that still lists them is rejected.

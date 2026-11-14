@@ -11,6 +11,7 @@ import io.mosip.certify.config.MDocConfig;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCDM2Constants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.service.CoseSignatureService;
@@ -451,13 +452,38 @@ public class MDocProcessor {
     }
 
     /**
-     * Creates device key info structure (placeholder implementation)
+     * Creates the MSO's deviceKeyInfo from the holder's key.
      */
-    private static Map<String, Object> createDeviceKeyInfo(Object deviceInfo) throws Exception {
+    private static Map<String, Object> createDeviceKeyInfo(Object deviceInfo) {
+        Map<String, Object> deviceKeyInfo = new HashMap<>();
+        deviceKeyInfo.put("deviceKey", toDeviceKey(deviceInfo));
+        return deviceKeyInfo;
+    }
+
+    /**
+     * Checks that the holder's key can be an mDL device key, without building the MSO, so that a
+     * request can refuse every unusable holder key before it signs or stores anything.
+     *
+     * @throws CertifyException invalid_proof when the key can't be a device key
+     */
+    public static void requireValidDeviceKey(Object holderId) {
+        toDeviceKey(holderId);
+    }
+
+    /** The holder's key as a COSE_Key device key, or invalid_proof when it can't be one. */
+    private static Map<Object, Object> toDeviceKey(Object deviceInfo) {
         if (deviceInfo == null) {
             throw new IllegalArgumentException("Device info (holder ID) is required for mDoc credential");
         }
         String deviceKeyEncoded = deviceInfo.toString();
+        // The device key is written from the holder's JWK, so only a jwk header or a did:jwk can carry
+        // it. Any other DID (did:key and the rest) is refused before decoding.
+        if (deviceKeyEncoded.startsWith("did:") && !deviceKeyEncoded.startsWith(Constants.DID_JWK_PREFIX)) {
+            String didMethod = "did:" + deviceKeyEncoded.split(":", 3)[1];
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key can't be an mDL device key: it must be sent as a JWK (jwk header or did:jwk), not as a "
+                            + didMethod + ".");
+        }
         if (deviceKeyEncoded.startsWith(Constants.DID_JWK_PREFIX)) {
             deviceKeyEncoded = deviceKeyEncoded.substring(Constants.DID_JWK_PREFIX.length());
             // Drop the DID URL fragment (#0 or any other): it selects a verification method and is
@@ -469,39 +495,57 @@ public class MDocProcessor {
             }
         }
 
-        byte[] decodedBytes = Base64.getUrlDecoder().decode(deviceKeyEncoded);
-        String decodedJson = new String(decodedBytes);
+        Map<String, Object> jwk;
+        try {
+            String decodedJson = new String(Base64.getUrlDecoder().decode(deviceKeyEncoded));
+            jwk = new ObjectMapper().readValue(decodedJson, Map.class);
+        } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key isn't a valid JWK, so it can't be an mDL device key.", e);
+        }
 
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> jwk = mapper.readValue(decodedJson, Map.class);
-
+        // ISO/IEC 18013-5, 9.1.5.2 (NOTE 2): the device key carries only the key itself, so alg
+        // and kid are left out. Certify supports P-256 device keys only (EC2, crv 1; Table 22), the
+        // curve Inji Wallet presents with. Each coordinate must be 32 bytes (RFC 9053, 7.1.1), as a
+        // JWK's must (RFC 7518, 6.2.1.2), so a coordinate missing its leading zeros is refused.
+        String kty = (String) jwk.get("kty");
+        String crv = jwk.get("crv") instanceof String s ? s : null;
+        if (!"EC".equals(kty) || !"P-256".equals(crv)) {
+            throw unsupportedDeviceKey(kty, crv);
+        }
         Map<Object, Object> coseKey = new HashMap<>();
         coseKey.put(1, 2);  // kty: EC2
-        coseKey.put(3, -7); // alg: ES256 (ECDSA with SHA-256)
+        coseKey.put(-1, 1); // crv: P-256
+        coseKey.put(-2, decodeCoordinate(jwk, "x", 32));
+        coseKey.put(-3, decodeCoordinate(jwk, "y", 32));
+        return coseKey;
+    }
 
-        if (jwk.containsKey("kid")) {
-            // Pass through the key ID if it exists in the source JWK
-            coseKey.put(2, ((String) jwk.get("kid")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    /** The holder's key can't be an mDL device key: the proof is refused with invalid_proof. */
+    private static CertifyException unsupportedDeviceKey(String kty, String crv) {
+        return new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                "The holder key (kty " + kty + (crv == null ? "" : ", crv " + crv) + ") can't be an mDL device key: "
+                        + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).");
+    }
+
+    private static byte[] decodeCoordinate(Map<String, Object> jwk, String name, int expectedLength) {
+        if (!(jwk.get(name) instanceof String value)) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key has no '" + name + "' member, so it can't be an mDL device key.");
         }
-
-
-        // Map curve
-        String crv = (String) jwk.get("crv");
-        switch (crv) {
-            case "P-256" -> coseKey.put(-1, 1);
-            case "P-384" -> coseKey.put(-1, 2);
-            case "P-521" -> coseKey.put(-1, 3);
-            case null, default -> throw new IllegalArgumentException("Unsupported curve for EC2 key type: " + crv);
+        byte[] coordinate;
+        try {
+            coordinate = Base64.getUrlDecoder().decode(value);
+        } catch (IllegalArgumentException e) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key has an invalid '" + name + "' member, so it can't be an mDL device key.", e);
         }
-
-        coseKey.put(-2, Base64.getUrlDecoder().decode((String) jwk.get("x")));
-        if (jwk.containsKey("y")) {
-            coseKey.put(-3, Base64.getUrlDecoder().decode((String) jwk.get("y")));
+        if (coordinate.length != expectedLength) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key's '" + name + "' member has " + coordinate.length + " bytes instead of "
+                            + expectedLength + " for crv " + jwk.get("crv") + ", so it can't be an mDL device key.");
         }
-
-        Map<String, Object> deviceKeyInfo = new HashMap<>();
-        deviceKeyInfo.put("deviceKey", coseKey);
-        return deviceKeyInfo;
+        return coordinate;
     }
 
     /**

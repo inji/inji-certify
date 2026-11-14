@@ -30,6 +30,13 @@ public class CredentialConfigMetadataValidator {
     private static final String SIGNING_ALG_ATTRIBUTE = "signatureAlgo";
     private static final String PROOF_TYPES_ATTRIBUTE = "proofTypesSupported";
 
+    /**
+     * The proof signing algorithms an mso_mdoc configuration may list. The proof key becomes the mDL
+     * device key (ISO/IEC 18013-5, 9.1.5.2, Table 22), and Certify supports only P-256 device keys,
+     * so ES256 is the only one.
+     */
+    public static final List<String> MDOC_PROOF_SIGNING_ALGS = List.of("ES256");
+
     private CredentialConfigMetadataValidator() {
     }
 
@@ -155,6 +162,33 @@ public class CredentialConfigMetadataValidator {
                 continue;
             }
             validateProofTypeDetail(proofType, entry.getValue(), declaredProofTypes, errors);
+        }
+    }
+
+    /**
+     * For mso_mdoc, a proof signing algorithm must also be one a device key can use. An algorithm the
+     * deployment doesn't declare is left to validateProofTypes, which already reports it.
+     */
+    public static void validateMdocProofSigningAlgs(String credentialFormat, Map<String, Object> requested,
+                                                    Map<String, Object> declaredProofTypes, List<Error> errors) {
+        if (!VCFormats.MSO_MDOC.equals(credentialFormat) || requested == null) {
+            return;
+        }
+        for (Map.Entry<String, Object> entry : requested.entrySet()) {
+            if (!(entry.getValue() instanceof Map<?, ?> detail)
+                    || !(detail.get(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED) instanceof List<?> algs)) {
+                continue;
+            }
+            List<String> declared = CredentialConfigMetadataResolver.declaredProofSigningAlgs(declaredProofTypes, entry.getKey());
+            for (Object proofSigningAlg : algs) {
+                if (declared.contains(proofSigningAlg) && !MDOC_PROOF_SIGNING_ALGS.contains(proofSigningAlg)) {
+                    errors.add(buildError(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG,
+                            "The proof signing algorithm " + proofSigningAlg + " can't be used for the credential format "
+                                    + VCFormats.MSO_MDOC + ": the proof key becomes the mDL device key, which must be an EC "
+                                    + "key on P-256 (ISO/IEC 18013-5, 9.1.5.2). The supported values are: "
+                                    + MDOC_PROOF_SIGNING_ALGS));
+                }
+            }
         }
     }
 

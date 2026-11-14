@@ -25,6 +25,7 @@ import io.mosip.certify.proof.ProofValidatorFactory;
 import io.mosip.certify.utils.CredentialUtils;
 import io.mosip.certify.utils.DIDDocumentUtil;
 import io.mosip.certify.utils.LedgerUtils;
+import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.utils.VCIssuanceUtil;
 import io.mosip.certify.vcformatters.VCFormatter;
 import io.mosip.pixelpass.PixelPass;
@@ -214,6 +215,20 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF, "None of the submitted proofs passed validation.");
         }
 
+        // Every holder key must be usable as an mDL device key before any credential is signed, so a
+        // request refused for one key leaves no ledger entry for the credentials of the others.
+        if (VCFormats.MSO_MDOC.equals(credentialConfigurationSupported.getFormat())) {
+            for (HolderKey holderKey : holderKeys) {
+                try {
+                    MDocProcessor.requireValidDeviceKey(holderKey.did());
+                } catch (CertifyException e) {
+                    auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.ERROR,
+                            AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), e);
+                    throw e;
+                }
+            }
+        }
+
         auditWrapper.logAudit(Action.PROOF_VALIDATION, ActionStatus.SUCCESS,
                 AuditHelper.buildAuditDto(accessTokenHash, "accessTokenHash"), null);
 
@@ -342,6 +357,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
             }
 
             String unsignedCredential = cred.createCredential(updatedTemplateParams, templateName);
+            VCResult<?> result = cred.addProof(unsignedCredential, "", vcFormatter.getProofAlgorithm(templateName), vcFormatter.getAppID(templateName), vcFormatter.getRefID(templateName), vcFormatter.getDidUrl(templateName), vcFormatter.getSignatureCryptoSuite(templateName));
             if(isLedgerEnabled) {
                 Map<String, Object> indexedAttributes = ledgerUtils.extractIndexedAttributes(jsonObject);
                 String credentialType = LedgerUtils.extractCredentialType(jsonObject);
@@ -354,8 +370,6 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
                 credentialLedgerService.storeLedgerEntry(credentialId, didUrl, credentialType, credentialStatusDetail, indexedAttributes, issuanceDate);
                 log.info("Successfully stored the credential issuance data in ledger with credentialType: {}", credentialType);
             }
-            VCResult<?> result = cred.addProof(unsignedCredential, "", vcFormatter.getProofAlgorithm(templateName), vcFormatter.getAppID(templateName), vcFormatter.getRefID(templateName), vcFormatter.getDidUrl(templateName), vcFormatter.getSignatureCryptoSuite(templateName));
-
             jsonObject.remove(VCDM2Constants.CREDENTIAL_STATUS);
             return result;
 

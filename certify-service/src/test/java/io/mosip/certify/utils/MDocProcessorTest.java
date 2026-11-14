@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.mosip.certify.config.MDocConfig;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.VCDM2Constants;
+import io.mosip.certify.core.constants.VCIErrorConstants;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.kernel.signature.dto.CoseSignRequestDto;
 import io.mosip.kernel.signature.dto.CoseSignResponseDto;
@@ -641,28 +642,31 @@ public class MDocProcessorTest {
 
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
         assertEquals("kty should be EC2", 2, deviceKey.get(1));
-        assertEquals("alg should be ES256", -7, deviceKey.get(3));
         assertEquals("crv should be P-256", 1, deviceKey.get(-1));
         assertTrue("Should have x coordinate", deviceKey.containsKey(-2));
         assertTrue("Should have y coordinate", deviceKey.containsKey(-3));
+        // ISO/IEC 18013-5, 9.1.5.2: kty, crv, x and y only; no alg (3) and no kid (2)
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
     }
 
     @Test
-    public void should_mapCorrectly_when_p384CurveUsed() throws Exception {
-        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-384\","
-                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
-                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
-        String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey+"#0";
+    public void should_rejectWithInvalidProof_when_ecKeyIsOnP384OrP521() {
+        // Only P-256 device keys are supported; RFC 6979 A.2.6 (P-384) and RFC 7515 A.4 (P-521) public keys
+        Map<String, String> keys = Map.of(
+                "P-384", "{\"kty\":\"EC\",\"crv\":\"P-384\","
+                        + "\"x\":\"7DpOQVtOGaRWhhgCn0J_pdqai8SukuAuBqrlKGswDGTe-PDqkFWGYGSiVFFUgLwT\","
+                        + "\"y\":\"gBXZty19VyROqO-awMYhiWcIpZNn-d-59UyoSz8cnbEoiyMcOuDU_nNE_SUzJkcg\"}",
+                "P-521", "{\"kty\":\"EC\",\"crv\":\"P-521\","
+                        + "\"x\":\"AekpBQ8ST8a8VcfVOTNl353vSrDCLLJXmPk06wTjxrrjcBpXp5EOnYG_NjFZ6OvLFV1jSfS9tsz4qUxcWceqwQGk\","
+                        + "\"y\":\"ADSmRA43Z1DSNx_RvcLI87cdL07l6jQyyBXMoxVg_l2Th-x3S1WDhjDly79ajL4Kkd0AZMaZmh9ubmf63e3kyMj2\"}");
 
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", didJwk);
+        keys.forEach((crv, jwk) -> {
+            CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor(jwk));
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
-        Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
-        Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
-
-        assertEquals("crv should be P-384", 2, deviceKey.get(-1));
+            assertEquals(crv, VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+            assertEquals("The holder key (kty EC, crv " + crv + ") can't be an mDL device key: "
+                    + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
+        });
     }
 
     @Test
@@ -686,39 +690,30 @@ public class MDocProcessorTest {
     }
 
     @Test
-    public void should_mapCorrectly_when_p521CurveUsed() throws Exception {
-        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-521\","
-                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
-                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
-        String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey;
+    public void should_rejectWithInvalidProof_when_ecCoordinateHasLostItsLeadingZero() {
+        // a P-256 x of 31 bytes, as when a coordinate starting with a zero byte is encoded without it
+        String shortX = Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[31]);
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"" + shortX + "\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}"));
 
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", didJwk);
-
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
-        Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
-        Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
-
-        assertEquals("crv should be P-521", 3, deviceKey.get(-1));
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void should_throwException_when_unsupportedCurveUsed() throws Exception {
-        String jwkJson = "{\"kty\":\"EC\",\"crv\":\"secp256k1\","
-                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
-                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}";
-        String encodedKey = Base64.getUrlEncoder().encodeToString(jwkJson.getBytes());
-        String didJwk = "did:jwk:" + encodedKey;
-
-        Map<String, Object> mDocJson = new HashMap<>();
-        mDocJson.put("_holderId", didJwk);
-
-        mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key's 'x' member has 31 bytes instead of 32 for crv P-256, so it can't be an mDL device key.",
+                exception.getMessage());
     }
 
     @Test
-    public void should_preserveKid_when_keyIdProvided() throws Exception {
+    public void should_rejectWithInvalidProof_when_ecCurveIsUnsupported() {
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"secp256k1\","
+                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().contains("kty EC, crv secp256k1"));
+    }
+
+    @Test
+    public void should_leaveOutKid_when_holderJwkHasAKeyId() throws Exception {
         String jwkJson = "{\"kty\":\"EC\",\"crv\":\"P-256\","
                 + "\"kid\":\"test-key-123\","
                 + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
@@ -733,10 +728,104 @@ public class MDocProcessorTest {
         Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
-        assertTrue("Should have kid", deviceKey.containsKey(2));
-        assertArrayEquals("Kid should match",
-                "test-key-123".getBytes(),
-                (byte[]) deviceKey.get(2));
+        // ISO/IEC 18013-5, 9.1.5.2: the holder JWK's kid is not copied into the device key
+        assertFalse("Should not have kid", deviceKey.containsKey(2));
+        assertEquals(Set.of(1, -1, -2, -3), deviceKey.keySet());
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_holderKeyIsEd25519() {
+        // RFC 8037, A.2: an Ed25519 public key
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed25519\",\"x\":\"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key (kty OKP, crv Ed25519) can't be an mDL device key: "
+                + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_holderKeyIsEd448() {
+        String x = Base64.getUrlEncoder().withoutPadding().encodeToString(new byte[57]);
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"Ed448\",\"x\":\"" + x + "\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().startsWith("The holder key (kty OKP, crv Ed448) can't be an mDL device key"));
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_holderKeyIsADidKey() {
+        Map<String, Object> mDocJson = new HashMap<>();
+        mDocJson.put("_holderId", "did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169#zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>()));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key can't be an mDL device key: it must be sent as a JWK (jwk header or did:jwk), not as a did:key.",
+                exception.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_holderKeyIsRsa() {
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"RSA\",\"e\":\"AQAB\",\"n\":\"sXchDaQebHnPiGvyDOAT4saGEUetSyo9MKLOoWFsueri\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().startsWith("The holder key (kty RSA) can't be an mDL device key"));
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_rsaHolderKeyHasACrvThatIsNotAString() {
+        // The proof check accepts an RSA did:jwk with any extra crv, so only the device key check sees it
+        for (String crv : List.of("5", "{\"a\":1}")) {
+            CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor(
+                    "{\"kty\":\"RSA\",\"crv\":" + crv + ",\"e\":\"AQAB\",\"n\":\"sXchDaQebHnPiGvyDOAT4saGEUetSyo9MKLOoWFsueri\"}"));
+
+            assertEquals(crv, VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+            assertTrue(exception.getMessage(), exception.getMessage().startsWith("The holder key (kty RSA) can't be an mDL device key"));
+        }
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_okpCurveIsNotASignatureCurve() {
+        // X25519 is a key agreement curve, not one a device can sign with
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> deviceKeyFor("{\"kty\":\"OKP\",\"crv\":\"X25519\",\"x\":\"hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertTrue(exception.getMessage(), exception.getMessage().contains("kty OKP, crv X25519"));
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_ecKeyHasNoY() {
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key has no 'y' member, so it can't be an mDL device key.", exception.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidProof_when_coordinateIsNotBase64url() {
+        // A stray character that the proof's signature check skips over, but that isn't base64url
+        CertifyException exception = assertThrows(CertifyException.class, () -> deviceKeyFor("{\"kty\":\"EC\",\"crv\":\"P-256\","
+                + "\"x\":\"MKBCTNIcKU!SDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4\","
+                + "\"y\":\"4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM\"}"));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        assertEquals("The holder key has an invalid 'x' member, so it can't be an mDL device key.", exception.getMessage());
+        // the decoding error is kept as the cause, for the server logs
+        assertTrue(exception.getCause() instanceof IllegalArgumentException);
+    }
+
+    /** The MSO device key built for a did:jwk holder with the given public JWK. */
+    private Map<Object, Object> deviceKeyFor(String jwkJson) throws Exception {
+        Map<String, Object> mDocJson = new HashMap<>();
+        mDocJson.put("_holderId", "did:jwk:" + Base64.getUrlEncoder().withoutPadding().encodeToString(jwkJson.getBytes()));
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        return (Map<Object, Object>) ((Map<String, Object>) mso.get("deviceKeyInfo")).get("deviceKey");
     }
 
     // ==================== MSO Structure Tests ====================

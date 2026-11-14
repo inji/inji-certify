@@ -1733,7 +1733,7 @@ components:
         proof_signing_alg_values_supported:
           type: array
           minItems: 1
-          description: 'Mandatory. Must be a subset of the algorithms declared for this proof type in mosip.certify.credential-config.proof-types-supported; a value outside that set is rejected with unsupported_proof_signing_alg. A missing, null or empty value is rejected with invalid_request. A value listed more than once is stored once.'
+          description: 'Mandatory. Must be a subset of the algorithms declared for this proof type in mosip.certify.credential-config.proof-types-supported; a value outside that set is rejected with unsupported_proof_signing_alg. For mso_mdoc the proof key becomes the mDL device key, which must be an EC key on P-256, so only ES256 is accepted (ISO/IEC 18013-5, 9.1.5.2); any other declared algorithm is rejected with unsupported_proof_signing_alg. A missing, null or empty value is rejected with invalid_request. A value listed more than once is stored once.'
           items:
             type: string
     CredentialConfigResponse:
