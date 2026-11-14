@@ -410,6 +410,13 @@ public class MDocProcessorTest {
                 + "{\"elementIdentifier\": \"issue_date\", \"elementValue\": \"" + issueDate + "\"}]}}");
     }
 
+    private static String mdlTemplateWithPortrait(String portrait) {
+        return "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"org.iso.18013.5.1\": ["
+                + "{\"elementIdentifier\": \"portrait\", \"elementValue\": \"" + portrait + "\"}]}}";
+    }
+
     /** Sample values for the mandatory elements a test template leaves out. */
     private static final Map<String, Object> MANDATORY_SAMPLE_VALUES = Map.ofEntries(
             Map.entry("family_name", "Doe"), Map.entry("given_name", "John"),
@@ -417,7 +424,7 @@ public class MDocProcessorTest {
             // before FIXED_NOW, so it doesn't move validFrom
             Map.entry("issue_date", "2024-06-15"), Map.entry("expiry_date", "2031-06-15"),
             Map.entry("issuing_country", "IN"), Map.entry("issuing_authority", "Test Authority"),
-            Map.entry("document_number", "D1"), Map.entry("portrait", "AQID"),
+            Map.entry("document_number", "D1"), Map.entry("portrait", "/9j/4A"), // a JPEG header
             Map.entry("driving_privileges", List.of()), Map.entry("un_distinguishing_sign", "IND"));
 
     /**
@@ -1111,6 +1118,38 @@ public class MDocProcessorTest {
         for (Object value : List.of(List.of(255, 216, 255), 42, Map.of("data", "AQID"))) {
             assertEquals("portrait must be base64 encoded", rejectionMessage("portrait", value));
         }
+    }
+
+    @Test
+    public void should_acceptPortrait_when_itIsAJpeg2000CodestreamOrJp2File() throws Exception {
+        byte[] codestream = {(byte) 0xFF, 0x4F, (byte) 0xFF, 0x51, 0x00};
+        byte[] jp2 = {0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20, 0x0D, 0x0A};
+
+        for (byte[] image : List.of(codestream, jp2)) {
+            String template = withMandatoryMdlElements(mdlTemplateWithPortrait(Base64.getEncoder().encodeToString(image)));
+            assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    @Test
+    public void should_reject_when_portraitIsAPng() {
+        byte[] png = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        String base64 = Base64.getEncoder().encodeToString(png);
+
+        for (String value : List.of(base64, "data:image/png;base64," + base64)) {
+            assertEquals("portrait must be a JPEG or JPEG2000 image", rejectionMessage("portrait", value));
+        }
+    }
+
+    @Test
+    public void should_reject_when_portraitIsEmpty() {
+        assertEquals("portrait must be a JPEG or JPEG2000 image", rejectionMessage("portrait", ""));
+    }
+
+    @Test
+    public void should_reject_when_portraitIsShorterThanAnImageSignature() {
+        String truncatedJpeg = Base64.getEncoder().encodeToString(new byte[]{(byte) 0xFF, (byte) 0xD8});
+        assertEquals("portrait must be a JPEG or JPEG2000 image", rejectionMessage("portrait", truncatedJpeg));
     }
 
     @Test

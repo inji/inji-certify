@@ -66,6 +66,15 @@ public class MDocProcessor {
     /** The CBOR tag of a tdate, an RFC 3339 date-time (RFC 8949). */
     public static final int TDATE_TAG = 0;
 
+    /** The leading bytes of a JPEG (SOI marker). */
+    private static final byte[] JPEG_SIGNATURE = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
+
+    /** The leading bytes of a JPEG2000 codestream (SOC and SIZ markers). */
+    private static final byte[] JPEG2000_CODESTREAM_SIGNATURE = {(byte) 0xFF, 0x4F, (byte) 0xFF, 0x51};
+
+    /** The leading bytes of a JP2 file (the JPEG2000 signature box). */
+    private static final byte[] JP2_SIGNATURE = {0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20};
+
     private final ObjectMapper objectMapper;
 
     private final MDocConfig mDocConfig;
@@ -441,7 +450,10 @@ public class MDocProcessor {
             if (!(value instanceof String text)) {
                 throw new IllegalArgumentException(identifier + " must be base64 encoded");
             }
-            decodeBase64(identifier, text);
+            byte[] bytes = decodeBase64(identifier, text);
+            if (MdlDataElements.PORTRAIT.equals(identifier) && !isJpegOrJpeg2000(bytes)) {
+                throw new IllegalArgumentException("portrait must be a JPEG or JPEG2000 image");
+            }
         } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
             if (!(value instanceof List<?> privileges)) {
                 throw new IllegalArgumentException("driving_privileges must be an array");
@@ -599,6 +611,21 @@ public class MDocProcessor {
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(identifier + " must be base64 encoded");
         }
+    }
+
+    /**
+     * The portrait must be JPEG or JPEG2000 (ISO/IEC 18013-5, 7.2.2), recognised by its leading bytes:
+     * a JPEG, a JPEG2000 codestream or a JP2 file.
+     */
+    private static boolean isJpegOrJpeg2000(byte[] image) {
+        return startsWith(image, JPEG_SIGNATURE)
+                || startsWith(image, JPEG2000_CODESTREAM_SIGNATURE)
+                || startsWith(image, JP2_SIGNATURE);
+    }
+
+    private static boolean startsWith(byte[] bytes, byte[] prefix) {
+        return bytes.length >= prefix.length
+                && Arrays.equals(bytes, 0, prefix.length, prefix, 0, prefix.length);
     }
 
     public static byte[] encodeToCBOR(Object obj) throws Exception {
