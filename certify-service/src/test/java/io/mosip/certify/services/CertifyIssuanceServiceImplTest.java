@@ -519,6 +519,21 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_rejectWithUnknownCredentialConfiguration_when_configIdIsNotOffered() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId("not-a-real-config");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION, ex.getErrorCode());
+        assertEquals("The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id.",
+                ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
     public void getCredential_InvalidProof_Fail() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);

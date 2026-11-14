@@ -127,8 +127,10 @@ public class VCIssuanceUtil {
 
         CredentialConfigurationSupportedDTO credentialConfig = supportedCredentials.get(credentialConfigId);
         if(credentialConfig == null) {
-            throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
-                    "No credential configuration found for credential_configuration_id");
+            // OpenID4VCI 1.0, 8.3.1.2: an id this issuer doesn't offer is unknown_credential_configuration.
+            // invalid_credential_request is for a malformed request, such as a missing id.
+            throw new CertifyException(VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION,
+                    "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id.");
         }
 
         if(!Objects.equals(scope, credentialConfig.getScope())){

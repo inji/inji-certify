@@ -98,6 +98,19 @@ Proofs are accepted as before: the holder key can still be sent as a `jwk` heade
 
 Upgrading from 1.0.0-rc.1: re-run `0.14.0_to_1.0.0_upgrade.sql` (`CURRENT_VERSION=0.14.0`, `UPGRADE_VERSION=1.0.0` in `upgrade.properties`). It is safe to re-run.
 
+## An unknown `credential_configuration_id` is answered with `unknown_credential_configuration`
+
+A credential request whose `credential_configuration_id` this credential issuer does not offer is now answered with `unknown_credential_configuration` ([#1144](https://github.com/inji/inji-certify/issues/1144)), as [OID4VCI 1.0 §8.3.1.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.3.1.2) defines. It was answered with `invalid_credential_request`, which the specification keeps for a malformed request. The HTTP status (400) and the response shape are unchanged:
+
+```diff
+- { "error": "invalid_credential_request", "error_description": "No credential configuration found for credential_configuration_id" }
++ { "error": "unknown_credential_configuration", "error_description": "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id." }
+```
+
+The other two cases are unchanged: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`, and a request without a `credential_configuration_id`, or with an empty one, with `invalid_credential_request`.
+
+**Action for clients:** a client or test that expects `invalid_credential_request` for an unknown `credential_configuration_id` must expect `unknown_credential_configuration`.
+
 ## `mso_mdoc` device keys follow ISO/IEC 18013-5
 
 The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 ([#1148](https://github.com/inji/inji-certify/issues/1148)):
