@@ -110,8 +110,10 @@ public class CertifyIssuanceServiceImplTest {
     private static final String DEFAULT_FORMAT_SDJWT = VCFormats.DC_SD_JWT; // dc+sd-jwt
     private static final String DEFAULT_FORMAT_MDOC = VCFormats.MSO_MDOC; // mso_mdoc
     // The same holder key in its two forms: a DID for _holderId, and a JWK for the SD-JWT cnf.
-    private static final String HOLDER_DID = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IngiLCJ5IjoieSJ9";
-    private static final Map<String, Object> HOLDER_PUBLIC_JWK = Map.of("kty", "EC", "crv", "P-256", "x", "x", "y", "y");
+    // A real P-256 public key, so it can also be an mDL device key (32-byte x and y)
+    private static final String HOLDER_DID = "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6Ik1LQkNUTkljS1VTRGlpMTF5U3MzNTI2aURaOEFpVG83VHU2S1BBcXY3RDQiLCJ5IjoiNEV0bDZTUlcyWWlMVXJONXZmdlZIdWhwN3g4UHhsdG1XV2xiYk00SUZ5TSJ9";
+    private static final Map<String, Object> HOLDER_PUBLIC_JWK = Map.of("kty", "EC", "crv", "P-256",
+            "x", "MKBCTNIcKUSDii11ySs3526iDZ8AiTo7Tu6KPAqv7D4", "y", "4Etl6SRW2YiLUrN5vfvVHuhp7x8PxltmWWlbbM4IFyM");
 
     CredentialRequest request;
     Map<String, Object> claimsFromAccessToken; // Renamed for clarity
@@ -924,6 +926,38 @@ public class CertifyIssuanceServiceImplTest {
         CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
 
         assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void should_rejectBeforeIssuingAny_when_oneOfTwoMdocHolderKeysCantBeADeviceKey() throws Exception {
+        ReflectionTestUtils.setField(issuanceService, "isLedgerEnabled", true);
+        // Both proofs pass proof validation; the second names its P-256 key as a did:key, which can't be a device key
+        String proofA = createValidJWT(TEST_CNONCE);
+        String proofB = createValidJWTWithEC(TEST_CNONCE);
+        request = createValidCredentialRequest(DEFAULT_FORMAT_MDOC);
+        request.setProofs(Map.of(ProofType.JWT, List.of(proofA, proofB)));
+        stubValidProof();
+        when(proofValidator.getHolderKey(proofA)).thenReturn(new HolderKey(HOLDER_DID, HOLDER_PUBLIC_JWK));
+        when(proofValidator.getHolderKey(proofB)).thenReturn(new HolderKey(
+                "did:key:zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169#zDnaerDaTF5BXEavCrfRZEk316dpbLsfPDZ3WJ5hRTPFU2169",
+                HOLDER_PUBLIC_JWK));
+        // As signing behaves: the first key is signed, the second is refused while its device key is built.
+        // Lenient, because with the up-front check these are never reached.
+        MDocCredential mockMdoc = mock(MDocCredential.class);
+        lenient().when(credentialFactory.getCredential(DEFAULT_FORMAT_MDOC)).thenReturn(Optional.of(mockMdoc));
+        lenient().when(mockMdoc.createCredential(anyMap(), anyString())).thenReturn("unsigned_mdoc_data");
+        VCResult signed = new VCResult<String>();
+        signed.setCredential("signed.mdoc.credential.data");
+        lenient().when(mockMdoc.addProof(anyString(), anyString(), any(), any(), any(), any(), any()))
+                .thenReturn(signed)
+                .thenThrow(new CertifyException(VCIErrorConstants.INVALID_PROOF, "The holder key can't be an mDL device key"));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
+        // refused before the first credential was signed, so no ledger entry is left for it
+        verify(mockMdoc, never()).addProof(anyString(), anyString(), any(), any(), any(), any(), any());
         verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
     }
 

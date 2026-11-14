@@ -452,9 +452,26 @@ public class MDocProcessor {
     }
 
     /**
-     * Creates device key info structure (placeholder implementation)
+     * Creates the MSO's deviceKeyInfo from the holder's key.
      */
-    private static Map<String, Object> createDeviceKeyInfo(Object deviceInfo) throws Exception {
+    private static Map<String, Object> createDeviceKeyInfo(Object deviceInfo) {
+        Map<String, Object> deviceKeyInfo = new HashMap<>();
+        deviceKeyInfo.put("deviceKey", toDeviceKey(deviceInfo));
+        return deviceKeyInfo;
+    }
+
+    /**
+     * Checks that the holder's key can be an mDL device key, without building the MSO, so that a
+     * request can refuse every unusable holder key before it signs or stores anything.
+     *
+     * @throws CertifyException invalid_proof when the key can't be a device key
+     */
+    public static void requireValidDeviceKey(Object holderId) {
+        toDeviceKey(holderId);
+    }
+
+    /** The holder's key as a COSE_Key device key, or invalid_proof when it can't be one. */
+    private static Map<Object, Object> toDeviceKey(Object deviceInfo) {
         if (deviceInfo == null) {
             throw new IllegalArgumentException("Device info (holder ID) is required for mDoc credential");
         }
@@ -478,11 +495,14 @@ public class MDocProcessor {
             }
         }
 
-        byte[] decodedBytes = Base64.getUrlDecoder().decode(deviceKeyEncoded);
-        String decodedJson = new String(decodedBytes);
-
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, Object> jwk = mapper.readValue(decodedJson, Map.class);
+        Map<String, Object> jwk;
+        try {
+            String decodedJson = new String(Base64.getUrlDecoder().decode(deviceKeyEncoded));
+            jwk = new ObjectMapper().readValue(decodedJson, Map.class);
+        } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
+                    "The holder key isn't a valid JWK, so it can't be an mDL device key.", e);
+        }
 
         // ISO/IEC 18013-5, 9.1.5.2 (NOTE 2): the device key carries only the key itself, so alg
         // and kid are left out. Certify supports P-256 device keys only (EC2, crv 1; Table 22), the
@@ -498,10 +518,7 @@ public class MDocProcessor {
         coseKey.put(-1, 1); // crv: P-256
         coseKey.put(-2, decodeCoordinate(jwk, "x", 32));
         coseKey.put(-3, decodeCoordinate(jwk, "y", 32));
-
-        Map<String, Object> deviceKeyInfo = new HashMap<>();
-        deviceKeyInfo.put("deviceKey", coseKey);
-        return deviceKeyInfo;
+        return coseKey;
     }
 
     /** The holder's key can't be an mDL device key: the proof is refused with invalid_proof. */
