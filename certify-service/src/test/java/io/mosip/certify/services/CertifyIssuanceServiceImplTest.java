@@ -946,7 +946,8 @@ public class CertifyIssuanceServiceImplTest {
         CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
 
         assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
-        // refused before the first credential was signed, so no ledger entry is left for it
+        // refused before any holder data was fetched or any credential signed, so no ledger entry is left
+        verify(dataProviderPlugin, never()).fetchData(any());
         verify(mockMdoc, never()).addProof(anyString(), anyString(), any(), any(), any(), any(), any());
         verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
     }
