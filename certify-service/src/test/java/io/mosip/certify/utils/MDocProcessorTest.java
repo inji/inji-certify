@@ -598,6 +598,17 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_reject_when_aTdateHasNoSeconds() {
+        // RFC 3339 requires the seconds; Java's ISO_OFFSET_DATE_TIME alone would accept 10:00Z
+        String template = customDocumentWith("{\"__cbor_tag\": 0, \"__cbor_value\": \"2024-06-15T10:00Z\"}");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        assertTrue(exception.getMessage().endsWith("member_since: a value tagged 0 must be an RFC 3339 date-time"));
+        assertEquals("Invalid mDL full-date", rejectionMessage("issue_date", "2024-06-15T10:00Z"));
+    }
+
+    @Test
     public void should_reject_when_aNestedExplicitTagIsInvalid() {
         String template = customDocumentWith("{\"history\": [{\"since\": {\"__cbor_tag\": 1004, \"__cbor_value\": \"soon\"}}]}");
 
