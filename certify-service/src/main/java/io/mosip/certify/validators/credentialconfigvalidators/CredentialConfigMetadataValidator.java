@@ -1,5 +1,6 @@
 package io.mosip.certify.validators.credentialconfigvalidators;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
@@ -32,10 +33,10 @@ public class CredentialConfigMetadataValidator {
 
     /**
      * The proof signing algorithms an mso_mdoc configuration may list. The proof key becomes the mDL
-     * device key (ISO/IEC 18013-5, 9.1.5.2, Table 22), and Certify supports only P-256 device keys,
-     * so ES256 is the only one.
+     * device key, which shall use a Table 22 curve (ISO/IEC 18013-5, 9.1.3.4), and Certify supports
+     * only P-256 device keys, so ES256 is the only one.
      */
-    public static final List<String> MDOC_PROOF_SIGNING_ALGS = List.of("ES256");
+    public static final List<String> MDOC_PROOF_SIGNING_ALGS = List.of(JWSAlgorithm.ES256.getName());
 
     private CredentialConfigMetadataValidator() {
     }
@@ -185,7 +186,7 @@ public class CredentialConfigMetadataValidator {
                     errors.add(buildError(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG,
                             "The proof signing algorithm " + proofSigningAlg + " can't be used for the credential format "
                                     + VCFormats.MSO_MDOC + ": the proof key becomes the mDL device key, which must be an EC "
-                                    + "key on P-256 (ISO/IEC 18013-5, 9.1.5.2). The supported values are: "
+                                    + "key on P-256 (ISO/IEC 18013-5, 9.1.3.4). The supported values are: "
                                     + MDOC_PROOF_SIGNING_ALGS));
                 }
             }

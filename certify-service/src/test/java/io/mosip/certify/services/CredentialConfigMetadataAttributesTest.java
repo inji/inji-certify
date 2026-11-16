@@ -584,7 +584,7 @@ public class CredentialConfigMetadataAttributesTest {
         Assert.assertEquals(List.of("ES256"), entity.getCredentialSigningAlgValuesSupported());
     }
 
-    // ---------- mso_mdoc proof keys become the mDL device key (ISO/IEC 18013-5, 9.1.5.2) ----------
+    // ---------- mso_mdoc proof keys become the mDL device key (ISO/IEC 18013-5, 9.1.3.4) ----------
 
     @Test
     public void should_rejectMsoMdocAdd_when_proofSigningAlgsIncludeRsa() {
@@ -601,7 +601,7 @@ public class CredentialConfigMetadataAttributesTest {
                 Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, error.getErrorCode()));
         Assert.assertEquals("The proof signing algorithm RS256 can't be used for the credential format mso_mdoc: "
                         + "the proof key becomes the mDL device key, which must be an EC key on P-256 (ISO/IEC 18013-5, "
-                        + "9.1.5.2). The supported values are: [ES256]",
+                        + "9.1.3.4). The supported values are: [ES256]",
                 exception.getErrors().getFirst().getErrorMessage());
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }

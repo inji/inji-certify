@@ -665,7 +665,7 @@ public class MDocProcessorTest {
 
             assertEquals(crv, VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
             assertEquals("The holder key (kty EC, crv " + crv + ") can't be an mDL device key: "
-                    + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
+                    + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.3.4).", exception.getMessage());
         });
     }
 
@@ -741,7 +741,7 @@ public class MDocProcessorTest {
 
         assertEquals(VCIErrorConstants.INVALID_PROOF, exception.getErrorCode());
         assertEquals("The holder key (kty OKP, crv Ed25519) can't be an mDL device key: "
-                + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).", exception.getMessage());
+                + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.3.4).", exception.getMessage());
     }
 
     @Test

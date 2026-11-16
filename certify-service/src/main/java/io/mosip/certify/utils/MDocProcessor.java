@@ -25,6 +25,10 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.KeyType;
+
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Map;
 
@@ -471,11 +475,11 @@ public class MDocProcessor {
     }
 
     /** The holder's key as a COSE_Key device key, or invalid_proof when it can't be one. */
-    private static Map<Object, Object> toDeviceKey(Object deviceInfo) {
-        if (deviceInfo == null) {
+    private static Map<Object, Object> toDeviceKey(Object holderId) {
+        if (holderId == null) {
             throw new IllegalArgumentException("Device info (holder ID) is required for mDoc credential");
         }
-        String deviceKeyEncoded = deviceInfo.toString();
+        String deviceKeyEncoded = holderId.toString();
         // The device key is written from the holder's JWK, so only a jwk header or a did:jwk can carry
         // it. Any other DID (did:key and the rest) is refused before decoding.
         if (deviceKeyEncoded.startsWith("did:") && !deviceKeyEncoded.startsWith(Constants.DID_JWK_PREFIX)) {
@@ -497,7 +501,7 @@ public class MDocProcessor {
 
         Map<String, Object> jwk;
         try {
-            String decodedJson = new String(Base64.getUrlDecoder().decode(deviceKeyEncoded));
+            String decodedJson = new String(Base64.getUrlDecoder().decode(deviceKeyEncoded), StandardCharsets.UTF_8);
             jwk = new ObjectMapper().readValue(decodedJson, Map.class);
         } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new CertifyException(VCIErrorConstants.INVALID_PROOF,
@@ -505,12 +509,13 @@ public class MDocProcessor {
         }
 
         // ISO/IEC 18013-5, 9.1.5.2 (NOTE 2): the device key carries only the key itself, so alg
-        // and kid are left out. Certify supports P-256 device keys only (EC2, crv 1; Table 22), the
-        // curve Inji Wallet presents with. Each coordinate must be 32 bytes (RFC 9053, 7.1.1), as a
-        // JWK's must (RFC 7518, 6.2.1.2), so a coordinate missing its leading zeros is refused.
-        String kty = (String) jwk.get("kty");
-        String crv = jwk.get("crv") instanceof String s ? s : null;
-        if (!"EC".equals(kty) || !"P-256".equals(crv)) {
+        // and kid are left out. A device key shall use a Table 22 curve (9.1.3.4); Certify supports
+        // P-256 device keys only (EC2, crv 1), the curve Inji Wallet presents with. Each coordinate
+        // must be 32 bytes (RFC 9053, 7.1.1), as a JWK's must (RFC 7518, 6.2.1.2), so a coordinate
+        // missing its leading zeros is refused.
+        String kty = jwk.get("kty") instanceof String k ? k : null;
+        String crv = jwk.get("crv") instanceof String c ? c : null;
+        if (!KeyType.EC.getValue().equals(kty) || !Curve.P_256.getName().equals(crv)) {
             throw unsupportedDeviceKey(kty, crv);
         }
         Map<Object, Object> coseKey = new HashMap<>();
@@ -525,7 +530,7 @@ public class MDocProcessor {
     private static CertifyException unsupportedDeviceKey(String kty, String crv) {
         return new CertifyException(VCIErrorConstants.INVALID_PROOF,
                 "The holder key (kty " + kty + (crv == null ? "" : ", crv " + crv) + ") can't be an mDL device key: "
-                        + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.5.2).");
+                        + "it must be an EC key on P-256 (ISO/IEC 18013-5, 9.1.3.4).");
     }
 
     private static byte[] decodeCoordinate(Map<String, Object> jwk, String name, int expectedLength) {

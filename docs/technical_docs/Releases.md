@@ -113,7 +113,7 @@ The other two cases are unchanged: a `credential_configuration_id` the issuer of
 
 ## `mso_mdoc` device keys follow ISO/IEC 18013-5
 
-The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 ([#1148](https://github.com/inji/inji-certify/issues/1148)):
+The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 and 9.1.3.4 ([#1148](https://github.com/inji/inji-certify/issues/1148)):
 
 - The device key carries only the key: `kty`, `crv`, `x` and `y`. `alg` and `kid` are left out.
 - Only an EC key on P-256 can be a device key. Any other holder key (RSA, secp256k1, P-384, P-521, Ed25519, Ed448), or a holder key sent as a DID other than `did:jwk` (for example `did:key`), is refused with `invalid_proof`. Before, these passed proof validation and then failed while the MSO was built, with `MDOC_PROOF_FAILED`. Each coordinate must be 32 bytes, leading zero bytes included (RFC 9053, 7.1.1; RFC 7518, 6.2.1.2), or the key is refused with `invalid_proof`.
