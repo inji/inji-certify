@@ -1,17 +1,20 @@
 package io.mosip.certify.config;
 
-import io.mosip.certify.utils.MDocProcessor;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Set;
 
 @Data
 @Component
 @ConfigurationProperties(prefix = "mosip.certify.mdoc")
 public class MDocConfig {
+
+    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
+    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
 
     /**
      * Default digest algorithm for MSO (e.g., "SHA-256")
@@ -54,9 +57,9 @@ public class MDocConfig {
     }
 
     public void validateDigestAlgorithm() {
-        if (!MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
             throw new IllegalStateException("mosip.certify.mdoc.digest-algorithm is '" + digestAlgorithm
-                    + "'; it must be one of " + MDocProcessor.SUPPORTED_DIGEST_ALGORITHMS + " (ISO/IEC 18013-5, 9.1.2.5).");
+                    + "'; it must be one of " + SUPPORTED_DIGEST_ALGORITHMS + " (ISO/IEC 18013-5, 9.1.2.5).");
         }
     }
 

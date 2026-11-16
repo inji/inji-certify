@@ -57,9 +57,6 @@ public class MDocProcessor {
     private static final DateTimeFormatter VALIDITY_INFO_DATETIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
-    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
-
     /** The CBOR tag of a full-date (RFC 8943). */
     public static final int FULL_DATE_TAG = 1004;
 
@@ -380,7 +377,7 @@ public class MDocProcessor {
     public static Map<String, Object> calculateDigests
     (Map<String, Object> saltedNamespaces, Map<String, Map<Integer, byte[]>> namespaceDigests,
      String digestAlgorithm) throws Exception {
-        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+        if (!MDocConfig.SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
             throw new IllegalArgumentException("Unsupported MSO digest algorithm: " + digestAlgorithm);
         }
 
