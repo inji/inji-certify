@@ -18,6 +18,8 @@ public final class MdlDataElements {
 
     public static final String DRIVING_PRIVILEGES = "driving_privileges";
 
+    public static final String BIRTH_DATE = "birth_date";
+
     public static final String ISSUE_DATE = "issue_date";
 
     public static final String EXPIRY_DATE = "expiry_date";
@@ -25,26 +27,40 @@ public final class MdlDataElements {
     /** Must be a JPEG or JPEG2000 image (7.2.2). */
     public static final String PORTRAIT = "portrait";
 
+    /** The keys of a DrivingPrivilege (7.2.4), besides issue_date and expiry_date. */
+    public static final String VEHICLE_CATEGORY_CODE = "vehicle_category_code";
+
+    public static final String CODES = "codes";
+
+    /** The keys of a Code in a DrivingPrivilege's codes (7.2.4). */
+    public static final String CODE = "code";
+
+    public static final String CODE_SIGN = "sign";
+
+    public static final String CODE_VALUE = "value";
+
     /** Elements every mDL must carry (Table 5, presence "M"). */
     public static final List<String> MANDATORY = List.of(
-            "family_name", "given_name", "birth_date", ISSUE_DATE, EXPIRY_DATE,
+            "family_name", "given_name", BIRTH_DATE, ISSUE_DATE, EXPIRY_DATE,
             "issuing_country", "issuing_authority", "document_number", PORTRAIT,
             DRIVING_PRIVILEGES, "un_distinguishing_sign");
 
-    /** Elements whose date-only value is a full-date (CBOR tag 1004). */
-    public static final Set<String> FULL_DATE = Set.of("birth_date", ISSUE_DATE, EXPIRY_DATE);
+    private static final Set<String> ISSUE_AND_EXPIRY_DATES = Set.of(ISSUE_DATE, EXPIRY_DATE);
 
-    /** Elements that may also be a date-time instead, a tdate (CBOR tag 0). */
-    public static final Set<String> FULL_DATE_OR_TDATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
+    /** Top-level elements whose value must be a full-date (CBOR tag 1004). */
+    public static final Set<String> FULL_DATE = Set.of(BIRTH_DATE);
 
-    /** The dates inside each driving_privileges entry, also full-dates (7.2.4). */
-    public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = Set.of(ISSUE_DATE, EXPIRY_DATE);
+    /** Top-level elements whose value is a full-date (tag 1004) or a date-time, a tdate (tag 0). */
+    public static final Set<String> FULL_DATE_OR_TDATE = ISSUE_AND_EXPIRY_DATES;
+
+    /** The dates inside each driving_privileges entry, full-dates only (7.2.4). */
+    public static final Set<String> DRIVING_PRIVILEGE_FULL_DATE = ISSUE_AND_EXPIRY_DATES;
 
     /** The keys a DrivingPrivilege may have (7.2.4); vehicle_category_code is required. */
-    public static final Set<String> DRIVING_PRIVILEGE_KEYS = Set.of("vehicle_category_code", ISSUE_DATE, EXPIRY_DATE, "codes");
+    public static final Set<String> DRIVING_PRIVILEGE_KEYS = Set.of(VEHICLE_CATEGORY_CODE, ISSUE_DATE, EXPIRY_DATE, CODES);
 
     /** The keys a Code in a DrivingPrivilege's codes may have (7.2.4); code is required. */
-    public static final Set<String> DRIVING_PRIVILEGE_CODE_KEYS = Set.of("code", "sign", "value");
+    public static final Set<String> DRIVING_PRIVILEGE_CODE_KEYS = Set.of(CODE, CODE_SIGN, CODE_VALUE);
 
     /** Elements encoded as a byte string; a template carries them as base64 text. */
     public static final Set<String> BYTE_STRING = Set.of(PORTRAIT, "signature_usual_mark");

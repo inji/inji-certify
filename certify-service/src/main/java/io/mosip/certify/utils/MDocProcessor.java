@@ -473,7 +473,7 @@ public class MDocProcessor {
             }
             for (Object privilege : privileges) {
                 if (!(privilege instanceof Map<?, ?> fields)
-                        || !(fields.get("vehicle_category_code") instanceof String code)
+                        || !(fields.get(MdlDataElements.VEHICLE_CATEGORY_CODE) instanceof String code)
                         || code.isBlank()) {
                     throw new IllegalArgumentException("Invalid driving_privileges entry");
                 }
@@ -536,8 +536,8 @@ public class MDocProcessor {
         if (!MdlDataElements.DRIVING_PRIVILEGE_KEYS.containsAll(fields.keySet())) {
             throw new IllegalArgumentException("Invalid driving_privileges entry");
         }
-        if (fields.containsKey("codes")) {
-            requireDrivingPrivilegeCodes(fields.get("codes"));
+        if (fields.containsKey(MdlDataElements.CODES)) {
+            requireDrivingPrivilegeCodes(fields.get(MdlDataElements.CODES));
         }
     }
 
@@ -552,8 +552,8 @@ public class MDocProcessor {
         for (Object entry : entries) {
             if (!(entry instanceof Map<?, ?> code)
                     || !MdlDataElements.DRIVING_PRIVILEGE_CODE_KEYS.containsAll(code.keySet())
-                    || !(code.get("code") instanceof String text) || text.isBlank()
-                    || !isAbsentOrText(code, "sign") || !isAbsentOrText(code, "value")) {
+                    || !(code.get(MdlDataElements.CODE) instanceof String text) || text.isBlank()
+                    || !isAbsentOrText(code, MdlDataElements.CODE_SIGN) || !isAbsentOrText(code, MdlDataElements.CODE_VALUE)) {
                 throw new IllegalArgumentException("Invalid driving_privileges entry");
             }
         }
