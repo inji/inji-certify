@@ -25,6 +25,7 @@ import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -38,6 +39,7 @@ import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -80,14 +82,28 @@ public class MDocProcessor {
 
     private final KeymanagerService keymanagerService;
 
+    /** The time the validityInfo dates are taken from. */
+    private final Clock clock;
+
+    @Autowired
     public MDocProcessor(ObjectMapper objectMapper,
                          MDocConfig mDocConfig,
                          CoseSignatureService coseSignatureService,
                          KeymanagerService keymanagerService) {
+        this(objectMapper, mDocConfig, coseSignatureService, keymanagerService, Clock.systemUTC());
+    }
+
+    /** With the clock the validityInfo dates are taken from, so that tests can fix the time. */
+    MDocProcessor(ObjectMapper objectMapper,
+                  MDocConfig mDocConfig,
+                  CoseSignatureService coseSignatureService,
+                  KeymanagerService keymanagerService,
+                  Clock clock) {
         this.objectMapper = objectMapper;
         this.mDocConfig = mDocConfig;
         this.coseSignatureService = coseSignatureService;
         this.keymanagerService = keymanagerService;
+        this.clock = clock;
     }
 
     /**
@@ -171,7 +187,7 @@ public class MDocProcessor {
             // signed with that certificate on that day still gets the same value. validFrom is not
             // before signed or the mDL issue_date (7.2.1) and validUntil is validityPeriodYears
             // (at least 1) after validFrom, so signed <= validFrom < validUntil.
-            ZonedDateTime signed = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.DAYS);
+            ZonedDateTime signed = ZonedDateTime.now(clock.withZone(ZoneOffset.UTC)).truncatedTo(ChronoUnit.DAYS);
             if (signingCertificateNotBefore.isAfter(signed)) {
                 signed = signingCertificateNotBefore.withZoneSameInstant(ZoneOffset.UTC);
             }

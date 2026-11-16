@@ -20,8 +20,6 @@ import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.runner.RunWith;
@@ -36,6 +34,7 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -62,7 +61,6 @@ import static org.mockito.Mockito.*;
 @RunWith(MockitoJUnitRunner.class)
 public class MDocProcessorTest {
 
-    private static MockedStatic<ZonedDateTime> mockedZonedDateTime;
     private static final ZonedDateTime FIXED_NOW = ZonedDateTime.of(2026, 7, 20, 10, 0, 0, 0, ZoneOffset.UTC);
     /** The notBefore of a signing certificate generated well before the issuance day. */
     private static final ZonedDateTime CERT_NOT_BEFORE = ZonedDateTime.of(2026, 1, 1, 9, 15, 0, 0, ZoneOffset.UTC);
@@ -81,20 +79,6 @@ public class MDocProcessorTest {
             )
     );
 
-    @BeforeClass
-    public static void setUpZonedDateTimeMock() {
-        mockedZonedDateTime = mockStatic(ZonedDateTime.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
-        mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC))
-                .thenReturn(FIXED_NOW);
-    }
-
-    @AfterClass
-    public static void tearDownZonedDateTimeMock() {
-        if (mockedZonedDateTime != null) {
-            mockedZonedDateTime.close();
-        }
-    }
-
     @Mock
     private MDocConfig mDocConfig;
 
@@ -111,11 +95,17 @@ public class MDocProcessorTest {
     @Before
     public void setUp() {
         objectMapper = new ObjectMapper();
-        mDocProcessor = new MDocProcessor(objectMapper, mDocConfig, coseSignatureService, keymanagerService);
+        mDocProcessor = processorAt(FIXED_NOW);
 
         // Setup default mock behavior
         when(mDocConfig.getValidityPeriodYears()).thenReturn(5);
         when(mDocConfig.getMsoVersion()).thenReturn("1.0");
+    }
+
+    /** An MDocProcessor whose clock is fixed at the given time. */
+    private MDocProcessor processorAt(ZonedDateTime now) {
+        return new MDocProcessor(objectMapper, mDocConfig, coseSignatureService, keymanagerService,
+                Clock.fixed(now.toInstant(), ZoneOffset.UTC));
     }
 
     // ==================== Template Processing Tests ====================
@@ -187,19 +177,15 @@ public class MDocProcessorTest {
     @Test
     public void should_dropFractionsOfSeconds_when_clockHasSubSecondPrecision() {
         ZonedDateTime justBeforeNextSecond = FIXED_NOW.withNano(999_999_999);
-        mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeNextSecond);
-        try {
-            String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
-                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
-                    + "\"nameSpaces\": {}}";
+        String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {}}";
 
-            Map<String, Object> result = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
+        Map<String, Object> result = processorAt(justBeforeNextSecond)
+                .processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
 
-            // Truncated, not rounded up to the next second
-            assertEquals(expectedValidityInfo, result.get("validityInfo"));
-        } finally {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
-        }
+        // Truncated, not rounded up to the next second
+        assertEquals(expectedValidityInfo, result.get("validityInfo"));
     }
 
     @Test
@@ -208,20 +194,16 @@ public class MDocProcessorTest {
         String templatedJSON = "{\"docType\": \"org.iso.18013.5.1.mDL\","
                 + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
                 + "\"nameSpaces\": {}}";
-        // computed before stubbing: they call ZonedDateTime's static methods
         ZonedDateTime justAfterMidnight = FIXED_NOW.withHour(0).withSecond(1);
         ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
-        try {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justAfterMidnight);
-            Object morning = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
-            Object night = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
 
-            assertEquals(expectedValidityInfo, morning);
-            assertEquals(expectedValidityInfo, night);
-        } finally {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
-        }
+        Object morning = processorAt(justAfterMidnight)
+                .processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
+        Object night = processorAt(justBeforeMidnight)
+                .processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE).get("validityInfo");
+
+        assertEquals(expectedValidityInfo, morning);
+        assertEquals(expectedValidityInfo, night);
     }
 
     @Test
@@ -274,18 +256,13 @@ public class MDocProcessorTest {
         ZonedDateTime certificateNotBefore = FIXED_NOW.withHour(8).withMinute(30).withSecond(15);
         ZonedDateTime soonAfter = FIXED_NOW.withHour(8).withMinute(31);
         ZonedDateTime justBeforeMidnight = FIXED_NOW.withHour(23).withMinute(59).withSecond(59);
-        try {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(soonAfter);
-            Object first = mDocProcessor.processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
-                    new HashMap<>(), certificateNotBefore).get("validityInfo");
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(justBeforeMidnight);
-            Object second = mDocProcessor.processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
-                    new HashMap<>(), certificateNotBefore).get("validityInfo");
 
-            assertEquals(first, second);
-        } finally {
-            mockedZonedDateTime.when(() -> ZonedDateTime.now(ZoneOffset.UTC)).thenReturn(FIXED_NOW);
-        }
+        Object first = processorAt(soonAfter).processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
+                new HashMap<>(), certificateNotBefore).get("validityInfo");
+        Object second = processorAt(justBeforeMidnight).processTemplatedJson(mdlTemplateWithIssueDate("2024-06-15"),
+                new HashMap<>(), certificateNotBefore).get("validityInfo");
+
+        assertEquals(first, second);
     }
 
     @Test
