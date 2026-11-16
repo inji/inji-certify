@@ -9,7 +9,6 @@ import com.nimbusds.jose.crypto.Ed25519Verifier;
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
-import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
@@ -119,11 +118,8 @@ public class JwtProofValidator implements ProofValidator {
                 return verified;
             } else if (JWSAlgorithm.EdDSA.equals(jwt.getHeader().getAlgorithm()))
             {
-                if (!(jwk instanceof OctetKeyPair holderKey)) {
-                    log.error("EdDSA proof requires an OKP holder key");
-                    return false;
-                }
-                boolean verified = jwt.verify(new Ed25519Verifier(holderKey));
+                Ed25519Verifier verifier = new Ed25519Verifier(jwk.toOctetKeyPair());
+                boolean verified = jwt.verify(verifier);
                 claimsSetVerifier.verify(jwt.getJWTClaimsSet(), null);
                 return verified;
             } else {
