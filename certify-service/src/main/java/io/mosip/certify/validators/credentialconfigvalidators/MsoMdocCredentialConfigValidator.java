@@ -13,8 +13,6 @@ import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.utils.MdlDataElements;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -68,7 +66,7 @@ public class MsoMdocCredentialConfigValidator {
         if (!"DataProvider".equals(pluginMode) || !MdlDataElements.DOC_TYPE.equals(credentialConfig.getDocType())) {
             return List.of();
         }
-        Optional<Set<String>> declared = declaredMdlElements(decodeTemplate(credentialConfig.getVcTemplate()));
+        Optional<Set<String>> declared = declaredMdlElements(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()));
         if (declared.isEmpty()) {
             return List.of();
         }
@@ -88,7 +86,7 @@ public class MsoMdocCredentialConfigValidator {
         if (!"DataProvider".equals(pluginMode)) {
             return;
         }
-        Optional<JsonNode> template = parseTemplate(decodeTemplate(credentialConfig.getVcTemplate()));
+        Optional<JsonNode> template = parseTemplate(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()));
         if (template.isEmpty()) {
             return;
         }
@@ -119,7 +117,7 @@ public class MsoMdocCredentialConfigValidator {
      */
     public static void requireSupportedCborTags(CredentialConfigurationDTO credentialConfig, String pluginMode) {
         if ("DataProvider".equals(pluginMode)) {
-            parseTemplate(decodeTemplate(credentialConfig.getVcTemplate()))
+            parseTemplate(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()))
                     .ifPresent(template -> requireSupportedCborTags(template, ""));
         }
     }
@@ -242,18 +240,6 @@ public class MsoMdocCredentialConfigValidator {
             }
         }
         return -1;
-    }
-
-    /** The template as stored is base64; raw JSON is accepted as well. */
-    private static String decodeTemplate(String vcTemplate) {
-        if (vcTemplate == null) {
-            return null;
-        }
-        try {
-            return new String(Base64.getDecoder().decode(vcTemplate.trim()), StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException e) {
-            return vcTemplate;
-        }
     }
 
     public static boolean isConfigAlreadyPresent(CredentialConfigurationDTO credentialConfig,
