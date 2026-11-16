@@ -116,7 +116,6 @@ public class MDocProcessorTest {
         // Setup default mock behavior
         when(mDocConfig.getValidityPeriodYears()).thenReturn(5);
         when(mDocConfig.getMsoVersion()).thenReturn("1.0");
-        when(mDocConfig.getDigestAlgorithm()).thenReturn("SHA-256");
     }
 
     // ==================== Template Processing Tests ====================
@@ -462,7 +461,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = mDocProcessor.processTemplatedJson(withMandatoryMdlElements(templatedJSON), new HashMap<>(), CERT_NOT_BEFORE);
         mDocJson.put("_holderId", createTestDidJwk());
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
         byte[] msoCbor = MDocProcessor.encodeToCBOR(mso);
 
         co.nstant.in.cbor.model.Map decodedMso = (co.nstant.in.cbor.model.Map)
@@ -1226,7 +1225,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDoc = new HashMap<>();
         mDoc.put("_holderId", createTestDidJwk());
         mDoc.put("_docType", "org.iso.18013.5.1.mDL");
-        byte[] encodedMso = MDocProcessor.encodeToCBOR(mDocProcessor.createMobileSecurityObject(mDoc, digests));
+        byte[] encodedMso = MDocProcessor.encodeToCBOR(mDocProcessor.createMobileSecurityObject(mDoc, digests, "SHA-256"));
         co.nstant.in.cbor.model.Map decodedMso = (co.nstant.in.cbor.model.Map)
                 new CborDecoder(new ByteArrayInputStream(encodedMso)).decode().get(0);
         co.nstant.in.cbor.model.Map valueDigests = (co.nstant.in.cbor.model.Map)
@@ -1289,9 +1288,7 @@ public class MDocProcessorTest {
         mDocJson.put("_holderId", didJwk);
 
         // Test through public method
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(
-                mDocJson, new HashMap<>()
-        );
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
 
         assertNotNull("MSO should not be null", mso);
         assertTrue("MSO should have deviceKeyInfo", mso.containsKey("deviceKeyInfo"));
@@ -1318,7 +1315,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_holderId", didJwk);
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
         Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
@@ -1337,7 +1334,7 @@ public class MDocProcessorTest {
             Map<String, Object> mDocJson = new HashMap<>();
             mDocJson.put("_holderId", "did:jwk:" + encodedKey + fragment);
 
-            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
             Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
             Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
@@ -1356,7 +1353,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_holderId", didJwk);
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
         Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
@@ -1374,7 +1371,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_holderId", didJwk);
 
-        mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
     }
 
     @Test
@@ -1389,7 +1386,7 @@ public class MDocProcessorTest {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_holderId", didJwk);
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
         Map<String, Object> deviceKeyInfo = (Map<String, Object>) mso.get("deviceKeyInfo");
         Map<Object, Object> deviceKey = (Map<Object, Object>) deviceKeyInfo.get("deviceKey");
 
@@ -1414,7 +1411,7 @@ public class MDocProcessorTest {
         digests.put(1, new byte[32]);
         namespaceDigests.put("org.iso.18013.5.1", digests);
 
-        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);
+        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests, "SHA-256");
 
         assertNotNull("MSO should not be null", result);
         assertEquals("Version should match config", "1.0", result.get("version"));
@@ -1443,7 +1440,7 @@ public class MDocProcessorTest {
         digests2.put(0, new byte[32]);
         namespaceDigests.put("namespace2", digests2);
 
-        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);
+        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests, "SHA-256");
 
         Map<String, Object> valueDigests = (Map<String, Object>) result.get("valueDigests");
         assertNotNull("ValueDigests should not be null", valueDigests);
@@ -1463,7 +1460,7 @@ public class MDocProcessorTest {
         mDocJson.put("_holderId", createTestDidJwk());
         mDocJson.put("validityInfo", expectedValidityInfo);
 
-        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> result = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
 
         Map<String, Object> resultValidity = (Map<String, Object>) result.get("validityInfo");
         assertEquals(expectedValidityInfo, resultValidity);
@@ -1764,22 +1761,20 @@ public class MDocProcessorTest {
         mDocJson.put("_docType", "test");
         mDocJson.put("_holderId", createTestDidJwk());
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
 
         assertEquals("MSO version should match config", "2.0", mso.get("version"));
     }
 
     @Test
-    public void should_useDigestAlgorithm_when_mDocConfigApplied() throws Exception {
-        when(mDocConfig.getDigestAlgorithm()).thenReturn("SHA-512");
-
+    public void should_declareTheGivenDigestAlgorithm_when_msoIsCreated() throws Exception {
         Map<String, Object> mDocJson = new HashMap<>();
         mDocJson.put("_docType", "test");
         mDocJson.put("_holderId", createTestDidJwk());
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-512");
 
-        assertEquals("Digest algorithm should match config", "SHA-512", mso.get("digestAlgorithm"));
+        assertEquals("SHA-512", mso.get("digestAlgorithm"));
     }
 
     @Test
@@ -1797,10 +1792,11 @@ public class MDocProcessorTest {
         mDocJson.put("_docType", MdlDataElements.DOC_TYPE);
         mDocJson.put("_holderId", createTestDidJwk());
 
-        // As addProof does: the digests and the MSO each take the algorithm from the processor's config
+        // As addProof does: the algorithm is read once from the processor's config and given to both
+        String digestAlgorithm = processor.getDigestAlgorithm();
         Map<String, Map<Integer, byte[]>> digests = new HashMap<>();
-        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, digests, processor.getDigestAlgorithm());
-        Map<String, Object> mso = processor.createMobileSecurityObject(mDocJson, digests);
+        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, digests, digestAlgorithm);
+        Map<String, Object> mso = processor.createMobileSecurityObject(mDocJson, digests, digestAlgorithm);
 
         assertEquals("SHA-384", mso.get("digestAlgorithm"));
         Map<?, ?> valueDigests = (Map<?, ?>) ((Map<?, ?>) mso.get("valueDigests")).get(MDL_NAMESPACE);
@@ -1838,7 +1834,7 @@ public class MDocProcessorTest {
         mDocJson.put("_docType", "org.iso.18013.5.1.mDL");
         mDocJson.put("_holderId", createTestDidJwk());
 
-        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>());
+        Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, new HashMap<>(), "SHA-256");
 
         assertTrue("Must have version", mso.containsKey("version"));
         assertTrue("Must have digestAlgorithm", mso.containsKey("digestAlgorithm"));

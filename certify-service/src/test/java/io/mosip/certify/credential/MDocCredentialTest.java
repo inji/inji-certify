@@ -224,7 +224,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any()))
+            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any(), any()))
                     .thenReturn(mso);
             when(mDocProcessor.signMSO(mso, appID, refID, signAlgorithm))
                     .thenReturn(signedMSO);
@@ -242,10 +242,11 @@ public class MDocCredentialTest {
             assertNotNull("Credential should not be null", result.getCredential());
             assertTrue("Credential should be a String", result.getCredential() instanceof String);
 
-            verify(mDocProcessor).createMobileSecurityObject(eq(mDocJson), any());
             verify(mDocProcessor).signMSO(mso, appID, refID, signAlgorithm);
-            // The value digests use the configured algorithm, the one written into the MSO
+            // The algorithm is read once, and both the value digests and the MSO get it
+            verify(mDocProcessor, times(1)).getDigestAlgorithm();
             mockedStatic.verify(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), eq("SHA-384")));
+            verify(mDocProcessor).createMobileSecurityObject(eq(mDocJson), any(), eq("SHA-384"));
             // Issuer signed is CBOR encoded and base64 url encoded
             mockedStatic.verify(() -> MDocProcessor.encodeToCBOR(issuerSigned));
             byte[] decodedMdoc = Base64.getUrlDecoder().decode(result.getCredential().toString());
@@ -267,7 +268,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(mso, "appId", "refId", "ES256")).thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.requireSignedWithinCertificate(mso, signedMSO))
                     .thenThrow(new IllegalStateException("signed is outside the certificate's validity"));
@@ -296,7 +297,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), anyString()))
                     .thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(any(), any()))
@@ -336,7 +337,7 @@ public class MDocCredentialTest {
                 mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
                 mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                         .thenReturn(taggedNamespaces);
-                when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
+                when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any(), any())).thenReturn(mso);
                 when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), eq(algorithm)))
                         .thenReturn(signedMSO);
                 mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(any(), any()))
@@ -369,7 +370,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(eq(mDocJson), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(eq(mso), anyString(), anyString(), anyString()))
                     .thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(any(), any()))
@@ -447,7 +448,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(any(), any()))
+            when(mDocProcessor.createMobileSecurityObject(any(), any(), any()))
                     .thenThrow(new RuntimeException("MSO creation failed"));
 
             mDocCredential.addProof(
@@ -469,7 +470,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(any(), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))
                     .thenThrow(new RuntimeException("MSO signing failed"));
 
@@ -494,7 +495,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(any(), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))
                     .thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(any(), any()))
@@ -522,7 +523,7 @@ public class MDocCredentialTest {
             mockedStatic.when(() -> MDocProcessor.addRandomSalts(mDocJson)).thenReturn(saltedNamespaces);
             mockedStatic.when(() -> MDocProcessor.calculateDigests(eq(saltedNamespaces), any(), any()))
                     .thenReturn(taggedNamespaces);
-            when(mDocProcessor.createMobileSecurityObject(any(), any())).thenReturn(mso);
+            when(mDocProcessor.createMobileSecurityObject(any(), any(), any())).thenReturn(mso);
             when(mDocProcessor.signMSO(any(), anyString(), anyString(), anyString()))
                     .thenReturn(signedMSO);
             mockedStatic.when(() -> MDocProcessor.createIssuerSignedStructure(any(), any()))

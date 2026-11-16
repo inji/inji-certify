@@ -799,14 +799,16 @@ public class MDocProcessor {
     }
 
     /**
-     * Creates the Mobile Security Object (MSO) structure
+     * Creates the Mobile Security Object (MSO) structure. digestAlgorithm must be the algorithm the
+     * namespaceDigests were calculated with, so that the MSO declares the one its digests use.
      */
     public Map<String, Object> createMobileSecurityObject
-    (Map<String, Object> mDocJson, Map<String, Map<Integer, byte[]>> namespaceDigests) throws Exception {
+    (Map<String, Object> mDocJson, Map<String, Map<Integer, byte[]>> namespaceDigests,
+     String digestAlgorithm) throws Exception {
 
         Map<String, Object> mso = new HashMap<>();
         mso.put("version", mDocConfig.getMsoVersion());
-        mso.put("digestAlgorithm", mDocConfig.getDigestAlgorithm());
+        mso.put("digestAlgorithm", digestAlgorithm);
 
         // Create valueDigests structure
         Map<String, Object> nameSpacesDigests = new HashMap<>();

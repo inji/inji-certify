@@ -71,11 +71,13 @@ public class MDocCredential extends Credential {
             Map<String, Object> mDocJson = objectMapper.readValue(vcToSign, Map.class);
             Map<String, Object> saltedNamespaces = MDocProcessor.addRandomSalts(mDocJson);
             Map<String, Map<Integer, byte[]>> namespaceDigests = new HashMap<>();
+            // Read once, so that the MSO declares the algorithm its value digests are calculated with
+            String digestAlgorithm = mDocProcessor.getDigestAlgorithm();
             Map<String, Object> taggedNamespaces = MDocProcessor.calculateDigests(
-                    saltedNamespaces, namespaceDigests, mDocProcessor.getDigestAlgorithm());
+                    saltedNamespaces, namespaceDigests, digestAlgorithm);
 
             // Create Mobile Security Object (MSO)
-            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests);
+            Map<String, Object> mso = mDocProcessor.createMobileSecurityObject(mDocJson, namespaceDigests, digestAlgorithm);
             byte[] signedMSO = mDocProcessor.signMSO(mso, appID, refID, signAlgorithm);
             MDocProcessor.requireSignedWithinCertificate(mso, signedMSO);
             Map<String, Object> issuerSigned = MDocProcessor.createIssuerSignedStructure(taggedNamespaces, signedMSO);
