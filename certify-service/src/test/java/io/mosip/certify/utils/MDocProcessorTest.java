@@ -1782,6 +1782,41 @@ public class MDocProcessorTest {
         assertEquals("Digest algorithm should match config", "SHA-512", mso.get("digestAlgorithm"));
     }
 
+    @Test
+    public void should_digestEveryItemWithTheMsoDigestAlgorithm_when_configuredForSha384() throws Exception {
+        MDocConfig sha384Config = new MDocConfig();
+        sha384Config.setDigestAlgorithm("SHA-384");
+        sha384Config.validate();
+        MDocProcessor processor = new MDocProcessor(objectMapper, sha384Config, coseSignatureService, keymanagerService);
+        List<Map<String, Object>> elements = List.of(
+                createSaltedElement(3, "family_name", "Doe"),
+                createSaltedElement(11, "birth_date", "1990-08-25"));
+        Map<String, Object> salted = new HashMap<>();
+        salted.put(MDL_NAMESPACE, elements);
+        Map<String, Object> mDocJson = new HashMap<>();
+        mDocJson.put("_docType", MdlDataElements.DOC_TYPE);
+        mDocJson.put("_holderId", createTestDidJwk());
+
+        // As addProof does: the digests and the MSO each take the algorithm from the processor's config
+        Map<String, Map<Integer, byte[]>> digests = new HashMap<>();
+        Map<String, Object> tagged = MDocProcessor.calculateDigests(salted, digests, processor.getDigestAlgorithm());
+        Map<String, Object> mso = processor.createMobileSecurityObject(mDocJson, digests);
+
+        assertEquals("SHA-384", mso.get("digestAlgorithm"));
+        Map<?, ?> valueDigests = (Map<?, ?>) ((Map<?, ?>) mso.get("valueDigests")).get(MDL_NAMESPACE);
+        assertEquals(elements.size(), valueDigests.size());
+        List<?> items = (List<?>) tagged.get(MDL_NAMESPACE);
+        for (int i = 0; i < elements.size(); i++) {
+            DataItem item = (DataItem) items.get(i);
+            assertEquals(24, item.getTag().getValue());
+            ByteArrayOutputStream encodedItem = new ByteArrayOutputStream();
+            new CborEncoder(encodedItem).encode(item);
+            byte[] digest = (byte[]) valueDigests.get(elements.get(i).get("digestID"));
+            assertEquals(48, digest.length);
+            assertArrayEquals(MessageDigest.getInstance("SHA-384").digest(encodedItem.toByteArray()), digest);
+        }
+    }
+
     // ==================== Compliance Tests (ISO 18013-5) ====================
 
     @Test
