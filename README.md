@@ -184,11 +184,13 @@ mosip.certify.dpop.jti.cache-expire-seconds=120
 `dpop_bound_access_tokens: true`, and only from eSignet **1.8** onward — against an older build no token carries
 `cnf.jkt` and every DPoP request is rejected as unbound.
 
-### Enable VC Issuance with mock mDoc/mDL format
+### Enable VC Issuance with mDoc/mDL format
 
-To enable certify to issue VC with mDoc/mDL (mock is supported currently) few properties needed to be updated. Refer
-[here](https://github.com/inji/digital-credential-plugins/tree/master/mock-certify-plugin#mdocmockvcissuanceplugin) to
-know about the properties.
+Certify issues an ISO/IEC 18013-5 mDL (`mso_mdoc`) in `DataProvider` plugin mode: a data provider plugin supplies the
+holder's data, and Certify builds the mDL and signs it with its own key, so no issuer key or certificate needs to be
+onboarded. The [docker-compose setup](./docker-compose/docker-compose-injistack/README.md) shows this with the CSV plugin
+(`mock-mdl` profile), and [Credential Issuer Configuration](./docs/technical_docs/Credential_Issuer_Configuration.md)
+describes the `mso_mdoc` credential configuration.
 
 ## Databases
 

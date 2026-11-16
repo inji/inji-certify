@@ -122,6 +122,24 @@ public class VCIssuanceControllerTest {
     }
 
     @Test
+    public void should_returnUnknownCredentialConfiguration_when_configIdIsNotOffered() throws Exception {
+        CredentialRequest credentialRequest = new CredentialRequest();
+        credentialRequest.setCredentialConfigId("not-a-real-config");
+        credentialRequest.setProofs(Map.of(ProofType.JWT, List.of("dummy_jwt_proof")));
+        Mockito.when(vcIssuanceService.getCredential(credentialRequest)).thenThrow(new CertifyException(
+                VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION,
+                "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id."));
+
+        mockMvc.perform(post("/issuance/credential")
+                        .content(objectMapper.writeValueAsBytes(credentialRequest))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(VCIErrorConstants.UNKNOWN_CREDENTIAL_CONFIGURATION))
+                .andExpect(jsonPath("$.error_description").value(
+                        "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id."));
+    }
+
+    @Test
     public void getVerifiableCredential_withInvalidProof_thenFail() throws Exception {
         CredentialRequest credentialRequest = new CredentialRequest();
         credentialRequest.setCredentialConfigId("TestId");
