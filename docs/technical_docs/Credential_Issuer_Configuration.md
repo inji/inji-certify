@@ -66,15 +66,7 @@ Inji Certify checks your configuration for required fields and possible duplicat
   - for `ldp_vc` format, combination of context & type should be unique. 
   - for `mso_mdoc` format, docType value should be unique.
   - for `dc+sd-jwt` format, sdJwtVct value should be unique.
-- **Mandatory mDL elements**: in DataProvider plugin mode, an `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the `org.iso.18013.5.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `issue_date`, `expiry_date`, `issuing_country`, `issuing_authority`, `document_number`, `portrait`, `driving_privileges` and `un_distinguishing_sign`. Otherwise Add and Update are rejected with `mdl_mandatory_elements_missing`, naming the missing elements.
-  - Only the element identifiers are checked, not their values, so a value may be an unquoted reference such as `"elementValue": ${drivingPrivileges}`. A template that can only be read once Velocity renders it is not checked: one with a directive such as `#if` or `#foreach`, or one whose mDL element identifiers or namespace are references such as `${element.id}`.
-  - An element identifier declared twice in the `org.iso.18013.5.1` namespace is rejected with `mdoc_template_processing_failed`.
-  - The check runs on Add and Update only; the rendered mDL is not checked at issuance. A configuration stored before this check is checked on its next Update.
-- **`validityInfo` placeholders**: in DataProvider plugin mode, every `mso_mdoc` template must have `validityInfo` with `signed`, `validFrom` and `validUntil` set to the strings `"${_signed}"`, `"${_validFrom}"` and `"${_validUntil}"`; Certify sets these dates at issuance (ISO/IEC 18013-5, 9.1.2.4). Add and Update reject a template that leaves out `validityInfo` or one of these fields, or writes anything else in it (a date, or an unquoted `${_signed}`), with `mdoc_template_processing_failed`, naming the field.
-  - A template that can only be read once Velocity renders it (a directive such as `#if`) is not checked at Add and Update; it fails issuance with the same error instead. A configuration stored before this check is checked on its next Update.
-- **Explicit CBOR tags**: an `mso_mdoc` template may tag a value itself, for example `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`, which is how a full-date or tdate is written outside the `org.iso.18013.5.1` namespace. In DataProvider plugin mode, Add and Update reject a `__cbor_tag` that is not the integer `1004` (full-date) or `0` (tdate), with `mdoc_template_processing_failed`, naming where it is. At issuance, a value tagged `1004` must be a date (YYYY-MM-DD) and one tagged `0` an RFC 3339 date-time, or issuance fails with the same error.
-- **Byte strings**: in DataProvider plugin mode, `portrait`, `signature_usual_mark` and every `biometric_template_xx` in the `org.iso.18013.5.1` namespace carry base64 or base64url text (a data URI such as `data:image/jpeg;base64,...` is accepted too), which Certify encodes as a byte string (ISO/IEC 18013-5, 7.2.2 and 7.2.7). `portrait` must be a JPEG or JPEG2000 image. A value that is not base64 text, or a `portrait` that is not a JPEG or JPEG2000 image, fails issuance with `mdoc_template_processing_failed`.
-  - Byte strings are produced only in the `org.iso.18013.5.1` namespace. `__cbor_tag` can tag a date but cannot produce a byte string, so in any other namespace an image or other binary value is always encoded as text.
+- **`mso_mdoc` templates**: in DataProvider plugin mode, Add and Update check an `mso_mdoc` template, and issuance checks its rendered values before signing. See [`mso_mdoc` templates](#mso_mdoc-templates) for the rules.
 - **Validation for `signatureCryptoSuite`, `signatureAlgo`, `keyManagerAppId`, `keyManagerRefId`**.
   - In DataProvider plugin mode, `signatureAlgo` is mandatory for every credential format, on Add and on Update. It is the algorithm the credential is signed with, and nothing is filled in for it from the properties: a request that leaves it out is rejected with the format's mandatory-fields code, `ldp_vc_mandatory_fields_missing`, `mso_mdoc_mandatory_fields_missing` or `dc_sd_jwt_mandatory_fields_missing`.
   - In VCIssuance plugin mode the plugin signs the credential, so `signatureAlgo` is optional. A value that is sent is validated as below, in both modes. An `mso_mdoc` or `dc+sd-jwt` configuration without `signatureAlgo` leaves `credential_signing_alg_values_supported` out of the credential issuer metadata; an `ldp_vc` one still advertises its crypto suite.
@@ -122,5 +114,46 @@ Inji Certify checks your configuration for required fields and possible duplicat
   - In this case, the did document for `did:mosip:12345:driver_license` can be copied from `did:mosip:12345` and hosted on this url.
     
 If you miss a required field or try to add a duplicate, Certify will return an error.
+
+## `mso_mdoc` templates
+
+In DataProvider plugin mode Certify builds and signs an `mso_mdoc` credential from the configuration's `vcTemplate`, following ISO/IEC 18013-5. Add and Update check the template itself; issuance checks the rendered values, before signing. These rules apply in DataProvider plugin mode only; in VCIssuance mode the plugin builds the credential.
+
+### `validityInfo`
+
+Every `mso_mdoc` template must have `validityInfo` with `signed`, `validFrom` and `validUntil` set to the strings `"${_signed}"`, `"${_validFrom}"` and `"${_validUntil}"`; Certify sets these dates at issuance (ISO/IEC 18013-5, 9.1.2.4). Add and Update reject a template that leaves out `validityInfo` or one of these fields, or writes anything else in it (a date, or an unquoted `${_signed}`), with `mdoc_template_processing_failed`, naming the field.
+- A template that can only be read once Velocity renders it (a directive such as `#if`) is not checked at Add and Update; it fails issuance with the same error instead. A configuration stored before this check is checked on its next Update.
+- Certify sets the three dates at issuance, as tdates in UTC without fractions of seconds (ISO/IEC 18013-5, 7.2.1 and 9.1.2.4):
+  - `signed` is the start (00:00:00Z) of the UTC day of issuance, or the signing certificate's `notBefore` if that is later (on the day a signing key is generated or rotated). This reduces timestamp precision but does not guarantee unlinkability.
+  - `validFrom` is the same time, or the start of the mDL `issue_date` if that is later; for an `issue_date` that is a date-time, the next 00:00:00Z at or after it.
+  - `validUntil` is `mosip.certify.mdoc.validity-period-years` (at least 1) after `validFrom`.
+- An mDL whose `signed` is outside the validity of the certificate in the MSO header after signing (the key was rotated in between) fails issuance with `MDOC_PROOF_FAILED`.
+
+### `digestID`
+
+`digestID` is optional and ignored: each issued mdoc gets random digest IDs, unique within each namespace (ISO/IEC 18013-5, 9.1.2.4).
+
+### Mandatory mDL elements
+
+An `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the `org.iso.18013.5.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `issue_date`, `expiry_date`, `issuing_country`, `issuing_authority`, `document_number`, `portrait`, `driving_privileges` and `un_distinguishing_sign`. Otherwise Add and Update are rejected with `mdl_mandatory_elements_missing`, naming the missing elements.
+- Only the element identifiers are checked, not their values, so a value may be an unquoted reference such as `"elementValue": ${drivingPrivileges}`. A template that can only be read once Velocity renders it is not checked: one with a directive such as `#if` or `#foreach`, or one whose mDL element identifiers or namespace are references such as `${element.id}`.
+- An element identifier declared twice in the `org.iso.18013.5.1` namespace is rejected with `mdoc_template_processing_failed`.
+- The check runs on Add and Update only; the rendered mDL is not checked at issuance. A configuration stored before this check is checked on its next Update.
+
+### Dates in the mDL namespace
+
+In the `org.iso.18013.5.1` namespace, `birth_date`, `issue_date`, `expiry_date` and the `issue_date` and `expiry_date` inside each `driving_privileges` entry are encoded as full-dates (CBOR tag 1004) when their value is a date (YYYY-MM-DD) (ISO/IEC 18013-5, 7.2.1 and 7.2.4). No other value is tagged as a date, whatever it looks like.
+- The top-level `issue_date` and `expiry_date` may instead be a date-time, encoded as a tdate (CBOR tag 0) in UTC without fractions of seconds.
+- `driving_privileges` must be an array of DrivingPrivilege entries (7.2.4): each a map with a text `vehicle_category_code`, an optional `issue_date` and `expiry_date`, and optional `codes`, a non-empty array of maps with a text `code` and an optional text `sign` and `value`. No other keys are allowed.
+- A value of one of these elements that is not a date (or, for the top-level `issue_date` and `expiry_date`, a date-time), whether as text, another type or a different tag, fails issuance with `mdoc_template_processing_failed` before signing, and so does a `driving_privileges` value that breaks the structure above.
+
+### Byte strings
+
+`portrait`, `signature_usual_mark` and every `biometric_template_xx` (for example `biometric_template_face`) in the `org.iso.18013.5.1` namespace carry base64 or base64url text (a data URI such as `data:image/jpeg;base64,...` is accepted too), which Certify encodes as a byte string (ISO/IEC 18013-5, 7.2.2 and 7.2.7). `portrait` must be a JPEG or JPEG2000 image. A value that is not base64 text, or a `portrait` that is not a JPEG or JPEG2000 image (for example a PNG or an empty value), fails issuance with `mdoc_template_processing_failed` before signing.
+- Byte strings are produced only in the `org.iso.18013.5.1` namespace. `__cbor_tag` can tag a date but cannot produce a byte string, so in any other namespace an image or other binary value is always encoded as text.
+
+### Explicit CBOR tags
+
+An `mso_mdoc` template may tag a value itself, for example `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`, which is how a full-date or tdate is written outside the `org.iso.18013.5.1` namespace. Add and Update reject a `__cbor_tag` that is not the integer `1004` (full-date) or `0` (tdate), with `mdoc_template_processing_failed`, naming where it is. At issuance, a value tagged `1004` must be a date (YYYY-MM-DD) and one tagged `0` an RFC 3339 date-time, or issuance fails with the same error.
 
 ---
