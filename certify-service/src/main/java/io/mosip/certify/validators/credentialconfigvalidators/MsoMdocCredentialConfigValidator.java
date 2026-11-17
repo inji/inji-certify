@@ -12,6 +12,7 @@ import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.utils.MdlDataElements;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 public class MsoMdocCredentialConfigValidator {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -198,6 +200,8 @@ public class MsoMdocCredentialConfigValidator {
         try {
             return Optional.of(OBJECT_MAPPER.readTree(quoteUnquotedReferences(template)));
         } catch (JsonProcessingException e) {
+            log.debug("mso_mdoc template is not JSON before rendering; Add/Update checks are skipped: {}",
+                    e.getOriginalMessage());
             return Optional.empty();
         }
     }
