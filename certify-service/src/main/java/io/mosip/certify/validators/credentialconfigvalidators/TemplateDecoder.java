@@ -10,7 +10,8 @@ final class TemplateDecoder {
     }
 
     /**
-     * Decodes a Base64-encoded VC template string, the form it is stored in.
+     * Decodes a Base64-encoded VC template string, the form it is stored in. Base64 wrapped across
+     * lines (CR/LF) is decoded too, as issuance decodes it.
      * If the template is already raw JSON or invalid Base64, returns the raw input.
      *
      * @param vcTemplate The input VC template string (Base64 or raw JSON)
@@ -21,7 +22,8 @@ final class TemplateDecoder {
             return vcTemplate;
         }
         try {
-            byte[] decoded = Base64.getDecoder().decode(vcTemplate.trim());
+            byte[] decoded = Base64.getDecoder().decode(
+                    vcTemplate.trim().replace("\r", "").replace("\n", ""));
             return new String(decoded, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException ignored) {
             // If not base64 encoded or fails decoding, return raw vcTemplate
