@@ -2,12 +2,14 @@
     "TC_InjiCertify_GetCredentialFormDoc_01": [
         "TC_esignetDependent_GenerateToken_04",
         "TC_esignetDependent_CreateOidc_01",
-        "TC_mdlDependent_GenerateNonce_01"
+        "TC_mdlDependent_GenerateNonce_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
     ],
     "TC_InjiCertify_GetCredentialFormDoc_02": [
         "TC_esignetDependent_GenerateToken_04",
         "TC_esignetDependent_CreateOidc_01",
-        "TC_mdlDependent_GenerateNonce_01"
+        "TC_mdlDependent_GenerateNonce_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
     ],
     "TC_InjiCertify_mdl_DeleteCredentialConfig_01": ["TC_InjiCertify_addCredentialtypeformdoc_01"],
     "TC_esignetDependent_OAuthdetailsRequest_04": ["TC_esignetDependent_CreateOidc_01"],
@@ -15,22 +17,28 @@
         "TC_esignetDependent_CreateOidc_01",
         "TC_esignetDependent_AuthorizationCode_04"
     ],
-    "TC_esignetDependent_AuthenticateUser_04": ["TC_esignetDependent_OAuthdetailsRequest_04"],
+    "TC_esignetDependent_AuthenticateUser_04": [
+        "TC_esignetDependent_OAuthdetailsRequest_04",
+        "TC_mDoc_identity_dependency_01"
+    ],
     "TC_InjiCertify_mdl_DeleteCredentialConfig_02": ["TC_InjiCertify_addCredentialtypeformdoc_03"],
     "TC_InjiCertify_GetCredentialFormDoc_03": [
         "TC_esignetDependent_GenerateToken_04",
         "TC_esignetDependent_CreateOidc_01",
-        "TC_mdlDependent_GenerateNonce_01"
+        "TC_mdlDependent_GenerateNonce_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
     ],
     "TC_InjiCertify_GetCredentialFormDoc_04": [
         "TC_esignetDependent_GenerateToken_04",
         "TC_esignetDependent_CreateOidc_01",
-        "TC_mdlDependent_GenerateNonce_01"
+        "TC_mdlDependent_GenerateNonce_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
     ],
     "TC_InjiCertify_GetCredentialFormDoc_05": [
         "TC_esignetDependent_GenerateToken_04",
         "TC_esignetDependent_CreateOidc_01",
-        "TC_mdlDependent_GenerateNonce_01"
+        "TC_mdlDependent_GenerateNonce_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
     ],
     "TC_mdlDependent_GenerateNonce_01": [
         "TC_esignetDependent_GenerateToken_04"
@@ -44,7 +52,8 @@
         "TC_esignetDependent_AuthenticateUser_DPoP_Mdl_01"
     ],
     "TC_esignetDependent_AuthenticateUser_DPoP_Mdl_01": [
-        "TC_esignetDependent_OAuthdetailsRequest_DPoP_Mdl_01"
+        "TC_esignetDependent_OAuthdetailsRequest_DPoP_Mdl_01",
+        "TC_mDoc_identity_dependency_01"
     ],
     "TC_esignetDependent_GenerateToken_DPoP_Mdl_01": [
         "TC_esignetDependent_AuthorizationCode_DPoP_Mdl_01",
@@ -69,15 +78,50 @@
     "TC_InjiCertify_mdl_MetaAttrs_Add_01": ["TC_InjiCertify_mdl_MetaAttrs_Delete_01"],
     "TC_InjiCertify_mdl_MetaAttrs_Add_02": ["TC_InjiCertify_mdl_MetaAttrs_Delete_02"],
     "TC_InjiCertify_mdl_MetaAttrs_Get_01": ["TC_InjiCertify_mdl_MetaAttrs_Add_01"],
-    "TC_InjiCertify_mdl_MetaAttrs_Get_02": ["TC_InjiCertify_mdl_MetaAttrs_Add_02"],
+    "TC_InjiCertify_mdl_MetaAttrs_Get_02": ["TC_InjiCertify_mdl_MetaAttrs_Add_02"],
+
     "TC_mdlDependent_GenerateNonce_mdl_MetaAttrs_01": ["TC_esignetDependent_GenerateToken_04"],
     "TC_InjiCertify_mdl_MetaAttrs_GetCredential_01": [
         "TC_InjiCertify_mdl_MetaAttrs_Add_01",
-        "TC_InjiCertify_mdl_MetaAttrs_Get_01",
+        "TC_InjiCertify_mdl_MetaAttrs_Get_01",
+
         "TC_esignetDependent_CreateOidc_01",
         "TC_esignetDependent_GenerateToken_04",
         "TC_mdlDependent_GenerateNonce_mdl_MetaAttrs_01"
     ],
     "TC_InjiCertify_mdl_MetaAttrs_Delete_01": ["TC_InjiCertify_mdl_MetaAttrs_GetCredential_01"],
-    "TC_InjiCertify_mdl_MetaAttrs_Delete_02": ["TC_InjiCertify_mdl_MetaAttrs_Get_02"]
+    "TC_InjiCertify_mdl_MetaAttrs_Delete_02": ["TC_InjiCertify_mdl_MetaAttrs_Get_02"],
+    "TC_mDoc_identity_dependency_01": [],
+    "TC_mDoc_identity_invalidId_dependency_01": [],
+    "TC_esignetDependent_OAuthdetailsRequest_mdl_InvalidId_01": [
+        "TC_esignetDependent_CreateOidc_01",
+        "TC_mDoc_identity_invalidId_dependency_01"
+    ],
+    "TC_esignetDependent_AuthenticateUser_mdl_InvalidId_01": [
+        "TC_esignetDependent_OAuthdetailsRequest_mdl_InvalidId_01"
+    ],
+    "TC_esignetDependent_AuthorizationCode_mdl_InvalidId_01": [
+        "TC_esignetDependent_OAuthdetailsRequest_mdl_InvalidId_01",
+        "TC_esignetDependent_AuthenticateUser_mdl_InvalidId_01"
+    ],
+    "TC_esignetDependent_GenerateToken_mdl_InvalidId_01": [
+        "TC_esignetDependent_CreateOidc_01",
+        "TC_esignetDependent_AuthorizationCode_mdl_InvalidId_01"
+    ],
+    "TC_mdlDependent_GenerateNonce_InvalidId_01": [
+        "TC_esignetDependent_GenerateToken_mdl_InvalidId_01"
+    ],
+    "TC_InjiCertify_GetCredentialFormDoc_06": [
+        "TC_esignetDependent_GenerateToken_mdl_InvalidId_01",
+        "TC_esignetDependent_CreateOidc_01",
+        "TC_mdlDependent_GenerateNonce_InvalidId_01",
+        "TC_InjiCertify_addCredentialtypeformdoc_01"
+    ],
+    "TC_esignetDependent_OAuthdetailsRequest_mdl_InvalidOtp_01": [
+        "TC_esignetDependent_CreateOidc_01"
+    ],
+    "TC_esignetDependent_AuthenticateUser_mdl_InvalidOtp_01": [
+        "TC_esignetDependent_OAuthdetailsRequest_mdl_InvalidOtp_01",
+        "TC_mDoc_identity_dependency_01"
+    ]
 }

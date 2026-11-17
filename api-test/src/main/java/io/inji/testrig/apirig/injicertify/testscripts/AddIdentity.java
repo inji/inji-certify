@@ -95,7 +95,7 @@ public class AddIdentity extends InjiCertifyUtil implements ITest {
 		}
 
 		if (testCaseDTO.getEndPoint().contains("mock-identity-system")) {
-			String individualIDStr = String.valueOf(Calendar.getInstance().getTimeInMillis());
+			String individualIDStr = "1" + generateRandomNumberString(11);
 			String phoneStr = generateRandomNumberString(10);
 			String emailStr = testCaseName + "_" + BaseTestCase.runContext + "@mosip.net";
 			String passWordStr = properties.getProperty("passwordForAddIdentity");
