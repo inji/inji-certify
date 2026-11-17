@@ -56,8 +56,8 @@ public class MsoMdocCredentialConfigValidator {
      * org.iso.18013.5.1 namespace. Checked in DataProvider mode only, where Certify builds the mDL
      * from the template; in VCIssuance mode the plugin builds it. A value may be an unquoted reference
      * such as "elementValue": ${drivingPrivileges}. A template whose mDL identifiers are only known once
-     * Velocity renders it (a directive such as #foreach, or an identifier, namespace or element list that
-     * is a reference such as ${element.id} or ${elements}) is not checked.
+     * Velocity renders it (a directive such as #foreach, or nameSpaces, the mDL namespace, its element list,
+     * an element or an identifier that is a reference such as ${elements} or ${element.id}) is not checked.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
      * @throws CertifyException when the template declares an mDL element identifier twice
@@ -150,6 +150,9 @@ public class MsoMdocCredentialConfigValidator {
             return Optional.empty();
         }
         JsonNode namespaces = parsed.get().path(Constants.NAMESPACES);
+        if (isUnquotedReference(namespaces)) {
+            return Optional.empty();
+        }
         if (!namespaces.has(MdlDataElements.NAMESPACE)) {
             // A namespace written as a reference such as ${namespace} may render as the mDL one.
             for (Iterator<String> names = namespaces.fieldNames(); names.hasNext(); ) {
@@ -159,10 +162,13 @@ public class MsoMdocCredentialConfigValidator {
             }
         }
         JsonNode items = namespaces.path(MdlDataElements.NAMESPACE);
-        if (items.isTextual() && items.asText().startsWith("\0")) {
+        if (isUnquotedReference(items)) {
             return Optional.empty();
         }
         for (JsonNode item : items) {
+            if (isUnquotedReference(item)) {
+                return Optional.empty();
+            }
             String identifier = item.path(Constants.ELEMENT_IDENTIFIER).asText();
             if (identifier.contains("$")) {
                 return Optional.empty();
@@ -174,6 +180,10 @@ public class MsoMdocCredentialConfigValidator {
             }
         }
         return Optional.of(declared);
+    }
+
+    private static boolean isUnquotedReference(JsonNode node) {
+        return node.isTextual() && node.asText().startsWith("\0");
     }
 
     /**

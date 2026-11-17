@@ -257,6 +257,29 @@ class MsoMdocCredentialConfigValidatorTest {
     }
 
     @Test
+    void should_notCheckTheTemplate_when_anMdlElementIsAnUnquotedReference() {
+        // ${first} may render as any mandatory element
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [${first},"
+                + " {\"elementIdentifier\": \"family_name\", \"elementValue\": \"x\"}]}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notReportADuplicate_when_twoMdlElementsAreUnquotedReferences() {
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [${first}, ${second}]}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_nameSpacesIsAnUnquotedReference() {
+        String template = "{\"nameSpaces\": ${nameSpaces}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
     void should_reportEveryElement_when_theMdlNamespaceIsAnEmptyArray() {
         String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": []}}";
 
