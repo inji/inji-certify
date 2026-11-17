@@ -249,6 +249,22 @@ class MsoMdocCredentialConfigValidatorTest {
     }
 
     @Test
+    void should_notCheckTheTemplate_when_theMdlElementsAreAnUnquotedReference() {
+        // ${elements} may render as an array holding every mandatory element
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ${elements}}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reportEveryElement_when_theMdlNamespaceIsAnEmptyArray() {
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": []}}";
+
+        assertEquals(MdlDataElements.MANDATORY,
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+    }
+
+    @Test
     void should_notCheckTheTemplate_when_docTypeIsNotAnMdl() {
         CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, List.of("family_name")));
         config.setDocType("org.example.custom.document");

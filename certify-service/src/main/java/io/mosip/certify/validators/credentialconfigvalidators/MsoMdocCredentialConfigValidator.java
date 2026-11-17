@@ -56,8 +56,8 @@ public class MsoMdocCredentialConfigValidator {
      * org.iso.18013.5.1 namespace. Checked in DataProvider mode only, where Certify builds the mDL
      * from the template; in VCIssuance mode the plugin builds it. A value may be an unquoted reference
      * such as "elementValue": ${drivingPrivileges}. A template whose mDL identifiers are only known once
-     * Velocity renders it (a directive such as #foreach, or an identifier or namespace that is a
-     * reference such as ${element.id}) is not checked.
+     * Velocity renders it (a directive such as #foreach, or an identifier, namespace or element list that
+     * is a reference such as ${element.id} or ${elements}) is not checked.
      *
      * @return the mandatory elements the template does not declare, empty when none are missing
      * @throws CertifyException when the template declares an mDL element identifier twice
@@ -158,7 +158,11 @@ public class MsoMdocCredentialConfigValidator {
                 }
             }
         }
-        for (JsonNode item : namespaces.path(MdlDataElements.NAMESPACE)) {
+        JsonNode items = namespaces.path(MdlDataElements.NAMESPACE);
+        if (items.isTextual() && items.asText().startsWith("\0")) {
+            return Optional.empty();
+        }
+        for (JsonNode item : items) {
             String identifier = item.path(Constants.ELEMENT_IDENTIFIER).asText();
             if (identifier.contains("$")) {
                 return Optional.empty();

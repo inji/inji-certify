@@ -137,7 +137,7 @@ Every `mso_mdoc` template must have `validityInfo` with `signed`, `validFrom` an
 ### Mandatory mDL elements
 
 An `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the `org.iso.18013.5.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `issue_date`, `expiry_date`, `issuing_country`, `issuing_authority`, `document_number`, `portrait`, `driving_privileges` and `un_distinguishing_sign`. Otherwise Add and Update are rejected with `mdl_mandatory_elements_missing`, naming the missing elements.
-- Only the element identifiers are checked, not their values, so a value may be an unquoted reference such as `"elementValue": ${drivingPrivileges}`. A template that can only be read once Velocity renders it is not checked: one with a directive such as `#if` or `#foreach`, or one whose mDL element identifiers or namespace are references such as `${element.id}`.
+- Only the element identifiers are checked, not their values, so a value may be an unquoted reference such as `"elementValue": ${drivingPrivileges}`. A template that can only be read once Velocity renders it is not checked: one with a directive such as `#if` or `#foreach`, or one whose mDL element identifiers, namespace or element list are references such as `${element.id}` or `${elements}`.
 - An element identifier declared twice in the `org.iso.18013.5.1` namespace is rejected with `mdoc_template_processing_failed`.
 - The check runs on Add and Update only; the rendered mDL is not checked at issuance. A configuration stored before this check is checked on its next Update.
 
