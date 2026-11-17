@@ -334,6 +334,15 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_startValidFromTheNextDay_when_issueDateIsAFractionOfASecondAfterMidnight() {
+        Map<String, Object> validityInfo = (Map<String, Object>) mDocProcessor
+                .processTemplatedJson(mdlTemplateWithIssueDate("2026-08-01T00:00:00.500Z"), new HashMap<>(), CERT_NOT_BEFORE)
+                .get("validityInfo");
+
+        assertEquals("2026-08-02T00:00:00Z", cborValue(validityInfo, "validFrom"));
+    }
+
+    @Test
     public void should_startValidFromTheNextDay_when_templateTagsTheIssueDateAsATdate() {
         String template = mdlTemplateWithIssueDate("2026-08-01T10:00:00Z").replace("\"2026-08-01T10:00:00Z\"",
                 "{\"__cbor_tag\": 0, \"__cbor_value\": \"2026-08-01T10:00:00Z\"}");

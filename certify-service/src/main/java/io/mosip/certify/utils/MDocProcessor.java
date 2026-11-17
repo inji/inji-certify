@@ -269,14 +269,14 @@ public class MDocProcessor {
         return startOfDay.equals(dateTime) ? startOfDay : startOfDay.plusDays(1);
     }
 
-    /** An RFC 3339 date-time in UTC without fractions of seconds, or null when the text is not one. */
+    /** An RFC 3339 date-time in UTC, preserving precision for boundary calculations, or null. */
     private static ZonedDateTime parseDateTime(String text) {
         try {
             if (!text.matches("\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:[Zz]|[+-]\\d{2}:\\d{2})")) {
                 return null;
             }
             return OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-                    .atZoneSameInstant(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
+                    .atZoneSameInstant(ZoneOffset.UTC);
         } catch (DateTimeParseException e) {
             return null;
         }
