@@ -171,6 +171,9 @@ public class SimplePost extends InjiCertifyUtil implements ITest {
 						&& !testCaseDTO.getOutput().contains("\"error\"")) {
 					InjiCertifyUtil.validateMdocCredentialResponse(response, testCaseName);
 				}
+				if (testCaseName.contains("_SVGRendering") && !testCaseDTO.getOutput().contains("\"error\"")) {
+					InjiCertifyUtil.validateSvgRenderMethodResponse(response, testCaseName);
+				}
 			}
 
 		}
