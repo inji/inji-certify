@@ -1,4 +1,19 @@
 WellKnownEndpoint:
+   InjiCertify_WellKnownEndpoint_LandRegistry_RSA_all_Valid_TC_34:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_RSA_01
+      description: Verify RSA crypto suite is advertised for the Land Registry VCDM 2.0 credential
+      role: resident
+      checkErrorsOnlyInResponse: true
+      restMethod: get
+      additionalDependencies: TC_InjiCertify_LandRegistry_AddVCDM20_RSA_01
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointRsaResult
+      input: '{
+}'
+      output: '{
+}'
+
    InjiCertify_WellKnownEndpoint_LandRegistry_all_Valid_Smoke:
       endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_01
