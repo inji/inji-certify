@@ -200,8 +200,7 @@ public class MsoMdocCredentialConfigValidator {
         try {
             return Optional.of(OBJECT_MAPPER.readTree(quoteUnquotedReferences(template)));
         } catch (JsonProcessingException e) {
-            log.debug("mso_mdoc template is not JSON before rendering; Add/Update checks are skipped: {}",
-                    e.getOriginalMessage());
+            log.debug("mso_mdoc template is not JSON before rendering; Add/Update checks are skipped.");
             return Optional.empty();
         }
     }
