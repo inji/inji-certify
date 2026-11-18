@@ -167,15 +167,26 @@ public class SimplePost extends InjiCertifyUtil implements ITest {
 						throw new AdminTestException("Failed at otp output validation");
 				}
 				InjiCertifyUtil.cacheMosipIdentityVcFromCredentialResponse(response, testCaseName);
-				if ((testCaseName.contains("_GetCredentialFormdl_") || testCaseName.contains("_GetCredentialFormdocvp_"))
-						&& !testCaseDTO.getOutput().contains("\"error\"")) {
-					InjiCertifyUtil.validateMdocCredentialResponse(response, testCaseName);
-				}
+				validateCredentialResponse(response, testCaseDTO);
 			}
 
 		}
 
 	
+
+	static void validateCredentialResponse(Response response, TestCaseDTO testCaseDTO) {
+		if (testCaseDTO.getOutput().contains("\"error\"")) {
+			return;
+		}
+		String name = testCaseDTO.getTestCaseName();
+		boolean mosipId = name.contains("_GetCredentialMosipID_");
+		if (name.contains("_GetCredentialFormdl_") || name.contains("_GetCredentialFormdocvp_")
+				|| (mosipId && name.contains("_Mdoc_"))) {
+			InjiCertifyUtil.validateMdocCredentialResponse(response, name);
+		} else if (mosipId && name.contains("_SdJwt_")) {
+			InjiCertifyUtil.validateSdJwtCredentialResponse(response, name);
+		}
+	}
 
 	/**
 	 * The method ser current test name to result

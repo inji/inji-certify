@@ -3322,6 +3322,32 @@ public static void configureOtp() {
 		return credeuri.substring(credeuri.lastIndexOf("%2F") + 3);
 	}
 
+	public static void validateSdJwtCredentialResponse(Response response, String testCaseName) {
+		try {
+			JSONArray credentials = new JSONObject(response.asString()).getJSONArray("credentials");
+			if (credentials.length() == 0) {
+				throw new RuntimeException("SD-JWT response 'credentials' array is empty for " + testCaseName);
+			}
+			for (int i = 0; i < credentials.length(); i++) {
+				String credential = credentials.getJSONObject(i).getString("credential");
+				int separator = credential.indexOf('~');
+				if (separator <= 0 || !credential.endsWith("~")) {
+					throw new RuntimeException("SD-JWT credential must use JWT~disclosures~ form for " + testCaseName);
+				}
+				SignedJWT jwt = SignedJWT.parse(credential.substring(0, separator));
+				if (!new JOSEObjectType("dc+sd-jwt").equals(jwt.getHeader().getType())) {
+					throw new RuntimeException("SD-JWT credential must have typ dc+sd-jwt for " + testCaseName);
+				}
+				String vct = jwt.getJWTClaimsSet().getStringClaim("vct");
+				if (vct == null || vct.isBlank()) {
+					throw new RuntimeException("SD-JWT credential missing non-blank vct for " + testCaseName);
+				}
+			}
+		} catch (JSONException | java.text.ParseException e) {
+			throw new RuntimeException("Invalid SD-JWT credential response for " + testCaseName, e);
+		}
+	}
+
 	public static void validateMdocCredentialResponse(Response response, String testCaseName) {
 		String body = response.asString();
 		JSONObject json;
