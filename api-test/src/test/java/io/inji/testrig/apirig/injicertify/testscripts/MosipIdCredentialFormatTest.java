@@ -6,6 +6,7 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import io.mosip.testrig.apirig.dto.TestCaseDTO;
@@ -57,6 +58,14 @@ public class MosipIdCredentialFormatTest {
     }
 
     @Test
+    public void acceptsSdJwtWithDisclosures() throws Exception {
+        String arrayDisclosure = Base64URL.encode("[\"salt\",\"value\"]").toString();
+        String objectDisclosure = Base64URL.encode("[\"salt\",\"name\",\"value\"]").toString();
+        String credential = jwt("dc+sd-jwt", "MosipID") + "~" + arrayDisclosure + "~" + objectDisclosure + "~";
+        SimplePost.validateCredentialResponse(response(credential), scenario("SdJwt"));
+    }
+
+    @Test
     public void acceptsMdoc() throws Exception {
         SimplePost.validateCredentialResponse(response("oWdkb2NUeXBlZ01vc2lwSUQ"), scenario("Mdoc"));
     }
@@ -80,7 +89,15 @@ public class MosipIdCredentialFormatTest {
                 {jwt("dc+sd-jwt", "MosipID")},
                 {jwt("JWT", "MosipID") + "~"},
                 {jwt("dc+sd-jwt", null) + "~"},
-                {jwt("dc+sd-jwt", " ") + "~"}
+                {jwt("dc+sd-jwt", " ") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~%%%~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("not-json") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("{}") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("[]") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("[\"salt\"]") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("[\"salt\",\"name\",\"value\",0]") + "~"},
+                {jwt("dc+sd-jwt", "MosipID") + "~" + Base64URL.encode("[\"salt\",\"value\"]") + "~%%%~"}
         };
     }
 

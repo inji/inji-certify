@@ -3334,6 +3334,14 @@ public static void configureOtp() {
 				if (separator <= 0 || !credential.endsWith("~")) {
 					throw new RuntimeException("SD-JWT credential must use JWT~disclosures~ form for " + testCaseName);
 				}
+				String[] parts = credential.split("~", -1);
+				for (int j = 1; j < parts.length - 1; j++) {
+					JSONArray disclosure = new JSONArray(new String(
+							Base64.getUrlDecoder().decode(parts[j]), StandardCharsets.UTF_8));
+					if (disclosure.length() != 2 && disclosure.length() != 3) {
+						throw new RuntimeException("Invalid SD-JWT disclosure for " + testCaseName);
+					}
+				}
 				SignedJWT jwt = SignedJWT.parse(credential.substring(0, separator));
 				if (!new JOSEObjectType("dc+sd-jwt").equals(jwt.getHeader().getType())) {
 					throw new RuntimeException("SD-JWT credential must have typ dc+sd-jwt for " + testCaseName);
@@ -3343,7 +3351,7 @@ public static void configureOtp() {
 					throw new RuntimeException("SD-JWT credential missing non-blank vct for " + testCaseName);
 				}
 			}
-		} catch (JSONException | java.text.ParseException e) {
+		} catch (JSONException | java.text.ParseException | IllegalArgumentException e) {
 			throw new RuntimeException("Invalid SD-JWT credential response for " + testCaseName, e);
 		}
 	}
