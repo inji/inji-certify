@@ -1,6 +1,6 @@
 > ❗ **Important\!** Before you proceed, you should be aware of OpenID4VC & W3C VC. Please read the following standards before proceeding:
 >
->   * [OpenID4VC - OpenID for Verifiable Credential Issuance - draft 13](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html)
+>   * [OpenID4VC - OpenID for Verifiable Credential Issuance - 1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html)
 >   * [W3C VC - Verifiable Credentials Overview](https://www.w3.org/TR/vc-overview/)
 
 -----
@@ -24,27 +24,29 @@
 ## Overview
 
 Inji Certify enables issuers to generate, sign and issue a verifiable credentials. It follows the standard of OpenID4VCI
-(Open ID For VC Issuance) draft 13. It also issues VC complaints with W3C Verifiable Credentials (1.1 & 2.0). Issuers
-can configure credential schemas for different certificate types, generating credentials in different VC formats such
-JSON-LD, SD-JWT etc.
+(Open ID For VC Issuance) 1.0. It also issues VC complaints with W3C Verifiable Credentials (1.1 & 2.0). Issuers can
+configure credential schemas for different certificate types, generating credentials in different VC formats such JSON-LD,
+SD-JWT etc.
 
-In particular, certify focuses on the issuer’s role in and provides the following features from OpenID4VC (draft 13):
+In particular, certify focuses on the issuer’s role in and provides the following features from OpenID4VCI 1.0:
 
 | Feature                                                             | Coverage |
 |:--------------------------------------------------------------------|:---------|
-| Issuer Metadata                                                     | ✅        |
-| Support for access token validation                                 | ✅        |
-| Credential Issuance                                                 | ✅        |
-| Credential Binding with did:.. keys                                 | ✅        |
-| Credential Binding with jwt proof                                   | ✅        |
-| Support for JSON\_LD VC Format                                      | ✅        |
-| Support for IETF SD\_JWT VC Format with support only for dc+sd\_jwt | ✅        |
-| Revocation support for JSON\_LD                                     | ✅        |
-| Credential Offer with Pre Authorization Code Flow                   | ✅        |
-| Credential Issuance with Interactive Authorization Request          | ✅        |
-| Support for mDoc/mDL VC Format                                      | ❌        |
-| Credential Offer with Authorization Code Flow(redirect-to-web)      | ❌        |
-| Credential Binding with cwt proof                                   | ❌        |
+| Issuer Metadata                                                     | ✅       |
+| Support for access token validation                                 | ✅       |
+| Credential Issuance                                                 | ✅       |
+| Support for dedicated nonce endpoint (`POST /nonce`)                | ✅       |
+| Credential Binding with did:.. keys                                 | ✅       |
+| Credential Binding with jwt proof                                   | ✅       |
+| DPoP-constrained access token support (RFC 9449)                    | ✅       |
+| Support for JSON\_LD VC Format                                      | ✅       |
+| Support for IETF SD\_JWT VC Format with support only for dc+sd\_jwt | ✅       |
+| Revocation support for JSON\_LD                                     | ✅       |
+| Credential Offer with Pre Authorization Code Flow                   | ✅       |
+| Credential Issuance with Interactive Authorization Request          | ✅       |
+| Support for mDoc/mDL VC Format                                      | ✅       |
+| Credential Offer with Authorization Code Flow(redirect-to-web)      | ❌       |
+| Credential Binding with cwt proof                                   | ❌       |
 
 To know more about features available in certify please refer to [this
 documentation](https://docs.inji.io/inji-certify/overview/features).
@@ -205,13 +207,8 @@ Please refer to step-by-step [migration guide](./docs/technical_docs/Migration_G
 
 ## Upcoming Features
 
-* Additional formats: mDoc/mDL, Signed JWT
+* Additional formats: Signed JWT
 * Credential Revocation APIs & discovery mechanisms (SD-JWT, mDoc/mDL)
-* Presentation during Issuance
-* Pre authorised code & credential offer
-
-**Note** : Currently, mDoc/mDL support is available only in mock mode. A full implementation will be provided in a
-future release.
 
 ## Documentation
 
