@@ -15,7 +15,7 @@ services:
       - "5433:5432"
 
   certify:
-    image: injistackqa/inji-certify-with-plugins:1.0.x
+    image: injistack/inji-certify-with-plugins:1.0.0-rc.1
     user: root
     ports:
       - 8090:8090
