@@ -137,7 +137,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 }
                 List<String> missingMdlElements = MsoMdocCredentialConfigValidator.findMissingMdlElements(credentialConfig, pluginMode);
                 if (!missingMdlElements.isEmpty()) {
-                    throw new CertifyException(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING,
+                    throw new CertifyException(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING,
                             "An mDL template must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
                                     + String.join(", ", missingMdlElements) + ".");
                 }

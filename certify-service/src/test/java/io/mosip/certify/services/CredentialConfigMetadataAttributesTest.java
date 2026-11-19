@@ -599,7 +599,7 @@ public class CredentialConfigMetadataAttributesTest {
         CertifyException exception = Assert.assertThrows(CertifyException.class,
                 () -> credentialConfigurationService.addCredentialConfiguration(request));
 
-        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING, exception.getErrorCode());
         Assert.assertTrue(exception.getMessage().contains("portrait"));
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
@@ -704,7 +704,7 @@ public class CredentialConfigMetadataAttributesTest {
         CertifyException exception = Assert.assertThrows(CertifyException.class,
                 () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
 
-        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_ELEMENTS_MISSING, exception.getErrorCode());
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING, exception.getErrorCode());
         verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
     }
 

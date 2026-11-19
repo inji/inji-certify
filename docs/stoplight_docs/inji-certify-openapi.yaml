@@ -1584,7 +1584,7 @@ components:
           description: |-
             Base64 encoded template identifier for the Verifiable Credential. Mandatory if mosip.certify.plugin-mode is set to ‘DataProvider’ during creation.
 
-            For mso_mdoc in DataProvider plugin mode, Add and Update reject a template whose validityInfo dates are not the ${_signed}, ${_validFrom} and ${_validUntil} placeholders, whose explicit __cbor_tag is not 0 or 1004, or, for an mDL (org.iso.18013.5.1.mDL), that lacks an ISO/IEC 18013-5 mandatory element (mdl_mandatory_elements_missing) or declares one twice. At issuance, before signing, mDL dates, driving_privileges and byte strings (portrait as JPEG or JPEG2000) are checked; an invalid value fails with mdoc_template_processing_failed.
+            For mso_mdoc in DataProvider plugin mode, Add and Update reject a template whose validityInfo dates are not the ${_signed}, ${_validFrom} and ${_validUntil} placeholders, whose explicit __cbor_tag is not 0 or 1004, or, for an mDL (org.iso.18013.5.1.mDL), that lacks an ISO/IEC 18013-5 mandatory element (mdl_mandatory_fields_missing) or declares one twice. At issuance, before signing, mDL dates, driving_privileges and byte strings (portrait as JPEG or JPEG2000) are checked; an invalid value fails with mdoc_template_processing_failed.
 
             See the full rules in [Credential Issuer Configuration](https://github.com/inji/inji-certify/blob/develop/docs/technical_docs/Credential_Issuer_Configuration.md#mso_mdoc-templates).
         credentialConfigKeyId:
