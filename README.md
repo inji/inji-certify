@@ -44,7 +44,8 @@ In particular, certify focuses on the issuer’s role in and provides the follow
 | Revocation support for JSON\_LD                                     | ✅       |
 | Credential Offer with Pre Authorization Code Flow                   | ✅       |
 | Credential Issuance with Interactive Authorization Request          | ✅       |
-| Support for mDoc/mDL VC Format                                      | ✅       |
+| Presentation during Issuance Flow                                   | ✅       |
+| Support for mDoc/mDL VC Format (DataProvider mode)                  | ✅       |
 | Credential Offer with Authorization Code Flow(redirect-to-web)      | ❌       |
 | Credential Binding with cwt proof                                   | ❌       |
 
@@ -190,8 +191,8 @@ mosip.certify.dpop.jti.cache-expire-seconds=120
 
 Certify issues an ISO/IEC 18013-5 mDL (`mso_mdoc`) in `DataProvider` plugin mode: a data provider plugin supplies the
 holder's data, and Certify builds the mDL and signs it with its own key, so no issuer key or certificate needs to be
-onboarded. The [docker-compose setup](./docker-compose/docker-compose-injistack/README.md) shows this with the CSV plugin
-(`mock-mdl` profile), and [Credential Issuer Configuration](./docs/technical_docs/Credential_Issuer_Configuration.md)
+onboarded. The [docker-compose setup](./docker-compose/docker-compose-injistack/README.md) demonstrates this in
+DataProvider mode (`mock-mdl` profile), and [Credential Issuer Configuration](./docs/technical_docs/Credential_Issuer_Configuration.md)
 describes the `mso_mdoc` credential configuration.
 
 ## Databases
