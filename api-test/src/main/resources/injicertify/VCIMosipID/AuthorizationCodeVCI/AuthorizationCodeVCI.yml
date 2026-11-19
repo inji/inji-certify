@@ -112,3 +112,41 @@ AuthorizationCodeVCI:
 }'
       output: '{
 }'
+
+   InjiCertify_ESignet_AuthorizationCode_VCI_MOSIPID_SdJwt_uin_All_Valid_Smoke_sid:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/auth-code
+      uniqueIdentifier: TC_esignetDependent_AuthorizationCode_SdJwt_Mosip_01
+      description: Authorization Code for mosip id sd_jwt format
+      role: resident
+      restMethod: post
+      additionalDependencies: TC_esignetDependent_AuthenticateUser_SdJwt_Mosip_01
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCI
+      outputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_SdJwt_uin_all_Valid_Smoke_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_SdJwt_uin_all_Valid_Smoke_sid_transactionId$"
+}'
+      output: '{
+}'
+
+   InjiCertify_ESignet_AuthorizationCode_VCI_MOSIPID_Mdoc_uin_All_Valid_Smoke_sid:
+      endPoint: $ESIGNETMOSIPIDBASEURL$/v1/esignet/authorization/auth-code
+      uniqueIdentifier: TC_esignetDependent_AuthorizationCode_Mdoc_Mosip_01
+      description: Authorization Code for mosip id mso_mdoc format
+      role: resident
+      restMethod: post
+      additionalDependencies: TC_esignetDependent_AuthenticateUser_Mdoc_Mosip_01
+      checkErrorsOnlyInResponse: true
+      validityCheckRequired: true
+      inputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCI
+      outputTemplate: injicertify/VCIMosipID/AuthorizationCodeVCI/AuthorizationCodeVCIResult
+      input: '{
+        "encodedHash": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_Mdoc_uin_all_Valid_Smoke_sid_encodedResp$",
+      	"requestTime": "$TIMESTAMP$",
+      	"transactionId": "$ID:ESignet_OAuthDetailsRequest_VCI_MOSIPID_Mdoc_uin_all_Valid_Smoke_sid_transactionId$"
+}'
+      output: '{
+}'

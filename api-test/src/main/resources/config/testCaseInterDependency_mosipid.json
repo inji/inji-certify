@@ -45,6 +45,14 @@
         "TC_pms_dependency_01",
         "TC_esignetDependent_AuthorizationCode_27"
     ],
+    "TC_esignetDependent_GenerateToken_SdJwt_Mosip_01": [
+        "TC_pms_dependency_01",
+        "TC_esignetDependent_AuthorizationCode_SdJwt_Mosip_01"
+    ],
+    "TC_esignetDependent_GenerateToken_Mdoc_Mosip_01": [
+        "TC_pms_dependency_01",
+        "TC_esignetDependent_AuthorizationCode_Mdoc_Mosip_01"
+    ],
     "TC_esignetDependent_OAuthdetailsRequestNeg_26": ["TC_pms_dependency_01"],
     "TC_esignetDependent_OAuthdetailsRequestNeg_27": ["TC_pms_dependency_01"],
     "TC_pms_dependency_09": ["TC_pms_dependency_03"],
@@ -183,13 +191,15 @@
     ],
     "TC_injicertify_Mosipidcredentialissuance_06": [
         "TC_pms_dependency_01",
-        "TC_esignetDependent_GenerateTokenNeg_31",
-        "TC_mosipIDDependent_GenerateNonceNeg_01"
+        "TC_esignetDependent_GenerateToken_SdJwt_Mosip_01",
+        "TC_esignetDependent_GenerateNonce_01",
+        "TC_InjiCertify_MosipID_AddCredentialConfig_19"
     ],
     "TC_injicertify_Mosipidcredentialissuance_07": [
         "TC_pms_dependency_01",
-        "TC_esignetDependent_GenerateTokenNeg_31",
-        "TC_mosipIDDependent_GenerateNonceNeg_01"
+        "TC_esignetDependent_GenerateToken_Mdoc_Mosip_01",
+        "TC_esignetDependent_GenerateNonce_01",
+        "TC_InjiCertify_MosipID_AddCredentialConfig_20"
     ],
     "TC_injicertify_Mosipidcredentialissuance_08": [
         "TC_pms_dependency_01",
