@@ -3338,7 +3338,9 @@ public static void configureOtp() {
 				for (int j = 1; j < parts.length - 1; j++) {
 					JSONArray disclosure = new JSONArray(new String(
 							Base64.getUrlDecoder().decode(parts[j]), StandardCharsets.UTF_8));
-					if (disclosure.length() != 2 && disclosure.length() != 3) {
+					int size = disclosure.length();
+					if ((size != 2 && size != 3) || !(disclosure.get(0) instanceof String)
+							|| (size == 3 && !(disclosure.get(1) instanceof String))) {
 						throw new RuntimeException("Invalid SD-JWT disclosure for " + testCaseName);
 					}
 				}
