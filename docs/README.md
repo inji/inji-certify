@@ -17,6 +17,10 @@
 
 Ready-to-import collections and environments under [postman_collections/](./postman_collections/), organized into one folder per flow:
 
+## [credential_configuration/](./postman_collections/credential_configuration/)
+Adds, gets, updates and deletes the credential configurations that the flow collections below issue, with one folder per format (`ldp_vc`, `dc+sd-jwt`, `mso_mdoc`) and a sample for each data provider plugin. Add the configuration a flow needs before running it; each flow collection's description names it.
+- `inji-certify-credential-configuration.postman_collection.json` + `.postman_environment.json` (`ENV Credential Configuration`)
+
 ## [authorization_code_flow/](./postman_collections/authorization_code_flow/)
 Collections that exercise the OAuth authorization code grant, split by which Certify plugin architecture they demonstrate (see [VCIssuance vs DataProvider](./technical_docs/VCIssuance_Vs_DataProvider.md) for the distinction):
 

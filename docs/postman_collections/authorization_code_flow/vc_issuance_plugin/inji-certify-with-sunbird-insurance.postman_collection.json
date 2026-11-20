@@ -5,7 +5,7 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "12594460",
     "_collection_link": "https://go.postman.co/collection/12594460-29b32ec1-afa2-43ad-9ef4-1e6a830c200c?source=collection_link",
-    "description": "Sunbird RC insurance issuance via eSignet (knowledge-based auth) and Inji Certify.\n\nSelect environment `ENV Sunbird Insurance`, then:\n1. OIDC Client Mgmt: once per deployment, to register the client (hosted deployments also need internalUrl and partnerSecret).\n2. Sunbird RC Insurance Registry: Create the record, then Search and confirm exactly one match. Duplicate records make eSignet answer auth_failed. The KBI challenge and the individualId are built from the insurance_registry_* collection variables, so there is nothing to keep in sync by hand.\n3. VCI (Bearer): top to bottom.\n\nRequires `pmlib_code` in the environment (or in globals)."
+    "description": "Sunbird RC insurance issuance via eSignet (knowledge-based auth) and Inji Certify.\n\nBefore the first run, add the configuration from the \"Inji Certify Credential Configuration\" collection (docs/postman_collections/credential_configuration/): ldp_vc > Sunbird Insurance. credentialConfigurationId in the environment must match its credentialConfigKeyId.\n\nSelect environment `ENV Sunbird Insurance`, then:\n1. OIDC Client Mgmt: once per deployment, to register the client (hosted deployments also need internalUrl and partnerSecret).\n2. Sunbird RC Insurance Registry: Create the record, then Search and confirm exactly one match. Duplicate records make eSignet answer auth_failed. The KBI challenge and the individualId are built from the insurance_registry_* collection variables, so there is nothing to keep in sync by hand.\n3. VCI (Bearer): top to bottom.\n\nRequires `pmlib_code` in the environment (or in globals)."
   },
   "item": [
     {
@@ -721,112 +721,6 @@
                 "vci",
                 ".well-known",
                 "openid-credential-issuer"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Credential Configuration",
-      "item": [
-        {
-          "name": "Add New Config",
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\r\n  \"vcTemplate\": \"\",\r\n  \"credentialConfigKeyId\": \"InsuranceCredential\",\r\n  \"contextURLs\": [\r\n    \"https://inji.github.io/inji-config/contexts/insurance-context.json\",\r\n    \"https://www.w3.org/2018/credentials/v1\"\r\n  ],\r\n  \"credentialTypes\": [\r\n    \"InsuranceCredential\",\r\n    \"VerifiableCredential\"\r\n  ],\r\n  \"credentialFormat\": \"ldp_vc\",\r\n  \"didUrl\": \"did:web:inji.github.io:inji-config:collab:insurance\",\r\n  \"signatureCryptoSuite\": \"Ed25519Signature2020\",\r\n  \"signatureAlgo\": \"EdDSA\",\r\n  \"cryptographicBindingMethodsSupported\": [\r\n    \"did:jwk\",\r\n    \"did:key\"\r\n  ],\r\n  \"proofTypesSupported\": {\r\n    \"jwt\": {\r\n      \"proof_signing_alg_values_supported\": [\r\n        \"RS256\",\r\n        \"PS256\",\r\n        \"ES256\",\r\n        \"EdDSA\"\r\n      ]\r\n    }\r\n  },\r\n  \"metaDataDisplay\": [\r\n    {\r\n      \"logo\": {\r\n        \"uri\": \"https://inji.github.io/inji-config/logos/StayProtectedInsurance.png\",\r\n        \"alt_text\": \"a square logo of a Veridonia\"\r\n      },\r\n      \"name\": \"Health Insurance\",\r\n      \"locale\": \"en\",\r\n      \"text_color\": \"#7C4616\",\r\n      \"background_color\": \"#FDFAF9\",\r\n      \"background_image\": null\r\n    }\r\n  ],\r\n  \"displayOrder\": [\r\n    \"fullName\",\r\n    \"policyName\",\r\n    \"policyExpiresOn\",\r\n    \"policyIssuedOn\",\r\n    \"policyNumber\",\r\n    \"mobile\",\r\n    \"dob\",\r\n    \"gender\",\r\n    \"benefits\",\r\n    \"email\"\r\n  ],\r\n  \"scope\": \"sunbird_rc_insurance_vc_ldp\",\r\n  \"credentialStatusPurposes\": [\r\n    \"revocation\"\r\n  ],\r\n  \"claims\": {\r\n    \"dob\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Date of Birth\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"email\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Email Id\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"gender\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Gender\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"mobile\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Phone Number\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"benefits\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Benefits\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"fullName\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Name\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyName\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Name\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyNumber\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Number\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyIssuedOn\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Issued On\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyExpiresOn\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Expires On\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    }\r\n  }\r\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{certifyServiceUrl}}/credential-configurations",
-              "host": [
-                "{{certifyServiceUrl}}"
-              ],
-              "path": [
-                "credential-configurations"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Configuration By Id",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
-              "host": [
-                "{{certifyServiceUrl}}"
-              ],
-              "path": [
-                "credential-configurations",
-                "{{configId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Update Configuration By Id",
-          "request": {
-            "method": "PUT",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\r\n  \"vcTemplate\": \"\",\r\n  \"credentialConfigKeyId\": \"InsuranceCredential_SDJWT\",\r\n  \"contextURLs\": [\r\n    \"https://inji.github.io/inji-config/contexts/insurance-context.json\",\r\n    \"https://www.w3.org/2018/credentials/v1\"\r\n  ],\r\n  \"credentialTypes\": [\r\n    \"InsuranceCredential\",\r\n    \"VerifiableCredential\"\r\n  ],\r\n  \"credentialFormat\": \"ldp_vc\",\r\n  \"didUrl\": \"did:web:inji.github.io:inji-config:collab:insurance\",\r\n  \"signatureCryptoSuite\": \"Ed25519Signature2020\",\r\n  \"signatureAlgo\": \"EdDSA\",\r\n  \"cryptographicBindingMethodsSupported\": [\r\n    \"did:jwk\",\r\n    \"did:key\"\r\n  ],\r\n  \"proofTypesSupported\": {\r\n    \"jwt\": {\r\n      \"proof_signing_alg_values_supported\": [\r\n        \"RS256\",\r\n        \"PS256\",\r\n        \"ES256\",\r\n        \"EdDSA\"\r\n      ]\r\n    }\r\n  },\r\n  \"metaDataDisplay\": [\r\n    {\r\n      \"logo\": {\r\n        \"uri\": \"https://inji.github.io/inji-config/logos/StayProtectedInsurance.png\",\r\n        \"alt_text\": \"a square logo of a Veridonia\"\r\n      },\r\n      \"name\": \"Health Insurance\",\r\n      \"locale\": \"en\",\r\n      \"text_color\": \"#7C4616\",\r\n      \"background_color\": \"#FDFAF9\",\r\n      \"background_image\": null\r\n    }\r\n  ],\r\n  \"displayOrder\": [\r\n    \"fullName\",\r\n    \"policyName\",\r\n    \"policyExpiresOn\",\r\n    \"policyIssuedOn\",\r\n    \"policyNumber\",\r\n    \"mobile\",\r\n    \"dob\",\r\n    \"gender\",\r\n    \"benefits\",\r\n    \"email\"\r\n  ],\r\n  \"scope\": \"sunbird_rc_insurance_vc_ldp\",\r\n  \"credentialStatusPurposes\": [\r\n    \"revocation\"\r\n  ],\r\n  \"claims\": {\r\n    \"dob\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Date of Birth\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"email\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Email Id\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"gender\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Gender\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"mobile\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Phone Number\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"benefits\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Benefits\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"fullName\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Name\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyName\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Name\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyNumber\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Number\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyIssuedOn\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Issued On\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    },\r\n    \"policyExpiresOn\": {\r\n      \"display\": [\r\n        {\r\n          \"name\": \"Policy Expires On\",\r\n          \"locale\": \"en\"\r\n        }\r\n      ]\r\n    }\r\n  }\r\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
-              "host": [
-                "{{certifyServiceUrl}}"
-              ],
-              "path": [
-                "credential-configurations",
-                "{{configId}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Configuration By Id",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{certifyServiceUrl}}/credential-configurations/{{configId}}",
-              "host": [
-                "{{certifyServiceUrl}}"
-              ],
-              "path": [
-                "credential-configurations",
-                "{{configId}}"
               ]
             }
           },
