@@ -319,7 +319,7 @@
 							"listen": "prerequest",
 							"script": {
 								"exec": [
-									"eval(pm.globals.get('pmlib_code'))",
+									"eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'))",
 									"keyPair = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
 									"jwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);",
 									"jwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);",
