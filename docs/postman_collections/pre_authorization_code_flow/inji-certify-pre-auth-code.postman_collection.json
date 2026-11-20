@@ -122,7 +122,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"credential_configuration_id\": \"{{credential_config_id}}\",\n    \"claims\": {\n        \"fullName\": \"John Doe\",\n        \"dateOfBirth\": \"1990-01-15\",\n        \"gender\": \"Male\",\n        \"phoneNumber\": \"+1234567890\"\n    },\n    \"expires_in\": 600,\n    \"tx_code\": \"{{pre_auth_tx_code}}\"\n}"
+							"raw": "{\n    \"credential_configuration_id\": \"{{credential_config_id}}\",\n    \"claims\": {\n        \"fullName\": \"John Doe\",\n        \"dateOfBirth\": \"1990-01-15\",\n        \"gender\": \"Male\",\n        \"phoneNumber\": \"+1234567890\",\n        \"farmerId\": \"FARMER-1001\",\n        \"idType\": \"National ID\",\n        \"authority\": \"Department of Agriculture\",\n        \"address_village\": \"Koramangala\",\n        \"address_district\": \"Bangalore\",\n        \"address_state\": \"Karnataka\",\n        \"primaryCommodity\": \"Maize\",\n        \"totalLandArea_value\": 3,\n        \"totalLandArea_unit\": \"hectares\",\n        \"ownershipType\": \"Owner\",\n        \"crops\": [\n            {\n                \"cropName\": \"Maize\",\n                \"season\": \"Kharif\"\n            },\n            {\n                \"cropName\": \"Rice\",\n                \"season\": \"Rabi\"\n            }\n        ]\n    },\n    \"expires_in\": 600,\n    \"tx_code\": \"{{pre_auth_tx_code}}\"\n}"
 						},
 						"url": {
 							"raw": "{{certifyurl}}/pre-authorized-data",
@@ -307,7 +307,8 @@
 									"",
 									"pm.test(\"Response has credential\", function () {",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData.credential).to.exist;",
+									"    pm.expect(jsonData.credentials).to.be.an('array').that.is.not.empty;",
+									"    pm.expect(jsonData.credentials[0].credential).to.exist;",
 									"    console.log('Credential received successfully');",
 									"});"
 								],
