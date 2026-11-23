@@ -312,18 +312,25 @@ public class PreAuthorizedCodeService {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_GRANT_TYPE, "Grant type not supported");
         }
 
-        // Atomically claim the pre-authorized code. A code with no stored data can never be
-        // claimed, so it is refused the same way before any of its fields are read.
-        if (codeData == null || !vciCacheService.claimPreAuthCode(request.getPre_authorized_code())) {
+        // A code with no stored data is unknown, evicted by the cache TTL, or already redeemed
+        // (claiming evicts the data), so it is refused before any of its fields are read.
+        if (codeData == null) {
             log.error("Pre-authorized code already used or invalid");
             throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used  or invalid");
         }
 
-        // Check expiry
+        // Expiry is checked before the code is claimed. An expired code can never be redeemed
         long currentTime = System.currentTimeMillis();
         if (codeData.getExpiresAt() < currentTime) {
             log.error("Pre-authorized code expired. Expiry: {}, Current: {}", codeData.getExpiresAt(), currentTime);
             throw new CertifyException("pre_auth_code_expired", "Pre-authorized code has expired");
+        }
+
+        // Atomically claim the live code: only the first caller succeeds, every other one is
+        // refused as already used.
+        if (!vciCacheService.claimPreAuthCode(request.getPre_authorized_code())) {
+            log.error("Pre-authorized code already used or invalid");
+            throw new CertifyException(ErrorConstants.INVALID_GRANT, "Pre-authorized code has already been used  or invalid");
         }
 
         // Validate transaction code if required
