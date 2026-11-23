@@ -618,6 +618,41 @@ public class CredentialConfigMetadataAttributesTest {
     }
 
     @Test
+    public void should_rejectPhotoId_when_templateLacksMandatoryElements() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setDocType("org.iso.23220.photoid.1");
+        request.setVcTemplate(java.util.Base64.getEncoder().encodeToString(
+                ("{" + VALIDITY_INFO_PLACEHOLDERS + ", \"nameSpaces\": {\"org.iso.23220.1\": ["
+                        + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"x\"}]}}")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.PHOTO_ID_MANDATORY_FIELDS_MISSING, exception.getErrorCode());
+        Assert.assertEquals("A Photo ID template must contain every ISO/IEC TS 23220-4 (Annex C) mandatory element in the "
+                        + "org.iso.23220.1 namespace. Missing: given_name, birth_date, portrait, issue_date, expiry_date, "
+                        + "issuing_authority, issuing_country, age_over_18.", exception.getMessage());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdoc_when_templateElementLacksItsValue() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        String template = "{" + VALIDITY_INFO_PLACEHOLDERS + ", \"nameSpaces\": {\"org.iso.23220.1\": "
+                + "[{\"elementIdentifier\": \"family_name\"}]}}";
+        request.setDocType("org.iso.23220.photoid.1");
+        request.setVcTemplate(java.util.Base64.getEncoder().encodeToString(template.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        Assert.assertEquals("nameSpaces.org.iso.23220.1[0] (family_name): elementValue is missing.", exception.getMessage());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
     public void should_rejectMsoMdocUpdate_when_mergedTemplateWritesAValidityInfoDate() {
         // An update is validated as it would be saved, so a stored template with a literal date is caught.
         CredentialConfigurationDTO merged = msoMdocConfig();

@@ -5,13 +5,16 @@ import io.mosip.certify.core.dto.CredentialConfigurationDTO;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MdlDataElements;
+import io.mosip.certify.utils.PhotoIdDataElements;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -479,6 +482,130 @@ class MsoMdocCredentialConfigValidatorTest {
         String template = withCustomElement("{\"__cbor_tag\": 24, \"__cbor_value\": \"x\"}");
 
         MsoMdocCredentialConfigValidator.requireSupportedCborTags(mdlConfig(base64(template)), "VCIssuance");
+    }
+
+    // ---------- mandatory Photo ID elements (ISO/IEC TS 23220-4, Annex C, Table C.1) ----------
+
+    @Test
+    void should_findNothingMissing_when_photoIdTemplateDeclaresEveryMandatoryElement() {
+        CredentialConfigurationDTO config = photoIdConfig(mdlTemplate(PhotoIdDataElements.NAMESPACE, PhotoIdDataElements.MANDATORY));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_listMissingElementsInTableOrder_when_photoIdTemplateLacksMandatoryElements() {
+        CredentialConfigurationDTO config = photoIdConfig(mdlTemplate(PhotoIdDataElements.NAMESPACE,
+                List.of("family_name", "given_name", "birth_date", "issue_date", "expiry_date", "issuing_country")));
+
+        assertEquals(List.of("portrait", "issuing_authority", "age_over_18"),
+                MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(config, "DataProvider"));
+    }
+
+    @Test
+    void should_countOnlyTheIso23220Namespace_when_mandatoryElementsAreInAnotherNamespace() {
+        // the Photo ID's own namespace, org.iso.23220.photoid.1, does not hold the Table C.1 elements
+        CredentialConfigurationDTO config = photoIdConfig(mdlTemplate("org.iso.23220.photoid.1", PhotoIdDataElements.MANDATORY));
+
+        assertEquals(PhotoIdDataElements.MANDATORY, MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(config, "DataProvider"));
+    }
+
+    @Test
+    void should_reject_when_photoIdTemplateDeclaresAnElementTwice() {
+        List<String> elements = new java.util.ArrayList<>(PhotoIdDataElements.MANDATORY);
+        elements.add("family_name");
+        CredentialConfigurationDTO config = photoIdConfig(mdlTemplate(PhotoIdDataElements.NAMESPACE, elements));
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(config, "DataProvider"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertEquals("Duplicate Photo ID element identifier: family_name.", exception.getMessage());
+    }
+
+    @Test
+    void should_notCheckPhotoIdElements_when_docTypeIsNotPhotoIdOrPluginModeIsVcIssuance() {
+        String template = mdlTemplate(PhotoIdDataElements.NAMESPACE, List.of("family_name"));
+        CredentialConfigurationDTO otherDocType = photoIdConfig(template);
+        otherDocType.setDocType("org.example.custom.document");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(otherDocType, "DataProvider").isEmpty());
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(mdlConfig(template), "DataProvider").isEmpty());
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(photoIdConfig(template), "VCIssuance").isEmpty());
+    }
+
+    @Test
+    void should_notCheckPhotoIdElements_when_theyAreOnlyKnownOnceRendered() {
+        for (String template : List.of("#if($x){\"nameSpaces\": {}}#end", "{\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ${elements}}}")) {
+            assertTrue(MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(photoIdConfig(base64(template)), "DataProvider").isEmpty());
+        }
+    }
+
+    private static CredentialConfigurationDTO photoIdConfig(String vcTemplate) {
+        CredentialConfigurationDTO config = mdlConfig(vcTemplate);
+        config.setDocType(PhotoIdDataElements.DOC_TYPE);
+        return config;
+    }
+
+    // ---------- element fields ----------
+
+    @Test
+    void should_accept_when_everyElementHasAnIdentifierAndAValue() {
+        // a value may be an unquoted reference or null (an element left out when unset)
+        String template = STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {", "\"nameSpaces\": {\n    \"org.example.custom\": "
+                + "[{ \"elementIdentifier\": \"nickname\", \"elementValue\": null }, ${extraElement}],");
+
+        MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(template)), "DataProvider");
+    }
+
+    @Test
+    void should_rejectNamingTheElement_when_anElementLacksItsIdentifierOrValue() {
+        String path = "nameSpaces.org.example.custom[1]";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("{ \"elementValue\": \"x\" }", path + ": elementIdentifier is missing.");
+        expected.put("{ \"elementIdentifier\": \"\", \"elementValue\": \"x\" }", path + ": elementIdentifier is missing.");
+        expected.put("{ \"elementIdentifier\": 5, \"elementValue\": \"x\" }", path + ": elementIdentifier is missing.");
+        expected.put("{ \"elementIdentifier\": \"nickname\" }", path + " (nickname): elementValue is missing.");
+        expected.put("{ \"elementIdentifier\": ${id} }", path + " (${id}): elementValue is missing.");
+        expected.put("\"nickname\"", path + " must be an object with elementIdentifier and elementValue.");
+
+        expected.forEach((element, message) -> {
+            String template = STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {", "\"nameSpaces\": {\n    \"org.example.custom\": "
+                    + "[{ \"elementIdentifier\": \"member_since\", \"elementValue\": \"x\" }, " + element + "],");
+
+            CertifyException exception = assertThrows(CertifyException.class,
+                    () -> MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(template)), "DataProvider"), element);
+            assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode(), element);
+            assertEquals(message, exception.getMessage(), element);
+        });
+    }
+
+    @Test
+    void should_rejectNamingTheNamespace_when_nameSpacesOrANamespaceHasTheWrongShape() {
+        String notAnArray = STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {", "\"nameSpaces\": {\n    \"org.example.custom\": {},");
+        String notAnObject = "{\"docType\": \"${_doctype}\", \"nameSpaces\": [], \"validityInfo\": {}}";
+
+        CertifyException namespace = assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(notAnArray)), "DataProvider"));
+        assertEquals("nameSpaces.org.example.custom must be an array of elements.", namespace.getMessage());
+        CertifyException nameSpaces = assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(notAnObject)), "DataProvider"));
+        assertEquals("nameSpaces must be an object mapping each namespace to its elements.", nameSpaces.getMessage());
+    }
+
+    @Test
+    void should_notCheckElementFields_when_theyAreOnlyKnownOnceRendered() {
+        // a directive, or nameSpaces or a namespace written as a reference: issuance checks them
+        for (String template : List.of("#if($x){\"nameSpaces\": {\"ns\": [{}]}}#end",
+                "{\"nameSpaces\": ${nameSpaces}}", "{\"nameSpaces\": {\"ns\": ${elements}}}")) {
+            MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(template)), "DataProvider");
+        }
+    }
+
+    @Test
+    void should_notCheckElementFields_when_pluginModeIsVcIssuance() {
+        String template = STANDARD_MDL_TEMPLATE.replace("\"elementValue\": \"${familyName}\"", "\"value\": \"${familyName}\"");
+
+        MsoMdocCredentialConfigValidator.requireElementFields(mdlConfig(base64(template)), "VCIssuance");
     }
 
     /** The standard mDL template with an org.example.custom namespace whose one element has the given value. */

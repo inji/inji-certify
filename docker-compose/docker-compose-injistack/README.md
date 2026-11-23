@@ -50,8 +50,10 @@ docker-compose-injistack/
 │   ├── certify-default.properties
 │   ├── certify-csvdp-farmer.properties
 │   ├── certify-mock-mdl.properties
+│   ├── certify-mock-photoid.properties
 │   ├── farmer_identity_data.csv
 │   ├── driving_license_data.csv
+│   ├── photo_id_data.csv
 │   ├── vp_request_config.json
 │   ├── mimoto-bootstrap.properties
 │   ├── mimoto-default.properties
@@ -132,8 +134,9 @@ Reference Implementation: [CSVDataProviderPlugin](https://github.com/inji/digita
 |-------------------------------|-----------------------|------------------------------------------|
 | Farmer credential   (default) | `default,csvdp-farmer` | ./config/certify-csvdp-farmer.properties |
 | Mobile driving license        | `default,mock-mdl`     | ./config/certify-mock-mdl.properties     |
+| Photo ID (ISO/IEC TS 23220)   | `default,mock-photoid` | ./config/certify-mock-photoid.properties |
 
-- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds both credential configurations, so the issuer metadata lists `FarmerCredential` and `DrivingLicenseCredential` whichever profile is active; requesting the other profile's credential fails. To switch, change `active_profile_env` and run `docker-compose up -d --no-deps certify` to recreate the service.
+- Each profile points the CSV plugin at its own data file, so only the active profile's credential can be issued. [certify_init.sql](./certify_init.sql) seeds all three credential configurations, so the issuer metadata lists `FarmerCredential`, `DrivingLicenseCredential` and `PhotoIDCredential` whichever profile is active; requesting another profile's credential fails. To switch, change `active_profile_env` and run `docker-compose up -d --no-deps certify` to recreate the service.
 
 - If the database was created before this seed changed, restart the stack with a fresh database to load the new configuration. This removes the Compose volumes and their data:
 
@@ -161,7 +164,11 @@ mosip.certify.data-provider-plugin.did-url=did:web:<your-public-hostname>
 
 
 - If you are proceeding with the Mobile driving license use case, no issuer key or certificate needs to be onboarded: Certify signs the mDL with its own `CERTIFY_VC_SIGN_EC_R1` key and puts that key's certificate in the mDL. The `DrivingLicenseCredential` configuration is seeded by [certify_init.sql](./certify_init.sql), and the holders' data is in [driving_license_data.csv](config/driving_license_data.csv): one row per holder, whose `id` must match the `sub` of the access token. Add or edit rows to issue mDLs for other holders.
+- If you are proceeding with the Photo ID use case (docType `org.iso.23220.photoid.1`, ISO/IEC TS 23220-4), set `active_profile_env` to `default,mock-photoid`. As for the mDL, no issuer key or certificate needs to be onboarded: Certify signs the Photo ID with the same `CERTIFY_VC_SIGN_EC_R1` key. The `PhotoIDCredential` configuration is seeded by [certify_init.sql](./certify_init.sql), with scope `sample_vc_mdoc`, and the holders' data is in [photo_id_data.csv](config/photo_id_data.csv), one row per holder whose `id` must match the `sub` of the access token.
+  - Give `portrait` as base64 of a JPEG or JPEG2000 image (a `data:image/jpeg;base64,` prefix is accepted too), the dates as `YYYY-MM-DD`, and `portraitCaptureDate` as a date-time such as `2026-01-10T09:30:00Z`. The template's rules are in [Credential Issuer Configuration](../../docs/technical_docs/Credential_Issuer_Configuration.md#mso_mdoc-templates).
+  - `issuing_authority`, `issuing_country` and `issuing_subdivision` are fixed in the seeded template rather than read from the CSV.
 - After adding or editing rows, run `docker-compose up -d --no-deps --force-recreate certify` to reload the CSV.
+- A verifier that checks the issuer certificate of an mDL or Photo ID can fetch the signing certificate from [system-info/certificate?applicationId=CERTIFY_VC_SIGN_EC_R1&referenceId=EC_SECP256R1_SIGN](http://localhost:8090/v1/certify/system-info/certificate?applicationId=CERTIFY_VC_SIGN_EC_R1&referenceId=EC_SECP256R1_SIGN), the certificate in the credential's `x5chain`, and the root certificate that issued it from [system-info/certificate?applicationId=ROOT](http://localhost:8090/v1/certify/system-info/certificate?applicationId=ROOT).
 
 ### Registering a custom JSON-LD `@context`
 
@@ -176,8 +183,10 @@ Ensure each of the following files is updated in its documented directory if you
 - config/certify-default.properties
 - config/certify-csvdp-farmer.properties
 - config/certify-mock-mdl.properties
+- config/certify-mock-photoid.properties
 - config/farmer_identity_data.csv
 - config/driving_license_data.csv
+- config/photo_id_data.csv
 - config/vp_request_config.json (drives the Presentation During Issuance flow)
 - context/farmer-context.json (JSON-LD `@context` file under the `context/` directory)
 

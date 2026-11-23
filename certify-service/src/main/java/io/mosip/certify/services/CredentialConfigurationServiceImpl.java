@@ -135,11 +135,18 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 if(shouldCheckDuplicate && MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(credentialConfig, credentialConfigRepository)) {
                     throw new CertifyException(ErrorConstants.MSO_MDOC_CONFIG_EXISTS, "Configuration already exists for the specified doctype.");
                 }
+                MsoMdocCredentialConfigValidator.requireElementFields(credentialConfig, pluginMode);
                 List<String> missingMdlElements = MsoMdocCredentialConfigValidator.findMissingMdlElements(credentialConfig, pluginMode);
                 if (!missingMdlElements.isEmpty()) {
                     throw new CertifyException(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING,
                             "An mDL template must contain every ISO/IEC 18013-5 mandatory element in the org.iso.18013.5.1 namespace. Missing: "
                                     + String.join(", ", missingMdlElements) + ".");
+                }
+                List<String> missingPhotoIdElements = MsoMdocCredentialConfigValidator.findMissingPhotoIdElements(credentialConfig, pluginMode);
+                if (!missingPhotoIdElements.isEmpty()) {
+                    throw new CertifyException(ErrorConstants.PHOTO_ID_MANDATORY_FIELDS_MISSING,
+                            "A Photo ID template must contain every ISO/IEC TS 23220-4 (Annex C) mandatory element in the org.iso.23220.1 namespace. Missing: "
+                                    + String.join(", ", missingPhotoIdElements) + ".");
                 }
                 MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(credentialConfig, pluginMode);
                 MsoMdocCredentialConfigValidator.requireSupportedCborTags(credentialConfig, pluginMode);

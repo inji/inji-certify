@@ -31,6 +31,7 @@ services:
       - ./config/certify-default.properties:/home/mosip/config/certify-default.properties
       - ./config/certify-csvdp-farmer.properties:/home/mosip/config/certify-csvdp-farmer.properties
       - ./config/certify-mock-mdl.properties:/home/mosip/config/certify-mock-mdl.properties
+      - ./config/certify-mock-photoid.properties:/home/mosip/config/certify-mock-photoid.properties
       - ./data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
       # This can be disabled if one uses plugins included in inji-certify-with-plugins docker image.
       #      - ./loader_path/certify/:/home/mosip/additional_jars/
@@ -38,6 +39,8 @@ services:
       - ./config/farmer_identity_data.csv:/home/mosip/config/farmer_identity_data.csv
       # modify the below file to change the driving licence data in the mDL (mock-mdl profile)
       - ./config/driving_license_data.csv:/home/mosip/config/driving_license_data.csv
+      # modify the below file to change the Photo ID data (mock-photoid profile)
+      - ./config/photo_id_data.csv:/home/mosip/config/photo_id_data.csv
       - ./config/vp_request_config.json:/home/mosip/config/vp_request_config.json
       - ./context/farmer-context.json:/home/mosip/context/farmer-context.json
     networks:

@@ -272,6 +272,71 @@ VALUES (
     NULL  -- upd_dtimes (optional)
 );
 
+-- Photo ID (mock-photoid profile): an ISO/IEC TS 23220 Photo ID in mso_mdoc, built and signed by Certify
+-- from the photo_id_data.csv row. Its elements are in two namespaces: org.iso.23220.1 and org.iso.23220.photoid.1.
+INSERT INTO certify.credential_config (
+    credential_config_key_id,
+    config_id,
+    status,
+    vc_template,
+    doctype,
+    sd_jwt_vct,
+    context,
+    credential_type,
+    credential_format,
+    did_url,
+    key_manager_app_id,
+    key_manager_ref_id,
+    signature_algo,
+    signature_crypto_suite,
+    sd_claim,
+    display,
+    display_order,
+    scope,
+    cryptographic_binding_methods_supported,
+    credential_signing_alg_values_supported,
+    proof_types_supported,
+    claims,
+    mso_mdoc_claims,
+    plugin_configurations,
+    credential_status_purpose,
+    qr_settings,
+    qr_signature_algo,
+    cr_dtimes,
+    upd_dtimes
+)
+VALUES (
+    'PhotoIDCredential',
+    gen_random_uuid()::VARCHAR(255),  -- generating a unique config_id
+    'active',  -- assuming an active status
+    'ewogICJuYW1lU3BhY2VzIjogewogICAgIm9yZy5pc28uMjMyMjAuMSI6IFsKICAgICAgeyAiZGlnZXN0SUQiOiAwLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImZhbWlseV9uYW1lIiwgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtmYW1pbHlOYW1lfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImdpdmVuX25hbWUiLCAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtnaXZlbk5hbWV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhfZGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6IHsgImJpcnRoX2RhdGUiOiAiJHtiaXJ0aERhdGV9IiB9IH0sCiAgICAgIHsgImRpZ2VzdElEIjogMywgICJlbGVtZW50SWRlbnRpZmllciI6ICJwb3J0cmFpdCIsICAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7cG9ydHJhaXR9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDQsICAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWVfZGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2lzc3VlRGF0ZX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNSwgICJlbGVtZW50SWRlbnRpZmllciI6ICJleHBpcnlfZGF0ZSIsICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7ZXhwaXJ5RGF0ZX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJpc3N1aW5nX2F1dGhvcml0eSIsICAgICAiZWxlbWVudFZhbHVlIjogIlJlZ2lvbmFsIElkZW50aXR5IE9mZmljZSwgQmVuZ2FsdXJ1IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDcsICAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWluZ19jb3VudHJ5IiwgICAgICAgImVsZW1lbnRWYWx1ZSI6ICJJTiIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA4LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImFnZV9vdmVyXzE4IiwgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAke2FnZU92ZXIxOH0gfSwKICAgICAgeyAiZGlnZXN0SUQiOiA5LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImZhbWlseV9uYW1lX3ZpeiIsICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtmYW1pbHlOYW1lVml6fSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxMCwgImVsZW1lbnRJZGVudGlmaWVyIjogImdpdmVuX25hbWVfdml6IiwgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtnaXZlbk5hbWVWaXp9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDExLCAiZWxlbWVudElkZW50aWZpZXIiOiAic2V4IiwgICAgICAgICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICR7c2V4fSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDEyLCAiZWxlbWVudElkZW50aWZpZXIiOiAibmF0aW9uYWxpdHkiLCAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke25hdGlvbmFsaXR5fSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxMywgImVsZW1lbnRJZGVudGlmaWVyIjogImRvY3VtZW50X251bWJlciIsICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtkb2N1bWVudE51bWJlcn0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMTQsICJlbGVtZW50SWRlbnRpZmllciI6ICJhZ2VfaW5feWVhcnMiLCAgICAgICAgICAiZWxlbWVudFZhbHVlIjogJHthZ2VJblllYXJzfSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE1LCAiZWxlbWVudElkZW50aWZpZXIiOiAiYWdlX2JpcnRoX3llYXIiLCAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICR7YWdlQmlydGhZZWFyfSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE2LCAiZWxlbWVudElkZW50aWZpZXIiOiAicG9ydHJhaXRfY2FwdHVyZV9kYXRlIiwgImVsZW1lbnRWYWx1ZSI6ICIke3BvcnRyYWl0Q2FwdHVyZURhdGV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE3LCAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhwbGFjZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRocGxhY2V9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE4LCAiZWxlbWVudElkZW50aWZpZXIiOiAibmFtZV9hdF9iaXJ0aCIsICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke25hbWVBdEJpcnRofSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxOSwgImVsZW1lbnRJZGVudGlmaWVyIjogInJlc2lkZW50X2FkZHJlc3MiLCAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudEFkZHJlc3N9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIwLCAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfY2l0eSIsICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke3Jlc2lkZW50Q2l0eX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMjEsICJlbGVtZW50SWRlbnRpZmllciI6ICJyZXNpZGVudF9wb3N0YWxfY29kZSIsICAiZWxlbWVudFZhbHVlIjogIiR7cmVzaWRlbnRQb3N0YWxDb2RlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAyMiwgImVsZW1lbnRJZGVudGlmaWVyIjogInJlc2lkZW50X2NvdW50cnkiLCAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudENvdW50cnl9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIzLCAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWluZ19zdWJkaXZpc2lvbiIsICAgImVsZW1lbnRWYWx1ZSI6ICJJTi1LQSIgfQogICAgXSwKICAgICJvcmcuaXNvLjIzMjIwLnBob3RvaWQuMSI6IFsKICAgICAgeyAiZGlnZXN0SUQiOiAwLCAgImVsZW1lbnRJZGVudGlmaWVyIjogInBlcnNvbl9pZCIsICAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7cGVyc29uSWR9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDEsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYWRtaW5pc3RyYXRpdmVfbnVtYmVyIiwgICJlbGVtZW50VmFsdWUiOiAiJHthZG1pbmlzdHJhdGl2ZU51bWJlcn0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJiaXJ0aF9jb3VudHJ5IiwgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRoQ291bnRyeX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMywgICJlbGVtZW50SWRlbnRpZmllciI6ICJiaXJ0aF9zdGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRoU3RhdGV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDQsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhfY2l0eSIsICAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtiaXJ0aENpdHl9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDUsICAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfc3RyZWV0IiwgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudFN0cmVldH0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJyZXNpZGVudF9ob3VzZV9udW1iZXIiLCAgImVsZW1lbnRWYWx1ZSI6ICIke3Jlc2lkZW50SG91c2VOdW1iZXJ9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDcsICAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfc3RhdGUiLCAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudFN0YXRlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA4LCAgImVsZW1lbnRJZGVudGlmaWVyIjogInRyYXZlbF9kb2N1bWVudF9udW1iZXIiLCAiZWxlbWVudFZhbHVlIjogIiR7dHJhdmVsRG9jdW1lbnROdW1iZXJ9IiB9CiAgICBdCiAgfSwKICAiZG9jVHlwZSI6ICIke19kb2N0eXBlfSIsCiAgInZhbGlkaXR5SW5mbyI6IHsKICAgICJ2YWxpZEZyb20iOiAiJHtfdmFsaWRGcm9tfSIsCiAgICAidmFsaWRVbnRpbCI6ICIke192YWxpZFVudGlsfSIsCiAgICAic2lnbmVkIjogIiR7X3NpZ25lZH0iCiAgfQp9Cg==',  -- the Photo ID template (base64)
+    'org.iso.23220.photoid.1',  -- doctype
+    NULL,  -- vct for SD-JWT VC
+    NULL,  -- context (not used by mso_mdoc)
+    NULL,  -- credential_type (not used by mso_mdoc)
+    'mso_mdoc',  -- credential_format
+    'did:web:inji.github.io:inji-config:dev-int-inji:mock-mdl',  -- did_url
+    'CERTIFY_VC_SIGN_EC_R1',  -- key_manager_app_id
+    'EC_SECP256R1_SIGN',  -- key_manager_ref_id
+    'ES256',  -- signature_algo
+    NULL,  -- signature_crypto_suite (not used by mso_mdoc)
+    NULL,  -- sd_claim (optional)
+    '[{"logo": {"uri": "https://example.com/logo.png", "alt_text": "Photo ID Logo"}, "name": "PhotoIDCredential", "locale": "en", "text_color": "#FFFFFF", "background_color": "#12107c", "background_image": {"uri": "https://inji.github.io/inji-config/logos/mosipid-logo.png"}}]'::JSONB,  -- display
+    ARRAY['org.iso.23220.1~family_name', 'org.iso.23220.1~given_name', 'org.iso.23220.1~birth_date', 'org.iso.23220.1~portrait', 'org.iso.23220.1~issue_date', 'org.iso.23220.1~expiry_date', 'org.iso.23220.1~issuing_authority', 'org.iso.23220.1~issuing_country', 'org.iso.23220.1~age_over_18', 'org.iso.23220.1~family_name_viz', 'org.iso.23220.1~given_name_viz', 'org.iso.23220.1~sex', 'org.iso.23220.1~nationality', 'org.iso.23220.1~document_number', 'org.iso.23220.1~age_in_years', 'org.iso.23220.1~age_birth_year', 'org.iso.23220.1~portrait_capture_date', 'org.iso.23220.1~birthplace', 'org.iso.23220.1~name_at_birth', 'org.iso.23220.1~resident_address', 'org.iso.23220.1~resident_city', 'org.iso.23220.1~resident_postal_code', 'org.iso.23220.1~resident_country', 'org.iso.23220.1~issuing_subdivision', 'org.iso.23220.photoid.1~person_id', 'org.iso.23220.photoid.1~administrative_number', 'org.iso.23220.photoid.1~birth_country', 'org.iso.23220.photoid.1~birth_state', 'org.iso.23220.photoid.1~birth_city', 'org.iso.23220.photoid.1~resident_street', 'org.iso.23220.photoid.1~resident_house_number', 'org.iso.23220.photoid.1~resident_state', 'org.iso.23220.photoid.1~travel_document_number'],  -- display_order
+    'sample_vc_mdoc',  -- scope
+    ARRAY['cose_key'],  -- cryptographic_binding_methods_supported
+    ARRAY['ES256'],  -- credential_signing_alg_values_supported
+    '{"jwt": {"proof_signing_alg_values_supported": ["ES256"]}}'::JSONB,  -- proof_types_supported
+    NULL,  -- claims (not used by mso_mdoc)
+    '{"org.iso.23220.1": {"family_name": {"display": [{"name": "Family Name", "locale": "en"}]}, "given_name": {"display": [{"name": "Given Name", "locale": "en"}]}, "birth_date": {"display": [{"name": "Date of Birth", "locale": "en"}]}, "portrait": {"display": [{"name": "Portrait", "locale": "en"}]}, "issue_date": {"display": [{"name": "Date of Issue", "locale": "en"}]}, "expiry_date": {"display": [{"name": "Date of Expiry", "locale": "en"}]}, "issuing_authority": {"display": [{"name": "Issuing Authority", "locale": "en"}]}, "issuing_country": {"display": [{"name": "Issuing Country", "locale": "en"}]}, "age_over_18": {"display": [{"name": "Age Over 18", "locale": "en"}]}, "family_name_viz": {"display": [{"name": "Family Name (Visual)", "locale": "en"}]}, "given_name_viz": {"display": [{"name": "Given Name (Visual)", "locale": "en"}]}, "sex": {"display": [{"name": "Sex", "locale": "en"}]}, "nationality": {"display": [{"name": "Nationality", "locale": "en"}]}, "document_number": {"display": [{"name": "Document Number", "locale": "en"}]}, "age_in_years": {"display": [{"name": "Age in Years", "locale": "en"}]}, "age_birth_year": {"display": [{"name": "Year of Birth", "locale": "en"}]}, "portrait_capture_date": {"display": [{"name": "Portrait Capture Date", "locale": "en"}]}, "birthplace": {"display": [{"name": "Place of Birth", "locale": "en"}]}, "name_at_birth": {"display": [{"name": "Name at Birth", "locale": "en"}]}, "resident_address": {"display": [{"name": "Resident Address", "locale": "en"}]}, "resident_city": {"display": [{"name": "Resident City", "locale": "en"}]}, "resident_postal_code": {"display": [{"name": "Resident Postal Code", "locale": "en"}]}, "resident_country": {"display": [{"name": "Resident Country", "locale": "en"}]}, "issuing_subdivision": {"display": [{"name": "Issuing Subdivision", "locale": "en"}]}}, "org.iso.23220.photoid.1": {"person_id": {"display": [{"name": "Person ID", "locale": "en"}]}, "administrative_number": {"display": [{"name": "Administrative Number", "locale": "en"}]}, "birth_country": {"display": [{"name": "Country of Birth", "locale": "en"}]}, "birth_state": {"display": [{"name": "State of Birth", "locale": "en"}]}, "birth_city": {"display": [{"name": "City of Birth", "locale": "en"}]}, "resident_street": {"display": [{"name": "Resident Street", "locale": "en"}]}, "resident_house_number": {"display": [{"name": "Resident House Number", "locale": "en"}]}, "resident_state": {"display": [{"name": "Resident State", "locale": "en"}]}, "travel_document_number": {"display": [{"name": "Travel Document Number", "locale": "en"}]}}}'::JSONB,  -- mso_mdoc_claims
+    '[{"mosip.certify.mock.data-provider.csv.identifier-column": "id", "mosip.certify.mock.data-provider.csv.data-columns": "id,familyName,givenName,familyNameViz,givenNameViz,birthDate,portrait,issueDate,expiryDate,ageOver18,sex,nationality,documentNumber,ageInYears,ageBirthYear,portraitCaptureDate,birthplace,nameAtBirth,residentAddress,residentCity,residentPostalCode,residentCountry,personId,administrativeNumber,birthCountry,birthState,birthCity,residentStreet,residentHouseNumber,residentState,travelDocumentNumber", "mosip.certify.mock.data-provider.csv-registry-uri": "/home/mosip/config/photo_id_data.csv"}]'::JSONB,  -- plugin_configurations
+    NULL,  -- credential_status_purpose (optional)
+    NULL,  -- qr_settings (optional)
+    NULL,  -- qr_signature_algo (optional)
+    NOW(),  -- cr_dtimes
+    NULL  -- upd_dtimes (optional)
+);
+
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('ROOT', 2920, 1125, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_SERVICE', 1095, 60, 'NA', true, 'mosipadmin', now());
 INSERT INTO certify.key_policy_def(APP_ID,KEY_VALIDITY_DURATION,PRE_EXPIRE_DAYS,ACCESS_ALLOWED,IS_ACTIVE,CR_BY,CR_DTIMES) VALUES('CERTIFY_PARTNER', 1095, 60, 'NA', true, 'mosipadmin', now());
