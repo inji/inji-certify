@@ -25,7 +25,7 @@ public class QrSettingsValidator {
             return;
         }
 
-        String decodedVcTemplate = decodeVcTemplate(vcTemplate);
+        String decodedVcTemplate = TemplateDecoder.decodeVcTemplate(vcTemplate);
         Set<String> templateVariables = extractTemplateVariables(decodedVcTemplate);
 
         for (Map<String, Object> blockMap : qrSettings) {
@@ -35,26 +35,6 @@ public class QrSettingsValidator {
 
             Set<String> seenInBlock = new HashSet<>();
             extractAndValidateBlockVariables(blockMap, seenInBlock, templateVariables);
-        }
-    }
-
-    /**
-     * Decodes a Base64-encoded VC template string.
-     * If the template is already raw JSON or invalid Base64, returns the raw input.
-     *
-     * @param vcTemplate The input VC template string (Base64 or raw JSON)
-     * @return Decoded UTF-8 JSON string or raw input
-     */
-    private static String decodeVcTemplate(String vcTemplate) {
-        if (vcTemplate == null || vcTemplate.isEmpty()) {
-            return vcTemplate;
-        }
-        try {
-            byte[] decoded = Base64.getDecoder().decode(vcTemplate.trim());
-            return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException ignored) {
-            // If not base64 encoded or fails decoding, return raw vcTemplate
-            return vcTemplate;
         }
     }
 

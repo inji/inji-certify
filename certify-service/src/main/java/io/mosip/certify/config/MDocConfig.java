@@ -1,15 +1,20 @@
 package io.mosip.certify.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.Set;
 
 @Data
 @Component
 @ConfigurationProperties(prefix = "mosip.certify.mdoc")
 public class MDocConfig {
+
+    /** The digest algorithms an MSO may use (ISO/IEC 18013-5, 9.1.2.5). */
+    public static final Set<String> SUPPORTED_DIGEST_ALGORITHMS = Set.of("SHA-256", "SHA-384", "SHA-512");
 
     /**
      * Default digest algorithm for MSO (e.g., "SHA-256")
@@ -43,4 +48,26 @@ public class MDocConfig {
      * Format: templateName.sourceField = targetNamespace:targetField
      */
     private Map<String, Map<String, String>> fieldMappings;
+
+    /** A configuration the MSO can't be built from is refused at startup rather than at issuance. */
+    @PostConstruct
+    public void validate() {
+        validateDigestAlgorithm();
+        validateValidityPeriod();
+    }
+
+    public void validateDigestAlgorithm() {
+        if (!SUPPORTED_DIGEST_ALGORITHMS.contains(digestAlgorithm)) {
+            throw new IllegalStateException("mosip.certify.mdoc.digest-algorithm is '" + digestAlgorithm
+                    + "'; it must be one of " + SUPPORTED_DIGEST_ALGORITHMS + " (ISO/IEC 18013-5, 9.1.2.5).");
+        }
+    }
+
+    /** validUntil is validityPeriodYears after validFrom and must be later (ISO/IEC 18013-5, 9.1.2.4). */
+    public void validateValidityPeriod() {
+        if (validityPeriodYears < 1) {
+            throw new IllegalStateException("mosip.certify.mdoc.validity-period-years is " + validityPeriodYears
+                    + "; it must be at least 1 so that validUntil is after validFrom (ISO/IEC 18013-5, 9.1.2.4).");
+        }
+    }
 }

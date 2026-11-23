@@ -1581,7 +1581,13 @@ components:
       properties:
         vcTemplate:
           type: string
-          description: Base64 encoded template identifier for the Verifiable Credential. Mandatory if mosip.certify.plugin-mode is set to ‘DataProvider’ during creation.
+          description: |-
+            Base64 encoded template identifier for the Verifiable Credential. Mandatory if mosip.certify.plugin-mode is set to ‘DataProvider’ during creation.
+
+            For mso_mdoc in DataProvider plugin mode, Add and Update reject a template whose validityInfo dates are not the ${_signed}, ${_validFrom} and ${_validUntil} placeholders, whose explicit __cbor_tag is not 0 or 1004, or, for an mDL (org.iso.18013.5.1.mDL), that lacks an ISO/IEC 18013-5 mandatory element (mdl_mandatory_fields_missing) or declares one twice. At issuance, before signing, mDL dates, driving_privileges and byte strings (portrait as JPEG or JPEG2000) are checked; an invalid value fails with mdoc_template_processing_failed.
+            Templates that cannot be parsed before Velocity rendering are not checked for mandatory mDL elements. The rendered mDL is not checked for mandatory elements at issuance.
+
+            See the full rules in [Credential Issuer Configuration](https://github.com/inji/inji-certify/blob/develop/docs/technical_docs/Credential_Issuer_Configuration.md#mso_mdoc-templates).
         credentialConfigKeyId:
           type: string
           description: Unique key identifier for the credential configuration.
@@ -1610,10 +1616,10 @@ components:
           description: URL of the Decentralized Identifier (DID) document. Mandatory for DataProvider plugin mode.
         keyManagerAppId:
           type: string
-          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode.
+          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode. For ldp_vc, and for mso_mdoc in DataProvider plugin mode, keyManagerAppId and keyManagerRefId must be one of the pairs mosip.certify.signature-algo.key-alias-mapper gives for signatureAlgo, otherwise rejected with key_chooser_app_ref_not_found; an mso_mdoc configuration has no default key.
         keyManagerRefId:
           type: string
-          description: Reference ID for the key manager. Applicable for DataProvider plugin mode.
+          description: Reference ID for the key manager. Applicable for DataProvider plugin mode. Checked together with keyManagerAppId; it may be empty when the key-alias-mapper pair's is.
         signatureAlgo:
           description: |-
             In DataProvider plugin mode, mandatory on Add and Update for every credential format; a missing or empty value is rejected, and nothing is filled in from the deployment configuration. It is the algorithm the credential is signed with, and the signing key is selected by it through mosip.certify.signature-algo.key-alias-mapper.
