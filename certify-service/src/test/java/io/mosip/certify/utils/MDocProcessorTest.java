@@ -1418,6 +1418,36 @@ public class MDocProcessorTest {
                 templateRejectionMessage("[{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}]"));
     }
 
+    @Test
+    public void should_reject_when_namespaceDeclaresAnElementIdentifierTwice() {
+        // e.g. a template that renders its elements through ${elements}, which Add and Update can't check
+        for (String namespace : List.of(PhotoIdDataElements.NAMESPACE, MDL_NAMESPACE)) {
+            assertEquals(namespace, "nameSpaces." + namespace + "[2]: elementIdentifier family_name is declared more than once in nameSpaces." + namespace,
+                    templateRejectionMessage("{\"" + namespace + "\": ["
+                            + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                            + "{\"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
+                            + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Roe\"}]}"));
+        }
+    }
+
+    @Test
+    public void should_accept_when_anIdentifierRepeatsInAnotherNamespaceOrOnlyWithANullValue() throws Exception {
+        // the same identifier may appear once in each namespace, and a null element is left out before the check
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {"
+                + "\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                + "{\"elementIdentifier\": \"family_name\", \"elementValue\": null},"
+                + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}],"
+                + "\"org.iso.23220.photoid.1\": [{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}]}}";
+
+        Map<String, Object> nameSpaces = (Map<String, Object>)
+                mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE).get("nameSpaces");
+
+        assertEquals(1, ((List<?>) nameSpaces.get(PhotoIdDataElements.NAMESPACE)).size());
+        assertEquals(1, ((List<?>) nameSpaces.get("org.iso.23220.photoid.1")).size());
+    }
+
     /** The reason processTemplatedJson rejects a Photo ID template with these nameSpaces. */
     private String templateRejectionMessage(String nameSpaces) {
         String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","

@@ -318,6 +318,7 @@ public class MDocProcessor {
             throw new IllegalArgumentException(namespacePath + " must be an array of elements");
         }
         List<Map<String, Object>> processedItems = new ArrayList<>();
+        Set<String> elementIdentifiers = new HashSet<>();
         // ISO/IEC 18013-5, 9.1.2.4: digestIDs are unique within a namespace and are drawn at random,
         // so the same element cannot be recognised by its ID across credentials. Any digestID in the
         // template is therefore ignored.
@@ -344,6 +345,10 @@ public class MDocProcessor {
             }
             if (elementValue.isNull()) {
                 continue;
+            }
+            if (!elementIdentifiers.add(identifier.asText())) {
+                throw new IllegalArgumentException(elementPath + ": " + Constants.ELEMENT_IDENTIFIER
+                        + " " + identifier.asText() + " is declared more than once in " + namespacePath);
             }
             Map<String, Object> itemMap = new HashMap<>();
             int digestId;

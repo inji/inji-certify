@@ -138,6 +138,7 @@ Every `mso_mdoc` template must have `validityInfo` with `signed`, `validFrom` an
 
 `nameSpaces` maps each namespace to an array of elements, each an object with a text `elementIdentifier` and an `elementValue` (which may be `null`, see [Null values and numbers](#null-values-and-numbers)). Add and Update reject a template that breaks this with `mdoc_template_processing_failed`, naming the element by its namespace and position, for example `nameSpaces.org.iso.23220.1[3] (nationality): elementValue is missing.`
 - A part written as a Velocity reference (such as `"elementValue": ${drivingPrivileges}` or `"nameSpaces": ${nameSpaces}`), or a template that can only be read once Velocity renders it, is not checked at Add and Update; issuance checks it, before signing, with the same error. A configuration stored before this check is checked on its next Update.
+- At issuance, an `elementIdentifier` that appears more than once in a namespace, counting only elements whose value is not `null`, fails with `mdoc_template_processing_failed`; this also catches duplicates in elements rendered from a reference. The same identifier may appear once in each namespace.
 
 ### Mandatory mDL elements
 
