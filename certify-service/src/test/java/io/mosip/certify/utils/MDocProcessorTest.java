@@ -1302,6 +1302,39 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_accept_when_photoIdAgeInYearsAndBirthYearAreUnsignedIntegers() throws Exception {
+        for (Object value : List.of(0, 41, 1985L, new BigInteger("18446744073709551615"))) {
+            String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                    + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                    + "{\"elementIdentifier\": \"age_in_years\", \"elementValue\": " + value + "},"
+                    + "{\"elementIdentifier\": \"age_birth_year\", \"elementValue\": " + value + "}]}}";
+            assertNotNull(String.valueOf(value), mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    @Test
+    public void should_reject_when_photoIdAgeInYearsOrBirthYearIsNotAnUnsignedInteger() {
+        // a quoted "${ageInYears}" renders as text; a negative number is not a uint (ISO/IEC TS 23220-4, Annex C)
+        for (String identifier : List.of("age_in_years", "age_birth_year")) {
+            for (Object value : List.of("41", -1, 41.5, true)) {
+                assertEquals(identifier + "=" + value, identifier + " must be an unsigned integer",
+                        photoIdRejectionMessage(identifier, value));
+            }
+        }
+    }
+
+    @Test
+    public void should_keepNegativeIntegers_when_elementIsOutsideThePhotoIdUnsignedElements() throws Exception {
+        // only age_in_years and age_birth_year in org.iso.23220.1 must be unsigned; other elements and namespaces keep signed integers
+        assertEquals(new NegativeInteger(-1), encodedElementValue("org.example.custom", "age_in_years", -1));
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"org.example.custom\": [{\"elementIdentifier\": \"age_in_years\", \"elementValue\": -1}]}}";
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+    }
+
+    @Test
     public void should_notCheckAsAgeOver_when_identifierOnlyLooksLikeOne() throws Exception {
         // age_over_NN has exactly two digits; anything else is an ordinary element
         for (String identifier : List.of("age_over_100", "age_over_x", "age_over_1")) {

@@ -567,7 +567,8 @@ public class MDocProcessor {
     /**
      * ISO/IEC TS 23220-4, Annex C: birth_date is a full-date or a birth_date map, issue_date and expiry_date
      * are full-dates only and portrait_capture_date a date-time, as text or already tagged (1004, 0) by the
-     * template; every age_over_NN is a boolean; portrait is a byte string, which
+     * template; age_in_years and age_birth_year are unsigned integers; every age_over_NN is a boolean;
+     * portrait is a byte string, which
      * Certify requires to be a JPEG or JPEG2000 image. The messages leave the value out so that a holder's
      * data does not end up in the logs.
      */
@@ -584,6 +585,14 @@ public class MDocProcessor {
             }
         } else if (PhotoIdDataElements.isByteString(identifier)) {
             requireByteString(identifier, value, PhotoIdDataElements.PORTRAIT.equals(identifier));
+        } else if ("age_in_years".equals(identifier) || "age_birth_year".equals(identifier)) {
+            boolean unsignedInteger =
+                    (value instanceof Integer i && i >= 0)
+                    || (value instanceof Long l && l >= 0)
+                    || (value instanceof BigInteger b && b.signum() >= 0);
+            if (!unsignedInteger) {
+                throw new IllegalArgumentException(identifier + " must be an unsigned integer");
+            }
         } else if (PhotoIdDataElements.isAgeOver(identifier) && !(value instanceof Boolean)) {
             // A quoted "true" is text, which a verifier reading the attestation would not accept as one.
             throw new IllegalArgumentException(identifier + " must be a boolean (true or false), not text or a number");

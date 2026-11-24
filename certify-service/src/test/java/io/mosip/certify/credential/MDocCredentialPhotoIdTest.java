@@ -146,6 +146,8 @@ public class MDocCredentialPhotoIdTest {
         // org.iso.23220.1: every mandatory element, encoded as ISO/IEC TS 23220-4 Annex C requires
         Map<String, DataItem> core = elements.get(PhotoIdDataElements.NAMESPACE);
         assertTrue(core.keySet().containsAll(PhotoIdDataElements.MANDATORY));
+        assertEquals(new UnicodeString("Doe"), core.get("family_name"));
+        assertEquals(new UnicodeString("John"), core.get("given_name"));
         assertEquals(new ByteString(JPEG), core.get("portrait"));
         assertFullDate("2026-01-15", core.get("issue_date"));
         assertFullDate("2036-01-14", core.get("expiry_date"));

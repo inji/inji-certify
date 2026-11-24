@@ -164,6 +164,7 @@ In the `org.iso.23220.1` namespace, the ISO/IEC TS 23220-2 data elements a Photo
 - `birth_date` is either a date, encoded as a full-date, or a map such as `{"birth_date": "1985-04-29", "approximate_mask": "00001111"}`, whose `birth_date` is encoded as a full-date (ISO/IEC TS 23220-2, 6.3.1.1.3). `approximate_mask` is optional: eight digits, each `0` or `1`, marking which of the YYYYMMDD digits are unknown. The map may have no other keys.
 - Unlike the mDL, `issue_date` and `expiry_date` must be a date (YYYY-MM-DD); a date-time is rejected.
 - `portrait_capture_date` must be an RFC 3339 date-time, for example `2026-01-10T09:30:00Z`.
+- `age_in_years` and `age_birth_year` must be unsigned (non-negative) integers, written unquoted (`"elementValue": ${ageInYears}`); text such as `"41"` or a negative number fails issuance with `mdoc_template_processing_failed` before signing.
 - Every age attestation, `age_over_NN` such as `age_over_18`, must be a JSON boolean (ISO/IEC TS 23220-2, 6.3.2.2). Write the reference unquoted, `"elementValue": ${ageOver18}`: a quoted `"${ageOver18}"` renders as the text `"true"`, which fails issuance with `mdoc_template_processing_failed` before signing.
 - Each may also be given already tagged (`1004` for a date, `0` for a date-time). Any other value, type or tag fails issuance with `mdoc_template_processing_failed` before signing.
 
