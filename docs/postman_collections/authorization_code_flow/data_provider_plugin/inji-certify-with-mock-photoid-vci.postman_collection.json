@@ -1,0 +1,991 @@
+{
+  "info": {
+    "_postman_id": "06bd3d30-54ae-4a20-985b-f85157a306ec",
+    "name": "Inji Certify With Mock Photo ID VCI",
+    "description": "Issues an ISO/IEC TS 23220 Photo ID (docType org.iso.23220.photoid.1, `PhotoIDCredential`) as an mso_mdoc. Certify must run in DataProvider mode with the `mock-photoid` profile (docker-compose: `active_profile_env=default,mock-photoid`), which reads the holders' data from photo_id_data.csv. Uses the `ENV Mock Identity Bearer` environment; individual_id must be an `id` in photo_id_data.csv. `PhotoIDCredential` is seeded by certify_init.sql, so run \"Add New Config\" only on a database without it.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Well-known endpoints",
+      "item": [
+        {
+          "name": "JWKS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServerUrl}}/oauth/.well-known/jwks.json",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "oauth",
+                ".well-known",
+                "jwks.json"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Openid-configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServerUrl}}/oidc/.well-known/openid-configuration",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "oidc",
+                ".well-known",
+                "openid-configuration"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "OAuth-configuration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{authServerUrl}}/oauth/.well-known/oauth-authorization-server",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "oauth",
+                ".well-known",
+                "oauth-authorization-server"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "VC issuer metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{certifyUrl}}/.well-known/openid-credential-issuer",
+              "host": [
+                "{{certifyUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "openid-credential-issuer"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. OIDC Client Mgmt Copy",
+      "item": [
+        {
+          "name": "1. Authenticate (partner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "eval(pm.environment.get('pmlib_code'));\n\n// The token comes back as a Set-Cookie, not in the body: the body carries only\n// {status, message} and answers 200 whether or not a token was minted, so a\n// green response here proves nothing. The cookie is the only evidence.\nvar token = null;\npm.response.headers.each(function (h) {\n    if (!token && h.key.toLowerCase() === 'set-cookie' && h.value.indexOf('Authorization=') === 0) {\n        token = h.value.split(';')[0].substring('Authorization='.length);\n    }\n});\n\nvar body = null;\ntry { body = pm.response.json(); } catch (e) { body = null; }\n\npm.test('partner token issued', function () {\n    pm.expect(JSON.stringify((body && body.errors) || []), 'authmanager rejected the credentials - partnerSecret is deployment-specific').to.equal('[]');\n    pm.expect(token, 'no Authorization cookie in the response').to.be.a('string');\n});\n\nif (token) {\n    // Cleared before validation, not after: client-mgmt rejects a stale, expired or\n    // wrong-scope token exactly as it does a missing one - 'Full authentication is\n    // required to access this resource' at HTTP 200 - so a token left behind after\n    // failing its checks looks correctly populated while every registration fails.\n    pm.environment.unset('authToken');\n\n    var claims = {};\n    try {\n        var parsed = JSON.parse(pmlib.rs.b64utoutf8(token.split('.')[1]));\n        if (parsed && typeof parsed === 'object') claims = parsed;\n    } catch (e) {\n        // Malformed token: both checks below fail on the empty claims and report it.\n    }\n\n    // scope is space-delimited, so membership rather than substring - a scope such as\n    // add_oidc_client_readonly must not pass. A token minted for the wrong appId\n    // authenticates perfectly and still cannot register a client; its scope is the\n    // only thing that says so, and the failure it causes later does not mention it.\n    var hasScope = typeof claims.scope === 'string' &&\n        claims.scope.split(/\\s+/).indexOf('add_oidc_client') !== -1;\n\n    // These tokens are short-lived. Authenticating once and registering some minutes\n    // later fails exactly like never authenticating at all.\n    var notExpired = typeof claims.exp === 'number' && isFinite(claims.exp) &&\n        claims.exp * 1000 > Date.now();\n\n    pm.test('token carries add_oidc_client', function () {\n        pm.expect(hasScope, 'wrong appId, or the token could not be decoded - it cannot register clients').to.equal(true);\n    });\n\n    pm.test('token is not already expired', function () {\n        pm.expect(notExpired, 'authToken has no usable exp, or has already expired - re-run this request immediately before creating the client').to.equal(true);\n    });\n\n    // Stored only once both checks pass, so the environment never holds a token that\n    // client-mgmt will refuse.\n    if (hasScope && notExpired) pm.environment.set('authToken', token);\n} else {\n    pm.environment.unset('authToken');\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": \"string\",\n    \"metadata\": {},\n    \"request\": {\n        \"appId\": \"partner\",\n        \"clientId\": \"mosip-pms-client\",\n        \"secretKey\": \"{{partnerSecret}}\"\n    },\n    \"requesttime\": \"{{$isoTimestamp}}\",\n    \"version\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{internalUrl}}/v1/authmanager/authenticate/clientidsecretkey",
+              "host": [
+                "{{internalUrl}}"
+              ],
+              "path": [
+                "v1",
+                "authmanager",
+                "authenticate",
+                "clientidsecretkey"
+              ]
+            },
+            "description": "Only needed on a hosted deployment. A local eSignet leaves client-mgmt unauthenticated, so requests 2 and 3 work on their own and this one has nothing to talk to - internalUrl ships empty.\n\npartnerSecret is deployment-specific and deliberately not committed: set it in your own environment.\n\nThis collection keeps its own environment (ENV Mock Identity Bearer), so authToken must be minted here - the DPoP collection writes its copy into a different environment."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Get CSRF token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// eSignet 1.8 (Spring Security 6, BREACH protection) puts the RAW token in the",
+                  "// XSRF-TOKEN cookie and the MASKED token in the response body. X-XSRF-TOKEN must",
+                  "// carry the body value; sending the cookie value gives 403 Forbidden.",
+                  "pm.environment.set(\"csrf_token\", pm.response.json().token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/csrf/token",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "csrf",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Create OIDC client",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "eval(pm.environment.get('pmlib_code') || pm.globals.get('pmlib_code'))",
+                  "",
+                  "// Kept so a failed registration can put it back. The new key is written below",
+                  "// before the request is sent, so without this a rejected registration leaves the",
+                  "// environment holding a key eSignet never saw - and the only symptom is",
+                  "// invalid_client at the token step, six requests later.",
+                  "pm.collectionVariables.set('privateKey_jwk_prev', pm.environment.get('privateKey_jwk') || '');",
+                  "pm.collectionVariables.set('publicKey_jwk_prev', pm.environment.get('publicKey_jwk') || '');",
+                  "",
+                  "kp = pmlib.rs.KEYUTIL.generateKeypair(\"RSA\", 2048);",
+                  "privateKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.prvKeyObj);",
+                  "publicKey_jwk = pmlib.rs.KEYUTIL.getJWK(kp.pubKeyObj);",
+                  "",
+                  "pm.environment.set(\"privateKey_jwk\", JSON.stringify(privateKey_jwk));",
+                  "pm.environment.set(\"publicKey_jwk\", JSON.stringify(publicKey_jwk));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var body = null;",
+                  "try { body = pm.response.json(); } catch (e) { body = null; }",
+                  "",
+                  "var errors = (body && body.errors) || [];",
+                  "var registered = pm.response.code === 200 && errors.length === 0 &&",
+                  "                 body && body.response && body.response.status === 'ACTIVE';",
+                  "",
+                  "// The new key went into the environment before the request was sent. If eSignet",
+                  "// did not take it, the registered client is still the old one - put its private",
+                  "// half back rather than leaving the environment holding a key that exists nowhere.",
+                  "if (!registered) {",
+                  "    var prevPriv = pm.collectionVariables.get('privateKey_jwk_prev');",
+                  "    var prevPub = pm.collectionVariables.get('publicKey_jwk_prev');",
+                  "    // unset, not skip, when there was no previous key: on a first registration",
+                  "    // prevPriv is '' and leaving the freshly generated pair in place would keep a",
+                  "    // key eSignet never registered - exactly what this restore exists to prevent.",
+                  "    if (prevPriv) pm.environment.set('privateKey_jwk', prevPriv);",
+                  "    else pm.environment.unset('privateKey_jwk');",
+                  "    if (prevPub) pm.environment.set('publicKey_jwk', prevPub);",
+                  "    else pm.environment.unset('publicKey_jwk');",
+                  "}",
+                  "",
+                  "// A 401 here has an EMPTY body - the reason is in WWW-Authenticate, which",
+                  "// distinguishes 'Malformed token' from expired from insufficient_scope.",
+                  "pm.test('request was authorised', function () {",
+                  "    pm.expect(pm.response.code, pm.response.headers.get('WWW-Authenticate') || 'no WWW-Authenticate header').to.equal(200);",
+                  "});",
+                  "",
+                  "// MOSIP reports registration failures at HTTP 200 with an errors array, so the",
+                  "// status code above is not enough on its own.",
+                  "// The two failures worth telling apart, named from the error actually returned",
+                  "// rather than listed together in one hint.",
+                  "var hint = 'registration failed';",
+                  "if (/Full authentication is required/.test(JSON.stringify(errors))) {",
+                  "    hint = 'authToken is missing, stale or expired - re-run 1. Authenticate (partner) immediately before this request';",
+                  "} else if (/duplicate_client_id/.test(JSON.stringify(errors))) {",
+                  "    hint = 'this clientId already exists with a different key; it cannot be re-keyed, so use a new clientId';",
+                  "}",
+                  "",
+                  "pm.test('client registered', function () {",
+                  "    pm.expect(body, 'no JSON body - read WWW-Authenticate').to.not.equal(null);",
+                  "    pm.expect(JSON.stringify(errors), hint).to.equal('[]');",
+                  "    pm.expect(body.response.clientId).to.equal(pm.environment.get('clientId'));",
+                  "    pm.expect(body.response.status).to.equal('ACTIVE');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrf_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{    \n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"clientName\": \"{{clientName}}\",\n        \"publicKey\": {{publicKey_jwk}},\n        \"relyingPartyId\": \"{{relayingPartyId}}\",\n        \"userClaims\": [\n            \"name\",\n            \"email\",\n            \"gender\",\n            \"phone_number\",\n            \"picture\",\n            \"birthdate\"\n        ],\n        \"authContextRefs\": [\n            \"mosip:idp:acr:generated-code\",\n            \"mosip:idp:acr:biometrics\",\n            \"mosip:idp:acr:linked-wallet\"\n        ],\n        \"logoUri\": \"https://avatars.githubusercontent.com/u/60199888\",\n        \"redirectUris\": [\n             \"{{redirectionUrl}}\",\n             \"io.mosip.residentapp.inji://oauthredirect\"\n        ],\n        \"grantTypes\": [\n            \"authorization_code\"\n        ],\n        \"clientAuthMethods\": [\n            \"private_key_jwt\"\n        ]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/client-mgmt/oidc-client",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "client-mgmt",
+                "oidc-client"
+              ]
+            },
+            "description": "The partner token comes from the runtime authToken variable, published by \"1. Authenticate (partner)\" in this OIDC Client Mgmt folder. The DPoP collection writes its own authToken into its own environment, so that one is not interchangeable with this. Run that request first on collab and released; a local eSignet leaves client-mgmt unauthenticated and ignores this header."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Credential Configuration",
+      "item": [
+        {
+          "name": "Add New Config",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vcTemplate\": \"ewogICJuYW1lU3BhY2VzIjogewogICAgIm9yZy5pc28uMjMyMjAuMSI6IFsKICAgICAgeyAiZGlnZXN0SUQiOiAwLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImZhbWlseV9uYW1lIiwgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtmYW1pbHlOYW1lfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxLCAgImVsZW1lbnRJZGVudGlmaWVyIjogImdpdmVuX25hbWUiLCAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtnaXZlbk5hbWV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhfZGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6IHsgImJpcnRoX2RhdGUiOiAiJHtiaXJ0aERhdGV9IiB9IH0sCiAgICAgIHsgImRpZ2VzdElEIjogMywgICJlbGVtZW50SWRlbnRpZmllciI6ICJwb3J0cmFpdCIsICAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7cG9ydHJhaXR9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDQsICAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWVfZGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2lzc3VlRGF0ZX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNSwgICJlbGVtZW50SWRlbnRpZmllciI6ICJleHBpcnlfZGF0ZSIsICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7ZXhwaXJ5RGF0ZX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJpc3N1aW5nX2F1dGhvcml0eSIsICAgICAiZWxlbWVudFZhbHVlIjogIlJlZ2lvbmFsIElkZW50aXR5IE9mZmljZSwgQmVuZ2FsdXJ1IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDcsICAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWluZ19jb3VudHJ5IiwgICAgICAgImVsZW1lbnRWYWx1ZSI6ICJJTiIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA4LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImFnZV9vdmVyXzE4IiwgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAke2FnZU92ZXIxOH0gfSwKICAgICAgeyAiZGlnZXN0SUQiOiA5LCAgImVsZW1lbnRJZGVudGlmaWVyIjogImZhbWlseV9uYW1lX3ZpeiIsICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtmYW1pbHlOYW1lVml6fSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxMCwgImVsZW1lbnRJZGVudGlmaWVyIjogImdpdmVuX25hbWVfdml6IiwgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtnaXZlbk5hbWVWaXp9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDExLCAiZWxlbWVudElkZW50aWZpZXIiOiAic2V4IiwgICAgICAgICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICR7c2V4fSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDEyLCAiZWxlbWVudElkZW50aWZpZXIiOiAibmF0aW9uYWxpdHkiLCAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke25hdGlvbmFsaXR5fSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxMywgImVsZW1lbnRJZGVudGlmaWVyIjogImRvY3VtZW50X251bWJlciIsICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtkb2N1bWVudE51bWJlcn0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMTQsICJlbGVtZW50SWRlbnRpZmllciI6ICJhZ2VfaW5feWVhcnMiLCAgICAgICAgICAiZWxlbWVudFZhbHVlIjogJHthZ2VJblllYXJzfSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE1LCAiZWxlbWVudElkZW50aWZpZXIiOiAiYWdlX2JpcnRoX3llYXIiLCAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICR7YWdlQmlydGhZZWFyfSB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE2LCAiZWxlbWVudElkZW50aWZpZXIiOiAicG9ydHJhaXRfY2FwdHVyZV9kYXRlIiwgImVsZW1lbnRWYWx1ZSI6ICIke3BvcnRyYWl0Q2FwdHVyZURhdGV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE3LCAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhwbGFjZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRocGxhY2V9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDE4LCAiZWxlbWVudElkZW50aWZpZXIiOiAibmFtZV9hdF9iaXJ0aCIsICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke25hbWVBdEJpcnRofSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAxOSwgImVsZW1lbnRJZGVudGlmaWVyIjogInJlc2lkZW50X2FkZHJlc3MiLCAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudEFkZHJlc3N9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIwLCAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfY2l0eSIsICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke3Jlc2lkZW50Q2l0eX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMjEsICJlbGVtZW50SWRlbnRpZmllciI6ICJyZXNpZGVudF9wb3N0YWxfY29kZSIsICAiZWxlbWVudFZhbHVlIjogIiR7cmVzaWRlbnRQb3N0YWxDb2RlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiAyMiwgImVsZW1lbnRJZGVudGlmaWVyIjogInJlc2lkZW50X2NvdW50cnkiLCAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudENvdW50cnl9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDIzLCAiZWxlbWVudElkZW50aWZpZXIiOiAiaXNzdWluZ19zdWJkaXZpc2lvbiIsICAgImVsZW1lbnRWYWx1ZSI6ICJJTi1LQSIgfQogICAgXSwKICAgICJvcmcuaXNvLjIzMjIwLnBob3RvaWQuMSI6IFsKICAgICAgeyAiZGlnZXN0SUQiOiAwLCAgImVsZW1lbnRJZGVudGlmaWVyIjogInBlcnNvbl9pZCIsICAgICAgICAgICAgICAiZWxlbWVudFZhbHVlIjogIiR7cGVyc29uSWR9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDEsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYWRtaW5pc3RyYXRpdmVfbnVtYmVyIiwgICJlbGVtZW50VmFsdWUiOiAiJHthZG1pbmlzdHJhdGl2ZU51bWJlcn0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJiaXJ0aF9jb3VudHJ5IiwgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRoQ291bnRyeX0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogMywgICJlbGVtZW50SWRlbnRpZmllciI6ICJiaXJ0aF9zdGF0ZSIsICAgICAgICAgICAgImVsZW1lbnRWYWx1ZSI6ICIke2JpcnRoU3RhdGV9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDQsICAiZWxlbWVudElkZW50aWZpZXIiOiAiYmlydGhfY2l0eSIsICAgICAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtiaXJ0aENpdHl9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDUsICAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfc3RyZWV0IiwgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudFN0cmVldH0iIH0sCiAgICAgIHsgImRpZ2VzdElEIjogNiwgICJlbGVtZW50SWRlbnRpZmllciI6ICJyZXNpZGVudF9ob3VzZV9udW1iZXIiLCAgImVsZW1lbnRWYWx1ZSI6ICIke3Jlc2lkZW50SG91c2VOdW1iZXJ9IiB9LAogICAgICB7ICJkaWdlc3RJRCI6IDcsICAiZWxlbWVudElkZW50aWZpZXIiOiAicmVzaWRlbnRfc3RhdGUiLCAgICAgICAgICJlbGVtZW50VmFsdWUiOiAiJHtyZXNpZGVudFN0YXRlfSIgfSwKICAgICAgeyAiZGlnZXN0SUQiOiA4LCAgImVsZW1lbnRJZGVudGlmaWVyIjogInRyYXZlbF9kb2N1bWVudF9udW1iZXIiLCAiZWxlbWVudFZhbHVlIjogIiR7dHJhdmVsRG9jdW1lbnROdW1iZXJ9IiB9CiAgICBdCiAgfSwKICAiZG9jVHlwZSI6ICIke19kb2N0eXBlfSIsCiAgInZhbGlkaXR5SW5mbyI6IHsKICAgICJ2YWxpZEZyb20iOiAiJHtfdmFsaWRGcm9tfSIsCiAgICAidmFsaWRVbnRpbCI6ICIke192YWxpZFVudGlsfSIsCiAgICAic2lnbmVkIjogIiR7X3NpZ25lZH0iCiAgfQp9Cg==\",\n  \"credentialConfigKeyId\": \"PhotoIDCredential\",\n  \"contextURLs\": [],\n  \"credentialTypes\": [],\n  \"credentialFormat\": \"mso_mdoc\",\n  \"didUrl\": \"did:web:inji.github.io:inji-config:dev-int-inji:mock-mdl\",\n  \"keyManagerAppId\": \"CERTIFY_VC_SIGN_EC_R1\",\n  \"keyManagerRefId\": \"EC_SECP256R1_SIGN\",\n  \"signatureAlgo\": \"ES256\",\n  \"cryptographicBindingMethodsSupported\": [\n    \"cose_key\"\n  ],\n  \"proofTypesSupported\": {\n    \"jwt\": {\n      \"proof_signing_alg_values_supported\": [\n        \"ES256\"\n      ]\n    }\n  },\n  \"metaDataDisplay\": [\n    {\n      \"logo\": {\n        \"uri\": \"https://example.com/logo.png\",\n        \"alt_text\": \"Photo ID Logo\"\n      },\n      \"name\": \"PhotoIDCredential\",\n      \"locale\": \"en\",\n      \"text_color\": \"#FFFFFF\",\n      \"background_color\": \"#12107c\",\n      \"background_image\": {\n        \"uri\": \"https://inji.github.io/inji-config/logos/mosipid-logo.png\"\n      }\n    }\n  ],\n  \"displayOrder\": [\n    \"org.iso.23220.1~family_name\",\n    \"org.iso.23220.1~given_name\",\n    \"org.iso.23220.1~birth_date\",\n    \"org.iso.23220.1~portrait\",\n    \"org.iso.23220.1~issue_date\",\n    \"org.iso.23220.1~expiry_date\",\n    \"org.iso.23220.1~issuing_authority\",\n    \"org.iso.23220.1~issuing_country\",\n    \"org.iso.23220.1~age_over_18\",\n    \"org.iso.23220.1~family_name_viz\",\n    \"org.iso.23220.1~given_name_viz\",\n    \"org.iso.23220.1~sex\",\n    \"org.iso.23220.1~nationality\",\n    \"org.iso.23220.1~document_number\",\n    \"org.iso.23220.1~age_in_years\",\n    \"org.iso.23220.1~age_birth_year\",\n    \"org.iso.23220.1~portrait_capture_date\",\n    \"org.iso.23220.1~birthplace\",\n    \"org.iso.23220.1~name_at_birth\",\n    \"org.iso.23220.1~resident_address\",\n    \"org.iso.23220.1~resident_city\",\n    \"org.iso.23220.1~resident_postal_code\",\n    \"org.iso.23220.1~resident_country\",\n    \"org.iso.23220.1~issuing_subdivision\",\n    \"org.iso.23220.photoid.1~person_id\",\n    \"org.iso.23220.photoid.1~administrative_number\",\n    \"org.iso.23220.photoid.1~birth_country\",\n    \"org.iso.23220.photoid.1~birth_state\",\n    \"org.iso.23220.photoid.1~birth_city\",\n    \"org.iso.23220.photoid.1~resident_street\",\n    \"org.iso.23220.photoid.1~resident_house_number\",\n    \"org.iso.23220.photoid.1~resident_state\",\n    \"org.iso.23220.photoid.1~travel_document_number\"\n  ],\n  \"scope\": \"sample_vc_mdoc\",\n  \"msoMdocClaims\": {\n    \"org.iso.23220.1\": {\n      \"portrait_capture_date\": {\n        \"display\": [\n          {\n            \"name\": \"Portrait Capture Date\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"document_number\": {\n        \"display\": [\n          {\n            \"name\": \"Document Number\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"family_name_viz\": {\n        \"display\": [\n          {\n            \"name\": \"Family Name (Visual)\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"age_over_18\": {\n        \"display\": [\n          {\n            \"name\": \"Age Over 18\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"sex\": {\n        \"display\": [\n          {\n            \"name\": \"Sex\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"birth_date\": {\n        \"display\": [\n          {\n            \"name\": \"Date of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"expiry_date\": {\n        \"display\": [\n          {\n            \"name\": \"Date of Expiry\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"issuing_subdivision\": {\n        \"display\": [\n          {\n            \"name\": \"Issuing Subdivision\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"portrait\": {\n        \"display\": [\n          {\n            \"name\": \"Portrait\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"given_name\": {\n        \"display\": [\n          {\n            \"name\": \"Given Name\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"age_in_years\": {\n        \"display\": [\n          {\n            \"name\": \"Age in Years\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_postal_code\": {\n        \"display\": [\n          {\n            \"name\": \"Resident Postal Code\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"given_name_viz\": {\n        \"display\": [\n          {\n            \"name\": \"Given Name (Visual)\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"birthplace\": {\n        \"display\": [\n          {\n            \"name\": \"Place of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"issue_date\": {\n        \"display\": [\n          {\n            \"name\": \"Date of Issue\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"nationality\": {\n        \"display\": [\n          {\n            \"name\": \"Nationality\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"name_at_birth\": {\n        \"display\": [\n          {\n            \"name\": \"Name at Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"age_birth_year\": {\n        \"display\": [\n          {\n            \"name\": \"Year of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"issuing_country\": {\n        \"display\": [\n          {\n            \"name\": \"Issuing Country\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"issuing_authority\": {\n        \"display\": [\n          {\n            \"name\": \"Issuing Authority\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_address\": {\n        \"display\": [\n          {\n            \"name\": \"Resident Address\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_country\": {\n        \"display\": [\n          {\n            \"name\": \"Resident Country\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"family_name\": {\n        \"display\": [\n          {\n            \"name\": \"Family Name\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_city\": {\n        \"display\": [\n          {\n            \"name\": \"Resident City\",\n            \"locale\": \"en\"\n          }\n        ]\n      }\n    },\n    \"org.iso.23220.photoid.1\": {\n      \"resident_house_number\": {\n        \"display\": [\n          {\n            \"name\": \"Resident House Number\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_street\": {\n        \"display\": [\n          {\n            \"name\": \"Resident Street\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"travel_document_number\": {\n        \"display\": [\n          {\n            \"name\": \"Travel Document Number\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"birth_city\": {\n        \"display\": [\n          {\n            \"name\": \"City of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"resident_state\": {\n        \"display\": [\n          {\n            \"name\": \"Resident State\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"administrative_number\": {\n        \"display\": [\n          {\n            \"name\": \"Administrative Number\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"birth_state\": {\n        \"display\": [\n          {\n            \"name\": \"State of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"birth_country\": {\n        \"display\": [\n          {\n            \"name\": \"Country of Birth\",\n            \"locale\": \"en\"\n          }\n        ]\n      },\n      \"person_id\": {\n        \"display\": [\n          {\n            \"name\": \"Person ID\",\n            \"locale\": \"en\"\n          }\n        ]\n      }\n    }\n  },\n  \"doctype\": \"org.iso.23220.photoid.1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{certifyUrl}}/credential-configurations",
+              "host": [
+                "{{certifyUrl}}"
+              ],
+              "path": [
+                "credential-configurations"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Configuration By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{certifyUrl}}/credential-configurations/PhotoIDCredential",
+              "host": [
+                "{{certifyUrl}}"
+              ],
+              "path": [
+                "credential-configurations",
+                "PhotoIDCredential"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. VCI",
+      "item": [
+        {
+          "name": "1. Get CSRF token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var body = pm.response.json();\n// eSignet 1.8 returns a CSRF token here that is NOT the XSRF-TOKEN cookie value,\n// and the header has to carry this one. Reading the cookie instead - as the\n// published mock-identity collection does - gets a bare 403 on every later step.\npm.environment.set('csrf_token', body.token);\n\npm.test('csrf token issued', function () {\n    pm.expect(body.token).to.be.a('string');\n});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/csrf/token",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "csrf",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Authorize / OAuthdetails request V2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var btoa = require('btoa');\n\n// var token = pm.cookies.get(\"XSRF-TOKEN\")\n// pm.environment.set(\"csrf_token\", token);\n\npm.test(\"Validate transactionId\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.transactionId).not.equals(null);\n    pm.environment.set(\"transaction_id\", jsonData.response.transactionId);\n});\n\n// pm.test(\"Validate auth factors\", function () {\n//     var jsonData = pm.response.json();\n//     pm.expect(jsonData.response.authFactors[0].name).to.eql(pm.environment.get(\"expected_amr\"));\n// });\n\npm.test(\"set oauth-details-hash\", function () {\n    var jsonData = pm.response.json();\n    var sha256Hash = CryptoJS.SHA256(JSON.stringify(jsonData.response));\n    var base64Encoded = sha256Hash.toString(CryptoJS.enc.Base64);\n    // Remove padding characters\n    base64Encoded = base64Encoded.replace(/=+$/, '');\n    // Replace '+' with '-' and '/' with '_' to convert to base64 URL encoding\n    base64Encoded = base64Encoded.replace(/\\+/g, '-').replace(/\\//g, '_');\n    console.log(\"base64Encoded : \" + base64Encoded);\n    pm.environment.set(\"oauth_details_key\", jsonData.response.transactionId);\n    pm.environment.set(\"oauth_details_hash\", base64Encoded);\n});"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "eval(pm.globals.get('pmlib_code'))\n\nconst pkce = pmlib.pkceChallenge();\npm.collectionVariables.set(\"codeChallenge\",pkce.code_challenge);\npm.collectionVariables.set(\"codeChallengeMethod\",pkce.code_challenge_method);\npm.collectionVariables.set(\"codeVerifier\",pkce.code_verifier);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"clientId\": \"{{clientId}}\",\n        \"scope\": \"sample_vc_mdoc\",\n        \"responseType\": \"code\",\n        \"redirectUri\": \"{{redirectionUrl}}\",\n        \"display\": \"popup\",\n        \"prompt\": \"login\",\n        \"acrValues\": \"mosip:idp:acr:generated-code\",\n        \"nonce\" : \"{{nonce}}\",\n        \"state\" : \"{{state}}\",\n        \"claimsLocales\" : \"en\",\n        \"codeChallenge\" : \"{{codeChallenge}}\",\n        \"codeChallengeMethod\" : \"{{codeChallengeMethod}}\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/authorization/v2/oauth-details",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "v2",
+                "oauth-details"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "oauth-details-key",
+                "value": "{{oauth_details_key}}"
+              },
+              {
+                "key": "oauth-details-hash",
+                "value": "{{oauth_details_hash}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"otpChannels\" : [\"email\",\"phone\"],\n        \"captchaToken\" : \"dummy\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/authorization/send-otp",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "send-otp"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Authenticate User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  ""
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "oauth-details-key",
+                "value": "{{oauth_details_key}}"
+              },
+              {
+                "key": "oauth-details-hash",
+                "value": "{{oauth_details_hash}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"individualId\": \"{{individual_id}}\",\n        \"challengeList\" : [\n            {\n                \"authFactorType\" : \"OTP\",\n                \"challenge\" : \"111111\",\n                \"format\" : \"alpha-numeric\"\n            }\n        ]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/authorization/v3/authenticate",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "v3",
+                "authenticate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Authorization Code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// var token = pm.cookies.get(\"XSRF-TOKEN\")\n// pm.environment.set(\"csrf_token\", token);\n\npm.test(\"Validate code\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.response.code).not.equals(null);\n    pm.collectionVariables.set(\"code\", jsonData.response.code);\n});"
+                ]
+              }
+            }
+          ],
+          "protocolProfileBehavior": {
+            "followRedirects": false
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{csrf_token}}"
+              },
+              {
+                "key": "oauth-details-key",
+                "value": "{{oauth_details_key}}"
+              },
+              {
+                "key": "oauth-details-hash",
+                "value": "{{oauth_details_hash}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestTime\": \"{{$isoTimestamp}}\",\n    \"request\": {\n        \"transactionId\": \"{{transaction_id}}\",\n        \"acceptedClaims\": [],\n        \"permittedAuthorizeScopes\" : []\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/authorization/auth-code",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "authorization",
+                "auth-code"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Get Tokens V2",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "eval(pm.globals.get('pmlib_code'))\n\n// Set headers for JWT\nvar header = {\t\n\t\"alg\": \"RS256\"\n};\n\n\n//sign token\n//Note: Key pair is generated in \"Create OIDC client\" pre-requests script\n//generated private and public keys are stored in the postman environment \nconst signed_jwt = pmlib.clientAssertPrivateKey(JSON.parse(pm.environment.get(\"privateKey_jwk\")), pm.environment.get('clientId'), pm.environment.get('aud'), exp = 60,  \"RS256\");\n\npm.collectionVariables.set(\"client_assertion\",signed_jwt);\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Validate Id-token\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.id_token).not.equals(null);\n});\n\npm.test(\"Validate access-token\", function () {\n    var jsonData = pm.response.json();\n    pm.expect(jsonData.access_token).not.equals(null);\n    pm.environment.set(\"access_token\", jsonData.access_token);\n\n    // var jwt_parts = pm.environment.get('access_token').split('.'); // header.payload.signature\n    // var jwt_payload = JSON.parse(atob(jwt_parts[1]));\n    // pm.environment.set(\"c_nonce\", jwt_payload.c_nonce);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "code",
+                  "value": "{{code}}"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "redirect_uri",
+                  "value": "{{redirectionUrl}}"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "key": "client_assertion_type",
+                  "value": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+                },
+                {
+                  "key": "client_assertion",
+                  "value": "{{client_assertion}}"
+                },
+                {
+                  "key": "code_verifier",
+                  "value": "{{codeVerifier}}"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{authServerUrl}}/oauth/v2/token",
+              "host": [
+                "{{authServerUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "v2",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "7. Nonce Endpoint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var response = pm.response.json();\npm.environment.set(\"c_nonce\", response.c_nonce);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{certifyUrl}}/nonce",
+              "host": [
+                "{{certifyUrl}}"
+              ],
+              "path": [
+                "nonce"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "8. Get Photo ID Credential",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "eval(pm.globals.get('pmlib_code'))\nkeyPair = pmlib.rs.KEYUTIL.generateKeypair(\"EC\", \"secp256r1\");\njwkPrivateKey = pmlib.rs.KEYUTIL.getJWK(keyPair.prvKeyObj);\njwkPublicKey  = pmlib.rs.KEYUTIL.getJWK(keyPair.pubKeyObj);\njwkPublicKey[\"alg\"] = \"ES256\";\njwkPublicKey[\"use\"] = \"sig\";\n\npm.environment.set(\"holder_public_key\", JSON.stringify(jwkPublicKey))\npm.environment.set(\"holder_private_key\", JSON.stringify(jwkPrivateKey));\n\n// Set headers for JWT\nvar header = {\t\n\t\"alg\": \"ES256\",\n    \"typ\" : \"openid4vci-proof+jwt\",\n    \"jwk\" : JSON.parse(pm.environment.get(\"holder_public_key\"))\n};\n\n\nconsole.log(\"Getting c_nonce >> \" +  pm.environment.get('c_nonce'));\n\nconst signed_jwt = pmlib.jwtSign(JSON.parse(pm.environment.get(\"holder_private_key\")), {\n    // \"aud\" : 'http://localhost:8090',\n    \"aud\": pm.environment.get(\"audUrl\"),\n\t\"nonce\": pm.environment.get('c_nonce'),\n    \"iss\" : pm.environment.get('clientId'),\n}, header, exp=600, alg = \"ES256\")\n\nconsole.log(\"modified aud\")\n\nconsole.log(\"proof - \",signed_jwt)\n\npm.collectionVariables.set(\"proof_jwt\",signed_jwt);\n"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Validate c_nonce\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if(jsonData.c_nonce != null) {",
+                  "        pm.environment.set(\"c_nonce\", jsonData.c_nonce);",
+                  "        console.log(\"setting c_nonce\");",
+                  "    }",
+                  "});",
+                  "",
+                  "// ISO/IEC 18013-5 requires the timestamps in the MSO's validityInfo (signed, validFrom,",
+                  "// validUntil) to be CBOR tdate values (tag 0) with no fractions of seconds and a UTC",
+                  "// offset written as \"Z\", e.g. 2026-09-27T11:30:12Z. The OpenID4VP conformance suite",
+                  "// rejects anything else. These tests check the issued mDoc against those rules.",
+                  "// They check the encoding and format only, not the date values themselves.",
+                  "",
+                  "// The credential comes back as {\"credentials\":[{\"credential\":\"<base64url>\"}]};",
+                  "// the older {\"credential\":\"<base64url>\"} shape is accepted too.",
+                  "var body = pm.response.json();",
+                  "var credential = body.credential",
+                  "    || (body.credentials && body.credentials[0] && (body.credentials[0].credential || body.credentials[0]));",
+                  "pm.test(\"an mDoc credential came back\", function () {",
+                  "    pm.expect(credential, JSON.stringify(body)).to.be.a('string');",
+                  "});",
+                  "",
+                  "// base64url -> raw bytes, held as a string with one character per byte.",
+                  "var b64 = credential.replace(/-/g, '+').replace(/_/g, '/');",
+                  "while (b64.length % 4) b64 += '=';",
+                  "var bytes = atob(b64);",
+                  "",
+                  "// The MSO is nested inside CBOR byte strings (issuerAuth -> COSE_Sign1 payload -> tag 24),",
+                  "// and a byte string keeps its content's bytes unchanged, so the validityInfo keys can be",
+                  "// found by searching the whole credential - no full CBOR decoder needed.",
+                  "//",
+                  "// What the bytes look like for one entry:",
+                  "//   66 's' 'i' 'g' 'n' 'e' 'd'   C0     74                \"2026-09-27T11:30:12Z\"",
+                  "//   key: text string, length 6   tag 0  text, length 20   the timestamp",
+                  "function readTimestamp(name) {",
+                  "    // A CBOR text string starts with one byte: 0x60 + its length (for lengths up to 23).",
+                  "    var at = bytes.indexOf(String.fromCharCode(0x60 + name.length) + name);",
+                  "    if (at < 0) return null;",
+                  "    var p = at + 1 + name.length, tag = bytes.charCodeAt(p), head = bytes.charCodeAt(p + 1);",
+                  "    // 0xC0 is CBOR tag 0, the tdate tag. Anything else means the value is not a tdate.",
+                  "    if (tag !== 0xC0) return { problem: 'not a tdate (CBOR tag 0)' };",
+                  "    // The top three bits of the header are the CBOR major type; 0x60 (major type 3) is a",
+                  "    // text string. Tag 0 must wrap a text string, so reject anything else, such as a byte",
+                  "    // string (0x40) that happens to contain timestamp-shaped bytes.",
+                  "    if ((head & 0xE0) !== 0x60) return { problem: 'tag 0 does not contain a CBOR text string' };",
+                  "    // The text header carries the length: head - 0x60 for up to 23 characters. A timestamp",
+                  "    // with fractions, like ...T11:23:19.458Z, is 24 characters, so its header is 0x78 and",
+                  "    // the length follows in the next byte.",
+                  "    var len = head & 0x1F, start = p + 2;",
+                  "    if (len === 24) { len = bytes.charCodeAt(p + 2); start = p + 3; }",
+                  "    return { text: bytes.substr(start, len) };",
+                  "}",
+                  "",
+                  "// Each timestamp must be present, tagged as a tdate, and exactly YYYY-MM-DDTHH:MM:SSZ:",
+                  "// the regex rules out fractions of seconds (.458) and numeric offsets (+00:00).",
+                  "['signed', 'validFrom', 'validUntil'].forEach(function (name) {",
+                  "    var ts = readTimestamp(name) || { problem: 'missing' };",
+                  "    pm.test('validityInfo.' + name + ' = ' + (ts.text || ts.problem) + ' → whole seconds, UTC \"Z\"', function () {",
+                  "        pm.expect(ts.problem, ts.problem).to.be.undefined;",
+                  "        pm.expect(ts.text).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$/);",
+                  "    });",
+                  "});",
+                  "",
+                  "// ISO/IEC TS 23220 Photo ID: the MSO names the Photo ID docType, the credential carries both",
+                  "// Photo ID namespaces, and org.iso.23220.1 holds every mandatory element (ISO/IEC TS 23220-4,",
+                  "// Annex C, Table C.1). As above, the bytes are searched rather than decoded: a CBOR text string",
+                  "// of up to 23 characters is one header byte (0x60 + its length) followed by the text, and a map",
+                  "// entry's key is immediately followed by its value.",
+                  "function cborText(text) { return String.fromCharCode(0x60 + text.length) + text; }",
+                  "",
+                  "pm.test('MSO docType = org.iso.23220.photoid.1', function () {",
+                  "    pm.expect(bytes.indexOf(cborText('docType') + cborText('org.iso.23220.photoid.1')), 'docType').to.be.above(-1);",
+                  "});",
+                  "['org.iso.23220.1', 'org.iso.23220.photoid.1'].forEach(function (namespace) {",
+                  "    pm.test('namespace ' + namespace + ' is present', function () {",
+                  "        pm.expect(bytes.indexOf(cborText(namespace)), namespace).to.be.above(-1);",
+                  "    });",
+                  "});",
+                  "['family_name', 'given_name', 'birth_date', 'portrait', 'issue_date', 'expiry_date',",
+                  " 'issuing_authority', 'issuing_country', 'age_over_18'].forEach(function (element) {",
+                  "    pm.test('mandatory element ' + element + ' is present', function () {",
+                  "        pm.expect(bytes.indexOf(cborText('elementIdentifier') + cborText(element)), element).to.be.above(-1);",
+                  "    });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"credential_configuration_id\": \"PhotoIDCredential\",\n    \"proofs\": {\n        \"jwt\": [\n            \"{{proof_jwt}}\"\n        ]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{certifyUrl}}/issuance/credential",
+              "host": [
+                "{{certifyUrl}}"
+              ],
+              "path": [
+                "issuance",
+                "credential"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// This collection keeps its own environment. Selecting the other one would not",
+          "// fail immediately - the two share 20 variable names - it would run partway and",
+          "// write this flow's state into the wrong file. From OIDC Client Mgmt that costs",
+          "// a registered client: pm.environment.set CREATES privateKey_jwk in whichever",
+          "// environment is active, and eSignet cannot re-key or read back a client.",
+          "var flavor = pm.environment.get('env_flavor');",
+          "if (flavor !== 'bearer') {",
+          "    var got = pm.environment.name",
+          "        ? '\"' + pm.environment.name + '\" (env_flavor=' + (flavor || 'unset') + ')'",
+          "        : 'no environment selected';",
+          "    throw new Error('Wrong environment: this collection needs \"ENV Mock Identity Bearer\" (env_flavor=bearer), got ' + got + '.');",
+          "}",
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "clientId",
+      "value": "mock-oidc-client"
+    },
+    {
+      "key": "redirectionUrl",
+      "value": "https://mosip.io/index.php"
+    },
+    {
+      "key": "relayingPartyId",
+      "value": "mock-relaying-party-id"
+    },
+    {
+      "key": "status",
+      "value": "\"ACTIVE\""
+    },
+    {
+      "key": "acr_values",
+      "value": "level0 level1"
+    },
+    {
+      "key": "scope",
+      "value": "openid profile"
+    },
+    {
+      "key": "claims_request_param",
+      "value": "{\n            \"userinfo\": {\n                \"email\": {\n                    \"value\": null,\n                    \"values\": null,\n           ..."
+    },
+    {
+      "key": "nonce",
+      "value": "2erwER34WW"
+    },
+    {
+      "key": "state",
+      "value": "ptOO76SD"
+    },
+    {
+      "key": "expected_amr",
+      "value": "\"pin\""
+    },
+    {
+      "key": "transaction_id",
+      "value": "ece56bfa-d0c2-46ce-a5a2-8500dfb393a7"
+    },
+    {
+      "key": "individual_id",
+      "value": "8267411571"
+    },
+    {
+      "key": "auth_pin",
+      "value": "34789"
+    },
+    {
+      "key": "url",
+      "value": ""
+    },
+    {
+      "key": "code",
+      "value": ""
+    },
+    {
+      "key": "client_assertion",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "linkTransactionId",
+      "value": ""
+    },
+    {
+      "key": "wla_challenge",
+      "value": ""
+    },
+    {
+      "key": "client_secret",
+      "value": ""
+    },
+    {
+      "key": "csrf_token",
+      "value": "08a17840-da3c-4b93-9ab3-83d9b297ac68"
+    },
+    {
+      "key": "proof_jwt",
+      "value": ""
+    },
+    {
+      "key": "codeChallenge",
+      "value": ""
+    },
+    {
+      "key": "codeChallengeMethod",
+      "value": ""
+    },
+    {
+      "key": "codeVerifier",
+      "value": ""
+    },
+    {
+      "key": "proof_cwt",
+      "value": ""
+    },
+    {
+      "key": "privateKey_jwk_prev",
+      "value": ""
+    },
+    {
+      "key": "publicKey_jwk_prev",
+      "value": ""
+    }
+  ]
+}
