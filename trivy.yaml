@@ -1,0 +1,7 @@
+# Trivy settings, picked up by the pr-gate filesystem scan (trivy fs .).
+# A transitive dependency points Trivy at repo.sovrin.org, which no longer
+# responds, so remote POM lookups hang until the scan times out.
+# Offline mode skips those remote lookups; the vulnerability DB is still downloaded.
+timeout: 15m
+scan:
+  offline: true
