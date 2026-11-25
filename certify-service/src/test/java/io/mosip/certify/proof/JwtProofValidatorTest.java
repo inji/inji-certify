@@ -709,4 +709,23 @@ class JwtProofValidatorTest {
 
         assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
     }
+
+    @Test
+    void should_rejectProofWithoutThrowing_when_es256kProofCarriesAnOkpKey() throws Exception {
+        // the header claims ES256K but names an Ed25519 key, which can't verify an ES256K signature
+        OctetKeyPair okpKey = new OctetKeyPairGenerator(Curve.Ed25519).generate();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256K)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(okpKey.toPublicJWK())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .build();
+        String proof = header.toBase64URL() + "." + claims.toPayload().toBase64URL() + "." + Base64URL.encode(new byte[64]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
 }
