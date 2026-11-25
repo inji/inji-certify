@@ -12,6 +12,7 @@ import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.CredentialConfigMapper;
 import io.mosip.certify.utils.CredentialConfigMetadataResolver;
+import io.mosip.certify.utils.MdlDataElements;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -155,15 +156,29 @@ public class CredentialConfigMetadataAttributesTest {
         return entity;
     }
 
+    /** The validityInfo an mso_mdoc template must leave for Certify to fill in. */
+    private static final String VALIDITY_INFO_PLACEHOLDERS =
+            "\"validityInfo\": {\"signed\": \"${_signed}\", \"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\"}";
+
+    /** An mDL template declaring every mandatory element and the validityInfo placeholders, so the template checks pass. */
+    private static final String MDL_TEMPLATE = java.util.Base64.getEncoder().encodeToString(
+            ("{" + VALIDITY_INFO_PLACEHOLDERS + ", \"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
+                    + MdlDataElements.MANDATORY.stream()
+                    .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
+                    .collect(java.util.stream.Collectors.joining(", "))
+                    + "]}}").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
     private CredentialConfigurationDTO msoMdocConfig() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialConfigKeyId("test-mso-mdoc");
         dto.setMetaDataDisplay(List.of(new MetaDataDisplayDTO()));
-        dto.setVcTemplate("test_template");
+        dto.setVcTemplate(MDL_TEMPLATE);
         dto.setCredentialFormat("mso_mdoc");
         dto.setDocType("org.iso.18013.5.1.mDL");
         dto.setSignatureAlgo("ES256");
         dto.setSignatureCryptoSuite("EcdsaSecp256r1Signature2019");
+        dto.setKeyManagerAppId("TEST_EC");
+        dto.setKeyManagerRefId("TEST_EC-REF");
         return dto;
     }
 
@@ -181,6 +196,7 @@ public class CredentialConfigMetadataAttributesTest {
         entity.setCredentialFormat("mso_mdoc");
         entity.setDocType("org.iso.18013.5.1.mDL");
         entity.setSignatureAlgo("ES256");
+        entity.setVcTemplate(MDL_TEMPLATE);
         return entity;
     }
 
@@ -573,6 +589,126 @@ public class CredentialConfigMetadataAttributesTest {
     }
 
     @Test
+    public void should_rejectMdl_when_templateLacksMandatoryElements() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setVcTemplate(java.util.Base64.getEncoder().encodeToString(
+                ("{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ["
+                        + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"x\"}]}}")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING, exception.getErrorCode());
+        Assert.assertTrue(exception.getMessage().contains("portrait"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdoc_when_templateWritesAValidityInfoDate() {
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setVcTemplate(withValidFrom("2026-07-20T00:00:00Z"));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        Assert.assertTrue(exception.getMessage(), exception.getMessage().startsWith("validityInfo.validFrom must be"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocUpdate_when_mergedTemplateWritesAValidityInfoDate() {
+        // An update is validated as it would be saved, so a stored template with a literal date is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setVcTemplate(withValidFrom("2026-07-20T00:00:00Z"));
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdoc_when_keyManagerAppIdOrRefIdIsMissingOrNotAMappedPair() {
+        // Certify signs the MSO with this key, so it must be a key-alias-mapper pair for signatureAlgo (ES256)
+        List<Consumer<CredentialConfigurationDTO>> wrongKeys = List.of(
+                dto -> dto.setKeyManagerAppId(null),
+                dto -> dto.setKeyManagerRefId(null),
+                dto -> { dto.setKeyManagerAppId(null); dto.setKeyManagerRefId(null); },
+                dto -> dto.setKeyManagerAppId("TEST2019"),
+                dto -> dto.setKeyManagerRefId("TEST2019-REF"));
+        for (Consumer<CredentialConfigurationDTO> wrongKey : wrongKeys) {
+            CredentialConfigurationDTO request = msoMdocRequest();
+            wrongKey.accept(request);
+
+            CertifyException exception = Assert.assertThrows(CertifyException.class,
+                    () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+            Assert.assertEquals(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, exception.getErrorCode());
+        }
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocUpdate_when_mergedConfigHasNoKeyManagerAppId() {
+        // An update is validated as it would be saved, so a stored config without a key is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setKeyManagerAppId(null);
+        merged.setKeyManagerRefId(null);
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.KEY_CHOOSER_APP_REF_NOT_FOUND, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_notRequireAKey_when_msoMdocIsAddedInVcIssuanceMode() {
+        // the VCIssuance plugin signs the mdoc, not Certify
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "VCIssuance");
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setKeyManagerAppId(null);
+        request.setKeyManagerRefId(null);
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        when(credentialConfigRepository.save(any(CredentialConfig.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Assert.assertNotNull(credentialConfigurationService.addCredentialConfiguration(request));
+    }
+
+    /** MDL_TEMPLATE with validityInfo.validFrom written as the given value instead of its placeholder. */
+    private static String withValidFrom(String validFrom) {
+        String template = new String(java.util.Base64.getDecoder().decode(MDL_TEMPLATE), java.nio.charset.StandardCharsets.UTF_8);
+        return java.util.Base64.getEncoder().encodeToString(template.replace("${_validFrom}", validFrom)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void should_rejectMdlUpdate_when_mergedTemplateLacksMandatoryElements() {
+        // An update is validated as it would be saved, so a stored template missing elements is caught.
+        CredentialConfigurationDTO merged = msoMdocConfig();
+        merged.setVcTemplate(java.util.Base64.getEncoder().encodeToString(
+                "{\"nameSpaces\": {}}".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(msoMdocEntity()));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(merged);
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+
+        CertifyException exception = Assert.assertThrows(CertifyException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", msoMdocRequest()));
+
+        Assert.assertEquals(ErrorConstants.MDL_MANDATORY_FIELDS_MISSING, exception.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
     public void should_acceptMsoMdoc_when_valuesAreDeclared() {
         CredentialConfig entity = msoMdocEntity();
         when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(entity);
@@ -582,6 +718,103 @@ public class CredentialConfigMetadataAttributesTest {
 
         Assert.assertEquals(List.of("cose_key"), entity.getCryptographicBindingMethodsSupported());
         Assert.assertEquals(List.of("ES256"), entity.getCredentialSigningAlgValuesSupported());
+    }
+
+    // ---------- mso_mdoc proof keys become the mDL device key (ISO/IEC 18013-5, 9.1.3.4) ----------
+
+    @Test
+    public void should_rejectMsoMdocAdd_when_proofSigningAlgsIncludeRsa() {
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("RS256", "PS256", "ES256"))));
+
+        CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        // RS256 and PS256 are declared for the deployment, but can't be an mDL device key
+        Assert.assertEquals(2, exception.getErrors().size());
+        exception.getErrors().forEach(error ->
+                Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, error.getErrorCode()));
+        Assert.assertEquals("The proof signing algorithm RS256 can't be used for the credential format mso_mdoc: "
+                        + "the proof key becomes the mDL device key, which must be an EC key on P-256 (ISO/IEC 18013-5, "
+                        + "9.1.3.4). The supported values are: [ES256]",
+                exception.getErrors().getFirst().getErrorMessage());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocAdd_when_proofSigningAlgsIncludeEdDsa() {
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256", "EdDSA"))));
+
+        CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        // EdDSA is declared for the deployment, but Certify supports only P-256 device keys
+        Assert.assertEquals(1, exception.getErrors().size());
+        Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, exception.getErrors().getFirst().getErrorCode());
+        Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage(),
+                exception.getErrors().getFirst().getErrorMessage().startsWith("The proof signing algorithm EdDSA can't be used"));
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_rejectMsoMdocUpdate_when_proofSigningAlgsIncludeRsa() {
+        CredentialConfig stored = msoMdocEntity();
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-mso-mdoc")).thenReturn(Optional.of(stored));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(msoMdocConfig());
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256", "RS256"))));
+
+        CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                () -> credentialConfigurationService.updateCredentialConfiguration("test-mso-mdoc", request));
+
+        Assert.assertEquals(1, exception.getErrors().size());
+        Assert.assertEquals(ErrorConstants.UNSUPPORTED_PROOF_SIGNING_ALG, exception.getErrors().getFirst().getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_acceptMsoMdoc_when_proofSigningAlgIsEs256() {
+        CredentialConfig entity = msoMdocEntity();
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(entity);
+        when(credentialConfigRepository.save(any(CredentialConfig.class))).thenReturn(entity);
+        CredentialConfigurationDTO request = msoMdocRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256"))));
+
+        credentialConfigurationService.addCredentialConfiguration(request);
+
+        Assert.assertEquals(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES256"))), entity.getProofTypesSupported());
+    }
+
+    @Test
+    public void should_reportUndeclaredMsoMdocProofSigningAlgOnce_when_deploymentDoesNotDeclareIt() {
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(msoMdocEntity());
+        CredentialConfigurationDTO request = msoMdocRequest();
+        // ES384 isn't declared for this deployment, so only the undeclared-algorithm error is reported
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("ES384"))));
+
+        CredentialConfigValidationException exception = assertThrows(CredentialConfigValidationException.class,
+                () -> credentialConfigurationService.addCredentialConfiguration(request));
+
+        Assert.assertEquals(1, exception.getErrors().size());
+        Assert.assertTrue(exception.getErrors().getFirst().getErrorMessage(),
+                exception.getErrors().getFirst().getErrorMessage().contains("is not supported for the proof type jwt"));
+    }
+
+    @Test
+    public void should_acceptRsaProofSigningAlgs_when_formatIsNotMsoMdoc() {
+        CredentialConfig entity = ldpVcEntity();
+        when(credentialConfigMapper.toEntity(any(CredentialConfigurationDTO.class))).thenReturn(entity);
+        when(credentialConfigRepository.save(any(CredentialConfig.class))).thenReturn(entity);
+        CredentialConfigurationDTO request = ldpVcRequest();
+        request.setProofTypesSupported(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("RS256", "PS256"))));
+
+        credentialConfigurationService.addCredentialConfiguration(request);
+
+        Assert.assertEquals(Map.of("jwt", Map.of(PROOF_SIGNING_ALGS, List.of("RS256", "PS256"))), entity.getProofTypesSupported());
     }
 
     // ---------- Undeclared values are rejected and nothing is saved ----------
