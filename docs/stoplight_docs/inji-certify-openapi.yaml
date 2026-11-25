@@ -588,13 +588,11 @@ paths:
             wrong with the requested credential. A credential_configuration_id that this credential
             issuer does not offer is answered with unknown_credential_configuration (OpenID4VCI 1.0,
             section 8.3.1.2). One the issuer offers, but outside the access token's scope, is
-            answered with invalid_scope. A non-empty credential_identifier sent on its own is
-            answered with unknown_credential_identifier: this credential issuer never returns
-            credential_identifiers in a token response. A request without a
-            credential_configuration_id, with an empty credential_configuration_id or
-            credential_identifier, or with both credential_identifier and
-            credential_configuration_id (OpenID4VCI 1.0, section 8.2) is malformed and answered with
-            invalid_credential_request.
+            answered with invalid_scope. A non-blank credential_identifier sent without
+            credential_configuration_id is answered with unknown_credential_identifier: this
+            credential issuer never returns credential_identifiers in a token response. A request
+            with neither selector, a blank selector, or both selectors (OpenID4VCI 1.0, section 8.2)
+            is malformed and answered with invalid_credential_request.
           content:
             '*/*':
               schema:
@@ -2039,9 +2037,9 @@ components:
           description: |
             Identifier of a credential dataset from the token response's authorization_details
             (OpenID4VCI 1.0, section 8.2). This credential issuer never returns credential_identifiers,
-            so a non-empty credential_identifier sent without credential_configuration_id is answered
-            with unknown_credential_identifier. An empty credential_identifier, or a request carrying
-            both selectors, is answered with invalid_credential_request.
+            so a non-blank credential_identifier sent without credential_configuration_id is answered
+            with unknown_credential_identifier. A request with neither selector, a blank selector, or
+            both selectors is answered with invalid_credential_request.
 
         proofs:
           type: object
