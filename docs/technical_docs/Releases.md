@@ -111,6 +111,21 @@ The other two cases are unchanged: a `credential_configuration_id` the issuer of
 
 **Action for clients:** a client or test that expects `invalid_credential_request` for an unknown `credential_configuration_id` must expect `unknown_credential_configuration`.
 
+## A `credential_identifier` is answered with `unknown_credential_identifier`
+
+A credential request that carries `credential_identifier` is now answered with `unknown_credential_identifier` ([#1177](https://github.com/inji/inji-certify/issues/1177)), as [OID4VCI 1.0 §8.3.1.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.3.1.2) defines. Certify never returns `credential_identifiers` in a token response, so every identifier it receives is unknown. The field was not read before: the request was treated as one without a `credential_configuration_id` and answered with `invalid_credential_request`. The HTTP status (400) and the response shape are unchanged:
+
+```diff
+- { "error": "invalid_credential_request", "error_description": "invalid_credential_request" }
++ { "error": "unknown_credential_identifier", "error_description": "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used." }
+```
+
+A request that carries both `credential_identifier` and `credential_configuration_id` is malformed ([OID4VCI 1.0 §8.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.2): the two must not be present together) and is answered with `invalid_credential_request`, before any configuration lookup. A request without a `credential_configuration_id` keeps its code, `invalid_credential_request`, and now says why in `error_description`.
+
+Issuing `credential_identifiers` in `authorization_details` and resolving them to credential datasets is out of scope: Certify and eSignet do not use identifiers.
+
+**Action for clients:** a wallet that sends `credential_identifier` to Certify must send `credential_configuration_id` instead.
+
 ## `mso_mdoc` device keys follow ISO/IEC 18013-5
 
 The holder's key that Certify writes into an mDL's Mobile Security Object (`deviceKeyInfo.deviceKey`) now follows ISO/IEC 18013-5, 9.1.5.2 and 9.1.3.4 ([#1148](https://github.com/inji/inji-certify/issues/1148)):

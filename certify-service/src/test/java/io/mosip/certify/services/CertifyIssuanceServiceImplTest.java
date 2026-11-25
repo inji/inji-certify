@@ -534,6 +534,62 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_rejectWithUnknownCredentialIdentifier_when_onlyCredentialIdentifierIsSent() {
+        // This issuer never returns credential_identifiers, so any credential_identifier is unknown (OpenID4VCI 1.0, 8.3.1.2).
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        request.setCredentialIdentifier("unknown:1177");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER, ex.getErrorCode());
+        assertEquals("The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_bothSelectorsAreSent() {
+        // OpenID4VCI 1.0, 8.2: the two selectors must not be present together. The check comes before the
+        // configuration lookup, so the unknown credential_configuration_id is not what gets reported.
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId("not-a-real-config");
+        request.setCredentialIdentifier("unknown:1177");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier and credential_configuration_id must not both be present.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_noSelectorIsSent() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_configuration_id is required.", ex.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_credentialIdentifierIsBlank() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        request.setCredentialIdentifier(" ");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier must not be empty.", ex.getMessage());
+    }
+
+    @Test
     public void getCredential_InvalidProof_Fail() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);

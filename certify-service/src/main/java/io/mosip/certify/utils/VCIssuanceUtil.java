@@ -117,6 +117,33 @@ public class VCIssuanceUtil {
         }
     }
 
+    /**
+     * OpenID4VCI 1.0, 8.2: a credential request carries credential_configuration_id or credential_identifier,
+     * never both. This issuer never returns credential_identifiers, so any credential_identifier is unknown (8.3.1.2).
+     */
+    public static void validateCredentialSelector(CredentialRequest credentialRequest) {
+        String credentialIdentifier = credentialRequest.getCredentialIdentifier();
+        String credentialConfigId = credentialRequest.getCredentialConfigId();
+        // if both are present, it's an invalid request. They can be never all be given.
+        if (credentialIdentifier != null && credentialConfigId != null) {
+            throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
+                    "credential_identifier and credential_configuration_id must not both be present.");
+        }
+
+        if (credentialIdentifier != null) {
+            if (StringUtils.isBlank(credentialIdentifier)) {
+                throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
+                        "credential_identifier must not be empty.");
+            }
+            throw new CertifyException(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER,
+                    "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.");
+        }
+        if (StringUtils.isBlank(credentialConfigId)) {
+            throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
+                    "credential_configuration_id is required.");
+        }
+    }
+
     public static Optional<CredentialConfigurationSupported> getScopeCredentialMapping(
             String scope,
             String credentialConfigId,
