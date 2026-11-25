@@ -1,15 +1,23 @@
 package io.mosip.certify.validators.credentialconfigvalidators;
 
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.dto.CredentialConfigurationDTO;
+import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.repository.CredentialConfigRepository;
+import io.mosip.certify.utils.MdlDataElements;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MsoMdocCredentialConfigValidatorTest {
@@ -178,5 +186,352 @@ class MsoMdocCredentialConfigValidatorTest {
         Mockito.when(repo.findByCredentialFormatAndDocType("format", "docType"))
                 .thenReturn(Optional.empty());
         assertFalse(MsoMdocCredentialConfigValidator.isConfigAlreadyPresent(config, repo));
+    }
+
+    // ---------- ISO/IEC 18013-5 Table 5 mandatory elements ----------
+
+    @Test
+    void should_reportMissingElements_when_mdlTemplateLacksMandatoryOnes() {
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE,
+                List.of("family_name", "given_name", "birth_date", "document_number")));
+
+        assertEquals(List.of("issue_date", "expiry_date", "issuing_country", "issuing_authority", "portrait",
+                        "driving_privileges", "un_distinguishing_sign"),
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider"));
+    }
+
+    @Test
+    void should_reportNothing_when_mdlTemplateHasEveryMandatoryElement() {
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, MdlDataElements.MANDATORY));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_countOnlyTheMdlNamespace_when_anElementIsDeclaredElsewhere() {
+        // family_name in another namespace is not the mDL's family_name
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate("org.example.custom", MdlDataElements.MANDATORY));
+
+        assertEquals(MdlDataElements.MANDATORY,
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_templateUsesVelocityDirectives() {
+        // #foreach makes the template invalid JSON until Velocity renders it, so which namespace
+        // each identifier lands in is unknown: the mandatory ones here are in a custom namespace.
+        String elements = MdlDataElements.MANDATORY.stream()
+                .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
+                .collect(Collectors.joining(", "));
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [{\"elementIdentifier\": \"family_name\"}"
+                + "#foreach($extra in $extras), {\"elementIdentifier\": \"$extra\"}#end],"
+                + " \"org.example.custom\": [" + elements + "]}}";
+        CredentialConfigurationDTO config = mdlConfig(Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8)));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_anMdlIdentifierIsAVelocityReference() {
+        // the identifier is only known once rendered, e.g. from elements the DataProvider returns
+        List<String> elements = List.of("family_name", "${element.identifier}");
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, elements));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_theNamespaceIsAVelocityReference() {
+        // ${namespace} may render as org.iso.18013.5.1, so the mDL namespace can't be found before rendering
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate("${namespace}", MdlDataElements.MANDATORY));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_theMdlElementsAreAnUnquotedReference() {
+        // ${elements} may render as an array holding every mandatory element
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": ${elements}}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_anMdlElementIsAnUnquotedReference() {
+        // ${first} may render as any mandatory element
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [${first},"
+                + " {\"elementIdentifier\": \"family_name\", \"elementValue\": \"x\"}]}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notReportADuplicate_when_twoMdlElementsAreUnquotedReferences() {
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": [${first}, ${second}]}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_nameSpacesIsAnUnquotedReference() {
+        String template = "{\"nameSpaces\": ${nameSpaces}}";
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reportEveryElement_when_theMdlNamespaceIsAnEmptyArray() {
+        String template = "{\"nameSpaces\": {\"" + MdlDataElements.NAMESPACE + "\": []}}";
+
+        assertEquals(MdlDataElements.MANDATORY,
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_docTypeIsNotAnMdl() {
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, List.of("family_name")));
+        config.setDocType("org.example.custom.document");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_pluginModeIsVcIssuance() {
+        // the VCIssuance plugin builds the mDL, not this template
+        CredentialConfigurationDTO config = mdlConfig(mdlTemplate(MdlDataElements.NAMESPACE, List.of("family_name")));
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(config, "VCIssuance").isEmpty());
+    }
+
+    @Test
+    void should_reportEveryElement_when_mdlTemplateIsMissing() {
+        assertEquals(MdlDataElements.MANDATORY,
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(null), "DataProvider"));
+    }
+
+    @Test
+    void should_reportNothing_when_standardMdlTemplateHasEveryMandatoryElement() {
+        // driving_privileges is the unquoted reference ${drivingPrivileges}, so the template is JSON only once rendered
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(STANDARD_MDL_TEMPLATE)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reportTheElement_when_itIsRemovedFromTheStandardMdlTemplate() {
+        for (String element : MdlDataElements.MANDATORY) {
+            String template = STANDARD_MDL_TEMPLATE.lines()
+                    .filter(line -> !line.contains("\"elementIdentifier\": \"" + element + "\""))
+                    .collect(Collectors.joining("\n"))
+                    // the element removed may have been the last one, which had no trailing comma
+                    .replace("},\n    ]", "}\n    ]");
+
+            assertEquals(List.of(element),
+                    MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"), element);
+        }
+    }
+
+    @Test
+    void should_reportTheMissingElements_when_aValueIsAQuietUnquotedReference() {
+        String template = STANDARD_MDL_TEMPLATE.replace("${drivingPrivileges}", "$!{drivingPrivileges}")
+                .replace("\"elementIdentifier\": \"portrait\"", "\"elementIdentifier\": \"photo\"");
+
+        assertEquals(List.of("portrait"),
+                MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckTheTemplate_when_anUnquotedReferenceIsAnMdlIdentifier() {
+        // quoted, the reference still contains $, so the identifier is only known once rendered
+        String template = STANDARD_MDL_TEMPLATE.replace("\"elementIdentifier\": \"portrait\"", "\"elementIdentifier\": ${portraitId}");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_keepQuotedText_when_aStringContainsAReference() {
+        // "${...}" inside a string, including one with an escaped quote, is already JSON and is left as it is
+        String template = STANDARD_MDL_TEMPLATE.replace("\"Regional Transport Office, Bengaluru\"",
+                "\"Office \\\" ${office} $!{x}\"");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    @Test
+    void should_reject_when_anMdlElementIdentifierIsDeclaredTwice() {
+        String template = STANDARD_MDL_TEMPLATE.replace("\"elementIdentifier\": \"given_name\"", "\"elementIdentifier\": \"family_name\"");
+
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertEquals("Duplicate mDL element identifier: family_name.", exception.getMessage());
+    }
+
+    @Test
+    void should_accept_when_anIdentifierIsRepeatedInAnotherNamespace() {
+        // only the mDL namespace is checked; the same identifier may appear once in each namespace
+        String template = STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {",
+                "\"nameSpaces\": {\n    \"org.example.custom\": [{ \"elementIdentifier\": \"family_name\", \"elementValue\": \"x\" }],");
+
+        assertTrue(MsoMdocCredentialConfigValidator.findMissingMdlElements(mdlConfig(base64(template)), "DataProvider").isEmpty());
+    }
+
+    // ---------- validityInfo placeholders (ISO/IEC 18013-5, 9.1.2.4) ----------
+
+    @Test
+    void should_accept_when_standardMdlTemplateLeavesTheValidityInfoPlaceholders() {
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(STANDARD_MDL_TEMPLATE)), "DataProvider");
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoFieldIsWrittenAsADate() {
+        for (String field : List.of("signed", "validFrom", "validUntil")) {
+            String template = STANDARD_MDL_TEMPLATE.replace("\"${_" + field + "}\"", "\"2026-07-20T00:00:00Z\"");
+
+            CertifyException exception = assertThrows(CertifyException.class, () ->
+                    MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"), field);
+            assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode(), field);
+            assertEquals("validityInfo." + field + " must be \"${_" + field + "}\"; Certify sets the validityInfo dates at issuance.",
+                    exception.getMessage(), field);
+        }
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoFieldIsMissing() {
+        String template = STANDARD_MDL_TEMPLATE.replace("\"validUntil\": \"${_validUntil}\",", "");
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertTrue(exception.getMessage().startsWith("validityInfo.validUntil must be"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_templateHasNoValidityInfo() {
+        String template = "{\"docType\": \"${_doctype}\", \"nameSpaces\": {}}";
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        assertTrue(exception.getMessage().startsWith("An mso_mdoc template must have validityInfo"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_aValidityInfoPlaceholderIsUnquoted() {
+        // Certify fills the placeholder in after Velocity, so an unquoted ${_signed} stays invalid JSON at issuance
+        String template = STANDARD_MDL_TEMPLATE.replace("\"${_signed}\"", "${_signed}");
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider"));
+        assertTrue(exception.getMessage().startsWith("validityInfo.signed must be"), exception.getMessage());
+    }
+
+    @Test
+    void should_reject_when_aTemplateForAnotherDocTypeWritesAValidityInfoDate() {
+        CredentialConfigurationDTO config = mdlConfig(base64(STANDARD_MDL_TEMPLATE.replace("\"${_validFrom}\"", "\"2026-07-20T00:00:00Z\"")));
+        config.setDocType("org.example.custom.document");
+
+        assertThrows(CertifyException.class,
+                () -> MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(config, "DataProvider"));
+    }
+
+    @Test
+    void should_notCheckValidityInfo_when_templateUsesVelocityDirectives() {
+        // not JSON until rendered; issuance checks the placeholders instead
+        String template = "#if($x){\"validityInfo\": {\"signed\": \"2026-07-20T00:00:00Z\"}}#end";
+
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "DataProvider");
+    }
+
+    @Test
+    void should_notCheckValidityInfo_when_pluginModeIsVcIssuance() {
+        // the VCIssuance plugin builds and signs the mdoc, not this template
+        String template = STANDARD_MDL_TEMPLATE.replace("\"${_signed}\"", "\"2026-07-20T00:00:00Z\"");
+
+        MsoMdocCredentialConfigValidator.requireValidityInfoPlaceholders(mdlConfig(base64(template)), "VCIssuance");
+    }
+
+    // ---------- explicit CBOR tags ----------
+
+    @Test
+    void should_reject_when_aCborTagIsNotTheInteger0Or1004() {
+        // a string, a float, a tag Certify doesn't encode, and a reference that is only known once rendered
+        for (String tag : List.of("\"1004\"", "1004.0", "24", "${tag}")) {
+            CredentialConfigurationDTO config = mdlConfig(base64(withCustomElement(
+                    "{\"__cbor_tag\": " + tag + ", \"__cbor_value\": \"2024-06-15\"}")));
+
+            CertifyException exception = assertThrows(CertifyException.class,
+                    () -> MsoMdocCredentialConfigValidator.requireSupportedCborTags(config, "DataProvider"), tag);
+            assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode(), tag);
+            assertEquals("The __cbor_tag at nameSpaces.org.example.custom[0].elementValue must be the integer 0 (tdate) or 1004 (full-date).",
+                    exception.getMessage(), tag);
+        }
+    }
+
+    @Test
+    void should_accept_when_cborTagsAre0Or1004() {
+        // the tagged value is only known once rendered, so it is checked at issuance
+        for (String tagged : List.of("{\"__cbor_tag\": 1004, \"__cbor_value\": \"${since}\"}",
+                "{\"history\": [{\"__cbor_tag\": 0, \"__cbor_value\": \"2024-06-15T10:00:00Z\"}]}")) {
+            MsoMdocCredentialConfigValidator.requireSupportedCborTags(mdlConfig(base64(withCustomElement(tagged))), "DataProvider");
+        }
+    }
+
+    @Test
+    void should_notCheckCborTags_when_pluginModeIsVcIssuance() {
+        String template = withCustomElement("{\"__cbor_tag\": 24, \"__cbor_value\": \"x\"}");
+
+        MsoMdocCredentialConfigValidator.requireSupportedCborTags(mdlConfig(base64(template)), "VCIssuance");
+    }
+
+    /** The standard mDL template with an org.example.custom namespace whose one element has the given value. */
+    private static String withCustomElement(String elementValue) {
+        return STANDARD_MDL_TEMPLATE.replace("\"nameSpaces\": {", "\"nameSpaces\": {\n    \"org.example.custom\": "
+                + "[{ \"elementIdentifier\": \"member_since\", \"elementValue\": " + elementValue + " }],");
+    }
+
+    /** The mDL template of the docs and the mock mDoc Postman collection. */
+    private static final String STANDARD_MDL_TEMPLATE = """
+            {
+              "nameSpaces": {
+                "org.iso.18013.5.1": [
+                  { "digestID": 0,  "elementIdentifier": "family_name",            "elementValue": "${familyName}" },
+                  { "digestID": 1,  "elementIdentifier": "given_name",             "elementValue": "${givenName}" },
+                  { "digestID": 2,  "elementIdentifier": "birth_date",             "elementValue": "${birthDate}" },
+                  { "digestID": 3,  "elementIdentifier": "issue_date",             "elementValue": "${issueDate}" },
+                  { "digestID": 4,  "elementIdentifier": "expiry_date",            "elementValue": "${expiryDate}" },
+                  { "digestID": 5,  "elementIdentifier": "document_number",        "elementValue": "${documentNumber}" },
+                  { "digestID": 6,  "elementIdentifier": "issuing_country",        "elementValue": "IN" },
+                  { "digestID": 7,  "elementIdentifier": "issuing_authority",      "elementValue": "Regional Transport Office, Bengaluru" },
+                  { "digestID": 8,  "elementIdentifier": "un_distinguishing_sign", "elementValue": "IND" },
+                  { "digestID": 9,  "elementIdentifier": "portrait",               "elementValue": "${portrait}" },
+                  { "digestID": 10, "elementIdentifier": "driving_privileges",     "elementValue": ${drivingPrivileges} }
+                ]
+              },
+              "docType": "${_doctype}",
+              "validityInfo": {
+                "validFrom": "${_validFrom}",
+                "validUntil": "${_validUntil}",
+                "signed": "${_signed}"
+              }
+            }
+            """;
+
+    private static String base64(String template) {
+        return Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static CredentialConfigurationDTO mdlConfig(String vcTemplate) {
+        CredentialConfigurationDTO config = new CredentialConfigurationDTO();
+        config.setDocType(MdlDataElements.DOC_TYPE);
+        config.setSignatureAlgo("ES256");
+        config.setVcTemplate(vcTemplate);
+        return config;
+    }
+
+    /** A base64 template declaring the given elements in one namespace. */
+    private static String mdlTemplate(String namespace, List<String> elements) {
+        String items = elements.stream()
+                .map(element -> "{\"elementIdentifier\": \"" + element + "\", \"elementValue\": \"x\"}")
+                .collect(Collectors.joining(", "));
+        String template = "{\"docType\": \"${_doctype}\", \"nameSpaces\": {\"" + namespace + "\": [" + items + "]}}";
+        return Base64.getEncoder().encodeToString(template.getBytes(StandardCharsets.UTF_8));
     }
 }
