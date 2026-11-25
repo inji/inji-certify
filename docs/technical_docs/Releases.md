@@ -107,13 +107,13 @@ A credential request whose `credential_configuration_id` this credential issuer 
 + { "error": "unknown_credential_configuration", "error_description": "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id." }
 ```
 
-The other two cases are unchanged: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`, and a request without a `credential_configuration_id`, or with an empty one, with `invalid_credential_request`.
+The other cases: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`; a request with neither selector, a blank selector, or both selectors is answered with `invalid_credential_request`; a `credential_identifier` is covered by the next entry.
 
 **Action for clients:** a client or test that expects `invalid_credential_request` for an unknown `credential_configuration_id` must expect `unknown_credential_configuration`.
 
 ## A `credential_identifier` is answered with `unknown_credential_identifier`
 
-A credential request that carries a non-blank `credential_identifier` and no `credential_configuration_id` is now answered with `unknown_credential_identifier` ([#1177](https://github.com/inji/inji-certify/issues/1177)), as [OID4VCI 1.0 §8.3.1.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.3.1.2) defines. Certify never returns `credential_identifiers` in a token response, so every identifier it receives is unknown. The field was not read before: the request was treated as one without a `credential_configuration_id` and answered with `invalid_credential_request`. The HTTP status (400) and the response shape are unchanged:
+A credential request that carries a non-blank `credential_identifier` and no `credential_configuration_id` is now answered with `unknown_credential_identifier` ([#1177](https://github.com/inji/inji-certify/issues/1177)), as [OID4VCI 1.0 §8.3.1.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.3.1.2) defines. Certify never returns `credential_identifiers` in a token response, so every non-blank identifier it receives is unknown. The field was not read before: the request was treated as one without a `credential_configuration_id` and answered with `invalid_credential_request`. The HTTP status (400) and the response shape are unchanged:
 
 ```diff
 - { "error": "invalid_credential_request", "error_description": "invalid_credential_request" }

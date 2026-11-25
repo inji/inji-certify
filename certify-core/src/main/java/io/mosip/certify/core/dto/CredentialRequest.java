@@ -27,7 +27,7 @@ public class CredentialRequest {
 
     /**
      * Names a credential dataset from the token response's authorization_details (OpenID4VCI 1.0, 8.2).
-     * This issuer never returns credential_identifiers, so any value it receives is unknown.
+     * This issuer never returns credential_identifiers, so a non-blank value sent alone is unknown.
      */
     @JsonProperty("credential_identifier")
     private String credentialIdentifier;

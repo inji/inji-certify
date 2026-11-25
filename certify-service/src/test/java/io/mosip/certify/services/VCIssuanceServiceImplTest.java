@@ -482,7 +482,7 @@ public class VCIssuanceServiceImplTest {
 
     @Test
     public void should_rejectWithUnknownCredentialIdentifier_when_onlyCredentialIdentifierIsSent() throws Exception {
-        // This issuer never returns credential_identifiers, so any credential_identifier is unknown (OpenID4VCI 1.0, 8.3.1.2).
+        // This issuer never returns credential_identifiers, so a non-blank credential_identifier sent alone is unknown (OpenID4VCI 1.0, 8.3.1.2).
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         request.setCredentialConfigId(null);
         request.setCredentialIdentifier("unknown:1177");
@@ -521,6 +521,19 @@ public class VCIssuanceServiceImplTest {
 
         assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
         assertEquals("credential_configuration_id is required.", ex.getMessage());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_credentialIdentifierIsBlank() throws Exception {
+        request = createValidCredentialRequest(VCFormats.LDP_VC);
+        request.setCredentialConfigId(null);
+        request.setCredentialIdentifier(" ");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier must not be blank.", ex.getMessage());
     }
 
     @Test
