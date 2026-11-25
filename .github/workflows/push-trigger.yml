@@ -269,3 +269,16 @@ jobs:
       RELEASE_DOCKER_HUB: ${{ secrets.RELEASE_DOCKER_HUB }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
 
+
+  pr-gate:
+    if: github.event_name != 'release'
+    uses: mosip/kattu/.github/workflows/pr-gate.yml@develop
+    permissions:
+      contents: write
+      pull-requests: write
+      security-events: write
+      checks: write
+    with:
+      SERVICE_LOCATION: ./
+      JAVA_VERSION: 21
+    secrets: inherit
