@@ -125,7 +125,7 @@ public class VCIssuanceUtil {
     public static void validateCredentialSelector(CredentialRequest credentialRequest) {
         String credentialIdentifier = credentialRequest.getCredentialIdentifier();
         String credentialConfigId = credentialRequest.getCredentialConfigId();
-        // if both are present, it's an invalid request. They are never both given.
+        // OpenID4VCI 1.0, 8.2: the two must not be sent together.
         if (credentialIdentifier != null && credentialConfigId != null) {
             throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
                     "credential_identifier and credential_configuration_id must not both be present.");
@@ -139,9 +139,13 @@ public class VCIssuanceUtil {
             throw new CertifyException(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER,
                     "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.");
         }
-        if (StringUtils.isBlank(credentialConfigId)) {
+        if (credentialConfigId == null) {
             throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
                     "credential_configuration_id is required.");
+        }
+        if (StringUtils.isBlank(credentialConfigId)) {
+            throw new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST,
+                    "credential_configuration_id must not be blank.");
         }
     }
 
