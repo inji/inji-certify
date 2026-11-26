@@ -199,7 +199,7 @@ public class VCIssuanceControllerTest {
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value(ErrorConstants.INVALID_CREDENTIAL_REQUEST))
+                .andExpect(jsonPath("$.error").value(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST))
                 .andExpect(jsonPath("$.error_description").value("credential_configuration_id is required."));
         ArgumentCaptor<CredentialRequest> captor = ArgumentCaptor.forClass(CredentialRequest.class);
         Mockito.verify(vcIssuanceService).getCredential(captor.capture());
@@ -210,7 +210,6 @@ public class VCIssuanceControllerTest {
 
     @Test
     public void should_returnUnknownCredentialIdentifier_when_onlyCredentialIdentifierIsSent() throws Exception {
-        // The request the conformance suite sends (fail-unknown-credential-identifier): credential_identifier, no configuration id.
         Mockito.when(vcIssuanceService.getCredential(Mockito.any())).thenThrow(
                 new CertifyException(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER, "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used."));
         String body = "{\"credential_identifier\":\"unknown:1177\"," +
@@ -222,10 +221,14 @@ public class VCIssuanceControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER))
                 .andExpect(jsonPath("$.error_description").value("The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used."));
+        ArgumentCaptor<CredentialRequest> captor = ArgumentCaptor.forClass(CredentialRequest.class);
+        Mockito.verify(vcIssuanceService).getCredential(captor.capture());
+        assertEquals("unknown:1177", captor.getValue().getCredentialIdentifier());
+        assertNull(captor.getValue().getCredentialConfigId());
     }
 
     @Test
-    public void should_passBothSelectorsToTheService_when_sent() throws Exception {
+    public void should_parseBothFieldsAndReturnTheServiceError_when_bothAreSent() throws Exception {
         Mockito.when(vcIssuanceService.getCredential(Mockito.any())).thenThrow(
                 new CertifyException(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, "credential_identifier and credential_configuration_id must not both be present."));
         String body = "{\"credential_identifier\":\"unknown:1177\"," +
