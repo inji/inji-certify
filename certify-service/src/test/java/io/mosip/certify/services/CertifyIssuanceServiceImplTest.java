@@ -550,8 +550,6 @@ public class CertifyIssuanceServiceImplTest {
 
     @Test
     public void should_rejectWithInvalidCredentialRequest_when_bothSelectorsAreSent() {
-        // OpenID4VCI 1.0, 8.2: the two selectors must not be present together. The check comes before the
-        // configuration lookup, so the unknown credential_configuration_id is not what gets reported.
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         request.setCredentialConfigId("not-a-real-config");
         request.setCredentialIdentifier("unknown:1177");

@@ -591,8 +591,9 @@ paths:
             answered with invalid_scope. A non-blank credential_identifier sent without
             credential_configuration_id is answered with unknown_credential_identifier: this
             credential issuer never returns credential_identifiers in a token response. A request
-            with neither selector, a blank selector, or both selectors (OpenID4VCI 1.0, section 8.2)
-            is malformed and answered with invalid_credential_request.
+            with neither credential_configuration_id nor credential_identifier, with a blank one, or
+            with both (OpenID4VCI 1.0, section 8.2) is malformed and answered with
+            invalid_credential_request.
           content:
             '*/*':
               schema:
@@ -2038,8 +2039,9 @@ components:
             Identifier of a credential dataset from the token response's authorization_details
             (OpenID4VCI 1.0, section 8.2). This credential issuer never returns credential_identifiers,
             so a non-blank credential_identifier sent without credential_configuration_id is answered
-            with unknown_credential_identifier. A request with neither selector, a blank selector, or
-            both selectors is answered with invalid_credential_request.
+            with unknown_credential_identifier. A request with neither credential_configuration_id nor
+            credential_identifier, with a blank one, or with both is answered with
+            invalid_credential_request.
 
         proofs:
           type: object
