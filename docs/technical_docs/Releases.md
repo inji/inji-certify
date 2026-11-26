@@ -120,11 +120,11 @@ A credential request that carries a non-blank `credential_identifier` and no `cr
 + { "error": "unknown_credential_identifier", "error_description": "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used." }
 ```
 
-A request that carries both `credential_identifier` and `credential_configuration_id` is malformed ([OID4VCI 1.0 §8.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.2): the two must not be present together) and is answered with `invalid_credential_request`, before any configuration lookup. A request with neither selector, or with a blank selector, keeps its code, `invalid_credential_request`, and now says why in `error_description`.
+A request that carries both `credential_identifier` and `credential_configuration_id` is malformed ([OID4VCI 1.0 §8.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.2): the two must not be present together) and is answered with `invalid_credential_request`, before any configuration lookup. Before this change, such a request was issued: since #1139 the unknown `credential_identifier` field was ignored and the request was handled by its `credential_configuration_id`. A request with neither selector, or with a blank selector, keeps its code, `invalid_credential_request`, and now says why in `error_description`.
 
 Issuing `credential_identifiers` in `authorization_details` and resolving them to credential datasets is out of scope: Certify and eSignet do not use identifiers.
 
-**Action for clients:** a wallet that sends `credential_identifier` to Certify must send `credential_configuration_id` instead.
+**Action for clients:** a wallet must not send `credential_identifier` to Certify; send only `credential_configuration_id`.
 
 ## `mso_mdoc` device keys follow ISO/IEC 18013-5
 
