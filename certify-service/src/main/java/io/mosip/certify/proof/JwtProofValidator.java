@@ -7,8 +7,10 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.crypto.Ed25519Verifier;
 import com.nimbusds.jose.crypto.bc.BouncyCastleProviderSingleton;
+import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.proc.BadJOSEException;
 import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
@@ -111,15 +113,22 @@ public class JwtProofValidator implements ProofValidator {
             claimsSetVerifier.setMaxClockSkew(0);
             JWSKeySelector keySelector;
             if(JWSAlgorithm.ES256K.equals(jwt.getHeader().getAlgorithm())) {
-                ECDSAVerifier verifier = new ECDSAVerifier((com.nimbusds.jose.jwk.ECKey) jwk);
+                if (!(jwk instanceof ECKey holderKey)) {
+                    log.error("ES256K proof requires an EC holder key, got {}", jwk.getKeyType());
+                    return false;
+                }
+                ECDSAVerifier verifier = new ECDSAVerifier(holderKey);
                 verifier.getJCAContext().setProvider(BouncyCastleProviderSingleton.getInstance());
                 boolean verified = jwt.verify(verifier);
                 claimsSetVerifier.verify(jwt.getJWTClaimsSet(), null);
                 return verified;
             } else if (JWSAlgorithm.EdDSA.equals(jwt.getHeader().getAlgorithm()))
             {
-                Ed25519Verifier verifier = new Ed25519Verifier(jwk.toOctetKeyPair());
-                boolean verified = jwt.verify(verifier);
+                if (!(jwk instanceof OctetKeyPair holderKey)) {
+                    log.error("EdDSA proof requires an OKP holder key, got {}", jwk.getKeyType());
+                    return false;
+                }
+                boolean verified = jwt.verify(new Ed25519Verifier(holderKey));
                 claimsSetVerifier.verify(jwt.getJWTClaimsSet(), null);
                 return verified;
             } else {
