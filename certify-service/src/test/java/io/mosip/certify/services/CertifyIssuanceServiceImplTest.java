@@ -13,6 +13,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
 import io.mosip.certify.api.spi.AuditPlugin;
@@ -917,6 +918,31 @@ public class CertifyIssuanceServiceImplTest {
         verify(credentialLedgerService, atLeastOnce()).storeLedgerEntry(
                 isNull(), anyString(), anyString(), isNull(), anyMap(), any(LocalDateTime.class)
         );
+    }
+
+    @Test
+    public void should_notStoreALedgerEntry_when_signingTheCredentialFails() throws Exception {
+        ReflectionTestUtils.setField(issuanceService, "isLedgerEnabled", true);
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
+
+        W3CJsonLD mockW3CJsonLD = mock(W3CJsonLD.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.of(mockW3CJsonLD));
+        when(mockW3CJsonLD.createCredential(anyMap(), anyString())).thenReturn("{\"unsigned\":\"credential\"}");
+        // Signing fails, as it does when keymanager can't sign
+        when(mockW3CJsonLD.addProof(eq("{\"unsigned\":\"credential\"}"), eq(""), any(), any(), any(), any(), any()))
+                .thenThrow(new CertifyException(ErrorConstants.VC_SIGNING_ERROR));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(ErrorConstants.VC_SIGNING_ERROR, exception.getErrorCode());
+        verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
     }
 
     @Test
