@@ -1,6 +1,7 @@
 {{- range $modulename, $module := $.Values.modules }}
 {{- if $module.enabled }}
 {{- if eq $.Values.apitestrig.variables.push_reports_to_s3 "no" }}
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

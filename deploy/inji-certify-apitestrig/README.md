@@ -5,7 +5,8 @@ ApiTestRig will test the working of APIs of the MOSIP modules.
 
 ## Helm chart
 * The `inji-certify-apitestrig` helm chart is maintained in this repository at [helm/inji-certify-apitestrig](../../helm/inji-certify-apitestrig) (earlier it was consumed from `mosip/apitestrig` in `mosip-functional-tests`).
-* `install.sh` installs the chart directly from that local path as the helm release `inji-certify-apitestrig`.
+* The chart is published to the `inji` helm repository (https://inji.github.io/helm) by the `chart-lint-publish` workflow; `install.sh` installs `inji/inji-certify-apitestrig` (version `CHART_VERSION`) as the helm release `inji-certify-apitestrig`.
+* To test unpublished chart changes, run `helm dependency update ../../helm/inji-certify-apitestrig` and replace `inji/inji-certify-apitestrig --version $CHART_VERSION` in `install.sh` with `../../helm/inji-certify-apitestrig`.
 
 ## Install
 * Review `values.yaml` (overrides) and [chart values](../../helm/inji-certify-apitestrig/values.yaml).

@@ -31,21 +31,6 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
-Compile all warnings into a single message.
-*/}}
-{{- define "inji-certify-apitestrig.validateValues" -}}
-{{- $messages := list -}}
-{{- $messages := append $messages (include "inji-certify-apitestrig.validateValues.foo" .) -}}
-{{- $messages := append $messages (include "inji-certify-apitestrig.validateValues.bar" .) -}}
-{{- $messages := without $messages "" -}}
-{{- $message := join "\n" $messages -}}
-
-{{- if $message -}}
-{{-   printf "\nVALUES VALIDATION:\n%s" $message -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Return podAnnotations
 */}}
 {{- define "inji-certify-apitestrig.podAnnotations" -}}

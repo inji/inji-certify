@@ -15,6 +15,3 @@ apitestrig:
       authDemoServiceBaseURL: http://authdemo.authdemo
       authDemoServicePort: 80
       authCertsPath: '/home/inji/authcerts'
-  secrets:
-    s3:
-      s3-user-secret: 'password'

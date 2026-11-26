@@ -1,4 +1,8 @@
 inji-certify apitestrig cronjob(s) deployed in namespace {{ .Release.Namespace }} with schedule "{{ .Values.crontime }}".
 
 To trigger a run manually:
-  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "inji-certify-apitestrig.cronjob" . }}-injicertify <job-name>
+{{- range $modulename, $module := .Values.modules }}
+{{- if $module.enabled }}
+  kubectl -n {{ $.Release.Namespace }} create job --from=cronjob/{{ include "inji-certify-apitestrig.cronjob" $ }}-{{ $modulename }} <job-name>
+{{- end }}
+{{- end }}
