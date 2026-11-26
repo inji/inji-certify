@@ -45,7 +45,7 @@ public class JwtProofValidator implements ProofValidator {
     private static final String DID_JWK_PREFIX = "did:jwk:";
 
     @Value("${mosip.certify.identifier}")
-    private String credentialIdentifier;
+    private String credentialIssuerIdentifier;
 
     @Override
     public String getProofType() {
@@ -92,7 +92,7 @@ public class JwtProofValidator implements ProofValidator {
             }
 
             JWTClaimsSet.Builder proofJwtClaimsBuilder = new JWTClaimsSet.Builder()
-                    .audience(credentialIdentifier);
+                    .audience(credentialIssuerIdentifier);
             if (!StringUtils.isEmpty(cNonce)) {
                 proofJwtClaimsBuilder = proofJwtClaimsBuilder
                         .claim("nonce", cNonce);

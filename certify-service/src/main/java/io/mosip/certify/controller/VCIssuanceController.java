@@ -35,7 +35,8 @@ public class VCIssuanceController {
      */
     @PostMapping(value = "/credential",produces = "application/json")
     public CredentialResponse getCredential(@Valid @RequestBody CredentialRequest credentialRequest) throws CertifyException {
-        log.info("Get credential request received for credential configuration id: {}", credentialRequest.getCredentialConfigId());
+        log.info("Get credential request received: credential_configuration_id={}, credential_identifier={}",
+                credentialRequest.getCredentialConfigId(), credentialRequest.getCredentialIdentifier());
         return vcIssuanceService.getCredential(credentialRequest);
     }
 }

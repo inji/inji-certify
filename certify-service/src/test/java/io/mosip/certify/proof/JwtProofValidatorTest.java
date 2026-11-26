@@ -47,7 +47,7 @@ class JwtProofValidatorTest {
         jwtProofValidator = new JwtProofValidator();
         proofConfiguration = Map.of("jwt", Map.of(
                 Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256", "ES256K", "EdDSA")));
-        ReflectionTestUtils.setField(jwtProofValidator, "credentialIdentifier", "test-credential-id");
+        ReflectionTestUtils.setField(jwtProofValidator, "credentialIssuerIdentifier", "test-credential-id");
     }
 
     @Test

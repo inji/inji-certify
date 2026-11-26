@@ -107,9 +107,24 @@ A credential request whose `credential_configuration_id` this credential issuer 
 + { "error": "unknown_credential_configuration", "error_description": "The requested credential configuration is unknown: this credential issuer does not offer the given credential_configuration_id." }
 ```
 
-The other two cases are unchanged: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`, and a request without a `credential_configuration_id`, or with an empty one, with `invalid_credential_request`.
+The other cases: a `credential_configuration_id` the issuer offers, but outside the access token's scope, is answered with `invalid_scope`; a request with neither `credential_configuration_id` nor `credential_identifier`, with a blank one, or with both is answered with `invalid_credential_request`; a `credential_identifier` is covered by the next entry.
 
 **Action for clients:** a client or test that expects `invalid_credential_request` for an unknown `credential_configuration_id` must expect `unknown_credential_configuration`.
+
+## A `credential_identifier` is answered with `unknown_credential_identifier`
+
+A credential request that carries a non-blank `credential_identifier` and no `credential_configuration_id` is now answered with `unknown_credential_identifier` ([#1177](https://github.com/inji/inji-certify/issues/1177)), as [OID4VCI 1.0 §8.3.1.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.3.1.2) defines. Certify never returns `credential_identifiers` in a token response, so every non-blank identifier it receives is unknown. The field was not read before: the request was treated as one without a `credential_configuration_id` and answered with `invalid_credential_request`. The HTTP status (400) and the response shape are unchanged:
+
+```diff
+- { "error": "invalid_credential_request", "error_description": "invalid_credential_request" }
++ { "error": "unknown_credential_identifier", "error_description": "The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used." }
+```
+
+A request that carries both `credential_identifier` and `credential_configuration_id` is malformed ([OID4VCI 1.0 §8.2](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html#section-8.2): the two must not be present together) and is answered with `invalid_credential_request`, before any configuration lookup. Before this change, such a request was issued: since #1139 the unknown `credential_identifier` field was ignored and the request was handled by its `credential_configuration_id`. A request with neither `credential_configuration_id` nor `credential_identifier`, or with a blank one, keeps its code, `invalid_credential_request`, and now says why in `error_description`.
+
+Issuing `credential_identifiers` in `authorization_details` and resolving them to credential datasets is out of scope: Certify and eSignet do not use identifiers.
+
+**Action for clients:** a wallet must not send `credential_identifier` to Certify; send only `credential_configuration_id`.
 
 ## `mso_mdoc` device keys follow ISO/IEC 18013-5
 
