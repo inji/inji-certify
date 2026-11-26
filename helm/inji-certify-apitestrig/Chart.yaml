@@ -1,0 +1,20 @@
+apiVersion: v2
+name: inji-certify-apitestrig
+description: A Helm chart to deploy APITESTRIG for INJI certify
+type: application
+version: 1.0.0-rc.2-develop
+appVersion: ""
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 1.x.x
+home: https://inji.io
+keywords:
+  - inji
+  - inji-certify
+  - apitestrig
+maintainers:
+  - email: info@inji.io
+    name: INJI

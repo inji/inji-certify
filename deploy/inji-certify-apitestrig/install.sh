@@ -7,13 +7,15 @@ if [ $# -ge 1 ] ; then
 fi
 
 NS=inji-certify
-CHART_VERSION=1.6.0
+CHART_DIR=../../helm/inji-certify-apitestrig
+RELEASE_NAME=inji-certify-apitestrig
 
 echo Create $NS namespace
 kubectl create ns $NS
 
 function installing_apitestrig() {
-  helm repo update
+  echo Updating helm chart dependencies
+  helm dependency update $CHART_DIR
 
   echo Copy Configmaps
   COPY_UTIL=../copy_cm_func.sh
@@ -95,10 +97,9 @@ function installing_apitestrig() {
  fi
 
   echo Installing apitestrig
-  helm -n $NS install apitestrig mosip/apitestrig \
+  helm -n $NS install $RELEASE_NAME $CHART_DIR \
   --set crontime="0 $time * * *" \
   -f values.yaml  \
-  --version $CHART_VERSION \
   --set apitestrig.configmaps.s3.s3-host='http://minio.minio:9000' \
   --set apitestrig.configmaps.s3.s3-user-key='admin' \
   --set apitestrig.configmaps.s3.s3-region='' \
