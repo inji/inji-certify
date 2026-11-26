@@ -66,6 +66,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         if(!parsedAccessToken.isActive())
             throw new NotAuthenticatedException();
 
+        VCIssuanceUtil.validateCredentialRequestIds(credentialRequest);
         String scopeClaim = (String) parsedAccessToken.getClaims().getOrDefault("scope", "");
         CredentialConfigurationSupported credentialConfigurationSupported = null;
         CredentialIssuerMetadataDTO credentialIssuerMetadataDTO = credentialConfigurationService.fetchCredentialIssuerMetadata();

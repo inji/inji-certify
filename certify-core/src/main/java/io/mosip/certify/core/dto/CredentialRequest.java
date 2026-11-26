@@ -1,6 +1,5 @@
 package io.mosip.certify.core.dto;
 
-import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCIErrorConstants;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -20,9 +19,18 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CredentialRequest {
 
-    @NotBlank(message = ErrorConstants.INVALID_CREDENTIAL_REQUEST)
+    /**
+     * Required by this issuer (OpenID4VCI 1.0, 8.2): checked in the service together with credential_identifier.
+     */
     @JsonProperty("credential_configuration_id")
     private String credentialConfigId;
+
+    /**
+     * Names a credential dataset from the token response's authorization_details (OpenID4VCI 1.0, 8.2).
+     * This issuer never returns credential_identifiers, so a non-blank value sent alone is unknown.
+     */
+    @JsonProperty("credential_identifier")
+    private String credentialIdentifier;
 
     /**
      * REQUIRED (in this implementation).

@@ -47,7 +47,7 @@ class JwtProofValidatorTest {
         jwtProofValidator = new JwtProofValidator();
         proofConfiguration = Map.of("jwt", Map.of(
                 Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of("RS256", "ES256K", "EdDSA")));
-        ReflectionTestUtils.setField(jwtProofValidator, "credentialIdentifier", "test-credential-id");
+        ReflectionTestUtils.setField(jwtProofValidator, "credentialIssuerIdentifier", "test-credential-id");
     }
 
     @Test
@@ -689,5 +689,43 @@ class JwtProofValidatorTest {
         String credentialProof = createValidJWT();
         boolean result = jwtProofValidator.validate("test-client", "test-nonce", credentialProof, Map.of());
         assertFalse(result, "Expected validation to fail for missing jwt config in validateV2");
+    }
+
+    @Test
+    void should_rejectProofWithoutThrowing_when_eddsaProofCarriesAnEcKey() throws Exception {
+        // the header claims EdDSA but names a P-256 key, which can't verify an EdDSA signature
+        ECKey ecKey = new ECKeyGenerator(Curve.P_256).generate();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(ecKey.toPublicJWK())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .build();
+        String proof = header.toBase64URL() + "." + claims.toPayload().toBase64URL() + "." + Base64URL.encode(new byte[64]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
+    }
+
+    @Test
+    void should_rejectProofWithoutThrowing_when_es256kProofCarriesAnOkpKey() throws Exception {
+        // the header claims ES256K but names an Ed25519 key, which can't verify an ES256K signature
+        OctetKeyPair okpKey = new OctetKeyPairGenerator(Curve.Ed25519).generate();
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256K)
+                .type(new JOSEObjectType("openid4vci-proof+jwt"))
+                .jwk(okpKey.toPublicJWK())
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .audience("test-credential-id")
+                .issuer("test-client")
+                .claim("nonce", "test-nonce")
+                .issueTime(new Date())
+                .build();
+        String proof = header.toBase64URL() + "." + claims.toPayload().toBase64URL() + "." + Base64URL.encode(new byte[64]);
+
+        assertFalse(jwtProofValidator.validate("test-client", "test-nonce", proof, proofConfiguration));
     }
 }

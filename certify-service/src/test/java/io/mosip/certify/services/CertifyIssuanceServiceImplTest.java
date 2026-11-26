@@ -13,6 +13,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import foundation.identity.jsonld.JsonLDObject;
 import io.mosip.certify.core.constants.Constants;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.api.dto.VCResult;
 import io.mosip.certify.api.exception.DataProviderExchangeException;
 import io.mosip.certify.api.spi.AuditPlugin;
@@ -534,6 +535,92 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_rejectWithUnknownCredentialIdentifier_when_onlyCredentialIdentifierIsSent() {
+        // This issuer never returns credential_identifiers, so a non-blank credential_identifier sent alone is unknown (OpenID4VCI 1.0, 8.3.1.2).
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        request.setCredentialIdentifier("unknown:1177");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.UNKNOWN_CREDENTIAL_IDENTIFIER, ex.getErrorCode());
+        assertEquals("The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_bothIdsAreSent() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId("not-a-real-config");
+        request.setCredentialIdentifier("unknown:1177");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier and credential_configuration_id must not both be present.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_noIdIsSent() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_configuration_id is required.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_credentialIdentifierIsBlank() {
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialConfigId(null);
+        request.setCredentialIdentifier(" ");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier must not be blank.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_credentialConfigIdIsBlank() {
+        // The blank case used to be caught by @NotBlank on the DTO; it is now judged here, with its own message.
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        for (String blank : new String[] {"", "  "}) {
+            request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+            request.setCredentialConfigId(blank);
+
+            CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+            assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+            assertEquals("credential_configuration_id must not be blank.", ex.getMessage());
+        }
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_blankCredentialIdentifierIsSentWithConfigId() {
+        // A blank credential_identifier next to a valid credential_configuration_id is the both-present case, not the blank one.
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialIdentifier("");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier and credential_configuration_id must not both be present.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
     public void getCredential_InvalidProof_Fail() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         when(parsedAccessToken.isActive()).thenReturn(true);
@@ -917,6 +1004,31 @@ public class CertifyIssuanceServiceImplTest {
         verify(credentialLedgerService, atLeastOnce()).storeLedgerEntry(
                 isNull(), anyString(), anyString(), isNull(), anyMap(), any(LocalDateTime.class)
         );
+    }
+
+    @Test
+    public void should_notStoreALedgerEntry_when_signingTheCredentialFails() throws Exception {
+        ReflectionTestUtils.setField(issuanceService, "isLedgerEnabled", true);
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(dataProviderPlugin.fetchData(claimsFromAccessToken)).thenReturn(new JSONObject().put("subjectKey", "subjectValue"));
+
+        W3CJsonLD mockW3CJsonLD = mock(W3CJsonLD.class);
+        when(credentialFactory.getCredential(DEFAULT_FORMAT_LDP)).thenReturn(Optional.of(mockW3CJsonLD));
+        when(mockW3CJsonLD.createCredential(anyMap(), anyString())).thenReturn("{\"unsigned\":\"credential\"}");
+        // Signing fails, as it does when keymanager can't sign
+        when(mockW3CJsonLD.addProof(eq("{\"unsigned\":\"credential\"}"), eq(""), any(), any(), any(), any(), any()))
+                .thenThrow(new CertifyException(ErrorConstants.VC_SIGNING_ERROR));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(ErrorConstants.VC_SIGNING_ERROR, exception.getErrorCode());
+        verify(credentialLedgerService, never()).storeLedgerEntry(any(), any(), any(), any(), any(), any());
     }
 
     @Test

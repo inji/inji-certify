@@ -584,12 +584,16 @@ paths:
                       - credential: eyJ4NXQjUzI1NiI6InAxRkps....
         '400':
           description: >-
-            The credential request was rejected. Among the error codes, three tell apart what is
-            wrong with the requested credential configuration. A credential_configuration_id that
-            this credential issuer does not offer is answered with unknown_credential_configuration
-            (OpenID4VCI 1.0, section 8.3.1.2). One the issuer offers, but outside the access token's
-            scope, is answered with invalid_scope. A request without a credential_configuration_id,
-            or with an empty one, is malformed and answered with invalid_credential_request.
+            The credential request was rejected. Among the error codes, four tell apart what is
+            wrong with the requested credential. A credential_configuration_id that this credential
+            issuer does not offer is answered with unknown_credential_configuration (OpenID4VCI 1.0,
+            section 8.3.1.2). One the issuer offers, but outside the access token's scope, is
+            answered with invalid_scope. A non-blank credential_identifier sent without
+            credential_configuration_id is answered with unknown_credential_identifier: this
+            credential issuer never returns credential_identifiers in a token response. A request
+            with neither credential_configuration_id nor credential_identifier, with a blank one, or
+            with both (OpenID4VCI 1.0, section 8.2) is malformed and answered with
+            invalid_credential_request.
           content:
             '*/*':
               schema:
@@ -610,11 +614,21 @@ paths:
                   value:
                     error: invalid_scope
                     error_description: invalid_scope
+                unknownCredentialIdentifier:
+                  summary: The request carries a credential_identifier
+                  value:
+                    error: unknown_credential_identifier
+                    error_description: 'The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.'
+                bothIds:
+                  summary: The request carries both credential_identifier and credential_configuration_id
+                  value:
+                    error: invalid_credential_request
+                    error_description: credential_identifier and credential_configuration_id must not both be present.
                 missingCredentialConfigurationId:
                   summary: The request has no credential_configuration_id
                   value:
                     error: invalid_credential_request
-                    error_description: invalid_credential_request
+                    error_description: credential_configuration_id is required.
         '401':
           description: >-
             The access token or the DPoP proof was rejected. The WWW-Authenticate header
@@ -1581,7 +1595,13 @@ components:
       properties:
         vcTemplate:
           type: string
-          description: Base64 encoded template identifier for the Verifiable Credential. Mandatory if mosip.certify.plugin-mode is set to ‘DataProvider’ during creation.
+          description: |-
+            Base64 encoded template identifier for the Verifiable Credential. Mandatory if mosip.certify.plugin-mode is set to ‘DataProvider’ during creation.
+
+            For mso_mdoc in DataProvider plugin mode, Add and Update reject a template whose validityInfo dates are not the ${_signed}, ${_validFrom} and ${_validUntil} placeholders, whose explicit __cbor_tag is not 0 or 1004, or, for an mDL (org.iso.18013.5.1.mDL), that lacks an ISO/IEC 18013-5 mandatory element (mdl_mandatory_fields_missing) or declares one twice. At issuance, before signing, mDL dates, driving_privileges and byte strings (portrait as JPEG or JPEG2000) are checked; an invalid value fails with mdoc_template_processing_failed.
+            Templates that cannot be parsed before Velocity rendering are not checked for mandatory mDL elements. The rendered mDL is not checked for mandatory elements at issuance.
+
+            See the full rules in [Credential Issuer Configuration](https://github.com/inji/inji-certify/blob/develop/docs/technical_docs/Credential_Issuer_Configuration.md#mso_mdoc-templates).
         credentialConfigKeyId:
           type: string
           description: Unique key identifier for the credential configuration.
@@ -1610,10 +1630,10 @@ components:
           description: URL of the Decentralized Identifier (DID) document. Mandatory for DataProvider plugin mode.
         keyManagerAppId:
           type: string
-          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode.
+          description: Application ID for the key manager used in signing. Required for DataProvider plugin mode. For ldp_vc, and for mso_mdoc in DataProvider plugin mode, keyManagerAppId and keyManagerRefId must be one of the pairs mosip.certify.signature-algo.key-alias-mapper gives for signatureAlgo, otherwise rejected with key_chooser_app_ref_not_found; an mso_mdoc configuration has no default key.
         keyManagerRefId:
           type: string
-          description: Reference ID for the key manager. Applicable for DataProvider plugin mode.
+          description: Reference ID for the key manager. Applicable for DataProvider plugin mode. Checked together with keyManagerAppId; it may be empty when the key-alias-mapper pair's is.
         signatureAlgo:
           description: |-
             In DataProvider plugin mode, mandatory on Add and Update for every credential format; a missing or empty value is rejected, and nothing is filled in from the deployment configuration. It is the algorithm the credential is signed with, and the signing key is selected by it through mosip.certify.signature-algo.key-alias-mapper.
@@ -2005,12 +2025,23 @@ components:
     CredentialRequest:
       type: object
       required:
-        - credential_configuration_id
         - proofs
       properties:
         credential_configuration_id:
           type: string
-          description: Identifier of the credential configuration.
+          description: |
+            Identifier of the credential configuration. Required, because this credential issuer
+            never returns credential_identifiers in a token response (OpenID4VCI 1.0, section 8.2).
+            Must not be sent together with credential_identifier.
+        credential_identifier:
+          type: string
+          description: |
+            Identifier of a credential dataset from the token response's authorization_details
+            (OpenID4VCI 1.0, section 8.2). This credential issuer never returns credential_identifiers,
+            so a non-blank credential_identifier sent without credential_configuration_id is answered
+            with unknown_credential_identifier. A request with neither credential_configuration_id nor
+            credential_identifier, with a blank one, or with both is answered with
+            invalid_credential_request.
 
         proofs:
           type: object
