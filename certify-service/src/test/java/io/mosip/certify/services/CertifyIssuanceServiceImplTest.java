@@ -572,6 +572,7 @@ public class CertifyIssuanceServiceImplTest {
 
         assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
         assertEquals("credential_configuration_id is required.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
     }
 
     @Test
@@ -585,6 +586,37 @@ public class CertifyIssuanceServiceImplTest {
 
         assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
         assertEquals("credential_identifier must not be blank.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_credentialConfigIdIsBlank() {
+        // The blank case used to be caught by @NotBlank on the DTO; it is now judged here, with its own message.
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        for (String blank : new String[] {"", "  "}) {
+            request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+            request.setCredentialConfigId(blank);
+
+            CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+            assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+            assertEquals("credential_configuration_id must not be blank.", ex.getMessage());
+        }
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
+    }
+
+    @Test
+    public void should_rejectWithInvalidCredentialRequest_when_blankCredentialIdentifierIsSentWithConfigId() {
+        // A blank credential_identifier next to a valid credential_configuration_id is the both-present case, not the blank one.
+        request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
+        request.setCredentialIdentifier("");
+        when(parsedAccessToken.isActive()).thenReturn(true);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+
+        assertEquals(VCIErrorConstants.INVALID_CREDENTIAL_REQUEST, ex.getErrorCode());
+        assertEquals("credential_identifier and credential_configuration_id must not both be present.", ex.getMessage());
+        verify(proofValidatorFactory, never()).getProofValidator(anyString());
     }
 
     @Test
