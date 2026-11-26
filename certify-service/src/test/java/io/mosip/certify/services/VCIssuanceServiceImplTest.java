@@ -496,7 +496,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void should_rejectWithInvalidCredentialRequest_when_bothSelectorsAreSent() throws Exception {
+    public void should_rejectWithInvalidCredentialRequest_when_bothIdsAreSent() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         request.setCredentialConfigId("not-a-real-config");
         request.setCredentialIdentifier("unknown:1177");
@@ -510,7 +510,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void should_rejectWithInvalidCredentialRequest_when_noSelectorIsSent() throws Exception {
+    public void should_rejectWithInvalidCredentialRequest_when_noIdIsSent() throws Exception {
         request = createValidCredentialRequest(VCFormats.LDP_VC);
         request.setCredentialConfigId(null);
         when(parsedAccessToken.isActive()).thenReturn(true);

@@ -619,7 +619,7 @@ paths:
                   value:
                     error: unknown_credential_identifier
                     error_description: 'The requested credential identifier is unknown: this credential issuer does not return credential_identifiers in its token response, so credential_configuration_id must be used.'
-                bothSelectors:
+                bothIds:
                   summary: The request carries both credential_identifier and credential_configuration_id
                   value:
                     error: invalid_credential_request

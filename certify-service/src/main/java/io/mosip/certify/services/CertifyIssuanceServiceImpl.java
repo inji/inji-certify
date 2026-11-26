@@ -152,7 +152,7 @@ public class CertifyIssuanceServiceImpl implements VCIssuanceService {
         List<VCResult<?>> vcResults = new ArrayList<>();
         if(!parsedAccessToken.isActive())
             throw new NotAuthenticatedException();
-        VCIssuanceUtil.validateCredentialSelector(credentialRequest);
+        VCIssuanceUtil.validateCredentialRequestIds(credentialRequest);
         // 2. Scope Validation
         String scopeClaim = (String) parsedAccessToken.getClaims().getOrDefault("scope", "");
         CredentialConfigurationSupported credentialConfigurationSupported = null;

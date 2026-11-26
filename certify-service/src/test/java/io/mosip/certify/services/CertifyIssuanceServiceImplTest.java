@@ -549,7 +549,7 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
-    public void should_rejectWithInvalidCredentialRequest_when_bothSelectorsAreSent() {
+    public void should_rejectWithInvalidCredentialRequest_when_bothIdsAreSent() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         request.setCredentialConfigId("not-a-real-config");
         request.setCredentialIdentifier("unknown:1177");
@@ -563,7 +563,7 @@ public class CertifyIssuanceServiceImplTest {
     }
 
     @Test
-    public void should_rejectWithInvalidCredentialRequest_when_noSelectorIsSent() {
+    public void should_rejectWithInvalidCredentialRequest_when_noIdIsSent() {
         request = createValidCredentialRequest(DEFAULT_FORMAT_LDP);
         request.setCredentialConfigId(null);
         when(parsedAccessToken.isActive()).thenReturn(true);

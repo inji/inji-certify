@@ -122,7 +122,7 @@ public class VCIssuanceUtil {
      * never both. This issuer never returns credential_identifiers, so a non-blank credential_identifier sent alone
      * is unknown (8.3.1.2); a request with neither field, with a blank one, or with both is malformed.
      */
-    public static void validateCredentialSelector(CredentialRequest credentialRequest) {
+    public static void validateCredentialRequestIds(CredentialRequest credentialRequest) {
         String credentialIdentifier = credentialRequest.getCredentialIdentifier();
         String credentialConfigId = credentialRequest.getCredentialConfigId();
         // OpenID4VCI 1.0, 8.2: the two must not be sent together.
