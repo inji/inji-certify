@@ -15,11 +15,11 @@
 5. Get a compatible eSignet setup running configured with the appropriate Authenticator plugin implementation matching the VCI plugin.
     * Configure `mosip.certify.authorization.url` to point to your Authorization service hostname, this could be a working eSignet instance or another AuthZ provider configured with an [Authenticator plugin implementation](https://docs.esignet.io/integration/authenticator), essentially enabling the VC Issuing plugin to do the work.
     * Configure `mosip.certify.domain.url`, `mosip.certify.identifier`, `mosip.certify.authn.issuer-uri`, `mosip.certify.authn.jwk-set-uri`, `mosip.certify.authn.allowed-audiences` appropriately as per the Authorization service and Certify URI.
-    * Configure your Verifiable Credential types, scopes and other well-known attributes via the `/credential-configurations` API (stored in the `credential_config` table). Refer to [Credential_Issuer_Configuration.md](./Credential_Issuer_Configuration.md) for details.
+    * Configure your Verifiable Credential types, scopes and other well-known attributes via the `/credential-configurations` API (stored in the `credential_config` table). Refer to [Credential_Issuer_Configuration.md](./Credential_Issuer_Configuration.md) for details, and to the [Credential Configuration collection](../postman_collections/credential_configuration/inji-certify-credential-configuration.postman_collection.json) for a sample of each format and data provider plugin.
     * Appropriately configure the `mosip.certify.authn.allowed-audiences` to allowed audiences such that it matches with the AuthZ token when the Credential issue request is made to Certify.
 6. (Mobile driving license) Run Certify in `DataProvider` mode with a data provider plugin. Certify builds the mDL and signs it with its own `CERTIFY_VC_SIGN_EC_R1` key, so no issuer key or certificate needs to be onboarded. The docker-compose `mock-mdl` profile ([certify-mock-mdl.properties](../../docker-compose/docker-compose-injistack/config/certify-mock-mdl.properties)) shows the CSV plugin settings.
 7. Perform Authentication & VC Issuance to see if the Certify & AuthZ stack is working apprpriately. Look out for the Postman collections referred to in the main README.md of this project.
-   * Use the **Inji Certify Pre Auth Code** collection located at `docs/postman_collections/pre_authorization_code_flow/inji-certify-pre-auth-code.postman_collection.json` to test the "Credential Offer with Pre Authorization Code Flow".
+   * Use the **Inji Certify Pre Auth Code** collection located at `docs/postman_collections/pre_authorization_code_flow/inji-certify-pre-auth-code.postman_collection.json` to test the "Credential Offer with Pre Authorization Code Flow". First add `FarmerCredential` from the [Credential Configuration collection](../postman_collections/credential_configuration/inji-certify-credential-configuration.postman_collection.json) (`ldp_vc` > Pre-Auth).
 
 
 
@@ -131,7 +131,7 @@ mvn clean install -Dgpg.skip=true
 ## Run Inji Certify locally with default-setup
 1. Add the plugin dependency to `certify-service/pom.xml` as shown above.
 2. Run the application using your IDE from the [Certify Service Application](../../certify-service/src/main/java/io/mosip/certify/CertifyServiceApplication.java)
-3. Use the CredentialConfig endpoints to add a vc type to local certify issuer. Refer to [Credential_Issuer_Configuration.md](./Credential_Issuer_Configuration.md) and [Mosip Stoplight Documentation](https://mosip.stoplight.io/docs/inji-certify/b27d7165a3af7-add-credential-configuration) for more details.
+3. Use the CredentialConfig endpoints to add a vc type to local certify issuer. Refer to [Credential_Issuer_Configuration.md](./Credential_Issuer_Configuration.md) and [Mosip Stoplight Documentation](https://mosip.stoplight.io/docs/inji-certify/b27d7165a3af7-add-credential-configuration) for more details. The [Credential Configuration collection](../postman_collections/credential_configuration/inji-certify-credential-configuration.postman_collection.json) has a sample request for each format and data provider plugin.
   **Note:** Refer to [Resources](../../certify-service/src/main/resources/) folder for sample configuration files for default setup. Use the `/credential-configurations` POST api endpoint for adding the configuration.
 4. Update the `didUrl`, `vcTemplate`, `signatureCryptoSuite`, `keyManagerAppId`, `keyManagerRefId`, `signatureAlgo`, `format` and other relevant fields in the Credential Configuration appropriately to match your plugin and VC format.
 5. Access the did.json endpoint at `http://localhost:8090/v1/certify/.well-known/did.json` to get the DID document. This did.json document can be hosted in the following ways:
@@ -145,10 +145,11 @@ mvn clean install -Dgpg.skip=true
   - Update the `didUrl` field of the `credentialConfig` to have the same value as the above property to verify the VC.
 
 ## VC Issuance With Local Setup
-1. Use the Postman collection and environment located at [Inji Certify Mock Collection](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_collection.json) and [Inji Certify Mock Environment](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_environment.json) to test the VC issuance flow.
-2. Locate the `8. Get Credential` POST request inside the VCI folder
-3. Send the VC request and the response will be farmer credential json.
-4. Try verification with [Univerifier](https://univerifier.io)
+1. Add the configuration the flow issues from the [Credential Configuration collection](../postman_collections/credential_configuration/inji-certify-credential-configuration.postman_collection.json); the mock identity collection's description names it.
+2. Use the Postman collection and environment located at [Inji Certify Mock Collection](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_collection.json) and [Inji Certify Mock Environment](../postman_collections/authorization_code_flow/data_provider_plugin/inji-certify-with-mock-identity.postman_environment.json) to test the VC issuance flow.
+3. Locate the `8. Get Credential` POST request inside the VCI folder
+4. Send the VC request and the response will be farmer credential json.
+5. Try verification with [Univerifier](https://univerifier.io)
 
 
 ## Setting up Presentation During Issuance
