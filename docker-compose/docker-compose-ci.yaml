@@ -1,0 +1,157 @@
+# Same shape as inji-verify docker-compose/docker-compose-ci.yaml:
+# postgres, the service image built in the job, then the apitest image.
+# Mock issuance also needs eSignet and mock identity, so those run here too.
+# No Java changes. The apitest container gets its settings from environment variables.
+
+services:
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./docker-compose-injistack/certify_init.sql:/docker-entrypoint-initdb.d/01-certify_init.sql
+      - ./docker-compose-ci/esignet_init.sql:/docker-entrypoint-initdb.d/02-esignet_init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:6.0
+
+  mock-identity-system:
+    image: mosipid/mock-identity-system:0.13.0
+    user: root
+    ports:
+      - "8082:8082"
+    environment:
+      container_user: mosip
+      active_profile_env: default,local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/mosip_mockidentitysystem?currentSchema=mockidentitysystem
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      MOSIP_MOCK_IDA_KYC_TRANSACTION_TIMEOUT_SECS: "900"
+      MOSIP_ESIGNET_HOST: esignet:8088
+    depends_on:
+      database:
+        condition: service_healthy
+
+  esignet:
+    image: mosipid/esignet-with-plugins:1.8.0
+    user: root
+    ports:
+      - "8088:8088"
+    # The image command leaves ${active_profile_env} unexpanded and installs the HSM
+    # client whenever the profile is not exactly "local". Start Java directly.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        cp /home/mosip/plugins/esignet-mock-plugin.jar /home/mosip/additional_jars/
+        exec java -Dloader.path=/home/mosip/additional_jars/ -Dspring.profiles.active=default,local -Dspring.cloud.config.enabled=false -jar /home/mosip/esignet-service.jar
+    environment:
+      container_user: mosip
+      active_profile_env: default,local
+      plugin_name_env: esignet-mock-plugin.jar
+      MOSIP_HOSTNAME: esignet
+      database.host: database
+      database.port: "5432"
+      database.name: mosip_esignet
+      database.username: postgres
+      db.dbuser.password: postgres
+      redis.host: redis
+      redis.port: "6379"
+      MOSIP_ESIGNET_DOMAIN_URL: http://esignet:8088
+      MOSIP_ESIGNET_DATABASE_HOSTNAME: database
+      MOSIP_ESIGNET_DATABASE_PORT: "5432"
+      MOSIP_ESIGNET_DATABASE_NAME: mosip_esignet
+      MOSIP_ESIGNET_DATABASE_URL: jdbc:postgresql://database:5432/mosip_esignet?currentSchema=esignet
+      MOSIP_ESIGNET_DATABASE_USERNAME: postgres
+      MOSIP_ESIGNET_DATABASE_PASSWORD: postgres
+      MOSIP_ESIGNET_MOCK_DOMAIN_URL: http://mock-identity-system:8082
+      MOSIP_ESIGNET_INTEGRATION_KEY_BINDER: MockKeyBindingWrapperService
+      SPRING_CACHE_TYPE: redis
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: "6379"
+      KAFKA_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mock-identity-system:
+        condition: service_started
+
+  certify:
+    image: inji-certify-with-plugins:ci
+    user: root
+    ports:
+      - "8090:8090"
+    # The image CMD does not expand ${active_profile_env}, so the job passes concrete settings.
+    command:
+      - java
+      - -Dloader.path=/home/inji/additional_jars/
+      - -Dspring.profiles.active=default
+      - -Dspring.config.name=certify
+      - -Dspring.config.additional-location=file:/home/inji/config/
+      - -Dspring.cloud.config.enabled=false
+      - -jar
+      - certify-service.jar
+    environment:
+      MOSIP_HOSTNAME: certify
+      MOSIP_CERTIFY_PLUGIN_MODE: VCIssuance
+      MOSIP_CERTIFY_INTEGRATION_SCAN_BASE_PACKAGE: io.mosip.certify.mock.integration
+      MOSIP_CERTIFY_INTEGRATION_AUDIT_PLUGIN: LoggerAuditService
+      MOSIP_CERTIFY_INTEGRATION_VCI_PLUGIN: MockVCIssuancePlugin
+      MOSIP_CERTIFY_DATA_PROVIDER_PLUGIN_DID_URL: did:web:certify-nginx
+      MOSIP_CERTIFY_AUTHORIZATION_URL: http://esignet:8088
+      MOSIP_CERTIFY_DOMAIN_URL: http://certify-nginx
+      MOSIP_CERTIFY_AUTHN_ISSUER_URI: http://esignet:8088/v1/esignet
+      MOSIP_CERTIFY_AUTHN_JWK_SET_URI: http://esignet:8088/v1/esignet/oauth/.well-known/jwks.json
+      MOSIP_CERTIFY_MOCK_AUTHENTICATOR_GET_IDENTITY_URL: http://mock-identity-system:8082/v1/mock-identity-system/identity
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      install_hsm_client: "false"
+    volumes:
+      - ./docker-compose-injistack/config/certify-default.properties:/home/inji/config/certify-default.properties:ro
+      - ./docker-compose-injistack/data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
+    depends_on:
+      database:
+        condition: service_healthy
+      esignet:
+        condition: service_started
+
+  certify-nginx:
+    image: nginx:stable
+    ports:
+      - "8091:80"
+    volumes:
+      - ./docker-compose-injistack/certify-nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - certify
+
+  apitest:
+    image: apitest-inji-certify:ci
+    user: root
+    environment:
+      MODULES: injicertify
+      ENV_USER: mock-identity-system:8082
+      ENV_ENDPOINT: http://mock-identity-system:8082
+      ENV_TESTLEVEL: smokeAndRegression
+      # JVM reads these even though entrypoint.sh places -D after -jar, same as inji-verify.
+      JAVA_TOOL_OPTIONS: -Dmodules=injicertify -Denv.user=mock-identity-system:8082 -Denv.endpoint=http://mock-identity-system:8082 -Denv.testLevel=smokeAndRegression
+      # ConfigManager overrides injiCertify.properties from the process environment.
+      useCaseToExecute: mock
+      eSignetbaseurl: http://esignet:8088
+      injiCertifyBaseURL: http://certify-nginx
+      db-server: database
+      db-port: "5432"
+      postgres-password: postgres
+      db-su-user: postgres
+    depends_on:
+      - certify-nginx
+      - esignet
+      - mock-identity-system
