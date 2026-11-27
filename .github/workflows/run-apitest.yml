@@ -91,7 +91,8 @@ jobs:
             fi
             sleep 10
           done
-          docker compose -f docker-compose/docker-compose-ci.yaml logs certify esignet mock-identity-system
+          docker compose -f docker-compose/docker-compose-ci.yaml ps -a
+          docker compose -f docker-compose/docker-compose-ci.yaml logs --tail 150 certify esignet mock-identity-system
           exit 1
 
       - name: Run API tests

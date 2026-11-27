@@ -43,11 +43,30 @@ services:
     user: root
     ports:
       - "8088:8088"
+    # The image command leaves ${active_profile_env} unexpanded and installs the HSM
+    # client whenever the profile is not exactly "local". Start Java directly.
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        set -e
+        cp /home/mosip/plugins/esignet-mock-plugin.jar /home/mosip/additional_jars/
+        exec java -Dloader.path=/home/mosip/additional_jars/ -Dspring.profiles.active=default,local -Dspring.cloud.config.enabled=false -jar /home/mosip/esignet-service.jar
     environment:
       container_user: mosip
       active_profile_env: default,local
       plugin_name_env: esignet-mock-plugin.jar
+      MOSIP_HOSTNAME: esignet
+      database.host: database
+      database.port: "5432"
+      database.name: mosip_esignet
+      database.username: postgres
+      db.dbuser.password: postgres
+      redis.host: redis
+      redis.port: "6379"
       MOSIP_ESIGNET_DOMAIN_URL: http://esignet:8088
+      MOSIP_ESIGNET_DATABASE_HOSTNAME: database
+      MOSIP_ESIGNET_DATABASE_PORT: "5432"
+      MOSIP_ESIGNET_DATABASE_NAME: mosip_esignet
       MOSIP_ESIGNET_DATABASE_URL: jdbc:postgresql://database:5432/mosip_esignet?currentSchema=esignet
       MOSIP_ESIGNET_DATABASE_USERNAME: postgres
       MOSIP_ESIGNET_DATABASE_PASSWORD: postgres
@@ -55,8 +74,9 @@ services:
       MOSIP_ESIGNET_INTEGRATION_KEY_BINDER: MockKeyBindingWrapperService
       SPRING_CACHE_TYPE: redis
       SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PASSWORD: ""
+      SPRING_DATA_REDIS_PORT: "6379"
       KAFKA_ENABLED: "false"
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
       SPRING_AUTOCONFIGURE_EXCLUDE: org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
     depends_on:
       database:
@@ -74,26 +94,30 @@ services:
     # The image CMD does not expand ${active_profile_env}, so the job passes concrete settings.
     command:
       - java
-      - -jar
       - -Dloader.path=/home/inji/additional_jars/
       - -Dspring.profiles.active=default
       - -Dspring.config.name=certify
       - -Dspring.config.additional-location=file:/home/inji/config/
+      - -Dspring.cloud.config.enabled=false
+      - -jar
       - certify-service.jar
     environment:
+      MOSIP_HOSTNAME: certify
       MOSIP_CERTIFY_PLUGIN_MODE: VCIssuance
       MOSIP_CERTIFY_INTEGRATION_SCAN_BASE_PACKAGE: io.mosip.certify.mock.integration
       MOSIP_CERTIFY_INTEGRATION_AUDIT_PLUGIN: LoggerAuditService
       MOSIP_CERTIFY_INTEGRATION_VCI_PLUGIN: MockVCIssuancePlugin
+      MOSIP_CERTIFY_DATA_PROVIDER_PLUGIN_DID_URL: did:web:certify-nginx
       MOSIP_CERTIFY_AUTHORIZATION_URL: http://esignet:8088
       MOSIP_CERTIFY_DOMAIN_URL: http://certify-nginx
       MOSIP_CERTIFY_AUTHN_ISSUER_URI: http://esignet:8088/v1/esignet
       MOSIP_CERTIFY_AUTHN_JWK_SET_URI: http://esignet:8088/v1/esignet/oauth/.well-known/jwks.json
       MOSIP_CERTIFY_MOCK_AUTHENTICATOR_GET_IDENTITY_URL: http://mock-identity-system:8082/v1/mock-identity-system/identity
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
       install_hsm_client: "false"
     volumes:
-      - ./docker-compose-injistack/config/certify-default.properties:/home/inji/config/certify-default.properties
-      - certify-pkcs12:/home/inji/CERTIFY_PKCS12
+      - ./docker-compose-injistack/config/certify-default.properties:/home/inji/config/certify-default.properties:ro
+      - ./docker-compose-injistack/data/CERTIFY_PKCS12:/home/mosip/CERTIFY_PKCS12
     depends_on:
       database:
         condition: service_healthy
@@ -131,6 +155,3 @@ services:
       - certify-nginx
       - esignet
       - mock-identity-system
-
-volumes:
-  certify-pkcs12:
