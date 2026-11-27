@@ -7,12 +7,14 @@ if [ $# -ge 1 ] ; then
 fi
 
 NS=inji-certify
-CHART_VERSION=1.6.0
+CHART_VERSION=1.0.0-rc.2-develop
+RELEASE_NAME=inji-certify-apitestrig
 
 echo Create $NS namespace
 kubectl create ns $NS
 
 function installing_apitestrig() {
+  helm repo add inji https://inji.github.io/helm
   helm repo update
 
   echo Copy Configmaps
@@ -95,7 +97,7 @@ function installing_apitestrig() {
  fi
 
   echo Installing apitestrig
-  helm -n $NS install apitestrig mosip/apitestrig \
+  helm -n $NS install $RELEASE_NAME inji/inji-certify-apitestrig \
   --set crontime="0 $time * * *" \
   -f values.yaml  \
   --version $CHART_VERSION \

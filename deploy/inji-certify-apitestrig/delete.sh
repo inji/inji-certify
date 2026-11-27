@@ -8,11 +8,12 @@ fi
 
 function deleting_apitestrig() {
   NS=inji-certify
+  RELEASE_NAME=inji-certify-apitestrig
   while true; do
       read -p "Are you sure you want to delete apitestrig helm charts?(Y/n) " yn
       if [ $yn = "Y" ]
         then
-          helm -n $NS delete apitestrig
+          helm -n $NS delete $RELEASE_NAME
           break
         else
           break
