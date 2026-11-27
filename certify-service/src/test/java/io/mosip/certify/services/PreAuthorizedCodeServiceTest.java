@@ -402,6 +402,7 @@ public class PreAuthorizedCodeServiceTest {
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals(ErrorConstants.INVALID_GRANT, exception.getErrorCode());
+        verify(vciCacheService, never()).claimPreAuthCode(anyString());
     }
 
     @Test
@@ -418,12 +419,14 @@ public class PreAuthorizedCodeServiceTest {
                 .build();
 
         when(vciCacheService.getPreAuthCodeData(preAuthCode)).thenReturn(codeData);
-        when(vciCacheService.claimPreAuthCode(preAuthCode)).thenReturn(true);
 
         CertifyException exception = assertThrows(CertifyException.class,
                 () -> preAuthorizedCodeService.exchangePreAuthorizedCode(tokenRequest));
 
         Assert.assertEquals("pre_auth_code_expired", exception.getErrorCode());
+        // An expired code is rejected without being consumed: the claim, which would mark it
+        // used and evict its data, is never attempted, so a retry is told "expired" again.
+        verify(vciCacheService, never()).claimPreAuthCode(anyString());
     }
 
     @Test
