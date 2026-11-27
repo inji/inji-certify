@@ -1,0 +1,151 @@
+# Mock API tests on every push, pull request, and a nightly run.
+# The steps follow inji-verify's run-apitest-pr job: build the jars, build the
+# images, start compose, run the apitest container, then keep the report and logs.
+# This file is separate from push-trigger.yml so the nightly run does not publish images.
+
+name: Mock API tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  push:
+    branches:
+      - '!release-branch'
+      - master
+      - 1.*
+      - develop
+      - MOSIP*
+      - release*
+      - INJICERT-*
+  schedule:
+    - cron: '30 18 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  run-apitest:
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Setup Maven settings
+        run: echo "<settings> <servers>  <server>  <id>ossrh</id>    <username>${{secrets.ossrh_user}}</username> <password>${{secrets.ossrh_secret}}</password> </server> </servers> <profiles> <profile>     <id>ossrh</id> <activation> <activeByDefault>true</activeByDefault> </activation>  <properties> <gpg.executable>gpg2</gpg.executable> <gpg.passphrase>${{secrets.gpg_secret}}</gpg.passphrase> </properties> </profile> <profile> <id>allow-snapshots</id>       <activation><activeByDefault>true</activeByDefault></activation> <repositories> <repository>        <id>snapshots-repo</id> <url>https://oss.sonatype.org/content/repositories/snapshots</url> <releases><enabled>false</enabled></releases> <snapshots><enabled>true</enabled></snapshots> </repository>  <repository>         <id>releases-repo</id>  <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>         <releases><enabled>true</enabled></releases>         <snapshots><enabled>false</enabled></snapshots> </repository> </repositories>  </profile> <profile> <id>sonar</id> <properties>  <sonar.sources>.</sonar.sources> <sonar.host.url>https://sonarcloud.io</sonar.host.url>  </properties> <activation> <activeByDefault>false</activeByDefault> </activation> </profile> </profiles> </settings>" > $GITHUB_WORKSPACE/settings.xml
+
+      - name: Build certify jar
+        run: mvn -B clean package -DskipTests -Dgpg.skip=true -Dmaven.gitcommitid.skip=true -s $GITHUB_WORKSPACE/settings.xml
+
+      - name: Download certify plugins
+        run: mvn -B -f certify-service-with-plugins/pom.xml package -DskipTests -Dgpg.skip=true -Dmaven.gitcommitid.skip=true -s $GITHUB_WORKSPACE/settings.xml
+
+      - name: Build apitest jar
+        run: |
+          mvn -B -f api-test/pom.xml clean package -DskipTests -Dgpg.skip=true -Dmaven.gitcommitid.skip=true -s $GITHUB_WORKSPACE/settings.xml
+          cp -r api-test/testNgXmlFiles api-test/target/testNgXmlFiles
+          cp -r api-test/target/classes/config api-test/target/config
+
+      - name: Unit test coverage
+        continue-on-error: true
+        run: mvn -B -pl certify-service -am test -Dgpg.skip=true -Dmaven.gitcommitid.skip=true -s $GITHUB_WORKSPACE/settings.xml
+
+      - name: Prepare apitest build context
+        run: |
+          cp api-test/entrypoint.sh .
+          cp api-test/application.properties .
+          cp -a "api-test/Biometric Devices" "Biometric Devices"
+          cp -a api-test/resource resource
+
+      - name: Build images
+        run: |
+          docker build -t inji-certify:ci ./certify-service
+          docker build -t inji-certify-with-plugins:ci -f certify-service-with-plugins/Dockerfile.ci certify-service-with-plugins
+          docker build -t apitest-inji-certify:ci -f api-test/Dockerfile .
+
+      - name: Start stack
+        run: docker compose -f docker-compose/docker-compose-ci.yaml up -d database redis mock-identity-system esignet certify certify-nginx
+
+      - name: Wait for certify and eSignet
+        run: |
+          certify_up=0
+          esignet_up=0
+          for i in $(seq 1 60); do
+            if [ "$certify_up" != 1 ] && curl -sf http://localhost:8090/v1/certify/actuator/health | grep -q UP; then
+              echo "Certify is UP"
+              certify_up=1
+            fi
+            if [ "$esignet_up" != 1 ] && curl -sf http://localhost:8088/v1/esignet/actuator/health | grep -q UP; then
+              echo "eSignet is UP"
+              esignet_up=1
+            fi
+            if [ "$certify_up" = 1 ] && [ "$esignet_up" = 1 ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          docker compose -f docker-compose/docker-compose-ci.yaml logs certify esignet mock-identity-system
+          exit 1
+
+      - name: Run API tests
+        id: apitest
+        run: |
+          set +e
+          docker compose -f docker-compose/docker-compose-ci.yaml up --exit-code-from apitest apitest
+          echo "EXIT_CODE=$?" >> "$GITHUB_ENV"
+          set -e
+
+      - name: Copy reports and logs
+        if: always()
+        run: |
+          mkdir -p ci-reports
+          container_id=$(docker ps -aq --filter name=apitest | head -n 1)
+          if [ -n "$container_id" ]; then
+            docker cp "$container_id":/home/inji/testng-report/. ci-reports || echo "No TestNG report found"
+          fi
+          docker compose -f docker-compose/docker-compose-ci.yaml logs > ci-reports/compose.log || true
+          mkdir -p ci-reports/coverage
+          cp -a certify-service/target/site/jacoco/. ci-reports/coverage/ || echo "No JaCoCo report found"
+
+      - name: Upload reports, logs, and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inji-certify-mock-test-report
+          path: ci-reports/
+
+      - name: Shutdown
+        if: always()
+        run: docker compose -f docker-compose/docker-compose-ci.yaml down -v
+
+      - name: Fail job if tests failed
+        if: always()
+        run: |
+          if [ "${EXIT_CODE}" != "0" ]; then
+            echo "apitest container exited ${EXIT_CODE}"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+          files = glob.glob("ci-reports/**/testng-results.xml", recursive=True)
+          if not files:
+              print("No testng-results.xml was produced")
+              sys.exit(1)
+          failed = False
+          for path in files:
+              root = ET.parse(path).getroot()
+              failures = int(root.attrib.get("failures", "0"))
+              print(path, "failures", failures)
+              if failures:
+                  failed = True
+          sys.exit(1 if failed else 0)
+          PY

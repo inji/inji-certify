@@ -1,0 +1,4 @@
+# CI-only image. The published Dockerfile stays on injistackdev/inji-certify:develop.
+# This one layers the same plugin jars onto the Certify image built from the pull request.
+FROM inji-certify:ci
+COPY ./target/*.jar ${loader_path_env}
