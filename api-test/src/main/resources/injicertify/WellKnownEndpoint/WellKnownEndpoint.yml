@@ -1,98 +1,550 @@
 WellKnownEndpoint:
-   InjiCertify_WellKnownEndpoint_LandRegistry_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+   InjiCertify_WellKnownEndpoint_LandRegistry_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_01
-      description: WellKnownEndpoint for Land registry with all valid details
+      description: Validate JSON response for both Accept headers on LandRegistry openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
-      input: '{
-}'
+      input: '{}'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
 
-   InjiCertify_WellKnownEndpoint_Mock_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+   InjiCertify_WellKnownEndpoint_LandRegistry_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_02
+      description: Validate JSON response for both Accept headers on LandRegistry oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_LandRegistry_Accept_DidDocument_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/did.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_03
+      description: Validate JSON response for both Accept headers on LandRegistry did.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_LandRegistry_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_LandRegistry_04
+      description: Validate JSON response for both Accept headers on LandRegistry jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_Mock_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Mock_01
-      description: WellKnownEndpoint for Mock with all valid details
+      description: Validate JSON response for both Accept headers on Mock openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
       input: '{
 }'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
 
-   InjiCertify_WellKnownEndpoint_MosipID_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+   InjiCertify_WellKnownEndpoint_Mock_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Mock_02
+      description: Validate JSON response for both Accept headers on Mock oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{
+}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_Mock_Accept_DidDocument_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/did.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Mock_03
+      description: Validate JSON response for both Accept headers on Mock did.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{
+}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_Mock_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Mock_04
+      description: Validate JSON response for both Accept headers on Mock jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{
+}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_MosipID_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_MosipID_01
-      description: WellKnownEndpoint for MosipID with all valid details
+      description: Validate JSON response for both Accept headers on MosipID openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
-      input: '{
-}'
+      input: '{}'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
 
-   InjiCertify_WellKnownEndpoint_Sunbird_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+   InjiCertify_WellKnownEndpoint_MosipID_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_MosipID_02
+      description: Validate JSON response for both Accept headers on MosipID oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_MosipID_Accept_DidDocument_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/did.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_MosipID_03
+      description: Validate JSON response for both Accept headers on MosipID did.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_MosipID_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_MosipID_04
+      description: Validate JSON response for both Accept headers on MosipID jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_Sunbird_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Sunbird_01
-      description: WellKnownEndpoint for sunbird with all valid details
+      description: Validate JSON response for both Accept headers on Sunbird openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
-      input: '{
-}'
+      input: '{}'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
 
-   InjiCertify_WellKnownEndpoint_mdl_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer?version=latest
+   InjiCertify_WellKnownEndpoint_Sunbird_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Sunbird_02
+      description: Validate JSON response for both Accept headers on Sunbird oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_Sunbird_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_Sunbird_03
+      description: Validate JSON response for both Accept headers on Sunbird jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdl_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mDoc_01
-      description: WellKnownEndpoint for mDoc with all valid details
+      description: Validate JSON response for both Accept headers on mDoc openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
-      input: '{
-}'
+      input: '{}'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
 
-   InjiCertify_WellKnownEndpoint_mdocvp_all_Valid_Smoke:
+   InjiCertify_WellKnownEndpoint_mdl_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mDoc_02
+      description: Validate JSON response for both Accept headers on mDoc oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdl_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mDoc_03
+      description: Validate JSON response for both Accept headers on mDoc jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdocvp_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
       endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
       uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mdocvp_01
-      description: Get Credential Metadata from Well Known Endpoint
+      description: Validate JSON response for both Accept headers on mdocvp openid-credential-issuer
       role: resident
-      checkErrorsOnlyInResponse: true
-      restMethod: get
-      inputTemplate: injicertify/PresentationDuringIssuance/DiscoveryEndpoints/IssuerMetadata/CredentialMetadata
-      outputTemplate: injicertify/PresentationDuringIssuance/DiscoveryEndpoints/IssuerMetadata/CredentialMetadataResult
-      input: '{
-}'
-      output: '{
-}'
-
-   InjiCertify_WellKnownEndpoint_PreAuthCode_all_Valid_Smoke:
-      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
-      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_01
-      description: Get Credential Metadata from Well Known Endpoint for Pre-Auth Code flow
-      role: resident
-      checkErrorsOnlyInResponse: true
       restMethod: get
       inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
       outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
-      input: '{
-}'
+      input: '{}'
       output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdocvp_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mdocvp_02
+      description: Validate JSON response for both Accept headers on mdocvp oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdocvp_Accept_DidDocument_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/did.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mdocvp_03
+      description: Validate JSON response for both Accept headers on mdocvp did.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_mdocvp_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_mdocvp_04
+      description: Validate JSON response for both Accept headers on mdocvp jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_PreAuthCode_Accept_OpenidCredentialIssuer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/openid-credential-issuer
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_01
+      description: Validate JSON response for both Accept headers on PreAuthCode openid-credential-issuer
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_PreAuthCode_Accept_OAuthAuthorizationServer_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/oauth-authorization-server
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_02
+      description: Validate JSON response for both Accept headers on PreAuthCode oauth-authorization-server
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_PreAuthCode_Accept_DidDocument_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/did.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_03
+      description: Validate JSON response for both Accept headers on PreAuthCode did.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
+}'
+
+   InjiCertify_WellKnownEndpoint_PreAuthCode_Accept_Jwks_all_Valid_Smoke:
+      endPoint: $INJICERTIFYBASEURL$/v1/certify/.well-known/jwks.json
+      uniqueIdentifier: TC_InjiCertify_WellKnownEndpoint_PreAuthCode_04
+      description: Validate JSON response for both Accept headers on PreAuthCode jwks.json
+      role: resident
+      restMethod: get
+      inputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpoint
+      outputTemplate: injicertify/WellKnownEndpoint/WellKnownEndpointResult
+      input: '{}'
+      output: '{
+    "Status (Accept: application/json)": "200",
+    "Status (Accept: application/jwt)": "200",
+    "Status equal": "true",
+    "Content-Type (Accept: application/json)": "application/json",
+    "Content-Type (Accept: application/jwt)": "application/json",
+    "Non-empty body (Accept: application/json)": "true",
+    "Non-empty body (Accept: application/jwt)": "true",
+    "JSON response content matches": "true",
+    "No error document": "true"
 }'
