@@ -156,3 +156,18 @@ Certify now builds the Mobile Security Object and encodes the mDL data elements 
 - Give `portrait`, `signature_usual_mark` and `biometric_template_xx` as base64 text, and `portrait` as a JPEG or JPEG2000 image.
 - Outside the `org.iso.18013.5.1` namespace, tag a value that must be a full-date explicitly: `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`. It was tagged automatically before. An explicit `__cbor_tag` must be the integer `1004` (full-date) or `0` (tdate): Add and Update reject any other with `mdoc_template_processing_failed`, and issuance fails with the same error when a value tagged `1004` is not a date (YYYY-MM-DD) or one tagged `0` is not an RFC 3339 date-time.
 - Make sure an mDL template declares all 11 mandatory elements. A stored template is checked on its next Update.
+
+## A plugin failure is answered with the plugin's reason in `error_description`
+
+In VCIssuance plugin mode, when the plugin refuses or fails a credential request, `error_description` now carries the plugin's reason ([#723](https://github.com/inji/inji-certify/issues/723)). It repeated the error code before. The `error` field, the HTTP status and the response shape are unchanged:
+
+```diff
+- { "error": "vci_exchange_failed", "error_description": "vci_exchange_failed" }
++ { "error": "vci_exchange_failed", "error_description": "The issuer could not issue the requested credential." }
+```
+
+This fallback is returned when the plugin throws `VCIExchangeException(errorCode)`. A plugin that throws `VCIExchangeException(errorCode, errorMessage)` has its `errorMessage` returned instead.
+
+**Action for clients:** match on `error`, not on `error_description`, which is human-readable text and may change.
+
+**Action for plugin authors:** the `errorMessage` passed to `VCIExchangeException(String errorCode, String errorMessage)` now reaches the wallet as is. Keep it a short sentence a user may see, with no stack traces, URLs, hostnames or other internal details.
