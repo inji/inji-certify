@@ -118,7 +118,7 @@ If you miss a required field or try to add a duplicate, Certify will return an e
 
 ## `mso_mdoc` templates
 
-In DataProvider plugin mode Certify builds and signs an `mso_mdoc` credential from the configuration's `vcTemplate`, following ISO/IEC 18013-5. Add and Update check the template itself; issuance checks the rendered values, before signing. These rules apply in DataProvider plugin mode only; in VCIssuance mode the plugin builds the credential.
+In DataProvider plugin mode Certify builds and signs an `mso_mdoc` credential from the configuration's `vcTemplate`, following ISO/IEC 18013-5, and for a Photo ID (`org.iso.23220.photoid.1`) ISO/IEC TS 23220. Add and Update check the template itself; issuance checks the rendered values, before signing. These rules apply in DataProvider plugin mode only; in VCIssuance mode the plugin builds the credential.
 
 ### `validityInfo`
 
@@ -134,6 +134,12 @@ Every `mso_mdoc` template must have `validityInfo` with `signed`, `validFrom` an
 
 `digestID` is optional and ignored: each issued mdoc gets random digest IDs, unique within each namespace (ISO/IEC 18013-5, 9.1.2.4).
 
+### Elements
+
+`nameSpaces` maps each namespace to an array of elements, each an object with a text `elementIdentifier` and an `elementValue` (which may be `null`, see [Null values and numbers](#null-values-and-numbers)). Add and Update reject a template that breaks this with `mdoc_template_processing_failed`, naming the element by its namespace and position, for example `nameSpaces.org.iso.23220.1[3] (nationality): elementValue is missing.`
+- A part written as a Velocity reference (such as `"elementValue": ${drivingPrivileges}` or `"nameSpaces": ${nameSpaces}`), or a template that can only be read once Velocity renders it, is not checked at Add and Update; issuance checks it, before signing, with the same error. A configuration stored before this check is checked on its next Update.
+- At issuance, an `elementIdentifier` that appears more than once in a namespace, counting only elements whose value is not `null`, fails with `mdoc_template_processing_failed`; this also catches duplicates in elements rendered from a reference. The same identifier may appear once in each namespace.
+
 ### Mandatory mDL elements
 
 An `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare every ISO/IEC 18013-5 (Table 5) mandatory data element in the `org.iso.18013.5.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `issue_date`, `expiry_date`, `issuing_country`, `issuing_authority`, `document_number`, `portrait`, `driving_privileges` and `un_distinguishing_sign`. Otherwise Add and Update are rejected with `mdl_mandatory_fields_missing`, naming the missing elements.
@@ -141,20 +147,39 @@ An `mso_mdoc` configuration with docType `org.iso.18013.5.1.mDL` must declare ev
 - An element identifier declared twice in the `org.iso.18013.5.1` namespace is rejected with `mdoc_template_processing_failed`.
 - The check runs on Add and Update only; the rendered mDL is not checked at issuance. A configuration stored before this check is checked on its next Update.
 
+### Mandatory Photo ID elements
+
+An `mso_mdoc` configuration with docType `org.iso.23220.photoid.1` must declare every ISO/IEC TS 23220-4 (Annex C, Table C.1) mandatory data element in the `org.iso.23220.1` namespace of its template: `family_name`, `given_name`, `birth_date`, `portrait`, `issue_date`, `expiry_date`, `issuing_authority`, `issuing_country` and `age_over_18`. Otherwise Add and Update are rejected with `photo_id_mandatory_fields_missing`, naming the missing elements. The rules of the mDL check above apply too: only the identifiers are checked, a template only known once rendered is not checked, an identifier declared twice in the `org.iso.23220.1` namespace is rejected with `mdoc_template_processing_failed`, and the rendered Photo ID is not checked at issuance.
+
 ### Dates in the mDL namespace
 
-In the `org.iso.18013.5.1` namespace, `birth_date`, `issue_date`, `expiry_date` and the `issue_date` and `expiry_date` inside each `driving_privileges` entry are encoded as full-dates (CBOR tag 1004) when their value is a date (YYYY-MM-DD) (ISO/IEC 18013-5, 7.2.1 and 7.2.4). No other value is tagged as a date, whatever it looks like.
+In the `org.iso.18013.5.1` namespace, `birth_date`, `issue_date`, `expiry_date` and the `issue_date` and `expiry_date` inside each `driving_privileges` entry are encoded as full-dates (CBOR tag 1004) when their value is a date (YYYY-MM-DD) (ISO/IEC 18013-5, 7.2.1 and 7.2.4). No other element of this namespace is tagged as a date, whatever its value looks like.
 - The top-level `issue_date` and `expiry_date` may instead be a date-time, encoded as a tdate (CBOR tag 0) in UTC without fractions of seconds.
 - `driving_privileges` must be an array of DrivingPrivilege entries (7.2.4): each a map with a text `vehicle_category_code`, an optional `issue_date` and `expiry_date`, and optional `codes`, a non-empty array of maps with a text `code` and an optional text `sign` and `value`. No other keys are allowed.
 - A value of one of these elements that is not a date (or, for the top-level `issue_date` and `expiry_date`, a date-time), whether as text, another type or a different tag, fails issuance with `mdoc_template_processing_failed` before signing, and so does a `driving_privileges` value that breaks the structure above.
 
+### Dates in the Photo ID namespace
+
+In the `org.iso.23220.1` namespace, the ISO/IEC TS 23220-2 data elements a Photo ID (`org.iso.23220.photoid.1`) carries, `issue_date` and `expiry_date` are encoded as full-dates (CBOR tag 1004) and `portrait_capture_date` as a tdate (CBOR tag 0) in UTC without fractions of seconds (ISO/IEC TS 23220-4, Annex C). No other element of this namespace is tagged as a date, whatever its value looks like.
+- `birth_date` is either a date, encoded as a full-date, or a map such as `{"birth_date": "1985-04-29", "approximate_mask": "00001111"}`, whose `birth_date` is encoded as a full-date (ISO/IEC TS 23220-2, 6.3.1.1.3). `approximate_mask` is optional: eight digits, each `0` or `1`, marking which of the YYYYMMDD digits are unknown. The map may have no other keys.
+- Unlike the mDL, `issue_date` and `expiry_date` must be a date (YYYY-MM-DD); a date-time is rejected.
+- `portrait_capture_date` must be an RFC 3339 date-time, for example `2026-01-10T09:30:00Z`.
+- `age_in_years` and `age_birth_year` must be unsigned (non-negative) integers, written unquoted (`"elementValue": ${ageInYears}`); text such as `"41"` or a negative number fails issuance with `mdoc_template_processing_failed` before signing.
+- Every age attestation, `age_over_NN` such as `age_over_18`, must be a JSON boolean (ISO/IEC TS 23220-2, 6.3.2.2). Write the reference unquoted, `"elementValue": ${ageOver18}`: a quoted `"${ageOver18}"` renders as the text `"true"`, which fails issuance with `mdoc_template_processing_failed` before signing.
+- Each may also be given already tagged (`1004` for a date, `0` for a date-time). Any other value, type or tag fails issuance with `mdoc_template_processing_failed` before signing.
+
 ### Byte strings
 
-`portrait`, `signature_usual_mark` and every `biometric_template_xx` (for example `biometric_template_face`) in the `org.iso.18013.5.1` namespace carry base64 or base64url text (a data URI such as `data:image/jpeg;base64,...` is accepted too), which Certify encodes as a byte string (ISO/IEC 18013-5, 7.2.2 and 7.2.7). `portrait` must be a JPEG or JPEG2000 image. A value that is not base64 text, or a `portrait` that is not a JPEG or JPEG2000 image (for example a PNG or an empty value), fails issuance with `mdoc_template_processing_failed` before signing.
-- Byte strings are produced only in the `org.iso.18013.5.1` namespace. `__cbor_tag` can tag a date but cannot produce a byte string, so in any other namespace an image or other binary value is always encoded as text.
+`portrait`, `signature_usual_mark` and every `biometric_template_xx` (for example `biometric_template_face`) in the `org.iso.18013.5.1` namespace carry base64 or base64url text (a data URI such as `data:image/jpeg;base64,...` is accepted too), which Certify encodes as a byte string (ISO/IEC 18013-5, 7.2.2 and 7.2.7). So is `portrait` in the `org.iso.23220.1` namespace, the ISO/IEC TS 23220-2 data elements a Photo ID (`org.iso.23220.photoid.1`) carries (ISO/IEC TS 23220-4, Annex C). `portrait` must be a JPEG or JPEG2000 image. A value that is not base64 text, or a `portrait` that is not a JPEG or JPEG2000 image (for example a PNG or an empty value), fails issuance with `mdoc_template_processing_failed` before signing.
+- Byte strings are produced only in the `org.iso.18013.5.1` and `org.iso.23220.1` namespaces. `__cbor_tag` can tag a date but cannot produce a byte string, so in any other namespace an image or other binary value is always encoded as text.
+
+### Null values and numbers
+
+- An element whose `elementValue` is `null` is unset: it is left out of the issued mdoc, with no digest in the MSO, rather than written as a CBOR null. A namespace left without any element is left out too. This applies to mandatory elements as well, which are checked on Add and Update, not at issuance.
+- A JSON integer is encoded as a CBOR integer, which holds -2^64 to 2^64 - 1; a larger one, at any depth, fails issuance with `mdoc_template_processing_failed` before signing. A number with a fraction is encoded as a floating-point number.
 
 ### Explicit CBOR tags
 
-An `mso_mdoc` template may tag a value itself, for example `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`, which is how a full-date or tdate is written outside the `org.iso.18013.5.1` namespace. Add and Update reject a `__cbor_tag` that is not the integer `1004` (full-date) or `0` (tdate), with `mdoc_template_processing_failed`, naming where it is. At issuance, a value tagged `1004` must be a date (YYYY-MM-DD) and one tagged `0` an RFC 3339 date-time, or issuance fails with the same error.
+An `mso_mdoc` template may tag a value itself, for example `{"__cbor_tag": 1004, "__cbor_value": "2024-06-15"}`, which is how a full-date or tdate is written for an element Certify does not tag itself (see the two sections above). Add and Update reject a `__cbor_tag` that is not the integer `1004` (full-date) or `0` (tdate), with `mdoc_template_processing_failed`, naming where it is. At issuance, a value tagged `1004` must be a date (YYYY-MM-DD) and one tagged `0` an RFC 3339 date-time, or issuance fails with the same error.
 
 ---

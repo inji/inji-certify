@@ -192,6 +192,10 @@ onboarded. The [docker-compose setup](./docker-compose/docker-compose-injistack/
 (`mock-mdl` profile), and [Credential Issuer Configuration](./docs/technical_docs/Credential_Issuer_Configuration.md)
 describes the `mso_mdoc` credential configuration.
 
+Certify issues other `mso_mdoc` documents the same way. The docker-compose setup includes an ISO/IEC TS 23220 Photo ID
+(docType `org.iso.23220.photoid.1`, `mock-photoid` profile), whose portrait, dates and mandatory elements Certify
+encodes and checks as the specification requires.
+
 ## Databases
 
 Refer to [SQL scripts](./db_scripts/README.md) and go through its README.

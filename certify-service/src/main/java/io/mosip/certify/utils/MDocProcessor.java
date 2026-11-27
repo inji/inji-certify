@@ -37,10 +37,12 @@ import java.time.format.DateTimeParseException;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.KeyType;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -78,6 +80,14 @@ public class MDocProcessor {
 
     /** The leading bytes of a JP2 file (the JPEG2000 signature box). */
     private static final byte[] JP2_SIGNATURE = {0x00, 0x00, 0x00, 0x0C, 0x6A, 0x50, 0x20, 0x20};
+
+    /** The range a CBOR integer (major types 0 and 1) holds: -2^64 to 2^64 - 1 (RFC 8949, 3.1). */
+    private static final BigInteger CBOR_INTEGER_MIN = BigInteger.ONE.shiftLeft(64).negate();
+
+    private static final BigInteger CBOR_INTEGER_MAX = BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE);
+
+    private static final String INVALID_PHOTO_ID_BIRTH_DATE =
+            "birth_date must be a full-date (YYYY-MM-DD) or a map with a full-date birth_date and an optional approximate_mask";
 
     private final ObjectMapper objectMapper;
 
@@ -175,14 +185,21 @@ public class MDocProcessor {
 
             if (templateNode.has(Constants.NAMESPACES)) {
                 JsonNode nameSpacesNode = templateNode.get(Constants.NAMESPACES);
+                if (!nameSpacesNode.isObject()) {
+                    throw new IllegalArgumentException("nameSpaces must be an object mapping each namespace to its elements");
+                }
                 nameSpacesNode.fieldNames().forEachRemaining(namespaceName -> {
                     JsonNode namespaceItems = nameSpacesNode.get(namespaceName);
-                    List<Map<String, Object>> processedItems = processNamespaceItems(namespaceItems);
-                    nameSpaces.put(namespaceName, processedItems);
+                    List<Map<String, Object>> processedItems = processNamespaceItems(namespaceName, namespaceItems);
+                    // ISO/IEC 18013-5 IssuerNameSpaces: a namespace holds at least one element, so one left
+                    // without any is left out.
+                    if (!processedItems.isEmpty()) {
+                        nameSpaces.put(namespaceName, processedItems);
+                    }
                 });
             }
             finalMDoc.put(Constants.NAMESPACES, nameSpaces);
-            requireValidMdlElements(nameSpaces);
+            requireValidElements(nameSpaces);
 
             // ISO/IEC 18013-5, 9.1.2.4: the timestamps "should" have a precision that limits
             // linkability, so they are the start of the UTC day of issuance rather than the exact
@@ -291,33 +308,64 @@ public class MDocProcessor {
     }
 
     /**
-     * Process items within a namespace
+     * Process items within a namespace. Each must be an object with a text elementIdentifier and an
+     * elementValue; a template without them fails naming the element by its namespace and position (and
+     * identifier, when it has one), which is template text rather than a holder's data.
      */
-    private List<Map<String, Object>> processNamespaceItems(JsonNode namespaceItems) {
+    private List<Map<String, Object>> processNamespaceItems(String namespaceName, JsonNode namespaceItems) {
+        String namespacePath = Constants.NAMESPACES + "." + namespaceName;
+        if (!namespaceItems.isArray()) {
+            throw new IllegalArgumentException(namespacePath + " must be an array of elements");
+        }
         List<Map<String, Object>> processedItems = new ArrayList<>();
+        Set<String> elementIdentifiers = new HashSet<>();
         // ISO/IEC 18013-5, 9.1.2.4: digestIDs are unique within a namespace and are drawn at random,
         // so the same element cannot be recognised by its ID across credentials. Any digestID in the
         // template is therefore ignored.
         Set<Integer> usedDigestIds = new HashSet<>();
 
         // First, add all items from template
-        for (JsonNode item : namespaceItems) {
+        for (int index = 0; index < namespaceItems.size(); index++) {
+            JsonNode item = namespaceItems.get(index);
+            String elementPath = namespacePath + "[" + index + "]";
+            if (!item.isObject()) {
+                throw new IllegalArgumentException(elementPath + " must be an object with "
+                        + Constants.ELEMENT_IDENTIFIER + " and " + Constants.ELEMENT_VALUE);
+            }
+            JsonNode identifier = item.get(Constants.ELEMENT_IDENTIFIER);
+            if (identifier == null || !identifier.isTextual() || identifier.asText().isBlank()) {
+                throw new IllegalArgumentException(elementPath + ": " + Constants.ELEMENT_IDENTIFIER + " is missing");
+            }
+            // An element whose value is null is unset, so it is left out rather than written as a CBOR null.
+            // As for the mDL, a configuration's mandatory elements are checked on Add and Update, not here.
+            JsonNode elementValue = item.get(Constants.ELEMENT_VALUE);
+            if (elementValue == null) {
+                throw new IllegalArgumentException(elementPath + " (" + identifier.asText() + "): "
+                        + Constants.ELEMENT_VALUE + " is missing");
+            }
+            if (elementValue.isNull()) {
+                continue;
+            }
+            if (!elementIdentifiers.add(identifier.asText())) {
+                throw new IllegalArgumentException(elementPath + ": " + Constants.ELEMENT_IDENTIFIER
+                        + " " + identifier.asText() + " is declared more than once in " + namespacePath);
+            }
             Map<String, Object> itemMap = new HashMap<>();
             int digestId;
             do {
                 digestId = SECURE_RANDOM.nextInt(Integer.MAX_VALUE);
             } while (!usedDigestIds.add(digestId));
             itemMap.put(Constants.DIGEST_ID, digestId);
-            itemMap.put(Constants.ELEMENT_IDENTIFIER, item.get(Constants.ELEMENT_IDENTIFIER).asText());
+            itemMap.put(Constants.ELEMENT_IDENTIFIER, identifier.asText());
 
             // Handle elementValue which could be string or complex object
-            JsonNode elementValue = item.get(Constants.ELEMENT_VALUE);
             if (elementValue.isTextual()) {
                 itemMap.put(Constants.ELEMENT_VALUE, elementValue.asText());
             } else {
                 // Convert complex objects (like driving_privileges)
                 Object value = objectMapper.convertValue(elementValue, Object.class);
                 requireSupportedCborTags((String) itemMap.get(Constants.ELEMENT_IDENTIFIER), value);
+                requireCborIntegers((String) itemMap.get(Constants.ELEMENT_IDENTIFIER), value);
                 itemMap.put(Constants.ELEMENT_VALUE, value);
             }
 
@@ -356,6 +404,25 @@ public class MDocProcessor {
         } else if (value instanceof List<?> list) {
             list.forEach(child -> requireSupportedCborTags(identifier, child));
         }
+    }
+
+    /**
+     * A JSON integer is encoded as a CBOR integer, which holds -2^64 to 2^64 - 1 (RFC 8949, 3.1). A larger one,
+     * in any namespace and at any depth, is rejected rather than written as text. The message names the
+     * element but not its value, so that a holder's data does not end up in the logs.
+     */
+    private static void requireCborIntegers(String identifier, Object value) {
+        if (value instanceof BigInteger integer && !isCborInteger(integer)) {
+            throw new IllegalArgumentException(identifier + ": an integer must be between -2^64 and 2^64 - 1");
+        } else if (value instanceof Map<?, ?> map) {
+            map.values().forEach(child -> requireCborIntegers(identifier, child));
+        } else if (value instanceof List<?> list) {
+            list.forEach(child -> requireCborIntegers(identifier, child));
+        }
+    }
+
+    private static boolean isCborInteger(BigInteger integer) {
+        return integer.compareTo(CBOR_INTEGER_MIN) >= 0 && integer.compareTo(CBOR_INTEGER_MAX) <= 0;
     }
 
     /**
@@ -417,7 +484,7 @@ public class MDocProcessor {
             for (Map<String, Object> element : elements) {
                 // 1) Encode element (IssuerSignedItem) to CBOR
                 ByteArrayOutputStream innerBaos = new ByteArrayOutputStream();
-                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(encodeMdlElement(namespaceName, element))));
+                new CborEncoder(innerBaos).encode(convertToDataItem(preprocessForCBOR(encodeElement(namespaceName, element))));
                 byte[] elementCbor = innerBaos.toByteArray();
 
                 // 2) Build Tag(24) DataItem for final structure
@@ -441,24 +508,33 @@ public class MDocProcessor {
     }
 
     /**
-     * ISO/IEC 18013-5, 7.2 (Table 5): the values of the mDL namespace are checked on the rendered template,
-     * before anything is signed, so that invalid data fails as mdoc_template_processing_failed rather than
-     * as a signing failure. A full-date element must be a date (YYYY-MM-DD), or for issue_date and
-     * expiry_date a date-time, as text or already tagged (1004, 0) by the template; a byte-string element
-     * must be base64 text; driving_privileges must be an array of DrivingPrivilege entries (7.2.4).
-     * calculateDigests then only tags and decodes them: a byte string can't cross the JSON hand-off to
-     * addProof, so it is decoded there.
+     * The values of the namespaces whose encodings Certify knows are checked on the rendered template, before
+     * anything is signed, so that invalid data fails as mdoc_template_processing_failed rather than as a
+     * signing failure. calculateDigests then only tags and decodes them: a byte string can't cross the JSON
+     * hand-off to addProof, so it is decoded there.
      */
-    private static void requireValidMdlElements(Map<String, Object> nameSpaces) {
-        if (!(nameSpaces.get(MdlDataElements.NAMESPACE) instanceof List<?> elements)) {
+    private static void requireValidElements(Map<String, Object> nameSpaces) {
+        requireValidNamespaceElements(nameSpaces, MdlDataElements.NAMESPACE, MDocProcessor::requireValidMdlElement);
+        requireValidNamespaceElements(nameSpaces, PhotoIdDataElements.NAMESPACE, MDocProcessor::requireValidPhotoIdElement);
+    }
+
+    private static void requireValidNamespaceElements(Map<String, Object> nameSpaces, String namespace,
+                                                      BiConsumer<String, Object> requireValidElement) {
+        if (!(nameSpaces.get(namespace) instanceof List<?> elements)) {
             return;
         }
         for (Object element : elements) {
             Map<?, ?> item = (Map<?, ?>) element;
-            requireValidMdlElement((String) item.get(Constants.ELEMENT_IDENTIFIER), item.get(Constants.ELEMENT_VALUE));
+            requireValidElement.accept((String) item.get(Constants.ELEMENT_IDENTIFIER), item.get(Constants.ELEMENT_VALUE));
         }
     }
 
+    /**
+     * ISO/IEC 18013-5, 7.2 (Table 5): a full-date element must be a date (YYYY-MM-DD), or for issue_date and
+     * expiry_date a date-time, as text or already tagged (1004, 0) by the template; a byte-string element
+     * must be base64 text, and portrait a JPEG or JPEG2000 image (7.2.2); driving_privileges must be an array
+     * of DrivingPrivilege entries (7.2.4).
+     */
     private static void requireValidMdlElement(String identifier, Object value) {
         if (MdlDataElements.FULL_DATE_OR_TDATE.contains(identifier)) {
             if (tdate(value) == null) {
@@ -467,14 +543,7 @@ public class MDocProcessor {
         } else if (MdlDataElements.FULL_DATE.contains(identifier)) {
             requireFullDate(value);
         } else if (MdlDataElements.isByteString(identifier)) {
-            // Values come from the templated JSON, so a byte string can only arrive as base64 text.
-            if (!(value instanceof String text)) {
-                throw new IllegalArgumentException(identifier + " must be base64 encoded");
-            }
-            byte[] bytes = decodeBase64(identifier, text);
-            if (MdlDataElements.PORTRAIT.equals(identifier) && !isJpegOrJpeg2000(bytes)) {
-                throw new IllegalArgumentException("portrait must be a JPEG or JPEG2000 image");
-            }
+            requireByteString(identifier, value, MdlDataElements.PORTRAIT.equals(identifier));
         } else if (MdlDataElements.DRIVING_PRIVILEGES.equals(identifier)) {
             if (!(value instanceof List<?> privileges)) {
                 throw new IllegalArgumentException("driving_privileges must be an array");
@@ -496,16 +565,139 @@ public class MDocProcessor {
     }
 
     /**
-     * Applies the Table 5 encodings to an element of the mDL namespace, whose value processTemplatedJson
-     * has checked: a date-only value of a full-date element, including the dates inside each driving
-     * privilege, becomes tag 1004, a date-time of issue_date or expiry_date a tdate (tag 0), and a
-     * byte-string element is decoded from the base64 text the template carries. Elements of any other
-     * namespace are left as they are; a template tags them explicitly if it needs to.
+     * ISO/IEC TS 23220-4, Annex C: birth_date is a full-date or a birth_date map, issue_date and expiry_date
+     * are full-dates only and portrait_capture_date a date-time, as text or already tagged (1004, 0) by the
+     * template; age_in_years and age_birth_year are unsigned integers; every age_over_NN is a boolean;
+     * portrait is a byte string, which
+     * Certify requires to be a JPEG or JPEG2000 image. The messages leave the value out so that a holder's
+     * data does not end up in the logs.
      */
-    private static Map<String, Object> encodeMdlElement(String namespace, Map<String, Object> element) {
-        if (!MdlDataElements.NAMESPACE.equals(namespace)) {
+    private static void requireValidPhotoIdElement(String identifier, Object value) {
+        if (PhotoIdDataElements.BIRTH_DATE.equals(identifier)) {
+            requirePhotoIdBirthDate(value);
+        } else if (PhotoIdDataElements.FULL_DATE.contains(identifier)) {
+            if (!isFullDate(value)) {
+                throw new IllegalArgumentException(identifier + " must be a full-date (YYYY-MM-DD)");
+            }
+        } else if (PhotoIdDataElements.TDATE.contains(identifier)) {
+            if (tdate(value) == null) {
+                throw new IllegalArgumentException(identifier + " must be an RFC 3339 date-time");
+            }
+        } else if (PhotoIdDataElements.isByteString(identifier)) {
+            requireByteString(identifier, value, PhotoIdDataElements.PORTRAIT.equals(identifier));
+        } else if ("age_in_years".equals(identifier) || "age_birth_year".equals(identifier)) {
+            boolean unsignedInteger =
+                    (value instanceof Integer i && i >= 0)
+                    || (value instanceof Long l && l >= 0)
+                    || (value instanceof BigInteger b && b.signum() >= 0);
+            if (!unsignedInteger) {
+                throw new IllegalArgumentException(identifier + " must be an unsigned integer");
+            }
+        } else if (PhotoIdDataElements.isAgeOver(identifier) && !(value instanceof Boolean)) {
+            // A quoted "true" is text, which a verifier reading the attestation would not accept as one.
+            throw new IllegalArgumentException(identifier + " must be a boolean (true or false), not text or a number");
+        }
+    }
+
+    /**
+     * ISO/IEC TS 23220-2, 6.3.1.1.3: birth_date is a full-date, or a map with a full-date birth_date and an
+     * optional approximate_mask of eight digits, each 0 or 1, and no other keys. A value the template tagged
+     * itself counts as the full-date form.
+     */
+    private static void requirePhotoIdBirthDate(Object value) {
+        if (!(value instanceof Map<?, ?> map) || map.containsKey(Constants.__CBOR_TAG)) {
+            if (!isFullDate(value)) {
+                throw new IllegalArgumentException(INVALID_PHOTO_ID_BIRTH_DATE);
+            }
+            return;
+        }
+        if (!PhotoIdDataElements.BIRTH_DATE_KEYS.containsAll(map.keySet()) || !isFullDate(map.get(PhotoIdDataElements.BIRTH_DATE))) {
+            throw new IllegalArgumentException(INVALID_PHOTO_ID_BIRTH_DATE);
+        }
+        if (map.containsKey(PhotoIdDataElements.APPROXIMATE_MASK)
+                && !(map.get(PhotoIdDataElements.APPROXIMATE_MASK) instanceof String mask && mask.matches("[01]{8}"))) {
+            throw new IllegalArgumentException("birth_date: approximate_mask must be 8 digits, each 0 or 1");
+        }
+    }
+
+    /** A checked birth_date: the full-date, alone or inside the map, becomes tag 1004. */
+    private static Object asPhotoIdBirthDate(Object value) {
+        if (value instanceof Map<?, ?> map && !map.containsKey(Constants.__CBOR_TAG)) {
+            Map<Object, Object> encoded = new HashMap<>(map);
+            encoded.put(PhotoIdDataElements.BIRTH_DATE, asFullDate(map.get(PhotoIdDataElements.BIRTH_DATE)));
+            return encoded;
+        }
+        return asFullDate(value);
+    }
+
+    /**
+     * Values come from the templated JSON, so a byte string can only arrive as base64 text. An image must
+     * be a JPEG or JPEG2000 image.
+     */
+    private static void requireByteString(String identifier, Object value, boolean image) {
+        if (!(value instanceof String text)) {
+            throw new IllegalArgumentException(identifier + " must be base64 encoded");
+        }
+        byte[] bytes = decodeBase64(identifier, text);
+        if (image && !isJpegOrJpeg2000(bytes)) {
+            throw new IllegalArgumentException(identifier + " must be a JPEG or JPEG2000 image");
+        }
+    }
+
+    /**
+     * Applies the encodings of the namespaces Certify knows to an element whose value processTemplatedJson
+     * has checked. Elements of any other namespace are left as they are; a template tags them explicitly if
+     * it needs to.
+     */
+    private static Map<String, Object> encodeElement(String namespace, Map<String, Object> element) {
+        if (MdlDataElements.NAMESPACE.equals(namespace)) {
+            return encodeMdlElement(element);
+        }
+        if (PhotoIdDataElements.NAMESPACE.equals(namespace)) {
+            return encodePhotoIdElement(element);
+        }
+        return element;
+    }
+
+    /**
+     * ISO/IEC TS 23220-4, Annex C: a date of a full-date element, and the birth date alone or inside its
+     * birth_date map, becomes tag 1004, a date-time of a tdate
+     * element a tdate (tag 0) in UTC without fractions of seconds, and portrait is decoded from the base64
+     * text the template carries.
+     */
+    private static Map<String, Object> encodePhotoIdElement(Map<String, Object> element) {
+        String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
+        Object value = element.get(Constants.ELEMENT_VALUE);
+        Object encoded = value;
+        if (PhotoIdDataElements.BIRTH_DATE.equals(identifier)) {
+            encoded = asPhotoIdBirthDate(value);
+        } else if (PhotoIdDataElements.FULL_DATE.contains(identifier)) {
+            encoded = asFullDate(value);
+        } else if (PhotoIdDataElements.TDATE.contains(identifier)) {
+            encoded = createCBORTaggedDateTime(tdate(value).format(VALIDITY_INFO_DATETIME_FORMATTER));
+        } else if (PhotoIdDataElements.isByteString(identifier)) {
+            encoded = decodeBase64(identifier, (String) value);
+        }
+        return withEncodedValue(element, value, encoded);
+    }
+
+    /** The element itself when its value is unchanged, otherwise a copy holding the encoded value. */
+    private static Map<String, Object> withEncodedValue(Map<String, Object> element, Object value, Object encoded) {
+        if (encoded == value) {
             return element;
         }
+        Map<String, Object> encodedElement = new HashMap<>(element);
+        encodedElement.put(Constants.ELEMENT_VALUE, encoded);
+        return encodedElement;
+    }
+
+    /**
+     * Applies the Table 5 encodings to an element of the mDL namespace: a date-only value of a full-date
+     * element, including the dates inside each driving privilege, becomes tag 1004, a date-time of
+     * issue_date or expiry_date a tdate (tag 0), and a byte-string element is decoded from the base64 text
+     * the template carries.
+     */
+    private static Map<String, Object> encodeMdlElement(Map<String, Object> element) {
         String identifier = (String) element.get(Constants.ELEMENT_IDENTIFIER);
         Object value = element.get(Constants.ELEMENT_VALUE);
         Object encoded = value;
@@ -528,12 +720,7 @@ public class MDocProcessor {
             }
             encoded = encodedPrivileges;
         }
-        if (encoded == value) {
-            return element;
-        }
-        Map<String, Object> encodedElement = new HashMap<>(element);
-        encodedElement.put(Constants.ELEMENT_VALUE, encoded);
-        return encodedElement;
+        return withEncodedValue(element, value, encoded);
     }
 
     /**
@@ -577,10 +764,15 @@ public class MDocProcessor {
      * does not end up in the logs.
      */
     private static void requireFullDate(Object value) {
-        Object date = value instanceof String ? value : tagContent(value, FULL_DATE_TAG);
-        if (!(date instanceof String text && isDateOnlyString(text))) {
+        if (!isFullDate(value)) {
             throw new IllegalArgumentException("Invalid mDL full-date");
         }
+    }
+
+    /** Whether the value is a date (YYYY-MM-DD) as text, or one the template already tagged 1004. */
+    private static boolean isFullDate(Object value) {
+        Object date = value instanceof String ? value : tagContent(value, FULL_DATE_TAG);
+        return date instanceof String text && isDateOnlyString(text);
     }
 
     /** A checked full-date: text becomes tag 1004, and one the template already tagged is kept. */
@@ -727,21 +919,20 @@ public class MDocProcessor {
         if (obj instanceof String) {
             return new UnicodeString((String) obj);
         }
-        if (obj instanceof Integer) {
-            int value = (Integer) obj;
+        if (obj instanceof Integer || obj instanceof Long || obj instanceof Short || obj instanceof Byte) {
+            long value = ((java.lang.Number) obj).longValue();
             if (value < 0) {
                 return new NegativeInteger(value);
             } else {
                 return new UnsignedInteger(value);
             }
         }
-        if (obj instanceof Long) {
-            long value = (Long) obj;
-            if (value < 0) {
-                return new NegativeInteger(value);
-            } else {
-                return new UnsignedInteger(value);
+        // A JSON integer beyond the range of a long; processTemplatedJson has checked it fits a CBOR integer.
+        if (obj instanceof BigInteger integer) {
+            if (!isCborInteger(integer)) {
+                throw new IllegalArgumentException("An integer must be between -2^64 and 2^64 - 1");
             }
+            return integer.signum() < 0 ? new NegativeInteger(integer) : new UnsignedInteger(integer);
         }
         if (obj instanceof Boolean) {
             return (Boolean) obj ? SimpleValue.TRUE : SimpleValue.FALSE;
@@ -751,6 +942,11 @@ public class MDocProcessor {
         }
         if (obj instanceof Float) {
             return new SinglePrecisionFloat((Float) obj);
+        }
+        // Any other number, such as a BigDecimal, has no exact CBOR encoding here, so it is rejected rather
+        // than written as text.
+        if (obj instanceof java.lang.Number) {
+            throw new IllegalArgumentException("Unsupported number type: " + obj.getClass().getSimpleName());
         }
         if (obj instanceof byte[]) {
             return new ByteString((byte[]) obj);

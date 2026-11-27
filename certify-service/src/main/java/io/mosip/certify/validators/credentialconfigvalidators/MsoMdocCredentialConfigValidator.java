@@ -12,6 +12,7 @@ import io.mosip.certify.entity.CredentialConfig;
 import io.mosip.certify.repository.CredentialConfigRepository;
 import io.mosip.certify.utils.MDocProcessor;
 import io.mosip.certify.utils.MdlDataElements;
+import io.mosip.certify.utils.PhotoIdDataElements;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
@@ -68,11 +69,30 @@ public class MsoMdocCredentialConfigValidator {
         if (!"DataProvider".equals(pluginMode) || !MdlDataElements.DOC_TYPE.equals(credentialConfig.getDocType())) {
             return List.of();
         }
-        Optional<Set<String>> declared = declaredMdlElements(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()));
+        Optional<Set<String>> declared = declaredElements(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()),
+                MdlDataElements.NAMESPACE, "mDL");
         if (declared.isEmpty()) {
             return List.of();
         }
         return MdlDataElements.missingMandatory(declared.get());
+    }
+
+    /**
+     * A Photo ID template must declare every ISO/IEC TS 23220-4 (Annex C, Table C.1) mandatory element in the
+     * org.iso.23220.1 namespace, as an mDL template must declare its own (see findMissingMdlElements, whose
+     * rules for DataProvider mode, unquoted references and templates only known once rendered apply here too).
+     *
+     * @return the mandatory elements the template does not declare, empty when none are missing
+     * @throws CertifyException when the template declares an element identifier of that namespace twice
+     */
+    public static List<String> findMissingPhotoIdElements(CredentialConfigurationDTO credentialConfig, String pluginMode) {
+        if (!"DataProvider".equals(pluginMode) || !PhotoIdDataElements.DOC_TYPE.equals(credentialConfig.getDocType())) {
+            return List.of();
+        }
+        return declaredElements(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()),
+                PhotoIdDataElements.NAMESPACE, "Photo ID")
+                .map(PhotoIdDataElements::missingMandatory)
+                .orElse(List.of());
     }
 
     /**
@@ -109,6 +129,65 @@ public class MsoMdocCredentialConfigValidator {
     }
 
     /**
+     * In DataProvider mode, nameSpaces in an mso_mdoc template maps each namespace to an array of elements,
+     * each an object with a text elementIdentifier and an elementValue (which may be null, for an element
+     * left out when unset). A template that breaks this fails here rather than at issuance, naming the
+     * element by its namespace and position. A part written as a Velocity reference, or a template that
+     * can't be parsed before Velocity renders it, is not checked here; issuance checks it.
+     *
+     * @throws CertifyException naming the first namespace or element that breaks this
+     */
+    public static void requireElementFields(CredentialConfigurationDTO credentialConfig, String pluginMode) {
+        if (!"DataProvider".equals(pluginMode)) {
+            return;
+        }
+        Optional<JsonNode> template = parseTemplate(TemplateDecoder.decodeVcTemplate(credentialConfig.getVcTemplate()));
+        JsonNode namespaces = template.map(node -> node.get(Constants.NAMESPACES)).orElse(null);
+        if (namespaces == null || isUnquotedReference(namespaces)) {
+            return;
+        }
+        if (!namespaces.isObject()) {
+            throw templateError(Constants.NAMESPACES + " must be an object mapping each namespace to its elements.");
+        }
+        for (Iterator<Map.Entry<String, JsonNode>> fields = namespaces.fields(); fields.hasNext(); ) {
+            Map.Entry<String, JsonNode> namespace = fields.next();
+            String namespacePath = Constants.NAMESPACES + "." + namespace.getKey();
+            JsonNode items = namespace.getValue();
+            if (isUnquotedReference(items)) {
+                continue;
+            }
+            if (!items.isArray()) {
+                throw templateError(namespacePath + " must be an array of elements.");
+            }
+            for (int index = 0; index < items.size(); index++) {
+                requireElementFields(items.get(index), namespacePath + "[" + index + "]");
+            }
+        }
+    }
+
+    private static void requireElementFields(JsonNode item, String elementPath) {
+        if (isUnquotedReference(item)) {
+            return;
+        }
+        if (!item.isObject()) {
+            throw templateError(elementPath + " must be an object with " + Constants.ELEMENT_IDENTIFIER
+                    + " and " + Constants.ELEMENT_VALUE + ".");
+        }
+        JsonNode identifier = item.get(Constants.ELEMENT_IDENTIFIER);
+        if (identifier == null || !identifier.isTextual() || identifier.asText().isBlank()) {
+            throw templateError(elementPath + ": " + Constants.ELEMENT_IDENTIFIER + " is missing.");
+        }
+        if (!item.has(Constants.ELEMENT_VALUE)) {
+            throw templateError(elementPath + " (" + identifier.asText().replace("\0", "") + "): "
+                    + Constants.ELEMENT_VALUE + " is missing.");
+        }
+    }
+
+    private static CertifyException templateError(String message) {
+        return new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, message);
+    }
+
+    /**
      * An mso_mdoc template may tag a value itself, as {"__cbor_tag": 1004, "__cbor_value": "2024-06-15"},
      * which is how a full-date or tdate is written outside the mDL namespace. In DataProvider mode, wherever
      * it appears, the tag must be the integer 1004 (full-date, RFC 8943) or 0 (tdate, RFC 8949); Certify
@@ -141,8 +220,11 @@ public class MsoMdocCredentialConfigValidator {
         }
     }
 
-    /** The identifiers in the mDL namespace, or empty when they are only known after rendering. */
-    private static Optional<Set<String>> declaredMdlElements(String template) {
+    /**
+     * The identifiers in the given namespace of a document (named in the duplicate message, such as mDL), or
+     * empty when they are only known after rendering.
+     */
+    private static Optional<Set<String>> declaredElements(String template, String namespace, String document) {
         Set<String> declared = new HashSet<>();
         if (template == null || template.isBlank()) {
             return Optional.of(declared);
@@ -155,15 +237,15 @@ public class MsoMdocCredentialConfigValidator {
         if (isUnquotedReference(namespaces)) {
             return Optional.empty();
         }
-        if (!namespaces.has(MdlDataElements.NAMESPACE)) {
-            // A namespace written as a reference such as ${namespace} may render as the mDL one.
+        if (!namespaces.has(namespace)) {
+            // A namespace written as a reference such as ${namespace} may render as this one.
             for (Iterator<String> names = namespaces.fieldNames(); names.hasNext(); ) {
                 if (names.next().contains("$")) {
                     return Optional.empty();
                 }
             }
         }
-        JsonNode items = namespaces.path(MdlDataElements.NAMESPACE);
+        JsonNode items = namespaces.path(namespace);
         if (isUnquotedReference(items)) {
             return Optional.empty();
         }
@@ -176,9 +258,9 @@ public class MsoMdocCredentialConfigValidator {
                 return Optional.empty();
             }
             if (!declared.add(identifier)) {
-                // A verifier asking for this element could not tell which of the two values is the mDL's.
+                // A verifier asking for this element could not tell which of the two values is the document's.
                 throw new CertifyException(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED,
-                        "Duplicate mDL element identifier: " + identifier + ".");
+                        "Duplicate " + document + " element identifier: " + identifier + ".");
             }
         }
         return Optional.of(declared);

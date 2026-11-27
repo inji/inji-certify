@@ -31,6 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -1167,6 +1168,335 @@ public class MDocProcessorTest {
     }
 
     @Test
+    public void should_encodePortraitAsBytes_when_photoIdTemplateCarriesBase64OrADataUri() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, (byte) 0xFB};
+        String base64 = Base64.getEncoder().encodeToString(jpeg);
+
+        for (String text : List.of(base64, "data:image/jpeg;base64," + base64)) {
+            assertEquals(new ByteString(jpeg), encodedElementValue(PhotoIdDataElements.NAMESPACE, "portrait", text));
+        }
+    }
+
+    @Test
+    public void should_keepOtherElementsAsText_when_photoIdElementIsNotAByteString() throws Exception {
+        assertEquals(new UnicodeString("AQID"), encodedElementValue(PhotoIdDataElements.NAMESPACE, "family_name", "AQID"));
+    }
+
+    @Test
+    public void should_acceptPhotoIdPortrait_when_itIsAJpegOrJpeg2000Image() throws Exception {
+        byte[] jpeg = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+        byte[] codestream = {(byte) 0xFF, 0x4F, (byte) 0xFF, 0x51, 0x00};
+
+        for (byte[] image : List.of(jpeg, codestream)) {
+            String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                    + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                    + "{\"elementIdentifier\": \"portrait\", \"elementValue\": \"" + Base64.getEncoder().encodeToString(image) + "\"}]}}";
+            assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    @Test
+    public void should_reject_when_photoIdPortraitIsNotABase64JpegOrJpeg2000Image() {
+        String png = Base64.getEncoder().encodeToString(new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A});
+
+        assertEquals("portrait must be a JPEG or JPEG2000 image", photoIdRejectionMessage("portrait", png));
+        assertEquals("portrait must be a JPEG or JPEG2000 image", photoIdRejectionMessage("portrait", ""));
+        assertEquals("portrait must be base64 encoded", photoIdRejectionMessage("portrait", "not base64!"));
+        assertEquals("portrait must be base64 encoded", photoIdRejectionMessage("portrait", 42));
+    }
+
+    @Test
+    public void should_encodeIssueAndExpiryDatesAsFullDates_when_photoIdTemplateCarriesDates() throws Exception {
+        for (String identifier : List.of("issue_date", "expiry_date")) {
+            DataItem date = encodedElementValue(PhotoIdDataElements.NAMESPACE, identifier, "2026-01-15");
+            assertEquals(identifier, 1004, date.getTag().getValue());
+            assertEquals(identifier, "2026-01-15", ((UnicodeString) date).getString());
+        }
+    }
+
+    @Test
+    public void should_encodePortraitCaptureDateAsTdateInUtc_when_photoIdTemplateCarriesADateTime() throws Exception {
+        // converted to UTC, without fractions of seconds, as the mDL dates are
+        for (String text : List.of("2026-01-10T09:30:00Z", "2026-01-10T15:00:00.250+05:30")) {
+            DataItem captured = encodedElementValue(PhotoIdDataElements.NAMESPACE, "portrait_capture_date", text);
+            assertEquals(text, 0, captured.getTag().getValue());
+            assertEquals(text, "2026-01-10T09:30:00Z", ((UnicodeString) captured).getString());
+        }
+    }
+
+    @Test
+    public void should_encodeBirthDateAsFullDate_when_photoIdBirthDateIsADate() throws Exception {
+        DataItem birthDate = encodedElementValue(PhotoIdDataElements.NAMESPACE, "birth_date", "1985-04-29");
+
+        assertEquals(1004, birthDate.getTag().getValue());
+        assertEquals("1985-04-29", ((UnicodeString) birthDate).getString());
+    }
+
+    @Test
+    public void should_tagTheDateInsideTheMap_when_photoIdBirthDateIsABirthDateMap() throws Exception {
+        // ISO/IEC TS 23220-2, 6.3.1.1.3: the date inside the map is a full-date, the mask stays text
+        co.nstant.in.cbor.model.Map birthDate = (co.nstant.in.cbor.model.Map) encodedElementValue(PhotoIdDataElements.NAMESPACE,
+                "birth_date", Map.of("birth_date", "1985-01-01", "approximate_mask", "00001111"));
+
+        DataItem date = birthDate.get(new UnicodeString("birth_date"));
+        assertEquals(1004, date.getTag().getValue());
+        assertEquals("1985-01-01", ((UnicodeString) date).getString());
+        DataItem mask = birthDate.get(new UnicodeString("approximate_mask"));
+        assertFalse(mask.hasTag());
+        assertEquals("00001111", ((UnicodeString) mask).getString());
+        assertEquals(2, birthDate.getKeys().size());
+    }
+
+    @Test
+    public void should_acceptBirthDateMap_when_itHasNoApproximateMask() throws Exception {
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                + "{\"elementIdentifier\": \"birth_date\", \"elementValue\": {\"birth_date\": \"1985-04-29\"}}]}}";
+
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+    }
+
+    @Test
+    public void should_reject_when_photoIdBirthDateIsNeitherAFullDateNorABirthDateMap() {
+        String expected = "birth_date must be a full-date (YYYY-MM-DD) or a map with a full-date birth_date and an optional approximate_mask";
+        for (Object value : List.of("1985-04-29T00:00:00Z", "29/04/1985", 19850429,
+                Map.of("approximate_mask", "00000000"),
+                Map.of("birth_date", "29/04/1985"),
+                Map.of("birth_date", "1985-04-29", "place", "Bengaluru"))) {
+            assertEquals(String.valueOf(value), expected, photoIdRejectionMessage("birth_date", value));
+        }
+    }
+
+    @Test
+    public void should_reject_when_photoIdBirthDateMaskIsNotEightBinaryDigits() {
+        for (Object mask : List.of("0000", "00000002", "000011110", 11110000)) {
+            assertEquals(String.valueOf(mask), "birth_date: approximate_mask must be 8 digits, each 0 or 1",
+                    photoIdRejectionMessage("birth_date", Map.of("birth_date", "1985-01-01", "approximate_mask", mask)));
+        }
+    }
+
+    @Test
+    public void should_acceptAndEncodeAsCborBoolean_when_photoIdAgeOverIsABoolean() throws Exception {
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                + "{\"elementIdentifier\": \"age_over_18\", \"elementValue\": true},"
+                + "{\"elementIdentifier\": \"age_over_65\", \"elementValue\": false}]}}";
+
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        assertEquals(SimpleValue.TRUE, encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_over_18", true));
+        assertEquals(SimpleValue.FALSE, encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_over_65", false));
+    }
+
+    @Test
+    public void should_reject_when_photoIdAgeOverIsNotABoolean() {
+        // a quoted "true" is the usual mistake: "elementValue": "${ageOver18}" instead of ${ageOver18}
+        for (String identifier : List.of("age_over_18", "age_over_21")) {
+            for (Object value : List.of("true", "false", "yes", 1, 0, Map.of("value", true))) {
+                assertEquals(identifier + "=" + value, identifier + " must be a boolean (true or false), not text or a number",
+                        photoIdRejectionMessage(identifier, value));
+            }
+        }
+    }
+
+    @Test
+    public void should_accept_when_photoIdAgeInYearsAndBirthYearAreUnsignedIntegers() throws Exception {
+        for (Object value : List.of(0, 41, 1985L, new BigInteger("18446744073709551615"))) {
+            String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                    + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                    + "{\"elementIdentifier\": \"age_in_years\", \"elementValue\": " + value + "},"
+                    + "{\"elementIdentifier\": \"age_birth_year\", \"elementValue\": " + value + "}]}}";
+            assertNotNull(String.valueOf(value), mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    @Test
+    public void should_reject_when_photoIdAgeInYearsOrBirthYearIsNotAnUnsignedInteger() {
+        // a quoted "${ageInYears}" renders as text; a negative number is not a uint (ISO/IEC TS 23220-4, Annex C)
+        for (String identifier : List.of("age_in_years", "age_birth_year")) {
+            for (Object value : List.of("41", -1, 41.5, true)) {
+                assertEquals(identifier + "=" + value, identifier + " must be an unsigned integer",
+                        photoIdRejectionMessage(identifier, value));
+            }
+        }
+    }
+
+    @Test
+    public void should_keepNegativeIntegers_when_elementIsOutsideThePhotoIdUnsignedElements() throws Exception {
+        // only age_in_years and age_birth_year in org.iso.23220.1 must be unsigned; other elements and namespaces keep signed integers
+        assertEquals(new NegativeInteger(-1), encodedElementValue("org.example.custom", "age_in_years", -1));
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {\"org.example.custom\": [{\"elementIdentifier\": \"age_in_years\", \"elementValue\": -1}]}}";
+        assertNotNull(mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+    }
+
+    @Test
+    public void should_notCheckAsAgeOver_when_identifierOnlyLooksLikeOne() throws Exception {
+        // age_over_NN has exactly two digits; anything else is an ordinary element
+        for (String identifier : List.of("age_over_100", "age_over_x", "age_over_1")) {
+            assertEquals(identifier, new UnicodeString("yes"), encodedElementValue(PhotoIdDataElements.NAMESPACE, identifier, "yes"));
+            String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                    + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                    + "\"nameSpaces\": {\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                    + "{\"elementIdentifier\": \"" + identifier + "\", \"elementValue\": \"yes\"}]}}";
+            assertNotNull(identifier, mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        }
+    }
+
+    @Test
+    public void should_keepADateAsText_when_photoIdElementIsNotADateElement() throws Exception {
+        DataItem value = encodedElementValue(PhotoIdDataElements.NAMESPACE, "document_number", "2026-01-15");
+        assertFalse(value.hasTag());
+    }
+
+    @Test
+    public void should_reject_when_photoIdIssueOrExpiryDateIsNotAFullDate() {
+        // ISO/IEC TS 23220-4 Annex C: full-date only, unlike the mDL, which also allows a date-time
+        for (String identifier : List.of("issue_date", "expiry_date")) {
+            for (Object value : List.of("2026-01-15T00:00:00Z", "15/01/2026", 20260115,
+                    Map.of("__cbor_tag", 0, "__cbor_value", "2026-01-15T00:00:00Z"))) {
+                assertEquals(identifier + " must be a full-date (YYYY-MM-DD)", photoIdRejectionMessage(identifier, value));
+            }
+        }
+    }
+
+    @Test
+    public void should_reject_when_photoIdPortraitCaptureDateIsNotADateTime() {
+        for (Object value : List.of("2026-01-10", "10/01/2026 09:30", 1768037400)) {
+            assertEquals("portrait_capture_date must be an RFC 3339 date-time",
+                    photoIdRejectionMessage("portrait_capture_date", value));
+        }
+    }
+
+    @Test
+    public void should_leaveOutElement_when_itsValueIsNull() throws Exception {
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {"
+                + "\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                + "{\"elementIdentifier\": \"nationality\", \"elementValue\": null},"
+                + "{\"elementIdentifier\": \"portrait_capture_date\", \"elementValue\": null}],"
+                + "\"org.iso.23220.photoid.1\": ["
+                + "{\"elementIdentifier\": \"person_id\", \"elementValue\": null}]}}";
+
+        Map<String, Object> nameSpaces = (Map<String, Object>)
+                mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE).get("nameSpaces");
+
+        List<Map<String, Object>> elements = (List<Map<String, Object>>) nameSpaces.get(PhotoIdDataElements.NAMESPACE);
+        assertEquals(List.of("family_name"), elements.stream().map(element -> element.get("elementIdentifier")).toList());
+        // a namespace left without elements is left out
+        assertFalse(nameSpaces.containsKey("org.iso.23220.photoid.1"));
+    }
+
+    @Test
+    public void should_encodeAsCborInteger_when_integerIsBeyondALongOrAShortOrByte() throws Exception {
+        BigInteger largest = new BigInteger("18446744073709551615"); // 2^64 - 1
+        BigInteger smallest = new BigInteger("-18446744073709551616"); // -2^64
+
+        DataItem large = encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_in_years", largest);
+        DataItem small = encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_in_years", smallest);
+
+        // plain CBOR integers, not text and not tagged bignums
+        assertEquals(largest, ((UnsignedInteger) large).getValue());
+        assertFalse(large.hasTag());
+        assertEquals(smallest, ((NegativeInteger) small).getValue());
+        assertFalse(small.hasTag());
+        assertEquals(new UnsignedInteger(41), encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_in_years", (short) 41));
+        assertEquals(new UnsignedInteger(9), encodedElementValue(PhotoIdDataElements.NAMESPACE, "sex", (byte) 9));
+    }
+
+    @Test
+    public void should_reject_when_integerIsBeyondTheCborIntegerRange() {
+        for (BigInteger value : List.of(new BigInteger("18446744073709551616"), new BigInteger("-18446744073709551617"))) {
+            assertEquals("age_in_years: an integer must be between -2^64 and 2^64 - 1",
+                    photoIdRejectionMessage("age_in_years", value));
+            // at any depth
+            assertEquals("birth_date: an integer must be between -2^64 and 2^64 - 1",
+                    photoIdRejectionMessage("birth_date", Map.of("approximate_mask", List.of(value))));
+        }
+    }
+
+    @Test
+    public void should_reject_when_numberHasNoExactCborEncoding() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> encodedElementValue(PhotoIdDataElements.NAMESPACE, "age_in_years", new BigDecimal("41.5")));
+        assertEquals("Unsupported number type: BigDecimal", exception.getMessage());
+    }
+
+    @Test
+    public void should_rejectNamingTheElement_when_templateElementLacksItsIdentifierOrValue() {
+        String valid = "{\"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"}";
+        String path = "nameSpaces." + PhotoIdDataElements.NAMESPACE + "[1]";
+        Map<String, String> expected = new LinkedHashMap<>();
+        expected.put("{\"elementValue\": \"Doe\"}", path + ": elementIdentifier is missing");
+        expected.put("{\"elementIdentifier\": \" \", \"elementValue\": \"Doe\"}", path + ": elementIdentifier is missing");
+        expected.put("{\"elementIdentifier\": 5, \"elementValue\": \"Doe\"}", path + ": elementIdentifier is missing");
+        expected.put("{\"elementIdentifier\": \"family_name\"}", path + " (family_name): elementValue is missing");
+        expected.put("\"family_name\"", path + " must be an object with elementIdentifier and elementValue");
+
+        expected.forEach((element, message) -> assertEquals(element, message, templateRejectionMessage(
+                "{\"" + PhotoIdDataElements.NAMESPACE + "\": [" + valid + ", " + element + "]}")));
+    }
+
+    @Test
+    public void should_rejectNamingTheNamespace_when_nameSpacesOrANamespaceHasTheWrongShape() {
+        assertEquals("nameSpaces." + PhotoIdDataElements.NAMESPACE + " must be an array of elements",
+                templateRejectionMessage("{\"" + PhotoIdDataElements.NAMESPACE + "\": {\"family_name\": \"Doe\"}}"));
+        assertEquals("nameSpaces must be an object mapping each namespace to its elements",
+                templateRejectionMessage("[{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}]"));
+    }
+
+    @Test
+    public void should_reject_when_namespaceDeclaresAnElementIdentifierTwice() {
+        // e.g. a template that renders its elements through ${elements}, which Add and Update can't check
+        for (String namespace : List.of(PhotoIdDataElements.NAMESPACE, MDL_NAMESPACE)) {
+            assertEquals(namespace, "nameSpaces." + namespace + "[2]: elementIdentifier family_name is declared more than once in nameSpaces." + namespace,
+                    templateRejectionMessage("{\"" + namespace + "\": ["
+                            + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"},"
+                            + "{\"elementIdentifier\": \"given_name\", \"elementValue\": \"John\"},"
+                            + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Roe\"}]}"));
+        }
+    }
+
+    @Test
+    public void should_accept_when_anIdentifierRepeatsInAnotherNamespaceOrOnlyWithANullValue() throws Exception {
+        // the same identifier may appear once in each namespace, and a null element is left out before the check
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": {"
+                + "\"" + PhotoIdDataElements.NAMESPACE + "\": ["
+                + "{\"elementIdentifier\": \"family_name\", \"elementValue\": null},"
+                + "{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}],"
+                + "\"org.iso.23220.photoid.1\": [{\"elementIdentifier\": \"family_name\", \"elementValue\": \"Doe\"}]}}";
+
+        Map<String, Object> nameSpaces = (Map<String, Object>)
+                mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE).get("nameSpaces");
+
+        assertEquals(1, ((List<?>) nameSpaces.get(PhotoIdDataElements.NAMESPACE)).size());
+        assertEquals(1, ((List<?>) nameSpaces.get("org.iso.23220.photoid.1")).size());
+    }
+
+    /** The reason processTemplatedJson rejects a Photo ID template with these nameSpaces. */
+    private String templateRejectionMessage(String nameSpaces) {
+        String template = "{\"docType\": \"" + PhotoIdDataElements.DOC_TYPE + "\","
+                + "\"validityInfo\": {\"validFrom\": \"${_validFrom}\", \"validUntil\": \"${_validUntil}\", \"signed\": \"${_signed}\"},"
+                + "\"nameSpaces\": " + nameSpaces + "}";
+        CertifyException exception = assertThrows(CertifyException.class,
+                () -> mDocProcessor.processTemplatedJson(template, new HashMap<>(), CERT_NOT_BEFORE));
+        assertEquals(ErrorConstants.MDOC_TEMPLATE_PROCESSING_FAILED, exception.getErrorCode());
+        return exception.getMessage().replaceFirst("^Error processing templated JSON: ", "");
+    }
+
+    private String photoIdRejectionMessage(String identifier, Object value) {
+        return rejectionMessage(PhotoIdDataElements.DOC_TYPE, PhotoIdDataElements.NAMESPACE, identifier, value);
+    }
+
+    @Test
     public void should_digestWithTheConfiguredAlgorithm_when_algorithmIsSha384() throws Exception {
         Map<String, Object> salted = new HashMap<>();
         salted.put(MDL_NAMESPACE, List.of(createSaltedElement(7, "family_name", "Doe")));
@@ -1982,13 +2312,18 @@ public class MDocProcessorTest {
      * mdoc_template_processing_failed, before anything is signed.
      */
     private String rejectionMessage(String identifier, Object value) {
+        return rejectionMessage(MdlDataElements.DOC_TYPE, MDL_NAMESPACE, identifier, value);
+    }
+
+    /** The same for a document of this docType whose one element, in this namespace, has this value. */
+    private String rejectionMessage(String docType, String namespace, String identifier, Object value) {
         Map<String, Object> element = new HashMap<>();
         element.put("elementIdentifier", identifier);
         element.put("elementValue", value);
         Map<String, Object> template = new LinkedHashMap<>();
-        template.put("docType", MdlDataElements.DOC_TYPE);
+        template.put("docType", docType);
         template.put("validityInfo", Map.of("signed", "${_signed}", "validFrom", "${_validFrom}", "validUntil", "${_validUntil}"));
-        template.put("nameSpaces", Map.of(MDL_NAMESPACE, List.of(element)));
+        template.put("nameSpaces", Map.of(namespace, List.of(element)));
         String json;
         try {
             json = new ObjectMapper().writeValueAsString(template);
