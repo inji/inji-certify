@@ -619,7 +619,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         String pluginMessage = "The requested credential context https://www.w3.org/ns/credentials/v2 is not supported for this credential.";
         when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
@@ -638,7 +638,7 @@ public class VCIssuanceServiceImplTest {
         when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
         when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
         when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
-        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+        when(proofValidator.getHolderKey(anyString())).thenReturn(HOLDER_KEY);
 
         when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
                 .thenThrow(new VCIExchangeException("vci_exchange_failed"));
