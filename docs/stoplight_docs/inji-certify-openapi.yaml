@@ -417,7 +417,7 @@ paths:
       servers:
         - url: 'http://localhost:8090/v1/certify'
           description: Generated server url
-  /issuance/nonce:
+  /nonce:
     post:
       tags:
         - 'Nonce Controller'
@@ -2097,11 +2097,6 @@ components:
           type: string
         error_description:
           type: string
-        c_nonce:
-          type: string
-        c_nonce_expires_in:
-          type: integer
-          format: int32
     ResponseWrapperKeyPairGenerateResponseDto:
       type: object
       properties:
@@ -2245,6 +2240,9 @@ components:
         credential_endpoint:
           type: string
           description: The API endpoint URL where clients can request credential issuance.
+        nonce_endpoint:
+          type: string
+          description: The API endpoint URL where clients obtain a c_nonce for key proofs. Present only when mosip.certify.allow-c-nonce is true.
         credential_configurations_supported:
           type: object
           description: Map of Verifiable Credential level configuration information.
@@ -2259,23 +2257,8 @@ components:
         scope:
           type: string
           description: The OAuth2 scope value associated with this credential configuration.
-        claims:
-          type: object
-          description: Map of claim definitions for the credential (used for mso_mdoc and dc+sd-jwt).
-          additionalProperties:
-            type: object
-        display:
-          type: array
-          description: 'List of localized display information for the credential (name, description, logo, etc.).'
-          items:
-            type: object
-            additionalProperties:
-              type: object
-        order:
-          type: array
-          description: List specifying the display order of claims or fields in the credential.
-          items:
-            type: string
+        credential_metadata:
+          $ref: '#/components/schemas/CredentialMetadataDTO'
         doctype:
           type: string
           description: 'Document type identifier, used for mDL/mDoc credentials.'
@@ -2300,6 +2283,33 @@ components:
           $ref: '#/components/schemas/CredentialDefinition'
         vct:
           type: string
+    CredentialMetadataDTO:
+      type: object
+      description: Information for displaying the credential and its claims in a wallet.
+      properties:
+        display:
+          type: array
+          description: 'Localized display information for the credential (name, logo, colours).'
+          items:
+            $ref: '#/components/schemas/MetaDataDisplayDTO'
+        claims:
+          type: array
+          description: The credential's claims and how each is displayed.
+          items:
+            type: object
+            properties:
+              path:
+                type: array
+                description: 'Path to the claim in the credential. For mso_mdoc, the namespace followed by the element identifier.'
+                items:
+                  type: string
+              mandatory:
+                type: boolean
+                description: Whether the issuer always includes the claim. Left out when false.
+              display:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Display'
     OAuthAuthorizationServerMetadataDTO:
       type: object
       required:
@@ -2746,8 +2756,6 @@ components:
         - access_token
         - token_type
         - expires_in
-        - c_nonce
-        - c_nonce_expires_in
       properties:
         access_token:
           type: string
@@ -2762,12 +2770,6 @@ components:
           example: 3600
         scope:
           type: string
-        c_nonce:
-          type: string
-          description: Nonce for credential issuance key proofs
-        c_nonce_expires_in:
-          type: integer
-          example: 86400
     TokenError:
       type: object
       properties:
